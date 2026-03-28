@@ -5,7 +5,7 @@ import sys
 
 DOMAIN_FOLDERS = (
     "AppleMail-MCP",
-    "ICal-MCP",
+    "Apple-Calendar-MCP",
     "AppleReminders-MCP",
     "AppleShortcuts-MCP",
     "AppleNotes-MCP",

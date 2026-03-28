@@ -16,9 +16,9 @@ Because these servers run on your Mac, the Apple apps stay the system of record.
 
 ## Servers
 
-- [Apple-Tools-MCP](./Apple-AIO-MCP/README.md), recommended. One unified server for Mail, Calendar, Reminders, Messages, Contacts, Notes, and Shortcuts.
+- [Apple-Tools-MCP](./Apple-Tools-MCP/README.md), recommended. One unified server for Mail, Calendar, Reminders, Messages, Contacts, Notes, and Shortcuts.
 - [Apple Mail MCP](./AppleMail-MCP/README.md), for Mail-only workflows.
-- [Apple Calendar](./ICal-MCP/README.md), for Calendar-only workflows.
+- [Apple Calendar](./Apple-Calendar-MCP/README.md), for Calendar-only workflows.
 - [Apple Reminders MCP](./AppleReminders-MCP/README.md), for task and reminder workflows.
 - [Apple Messages MCP](./AppleMessages-MCP/README.md), for iMessage and Messages workflows.
 - [Apple Contacts MCP](./AppleContacts-MCP/README.md), for contacts and recipient-resolution workflows.
@@ -36,7 +36,7 @@ Because these servers run on your Mac, the Apple apps stay the system of record.
 <summary>Recommended, install the all-in-one server</summary>
 
 ```bash
-cd /Users/jonathanreed/Downloads/Apple-MCPs/Apple-AIO-MCP
+cd /Users/jonathanreed/Downloads/Apple-MCPs/Apple-Tools-MCP
 ./start.sh
 ```
 
@@ -78,7 +78,7 @@ Example for the all-in-one server:
 {
   "mcpServers": {
     "apple-tools": {
-      "command": "/Users/jonathanreed/Downloads/Apple-MCPs/Apple-AIO-MCP/start.sh",
+      "command": "/Users/jonathanreed/Downloads/Apple-MCPs/Apple-Tools-MCP/start.sh",
       "args": [],
       "env": {}
     }
@@ -112,7 +112,7 @@ Add the all-in-one server:
 ```bash
 claude mcp add --transport stdio --scope project \
   apple-tools \
-  -- /Users/jonathanreed/Downloads/Apple-MCPs/Apple-AIO-MCP/start.sh
+  -- /Users/jonathanreed/Downloads/Apple-MCPs/Apple-Tools-MCP/start.sh
 ```
 
 Add a standalone server:
@@ -163,10 +163,10 @@ Different Apple apps require different permissions:
 
 ## Repo Layout
 
-- `Apple-AIO-MCP/`, unified server
+- `Apple-Tools-MCP/`, unified server
 - `AppleContacts-MCP/`, Contacts
 - `AppleMail-MCP/`, Mail
-- `ICal-MCP/`, Calendar
+- `Apple-Calendar-MCP/`, Calendar
 - `AppleReminders-MCP/`, Reminders
 - `AppleMessages-MCP/`, Messages
 - `AppleNotes-MCP/`, Notes
@@ -178,4 +178,5 @@ Different Apple apps require different permissions:
 
 - This suite is for macOS.
 - Apple Messages history access still needs Full Disk Access.
-- `ICal-MCP` keeps its historical folder name, but it is the Apple Calendar server.
+- The unified server folder is `Apple-Tools-MCP`.
+- The calendar server folder is `Apple-Calendar-MCP`.

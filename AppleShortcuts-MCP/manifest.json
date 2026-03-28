@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "apple-shortcuts",
+  "display_name": "Apple Shortcuts",
+  "version": "0.1.0",
+  "description": "List, inspect, and run Apple Shortcuts on macOS.",
+  "long_description": "Local MCP server for Apple Shortcuts on macOS. Uses the official shortcuts CLI to list shortcuts, inspect shortcut metadata, browse folders, and run shortcuts with structured inputs and outputs. Designed for agentic use with concise resources, prompts, and typed results.",
+  "icon": "icon.png",
+  "author": {
+    "name": "Jonathan Reed"
+  },
+  "license": "MIT",
+  "keywords": ["shortcuts", "apple", "macos", "automation", "cli", "assistant"],
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": { "python": ">=3.11" }
+  },
+  "server": {
+    "type": "python",
+    "mcp_config": {
+      "command": "${__dirname}/start.sh",
+      "args": [],
+      "env": {
+        "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "full_access"
+      }
+    }
+  }
+}

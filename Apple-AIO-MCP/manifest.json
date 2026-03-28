@@ -1,0 +1,34 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "apple-aio",
+  "display_name": "Apple AIO MCP",
+  "version": "0.1.0",
+  "description": "Unified Apple ecosystem MCP server for macOS.",
+  "long_description": "Local MCP server for Apple Mail, Calendar, Reminders, Messages, Notes, and Shortcuts on macOS. Reuses the standalone Apple-native integrations while providing one coherent agent entrypoint, unified health, cross-app prompts, and aggregated Apple overview resources.",
+  "icon": "icon.png",
+  "author": {
+    "name": "Jonathan Reed"
+  },
+  "license": "MIT",
+  "keywords": ["apple", "assistant", "macos", "mail", "calendar", "reminders", "messages", "notes", "shortcuts"],
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": { "python": ">=3.11" }
+  },
+  "server": {
+    "type": "python",
+    "mcp_config": {
+      "command": "${__dirname}/start.sh",
+      "args": [],
+      "env": {
+        "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
+        "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_NOTES_MCP_SAFETY_MODE": "full_access",
+        "APPLE_MESSAGES_MCP_SAFETY_MODE": "full_access",
+        "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "full_access"
+      }
+    }
+  }
+}

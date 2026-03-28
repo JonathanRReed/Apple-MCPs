@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "apple-notes",
+  "display_name": "Apple Notes",
+  "version": "0.1.0",
+  "description": "Inspect, search, create, edit, move, and organize notes in Apple Notes on macOS.",
+  "long_description": "Local MCP server for Apple Notes on macOS. Uses AppleScript as the primary bridge to list accounts and folders, inspect notes, search note contents, create and update notes, move notes between folders, and organize notes while keeping Notes as the system of record.",
+  "icon": "icon.png",
+  "author": {
+    "name": "Jonathan Reed"
+  },
+  "license": "MIT",
+  "keywords": ["notes", "apple", "macos", "applescript", "knowledge", "organization"],
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": { "python": ">=3.11" }
+  },
+  "server": {
+    "type": "python",
+    "mcp_config": {
+      "command": "${__dirname}/start.sh",
+      "args": [],
+      "env": {
+        "APPLE_NOTES_MCP_SAFETY_MODE": "full_access"
+      }
+    }
+  }
+}

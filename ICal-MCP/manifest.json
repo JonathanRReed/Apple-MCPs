@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "apple-calendar",
+  "display_name": "Apple Calendar",
+  "version": "0.1.0",
+  "description": "List, create, update, and delete events in Apple Calendar on macOS.",
+  "long_description": "Local MCP server for Apple Calendar on macOS. Uses Apple's EventKit framework through a small native helper to list calendars, query events, create new events, update event details, and delete events while keeping Calendar as the system of record. Requires macOS and Apple Calendar installed.",
+  "icon": "icon.png",
+  "author": {
+    "name": "Jonathan Reed"
+  },
+  "license": "MIT",
+  "keywords": ["calendar", "events", "apple", "macos", "applescript", "ical"],
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": { "python": ">=3.11" }
+  },
+  "server": {
+    "type": "python",
+    "mcp_config": {
+      "command": "${__dirname}/start.sh",
+      "args": [],
+      "env": {
+        "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage"
+      }
+    }
+  }
+}

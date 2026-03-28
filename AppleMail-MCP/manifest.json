@@ -1,0 +1,30 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "apple-mail",
+  "display_name": "Apple Mail",
+  "version": "0.1.0",
+  "description": "Read, search, compose, and send emails via Apple Mail on macOS.",
+  "long_description": "Local MCP server for Apple Mail on macOS. Uses AppleScript to list mailboxes, search and read messages, compose drafts, and send email — all with Apple Mail as the system of record. Requires macOS and Apple Mail installed.",
+  "icon": "icon.png",
+  "author": {
+    "name": "Jonathan Reed"
+  },
+  "license": "MIT",
+  "keywords": ["mail", "email", "apple", "macos", "applescript"],
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": { "python": ">=3.11" }
+  },
+  "server": {
+    "type": "python",
+    "mcp_config": {
+      "command": "${__dirname}/start.sh",
+      "args": [],
+      "env": {
+        "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
+        "APPLE_MAIL_MCP_VISIBLE_DRAFTS": "true"
+      }
+    }
+  }
+}

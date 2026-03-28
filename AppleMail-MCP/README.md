@@ -88,4 +88,4 @@ claude mcp add --transport stdio --scope project \
 
 ## Related
 
-- [Apple-Tools-MCP](../Apple-AIO-MCP/README.md)
+- [Apple-Tools-MCP](../Apple-Tools-MCP/README.md)

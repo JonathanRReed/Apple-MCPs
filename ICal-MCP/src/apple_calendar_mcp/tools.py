@@ -15,7 +15,7 @@ SERVER_INSTRUCTIONS = (
     "Prefer list and get tools before mutations when ids or calendar ids are unknown."
 )
 
-mcp = FastMCP("Apple Calendar MCP", instructions=SERVER_INSTRUCTIONS, json_response=True)
+mcp = FastMCP("Apple Calendar", instructions=SERVER_INSTRUCTIONS, json_response=True)
 
 
 def _bridge() -> CalendarBridge:
@@ -130,7 +130,7 @@ def calendar_prepare_agenda_prompt() -> str:
 
 @mcp.tool(
     title="Calendar Health",
-    description="Report the active Apple Calendar MCP server configuration.",
+    description="Report the active Apple Calendar server configuration.",
     annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
     structured_output=True,
 )

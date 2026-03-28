@@ -2,6 +2,7 @@ import json
 import asyncio
 
 from apple_agent_mcp import tools
+from apple_contacts_mcp.models import ContactDetail, ContactMethod, ResolvedRecipientResponse
 
 
 def test_registered_tool_names_cover_core_domains() -> None:
@@ -13,6 +14,7 @@ def test_registered_tool_names_cover_core_domains() -> None:
     assert "calendar_list_events" in tools.REGISTERED_TOOL_NAMES
     assert "reminders_list_reminders" in tools.REGISTERED_TOOL_NAMES
     assert "messages_send_message" in tools.REGISTERED_TOOL_NAMES
+    assert "contacts_search_contacts" in tools.REGISTERED_TOOL_NAMES
     assert "shortcuts_run_shortcut" in tools.REGISTERED_TOOL_NAMES
 
 
@@ -21,12 +23,14 @@ def test_apple_health_aggregates_domains(monkeypatch) -> None:
     monkeypatch.setattr(tools, "calendar_health", lambda: {"ok": True, "server_name": "Calendar"})
     monkeypatch.setattr(tools, "reminders_health", lambda: {"ok": True, "server_name": "Reminders"})
     monkeypatch.setattr(tools, "messages_health", lambda: {"ok": True, "server_name": "Messages"})
+    monkeypatch.setattr(tools, "contacts_health", lambda: {"ok": True, "server_name": "Contacts"})
     monkeypatch.setattr(tools, "notes_health", lambda: {"ok": True, "server_name": "Notes"})
     monkeypatch.setattr(tools, "shortcuts_health", lambda: {"ok": True, "server_name": "Shortcuts"})
 
     result = tools.apple_health()
 
     assert result.ok is True
+    assert result.domains["contacts"]["server_name"] == "Contacts"
     assert result.domains["mail"]["server_name"] == "Mail"
     assert result.domains["shortcuts"]["server_name"] == "Shortcuts"
 
@@ -68,3 +72,42 @@ def test_aio_messages_get_conversation_accepts_string_limit(monkeypatch) -> None
 
     assert result == {"ok": True}
     assert captured == {"chat_id": "chat-guid-1", "limit": 3, "offset": 1}
+
+
+def test_apple_send_message_interactive_resolves_contact_name(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_resolve_message_recipient(query: str, channel: str = "phone"):
+        assert query == "Alice Doe"
+        assert channel == "phone"
+        return ResolvedRecipientResponse(
+            contact=ContactDetail(
+                contact_id="contact-1",
+                name="Alice Doe",
+                first_name="Alice",
+                last_name="Doe",
+                organization="",
+                phone_count=1,
+                email_count=0,
+                phones=[ContactMethod(label="mobile", value="+15551234567")],
+                emails=[],
+                note="",
+            ),
+            recipient_kind="phone",
+            recipient_label="mobile",
+            recipient_value="+15551234567",
+        )
+
+    def fake_send_message(recipient: str, text: str, service_name: str | None = None):
+        captured["recipient"] = recipient
+        captured["text"] = text
+        captured["service_name"] = service_name
+        return {"ok": True, "sent": True, "recipient": recipient, "text": text, "service_name": service_name}
+
+    monkeypatch.setattr(tools, "contacts_resolve_message_recipient", fake_resolve_message_recipient)
+    monkeypatch.setattr(tools, "messages_send_message", fake_send_message)
+
+    result = asyncio.run(tools.apple_send_message_interactive(recipient="Alice Doe", text="hi"))
+
+    assert result["ok"] is True
+    assert captured["recipient"] == "+15551234567"

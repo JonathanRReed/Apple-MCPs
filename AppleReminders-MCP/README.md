@@ -18,6 +18,7 @@ This MCP lets an agent list reminder lists, inspect reminders, create reminders,
 - complete and uncomplete tools
 - today and list resources
 - planning and inbox-triage prompts
+- `reminders_health`, `reminders_permission_guide`, and `reminders_recheck_permissions` for launch checks
 
 ## Install On This Mac
 
@@ -75,6 +76,15 @@ claude mcp add --transport stdio --scope project \
 
 - Reminders access is required
 
+## Launch Checklist
+
+- Start the server once with `./start.sh`
+- Add `/Users/jonathanreed/Downloads/Apple-MCPs/AppleReminders-MCP/start.sh` to your MCP client
+- Reload or reconnect the client so the Reminders tool surface is loaded into context
+- Call `reminders_health` first
+- If Reminders access is blocked, call `reminders_permission_guide`
+- After changing macOS permissions, call `reminders_recheck_permissions`
+
 ## Related
 
-- [Apple AIO MCP](../Apple-AIO-MCP/README.md)
+- [Apple-Tools-MCP](../Apple-AIO-MCP/README.md)

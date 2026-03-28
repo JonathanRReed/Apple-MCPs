@@ -1,4 +1,4 @@
-# Apple Calendar MCP
+# Apple Calendar
 
 Apple Calendar access for AI agents on macOS.
 
@@ -17,6 +17,7 @@ This MCP lets an agent list calendars, read events, create events, update events
 - event create, update, and delete
 - today resources and planning prompts
 - health output that distinguishes empty results from blocked Calendar access
+- `calendar_permission_guide` and `calendar_recheck_permissions` for permission recovery
 
 ## Install On This Mac
 
@@ -75,6 +76,15 @@ claude mcp add --transport stdio --scope project \
 - Calendar access is required
 - `calendar_health` reports `access_status`, read access, and write access so agents can detect blocked permissions before treating an empty window as real data
 
+## Launch Checklist
+
+- Start the server once with `./start.sh`
+- Add `/Users/jonathanreed/Downloads/Apple-MCPs/ICal-MCP/start.sh` to your MCP client
+- Reload or reconnect the client so the Calendar tool surface is loaded into context
+- Call `calendar_health` first
+- If access is blocked or `access_status` is `not_determined`, call `calendar_permission_guide`
+- After changing macOS permissions, call `calendar_recheck_permissions`
+
 ## Related
 
-- [Apple AIO MCP](../Apple-AIO-MCP/README.md)
+- [Apple-Tools-MCP](../Apple-AIO-MCP/README.md)

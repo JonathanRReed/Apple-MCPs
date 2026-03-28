@@ -16,17 +16,18 @@ Because these servers run on your Mac, the Apple apps stay the system of record.
 
 ## Servers
 
-- [Apple AIO MCP](./Apple-AIO-MCP/README.md), recommended. One unified server for Mail, Calendar, Reminders, Messages, Notes, and Shortcuts.
+- [Apple-Tools-MCP](./Apple-AIO-MCP/README.md), recommended. One unified server for Mail, Calendar, Reminders, Messages, Contacts, Notes, and Shortcuts.
 - [Apple Mail MCP](./AppleMail-MCP/README.md), for Mail-only workflows.
-- [Apple Calendar MCP](./ICal-MCP/README.md), for Calendar-only workflows.
+- [Apple Calendar](./ICal-MCP/README.md), for Calendar-only workflows.
 - [Apple Reminders MCP](./AppleReminders-MCP/README.md), for task and reminder workflows.
 - [Apple Messages MCP](./AppleMessages-MCP/README.md), for iMessage and Messages workflows.
+- [Apple Contacts MCP](./AppleContacts-MCP/README.md), for contacts and recipient-resolution workflows.
 - [Apple Notes MCP](./AppleNotes-MCP/README.md), for notes and knowledge workflows.
 - [Apple Shortcuts MCP](./AppleShortcuts-MCP/README.md), for running Apple Shortcuts from agents.
 
 ## Which One To Use
 
-- Use `Apple-AIO-MCP` if you want one assistant entrypoint across the Apple apps in this repo.
+- Use `Apple-Tools-MCP` if you want one assistant entrypoint across the Apple apps in this repo.
 - Use the standalone servers if you want tighter app boundaries, simpler permissions, or separate agent configs.
 
 ## Install On This Mac
@@ -76,7 +77,7 @@ Example for the all-in-one server:
 ```json
 {
   "mcpServers": {
-    "apple-aio": {
+    "apple-tools": {
       "command": "/Users/jonathanreed/Downloads/Apple-MCPs/Apple-AIO-MCP/start.sh",
       "args": [],
       "env": {}
@@ -110,7 +111,7 @@ Add the all-in-one server:
 
 ```bash
 claude mcp add --transport stdio --scope project \
-  apple-aio \
+  apple-tools \
   -- /Users/jonathanreed/Downloads/Apple-MCPs/Apple-AIO-MCP/start.sh
 ```
 
@@ -124,6 +125,28 @@ claude mcp add --transport stdio --scope project \
 
 </details>
 
+## Launch Checklist
+
+- Start the server you want with its local `./start.sh`
+- Add that `start.sh` path to your MCP client
+- Reload or reconnect the client so the server is loaded into context
+- Call the server's health tool before doing real work
+- If permissions are blocked, call the server's permission guide tool
+- After changing permissions, call the server's recheck tool, or `shortcuts_refresh_state` for Apple Shortcuts
+
+## Health And Recovery Tools
+
+| Server | Health tool | Permission or recovery tools |
+| --- | --- | --- |
+| Apple-Tools-MCP | `apple_health` | `apple_permission_guide`, `apple_recheck_permissions` |
+| Apple Mail MCP | `mail_health` | `mail_permission_guide`, `mail_recheck_permissions` |
+| Apple Calendar | `calendar_health` | `calendar_permission_guide`, `calendar_recheck_permissions` |
+| Apple Reminders MCP | `reminders_health` | `reminders_permission_guide`, `reminders_recheck_permissions` |
+| Apple Messages MCP | `messages_health` | `messages_permission_guide`, `messages_recheck_permissions` |
+| Apple Contacts MCP | `contacts_health` | `contacts_permission_guide`, `contacts_recheck_permissions` |
+| Apple Notes MCP | `notes_health` | `notes_permission_guide`, `notes_recheck_permissions` |
+| Apple Shortcuts MCP | `shortcuts_health` | `shortcuts_permission_guide`, `shortcuts_refresh_state` |
+
 ## macOS Permissions
 
 Different Apple apps require different permissions:
@@ -134,12 +157,14 @@ Different Apple apps require different permissions:
 | Apple Calendar | Calendar access |
 | Apple Reminders | Reminders access |
 | Apple Messages | Automation access to Messages, plus Full Disk Access for history |
+| Apple Contacts | Contacts access |
 | Apple Notes | Automation access to Notes |
 | Apple Shortcuts | Usually no separate privacy prompt |
 
 ## Repo Layout
 
 - `Apple-AIO-MCP/`, unified server
+- `AppleContacts-MCP/`, Contacts
 - `AppleMail-MCP/`, Mail
 - `ICal-MCP/`, Calendar
 - `AppleReminders-MCP/`, Reminders

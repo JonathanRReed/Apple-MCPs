@@ -25,7 +25,7 @@ def _parse_int(value: str | None, default: int) -> int:
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
     return Settings(
-        server_name="Apple AIO MCP",
+        server_name="Apple-Tools-MCP",
         version="0.1.0",
         transport=os.environ.get("APPLE_AGENT_MCP_TRANSPORT", "stdio").strip().lower() or "stdio",
         log_level=os.environ.get("APPLE_AGENT_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",

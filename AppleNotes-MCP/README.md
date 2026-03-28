@@ -18,6 +18,7 @@ This MCP lets an agent inspect accounts and folders, list and search notes, crea
 - folder create, rename, and delete
 - recent-note resources and organization prompts
 - Notes mutations that resolve folders explicitly before create, update, and move operations
+- `notes_health`, `notes_permission_guide`, and `notes_recheck_permissions` for launch checks
 
 ## Install On This Mac
 
@@ -75,6 +76,15 @@ claude mcp add --transport stdio --scope project \
 
 - Automation access to Notes is required
 
+## Launch Checklist
+
+- Start the server once with `./start.sh`
+- Add `/Users/jonathanreed/Downloads/Apple-MCPs/AppleNotes-MCP/start.sh` to your MCP client
+- Reload or reconnect the client so the Notes tool surface is loaded into context
+- Call `notes_health` first
+- If Notes automation is blocked, call `notes_permission_guide`
+- After changing macOS permissions, call `notes_recheck_permissions`
+
 ## Related
 
-- [Apple AIO MCP](../Apple-AIO-MCP/README.md)
+- [Apple-Tools-MCP](../Apple-AIO-MCP/README.md)

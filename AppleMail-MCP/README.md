@@ -18,6 +18,7 @@ This MCP lets an agent inspect mailboxes, search messages, read message details,
 - draft creation
 - message sending
 - mailbox resources and reply-oriented prompts
+- `mail_health`, `mail_permission_guide`, and `mail_recheck_permissions` for launch and permission checks
 
 ## Install On This Mac
 
@@ -76,6 +77,15 @@ claude mcp add --transport stdio --scope project \
 
 - Automation access to Mail is required
 
+## Launch Checklist
+
+- Start the server once with `./start.sh`
+- Add `/Users/jonathanreed/Downloads/Apple-MCPs/AppleMail-MCP/start.sh` to your MCP client
+- Reload or reconnect the client so the Mail tool surface is loaded into context
+- Call `mail_health` first to confirm the server is reachable
+- If Mail automation is blocked, call `mail_permission_guide`
+- After changing macOS permissions, call `mail_recheck_permissions`
+
 ## Related
 
-- [Apple AIO MCP](../Apple-AIO-MCP/README.md)
+- [Apple-Tools-MCP](../Apple-AIO-MCP/README.md)

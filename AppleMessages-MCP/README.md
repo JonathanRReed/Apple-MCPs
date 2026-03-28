@@ -19,6 +19,7 @@ This MCP lets an agent read Messages history, inspect threads, search messages, 
 - send and reply tools
 - unread and recent conversation resources
 - health output that separates history access failures from automation failures
+- `messages_permission_guide` and `messages_recheck_permissions` for permission recovery
 
 ## Install On This Mac
 
@@ -72,6 +73,15 @@ claude mcp add --transport stdio --scope project \
 - Full Disk Access is required for history, search, and attachment metadata from `~/Library/Messages/chat.db`
 - `messages_health` reports both permission surfaces separately, so agents can tell whether send, history, or both are blocked
 
+## Launch Checklist
+
+- Start the server once with `./start.sh`
+- Add `/Users/jonathanreed/Downloads/Apple-MCPs/AppleMessages-MCP/start.sh` to your MCP client
+- Reload or reconnect the client so the Messages tool surface is loaded into context
+- Call `messages_health` first
+- If either permission surface is blocked, call `messages_permission_guide`
+- After changing macOS permissions, call `messages_recheck_permissions`
+
 ## Related
 
-- [Apple AIO MCP](../Apple-AIO-MCP/README.md)
+- [Apple-Tools-MCP](../Apple-AIO-MCP/README.md)

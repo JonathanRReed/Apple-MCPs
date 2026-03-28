@@ -17,6 +17,7 @@ This MCP lets an agent discover shortcuts, inspect shortcut metadata, browse sho
 - shortcut inspection
 - shortcut execution
 - shortcut resources and execution prompts
+- `shortcuts_health`, `shortcuts_permission_guide`, and `shortcuts_refresh_state` for launch checks
 
 ## Install On This Mac
 
@@ -68,6 +69,15 @@ claude mcp add --transport stdio --scope project \
 
 - the built-in `shortcuts` CLI must be available
 
+## Launch Checklist
+
+- Start the server once with `./start.sh`
+- Add `/Users/jonathanreed/Downloads/Apple-MCPs/AppleShortcuts-MCP/start.sh` to your MCP client
+- Reload or reconnect the client so the Shortcuts tool surface is loaded into context
+- Call `shortcuts_health` first
+- If the CLI is unavailable, call `shortcuts_permission_guide`
+- After changing the Shortcuts catalog, call `shortcuts_refresh_state`
+
 ## Related
 
-- [Apple AIO MCP](../Apple-AIO-MCP/README.md)
+- [Apple-Tools-MCP](../Apple-AIO-MCP/README.md)

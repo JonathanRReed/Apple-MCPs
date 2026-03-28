@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, is_dataclass
 import json
 import logging
+import re
 from typing import Any, Callable
 
 from mcp.server.fastmcp import Context, FastMCP
@@ -67,6 +68,16 @@ from apple_messages_mcp.tools import (  # noqa: E402
     messages_unread_resource,
 )
 from apple_messages_mcp.models import ConversationResponse, ErrorResponse as MessagesErrorResponse, SendResponse, ToolError as MessagesToolError  # noqa: E402
+from apple_contacts_mcp.tools import (  # noqa: E402
+    contacts_contact_resource,
+    contacts_directory_resource,
+    contacts_get_contact,
+    contacts_health,
+    contacts_list_contacts,
+    contacts_resolve_message_recipient,
+    contacts_search_contacts,
+)
+from apple_contacts_mcp.models import ErrorResponse as ContactsErrorResponse  # noqa: E402
 from apple_notes_mcp.tools import (  # noqa: E402
     notes_cleanup_prompt,
     notes_create_folder,
@@ -120,11 +131,11 @@ from apple_shortcuts_mcp.tools import (  # noqa: E402
 
 SERVER_INSTRUCTIONS = (
     "Use this server for unified Apple ecosystem access on macOS. "
-    "Search here when the user wants one Apple-native entrypoint across Mail, Calendar, Reminders, Messages, Notes, and Shortcuts. "
+    "Search here when the user wants one Apple-native entrypoint across Mail, Calendar, Reminders, Messages, Contacts, Notes, and Shortcuts. "
     "Prefer cross-app overview resources and prompts first, then use namespaced domain tools for specific actions."
 )
 
-mcp = FastMCP("Apple AIO MCP", instructions=SERVER_INSTRUCTIONS, json_response=True)
+mcp = FastMCP("Apple-Tools-MCP", instructions=SERVER_INSTRUCTIONS, json_response=True)
 
 LOGGER = logging.getLogger("apple_agent_mcp")
 
@@ -193,6 +204,7 @@ def _domain_health() -> dict[str, dict[str, Any]]:
         "calendar": _to_jsonable(calendar_health()),
         "reminders": _to_jsonable(reminders_health()),
         "messages": _to_jsonable(messages_health()),
+        "contacts": _to_jsonable(contacts_health()),
         "notes": _to_jsonable(notes_health()),
         "shortcuts": _to_jsonable(shortcuts_health()),
     }
@@ -249,6 +261,17 @@ def _permission_guide(domain: str) -> PermissionGuideResponse:
             ],
             notes=["Messages send access and history access are separate permissions.", "Full Disk Access cannot be requested programmatically."],
         ),
+        "contacts": PermissionGuideResponse(
+            domain="contacts",
+            can_prompt_in_app=True,
+            requires_manual_system_settings=False,
+            steps=[
+                "Call a Contacts read tool from the MCP server.",
+                "Approve the macOS Contacts access prompt when it appears.",
+                "If access was denied before, re-enable it in System Settings > Privacy & Security > Contacts.",
+            ],
+            notes=["Contacts lookups can resolve a recipient before sending through Apple Messages."],
+        ),
         "mail": PermissionGuideResponse(
             domain="mail",
             can_prompt_in_app=True,
@@ -288,6 +311,7 @@ def _permission_guide(domain: str) -> PermissionGuideResponse:
             steps=[
                 "Use the domain-specific guide for the app you want to authorize.",
                 "Grant automation prompts when they appear.",
+                "Grant Contacts access if you want to resolve recipients by contact name before messaging.",
                 "Grant Full Disk Access manually for Apple Messages history access.",
             ],
             notes=["Some Apple permissions can be prompted in-app.", "Full Disk Access must be granted manually in System Settings."],
@@ -406,11 +430,23 @@ def apple_suggest_message_conversations(query: str | None = None, limit: int | s
     return SuggestionListResponse(domain="messages", suggestions=suggestions, count=len(suggestions))
 
 
+def apple_suggest_contacts(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
+    response = contacts_search_contacts(query=query or "", limit=100) if query else contacts_list_contacts(limit=100, offset=0)
+    values = []
+    if getattr(response, "ok", False):
+        for item in response.contacts:
+            primary = item.phones[0].value if item.phones else (item.emails[0].value if item.emails else "")
+            values.append(f"{item.contact_id} / {item.name} / {primary}")
+    suggestions = _filter_text(values, query=query, limit=_coerce_int_arg("limit", limit, minimum=1))
+    return SuggestionListResponse(domain="contacts", suggestions=suggestions, count=len(suggestions))
+
+
 for _name, _fn in (
     ("Apple Suggest Mailboxes", apple_suggest_mailboxes),
     ("Apple Suggest Calendars", apple_suggest_calendars),
     ("Apple Suggest Reminder Lists", apple_suggest_reminder_lists),
     ("Apple Suggest Shortcuts", apple_suggest_shortcuts),
+    ("Apple Suggest Contacts", apple_suggest_contacts),
     ("Apple Suggest Note Folders", apple_suggest_note_folders),
     ("Apple Suggest Message Conversations", apple_suggest_message_conversations),
 ):
@@ -483,6 +519,17 @@ async def apple_send_message_interactive(
                 suggestion="Provide recipient and text, or use a client that supports MCP elicitation.",
             )
         )
+    if not _looks_like_message_address(recipient):
+        resolved = contacts_resolve_message_recipient(query=recipient, channel="phone")
+        if isinstance(resolved, ContactsErrorResponse):
+            return MessagesErrorResponse(
+                error=MessagesToolError(
+                    error_code=resolved.error.error_code,
+                    message=resolved.error.message,
+                    suggestion=resolved.error.suggestion,
+                )
+            )
+        recipient = resolved.recipient_value
     return messages_send_message(recipient=recipient, text=text, service_name=service_name)
 
 
@@ -557,6 +604,7 @@ def apple_overview_resource() -> str:
                 "calendar": _safe_resource_call(calendar_calendars_resource),
                 "reminders": _safe_resource_call(reminders_lists_resource),
                 "messages": _safe_resource_call(messages_recent_resource),
+                "contacts": _safe_resource_call(contacts_directory_resource),
                 "notes": _safe_resource_call(notes_recent_resource),
                 "shortcuts": _safe_resource_call(shortcuts_all_resource),
                 "mail": _safe_resource_call(_mailboxes_resource),
@@ -650,7 +698,7 @@ def messages_get_conversation(chat_id: str, limit: int | str = 50, offset: int |
 
 
 def _tool_annotations(name: str) -> ToolAnnotations:
-    if any(marker in name for marker in ("health", "list_", "get_", "search_", "view_")):
+    if any(marker in name for marker in ("health", "list_", "get_", "search_", "view_", "resolve_")):
         return ToolAnnotations(readOnlyHint=True, idempotentHint=True)
     if any(marker in name for marker in ("delete_", "send_message")):
         return ToolAnnotations(destructiveHint=True, idempotentHint=False, openWorldHint="send_message" in name)
@@ -662,7 +710,14 @@ def _tool_title(name: str) -> str:
 
 
 def _tool_description(name: str) -> str:
-    return f"Delegated Apple domain tool '{name}' exposed through Apple AIO MCP."
+    return f"Delegated Apple domain tool '{name}' exposed through Apple-Tools-MCP."
+
+
+def _looks_like_message_address(value: str) -> bool:
+    if "@" in value:
+        return True
+    digits = re.sub(r"\D+", "", value)
+    return len(digits) >= 7
 
 
 UNIFIED_TOOL_FUNCTIONS: list[Callable[..., Any]] = [
@@ -693,6 +748,11 @@ UNIFIED_TOOL_FUNCTIONS: list[Callable[..., Any]] = [
     shortcuts_list_folders,
     shortcuts_view_shortcut,
     shortcuts_run_shortcut,
+    contacts_health,
+    contacts_list_contacts,
+    contacts_search_contacts,
+    contacts_get_contact,
+    contacts_resolve_message_recipient,
     notes_health,
     notes_list_accounts,
     notes_list_folders,
@@ -728,6 +788,7 @@ APPLE_AGENT_TOOL_NAMES = [
     "apple_suggest_calendars",
     "apple_suggest_reminder_lists",
     "apple_suggest_shortcuts",
+    "apple_suggest_contacts",
     "apple_suggest_note_folders",
     "apple_suggest_message_conversations",
 ]
@@ -752,6 +813,24 @@ mcp.resource(
     mime_type="application/json",
     annotations=Annotations(audience=["assistant"], priority=0.9),
 )(_mailboxes_resource)
+
+mcp.resource(
+    "contacts://directory",
+    name="contacts_directory",
+    title="Contacts Directory",
+    description="Current Apple Contacts directory snapshot.",
+    mime_type="application/json",
+    annotations=Annotations(audience=["assistant"], priority=0.85),
+)(contacts_directory_resource)
+
+mcp.resource(
+    "contacts://contact/{contact_id}",
+    name="contacts_detail",
+    title="Contact Detail",
+    description="A single Apple Contacts record.",
+    mime_type="application/json",
+    annotations=Annotations(audience=["assistant"], priority=0.75),
+)(contacts_contact_resource)
 
 mcp.resource(
     "calendar://calendars",

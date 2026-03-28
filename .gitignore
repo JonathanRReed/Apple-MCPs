@@ -15,6 +15,7 @@ __pycache__/
 venv/
 ENV/
 env/
+uv.lock
 *.egg-info/
 dist/
 build/

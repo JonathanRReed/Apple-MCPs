@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "apple-tools-mcp"
+name = "apple-contacts-mcp"
 version = "0.1.0"
-description = "Unified Apple ecosystem MCP server for macOS"
+description = "Local Apple Contacts MCP server for macOS"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -14,12 +14,12 @@ dependencies = [
 ]
 
 [project.scripts]
-apple-tools-mcp = "apple_agent_mcp.tools:main"
+apple-contacts-mcp = "apple_contacts_mcp.tools:main"
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8,<10",
-  "ruff>=0.11,<1",
+  "ruff>=0.12,<1",
 ]
 
 [tool.setuptools]

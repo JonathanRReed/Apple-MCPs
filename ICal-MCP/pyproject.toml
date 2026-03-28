@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "apple-calendar-mcp"
 version = "0.1.0"
-description = "Local Apple Calendar MCP server for macOS"
+description = "Local Apple Calendar server for macOS"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

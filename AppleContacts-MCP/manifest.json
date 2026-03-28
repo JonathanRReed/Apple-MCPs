@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "apple-contacts",
+  "display_name": "Apple Contacts",
+  "version": "0.1.0",
+  "description": "Inspect and search Apple Contacts on macOS, and resolve a contact into a message-ready recipient.",
+  "long_description": "Local MCP server for Apple Contacts on macOS. Uses AppleScript to inspect contacts, search by name, phone, or email, fetch full contact details, and resolve a contact into a message-ready recipient before handing off to Apple Messages.",
+  "icon": "icon.png",
+  "author": {
+    "name": "Jonathan Reed"
+  },
+  "license": "MIT",
+  "keywords": ["contacts", "apple", "macos", "address-book", "messages", "directory"],
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": { "python": ">=3.11" }
+  },
+  "server": {
+    "type": "python",
+    "mcp_config": {
+      "command": "${__dirname}/start.sh",
+      "args": [],
+      "env": {
+        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_readonly"
+      }
+    }
+  }
+}

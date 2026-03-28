@@ -79,7 +79,7 @@ def test_apple_send_message_interactive_resolves_contact_name(monkeypatch) -> No
 
     def fake_resolve_message_recipient(query: str, channel: str = "phone"):
         assert query == "Alice Doe"
-        assert channel == "phone"
+        assert channel == "any"
         return ResolvedRecipientResponse(
             contact=ContactDetail(
                 contact_id="contact-1",
@@ -111,3 +111,42 @@ def test_apple_send_message_interactive_resolves_contact_name(monkeypatch) -> No
 
     assert result["ok"] is True
     assert captured["recipient"] == "+15551234567"
+
+
+def test_apple_send_message_interactive_falls_back_to_contact_email(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_resolve_message_recipient(query: str, channel: str = "phone"):
+        assert query == "Alice Doe"
+        assert channel == "any"
+        return ResolvedRecipientResponse(
+            contact=ContactDetail(
+                contact_id="contact-1",
+                name="Alice Doe",
+                first_name="Alice",
+                last_name="Doe",
+                organization="",
+                phone_count=0,
+                email_count=1,
+                phones=[],
+                emails=[ContactMethod(label="iMessage", value="alice@example.com")],
+                note="",
+            ),
+            recipient_kind="email",
+            recipient_label="iMessage",
+            recipient_value="alice@example.com",
+        )
+
+    def fake_send_message(recipient: str, text: str, service_name: str | None = None):
+        captured["recipient"] = recipient
+        captured["text"] = text
+        captured["service_name"] = service_name
+        return {"ok": True, "sent": True, "recipient": recipient, "text": text, "service_name": service_name}
+
+    monkeypatch.setattr(tools, "contacts_resolve_message_recipient", fake_resolve_message_recipient)
+    monkeypatch.setattr(tools, "messages_send_message", fake_send_message)
+
+    result = asyncio.run(tools.apple_send_message_interactive(recipient="Alice Doe", text="hi"))
+
+    assert result["ok"] is True
+    assert captured["recipient"] == "alice@example.com"

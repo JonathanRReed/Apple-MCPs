@@ -11,22 +11,48 @@ on run argv
 end run
 
 on person_json(p, includeNote)
-	set contactId to my safe_text(id of p)
-	set fullName to my safe_text(name of p)
+	set contactId to ""
+	try
+		set contactId to (id of p) as text
+	on error
+	end try
+	set fullName to ""
+	try
+		set fullName to (name of p) as text
+	on error
+	end try
 	set firstName to ""
 	set lastName to ""
-	set organizationName to my safe_text((organization of p))
+	set organizationName to ""
+	try
+		set organizationName to (organization of p) as text
+	on error
+	end try
 	set noteText to ""
-	set phoneItems to my method_json_list(phones of p)
-	set emailItems to my method_json_list(emails of p)
+	set phoneItems to {}
+	set phoneCount to 0
+	try
+		set rawPhones to phones of p
+		set phoneItems to my method_json_list(rawPhones)
+		set phoneCount to count of rawPhones
+	on error
+	end try
+	set emailItems to {}
+	set emailCount to 0
+	try
+		set rawEmails to emails of p
+		set emailItems to my method_json_list(rawEmails)
+		set emailCount to count of rawEmails
+	on error
+	end try
 	return "{" & ¬
 		quote & "contact_id" & quote & ":" & my json_string(contactId) & "," & ¬
 		quote & "name" & quote & ":" & my json_string(fullName) & "," & ¬
 		quote & "first_name" & quote & ":" & my json_string(firstName) & "," & ¬
 		quote & "last_name" & quote & ":" & my json_string(lastName) & "," & ¬
 		quote & "organization" & quote & ":" & my json_string(organizationName) & "," & ¬
-		quote & "phone_count" & quote & ":" & (count of phones of p) & "," & ¬
-		quote & "email_count" & quote & ":" & (count of emails of p) & "," & ¬
+		quote & "phone_count" & quote & ":" & phoneCount & "," & ¬
+		quote & "email_count" & quote & ":" & emailCount & "," & ¬
 		quote & "phones" & quote & ":[" & my join_list(phoneItems, ",") & "]," & ¬
 		quote & "emails" & quote & ":[" & my join_list(emailItems, ",") & "]," & ¬
 		quote & "note" & quote & ":" & my json_string(noteText) & "}"

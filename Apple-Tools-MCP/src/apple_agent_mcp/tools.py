@@ -520,7 +520,7 @@ async def apple_send_message_interactive(
             )
         )
     if not _looks_like_message_address(recipient):
-        resolved = contacts_resolve_message_recipient(query=recipient, channel="phone")
+        resolved = contacts_resolve_message_recipient(query=recipient, channel="any")
         if isinstance(resolved, ContactsErrorResponse):
             return MessagesErrorResponse(
                 error=MessagesToolError(

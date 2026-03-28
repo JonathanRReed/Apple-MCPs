@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "apple-messages",
+  "display_name": "Apple Messages",
+  "version": "0.1.0",
+  "description": "Read Messages history on macOS and send or reply through Messages.app.",
+  "long_description": "Local MCP server for Apple Messages on macOS. Uses the local Messages SQLite database for history, search, and attachment metadata when Full Disk Access is available, and uses Messages.app automation for send and reply actions.",
+  "icon": "icon.png",
+  "author": {
+    "name": "Jonathan Reed"
+  },
+  "license": "MIT",
+  "keywords": ["messages", "imessage", "sms", "apple", "macos", "assistant"],
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": { "python": ">=3.11" }
+  },
+  "server": {
+    "type": "python",
+    "mcp_config": {
+      "command": "${__dirname}/start.sh",
+      "args": [],
+      "env": {
+        "APPLE_MESSAGES_MCP_SAFETY_MODE": "full_access"
+      }
+    }
+  }
+}

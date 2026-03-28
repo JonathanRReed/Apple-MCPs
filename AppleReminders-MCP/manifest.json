@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "apple-reminders",
+  "display_name": "Apple Reminders",
+  "version": "0.1.0",
+  "description": "List, create, update, complete, and delete reminders in Apple Reminders on macOS.",
+  "long_description": "Local MCP server for Apple Reminders on macOS. Uses Apple's EventKit framework through a small native helper to list reminder lists, read reminder state, create reminders, update details, complete tasks, and delete reminders while keeping Reminders as the system of record.",
+  "icon": "icon.png",
+  "author": {
+    "name": "Jonathan Reed"
+  },
+  "license": "MIT",
+  "keywords": ["reminders", "tasks", "apple", "macos", "eventkit", "assistant"],
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": { "python": ">=3.11" }
+  },
+  "server": {
+    "type": "python",
+    "mcp_config": {
+      "command": "${__dirname}/start.sh",
+      "args": [],
+      "env": {
+        "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage"
+      }
+    }
+  }
+}

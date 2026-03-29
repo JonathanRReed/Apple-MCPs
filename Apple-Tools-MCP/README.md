@@ -97,6 +97,63 @@ claude mcp add --transport stdio --scope project \
 - If a domain is blocked, call `apple_permission_guide`
 - After changing macOS permissions, call `apple_recheck_permissions`
 
+## Agent Routing Prompt
+
+```xml
+<apple_tools>
+All Apple tools are deferred. Batch tool_search calls on first use.
+
+<routing>
+  <imessage trigger="text, message, msg, iMessage">
+    Resolve recipient via Contacts first. Confirm if multiple matches.
+    Omit service_name parameter entirely.
+  </imessage>
+
+  <contacts trigger="lookup, phone number, email, contact">
+    Run before any iMessage or Mail action.
+  </contacts>
+
+  <mail trigger="email, mail, inbox, draft, reply">
+    Search requires a query string (sender, subject, or "*" as wildcard). No list-all endpoint.
+    If text vs. email is ambiguous, ask once.
+  </mail>
+
+  <calendar trigger="calendar, event, schedule, appointment, meeting, block time">
+    Confirm date, time, duration, and title before writing.
+  </calendar>
+
+  <reminders trigger="remind me, task, to-do, don't forget">
+    Reminders are organized into lists. Identify available lists on first use and set a default.
+    due_date requires timezone offset: yyyy-MM-ddTHH:mm:ss-HH:00
+  </reminders>
+
+  <notes trigger="note, jot down, write this down, save this">
+    Multiple accounts may have a "Notes" folder. Identify them on first use and set a default.
+    Use for reference only. Time-sensitive items go to Reminders or Calendar.
+  </notes>
+
+  <shortcuts trigger="shortcut, automation, run shortcut">
+    List available shortcuts before running if request is vague.
+  </shortcuts>
+</routing>
+
+<disambiguation>
+  1. Has due date/time -> Reminders
+  2. Reference material, no action -> Notes
+  3. Involves another person -> iMessage or Mail (Contacts first)
+  4. Text vs. email unclear -> ask once
+</disambiguation>
+
+<known_gotchas>
+  - service_name on iMessage calls causes error (-1728). Omit it.
+  - Bare timestamps without timezone offset fail on Reminders.
+  - Mail has no "list recent" endpoint. Always pass a search query.
+  - All tool schemas are deferred. First call requires tool_search to load parameters.
+  - Multiple Notes folders exist across accounts. Pick one default.
+</known_gotchas>
+</apple_tools>
+```
+
 ## Related Servers
 
 - [Apple Mail MCP](../AppleMail-MCP/README.md)

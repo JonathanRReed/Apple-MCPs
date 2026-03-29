@@ -85,6 +85,12 @@ claude mcp add --transport stdio --scope project \
 - If Contacts access is blocked, call `contacts_permission_guide`
 - After changing macOS permissions, call `contacts_recheck_permissions`
 
+## Prompting Notes
+
+- Run Contacts before any iMessage or Mail action when the user gives a person name.
+- Resolve by name, phone number, or email before acting.
+- If multiple contacts match, confirm the intended person before sending.
+
 ## Related
 
 - [Apple-Tools-MCP](../Apple-Tools-MCP/README.md)

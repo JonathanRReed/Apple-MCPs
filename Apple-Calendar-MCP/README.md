@@ -85,6 +85,11 @@ claude mcp add --transport stdio --scope project \
 - If access is blocked or `access_status` is `not_determined`, call `calendar_permission_guide`
 - After changing macOS permissions, call `calendar_recheck_permissions`
 
+## Prompting Notes
+
+- Before writing, confirm the date, the time, the duration, and the event title.
+- Use Calendar for scheduled time blocks, meetings, appointments, and events.
+
 ## Related
 
 - [Apple-Tools-MCP](../Apple-Tools-MCP/README.md)

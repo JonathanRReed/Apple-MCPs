@@ -85,6 +85,12 @@ claude mcp add --transport stdio --scope project \
 - If Reminders access is blocked, call `reminders_permission_guide`
 - After changing macOS permissions, call `reminders_recheck_permissions`
 
+## Prompting Notes
+
+- Reminders are organized into lists. Identify the available lists on first use and set a default.
+- Use Reminders for due items, tasks, and follow-ups.
+- `due_date` requires a timezone offset in the form `yyyy-MM-ddTHH:mm:ss-HH:00`.
+
 ## Related
 
 - [Apple-Tools-MCP](../Apple-Tools-MCP/README.md)

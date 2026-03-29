@@ -1,7 +1,9 @@
 on run argv
+	set queryText to item 1 of argv
 	set jsonItems to {}
 	tell application "Contacts"
-		repeat with p in every person
+		set matches to (every person whose name contains queryText or organization contains queryText)
+		repeat with p in matches
 			set end of jsonItems to my person_json(p, false)
 		end repeat
 	end tell

@@ -78,6 +78,11 @@ claude mcp add --transport stdio --scope project \
 - If the CLI is unavailable, call `shortcuts_permission_guide`
 - After changing the Shortcuts catalog, call `shortcuts_refresh_state`
 
+## Prompting Notes
+
+- If the user asks for a shortcut vaguely, list the available shortcuts first.
+- Run a shortcut only after the intended shortcut is clear.
+
 ## Related
 
 - [Apple-Tools-MCP](../Apple-Tools-MCP/README.md)

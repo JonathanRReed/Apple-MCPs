@@ -53,6 +53,9 @@ class AppleContactsBridge:
         query_text = query.strip().lower()
         if not query_text:
             raise ContactsBridgeError("INVALID_INPUT", "query must not be empty", "Provide a non-empty name, phone number, or email address.")
+        direct_matches = self._search_contacts_by_name(query)
+        if direct_matches:
+            return direct_matches[: max(1, min(limit, 100))]
         normalized_query = self._normalize_lookup_value(query)
         exact_matches: list[ContactSummary] = []
         partial_matches: list[ContactSummary] = []
@@ -160,6 +163,12 @@ class AppleContactsBridge:
             )
         return payload
 
+    def _search_contacts_by_name(self, query: str) -> list[ContactSummary]:
+        if not any(character.isalpha() for character in query):
+            return []
+        payload = self._run_script("search_contacts.applescript", query.strip())
+        return [self._normalize_summary(item) for item in payload.get("items", []) if isinstance(item, dict)]
+
     def _map_script_error(self, error_text: str) -> ContactsBridgeError:
         lowered = error_text.lower()
         if "not authorized" in lowered or "contacts" in lowered and "not allowed" in lowered:
@@ -235,6 +244,8 @@ class AppleContactsBridge:
         if value is None:
             return None
         text = str(value).strip()
+        if text.lower() == "missing value":
+            return None
         return text or None
 
 

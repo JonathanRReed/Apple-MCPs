@@ -86,6 +86,13 @@ claude mcp add --transport stdio --scope project \
 - If Mail automation is blocked, call `mail_permission_guide`
 - After changing macOS permissions, call `mail_recheck_permissions`
 
+## Prompting Notes
+
+- Run Contacts before any send or reply when the user identifies a person rather than an email address.
+- `mail_search_messages` requires a query string. Use a sender, a subject fragment, or `*` as a wildcard.
+- There is no list-all recent-mail endpoint.
+- If the user could mean text or email, ask once before choosing Messages or Mail.
+
 ## Related
 
 - [Apple-Tools-MCP](../Apple-Tools-MCP/README.md)

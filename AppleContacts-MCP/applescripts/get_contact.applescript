@@ -1,50 +1,52 @@
 on run argv
 	set targetContactId to item 1 of argv
 	tell application "Contacts"
-		repeat with p in every person
-			if my safe_text(id of p) is targetContactId then
-				return "{" & quote & "found" & quote & ":true," & quote & "contact" & quote & ":" & my person_json(p, true) & "}"
-			end if
-		end repeat
+		set matches to (every person whose id is targetContactId)
+		if (count of matches) is greater than 0 then
+			set p to item 1 of matches
+			return "{" & quote & "found" & quote & ":true," & quote & "contact" & quote & ":" & my person_json(p, true) & "}"
+		end if
 	end tell
 	return "{" & quote & "found" & quote & ":false}"
 end run
 
 on person_json(p, includeNote)
 	set contactId to ""
-	try
-		set contactId to (id of p) as text
-	on error
-	end try
 	set fullName to ""
-	try
-		set fullName to (name of p) as text
-	on error
-	end try
 	set firstName to ""
 	set lastName to ""
 	set organizationName to ""
-	try
-		set organizationName to (organization of p) as text
-	on error
-	end try
 	set noteText to ""
 	set phoneItems to {}
 	set phoneCount to 0
-	try
-		set rawPhones to phones of p
-		set phoneItems to my method_json_list(rawPhones)
-		set phoneCount to count of rawPhones
-	on error
-	end try
 	set emailItems to {}
 	set emailCount to 0
-	try
-		set rawEmails to emails of p
-		set emailItems to my method_json_list(rawEmails)
-		set emailCount to count of rawEmails
-	on error
-	end try
+	tell application "Contacts"
+		try
+			set contactId to (id of p) as text
+		on error
+		end try
+		try
+			set fullName to (name of p) as text
+		on error
+		end try
+		try
+			set organizationName to (organization of p) as text
+		on error
+		end try
+		try
+			set rawPhones to phones of p
+			set phoneItems to my method_json_list(rawPhones)
+			set phoneCount to count of rawPhones
+		on error
+		end try
+		try
+			set rawEmails to emails of p
+			set emailItems to my method_json_list(rawEmails)
+			set emailCount to count of rawEmails
+		on error
+		end try
+	end tell
 	return "{" & ¬
 		quote & "contact_id" & quote & ":" & my json_string(contactId) & "," & ¬
 		quote & "name" & quote & ":" & my json_string(fullName) & "," & ¬
@@ -60,9 +62,11 @@ end person_json
 
 on method_json_list(methodItems)
 	set jsonItems to {}
-	repeat with methodItem in methodItems
-		set end of jsonItems to "{" & quote & "label" & quote & ":" & my json_string(my safe_text(label of methodItem)) & "," & quote & "value" & quote & ":" & my json_string(my safe_text(value of methodItem)) & "}"
-	end repeat
+	tell application "Contacts"
+		repeat with methodItem in methodItems
+			set end of jsonItems to "{" & quote & "label" & quote & ":" & my json_string(my safe_text(label of methodItem)) & "," & quote & "value" & quote & ":" & my json_string(my safe_text(value of methodItem)) & "}"
+		end repeat
+	end tell
 	return jsonItems
 end method_json_list
 

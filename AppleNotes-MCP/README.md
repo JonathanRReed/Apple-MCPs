@@ -85,6 +85,12 @@ claude mcp add --transport stdio --scope project \
 - If Notes automation is blocked, call `notes_permission_guide`
 - After changing macOS permissions, call `notes_recheck_permissions`
 
+## Prompting Notes
+
+- Multiple accounts may each contain a `Notes` folder. Identify the available accounts and folders on first use and set a default.
+- Use Notes for reference material, summaries, and saved context.
+- Time-sensitive items should go to Reminders or Calendar instead.
+
 ## Related
 
 - [Apple-Tools-MCP](../Apple-Tools-MCP/README.md)

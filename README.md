@@ -30,6 +30,13 @@ Because these servers run on your Mac, the Apple apps stay the system of record.
 - Use `Apple-Tools-MCP` if you want one assistant entrypoint across the Apple apps in this repo.
 - Use the standalone servers if you want tighter app boundaries, simpler permissions, or separate agent configs.
 
+## Agent Routing
+
+- All Apple tool schemas are deferred. Batch `tool_search` calls on first use.
+- Route person-based communication through Contacts first.
+- Use Reminders for due items, Notes for reference material, and Calendar for scheduled time.
+- See the standalone READMEs for app-specific prompting rules and gotchas.
+
 ## Install On This Mac
 
 <details>
@@ -180,3 +187,6 @@ Different Apple apps require different permissions:
 - Apple Messages history access still needs Full Disk Access.
 - The unified server folder is `Apple-Tools-MCP`.
 - The calendar server folder is `Apple-Calendar-MCP`.
+- Mail search requires a query string. Use a sender, a subject fragment, or `*` as a wildcard.
+- Reminders `due_date` requires a timezone offset like `yyyy-MM-ddTHH:mm:ss-HH:00`.
+- `service_name` should be omitted on iMessage sends.

@@ -82,6 +82,12 @@ claude mcp add --transport stdio --scope project \
 - If either permission surface is blocked, call `messages_permission_guide`
 - After changing macOS permissions, call `messages_recheck_permissions`
 
+## Prompting Notes
+
+- Resolve the recipient via Contacts before any send or reply when the user names a person.
+- Confirm the intended person if Contacts returns multiple matches.
+- Omit `service_name` on iMessage sends. Passing it can trigger AppleScript error `-1728`.
+
 ## Related
 
 - [Apple-Tools-MCP](../Apple-Tools-MCP/README.md)

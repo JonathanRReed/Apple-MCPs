@@ -25,7 +25,7 @@ Provides access to message history, conversation search, and sending via Message
 <summary>Quick start</summary>
 
 ```bash
-cd /Users/jonathanreed/Downloads/Apple-MCPs/AppleMessages-MCP
+cd /path/to/Apple-MCPs/AppleMessages-MCP
 ./start.sh
 ```
 
@@ -42,7 +42,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 {
   "mcpServers": {
     "apple-messages": {
-      "command": "/Users/jonathanreed/Downloads/Apple-MCPs/AppleMessages-MCP/start.sh",
+      "command": "/path/to/Apple-MCPs/AppleMessages-MCP/start.sh",
       "args": [],
       "env": {
         "APPLE_MESSAGES_MCP_SAFETY_MODE": "full_access"
@@ -60,7 +60,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 ```bash
 claude mcp add --transport stdio --scope project \
   apple-messages \
-  -- /Users/jonathanreed/Downloads/Apple-MCPs/AppleMessages-MCP/start.sh
+  -- /path/to/Apple-MCPs/AppleMessages-MCP/start.sh
 ```
 
 </details>
@@ -74,7 +74,7 @@ claude mcp add --transport stdio --scope project \
 ## Launch Checklist
 
 - Start the server once with `./start.sh`
-- Add `/Users/jonathanreed/Downloads/Apple-MCPs/AppleMessages-MCP/start.sh` to your MCP client
+- Add `/path/to/Apple-MCPs/AppleMessages-MCP/start.sh` to your MCP client
 - Reload or reconnect the client so the Messages tool surface is loaded into context
 - Call `messages_health` first
 - If either permission surface is blocked, call `messages_permission_guide`

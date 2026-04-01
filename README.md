@@ -43,7 +43,7 @@ Because these servers run on your Mac, the Apple apps stay the system of record.
 <summary>Recommended, install the all-in-one server</summary>
 
 ```bash
-cd /Users/jonathanreed/Downloads/Apple-MCPs/Apple-Tools-MCP
+cd /path/to/Apple-MCPs/Apple-Tools-MCP
 ./start.sh
 ```
 
@@ -57,7 +57,7 @@ cd /Users/jonathanreed/Downloads/Apple-MCPs/Apple-Tools-MCP
 Example:
 
 ```bash
-cd /Users/jonathanreed/Downloads/Apple-MCPs/AppleMessages-MCP
+cd /path/to/Apple-MCPs/AppleMessages-MCP
 ./start.sh
 ```
 
@@ -85,7 +85,7 @@ Example for the all-in-one server:
 {
   "mcpServers": {
     "apple-tools": {
-      "command": "/Users/jonathanreed/Downloads/Apple-MCPs/Apple-Tools-MCP/start.sh",
+      "command": "/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh",
       "args": [],
       "env": {}
     }
@@ -99,7 +99,7 @@ Example for a standalone server:
 {
   "mcpServers": {
     "apple-reminders": {
-      "command": "/Users/jonathanreed/Downloads/Apple-MCPs/AppleReminders-MCP/start.sh",
+      "command": "/path/to/Apple-MCPs/AppleReminders-MCP/start.sh",
       "args": [],
       "env": {
         "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage"
@@ -119,7 +119,7 @@ Add the all-in-one server:
 ```bash
 claude mcp add --transport stdio --scope project \
   apple-tools \
-  -- /Users/jonathanreed/Downloads/Apple-MCPs/Apple-Tools-MCP/start.sh
+  -- /path/to/Apple-MCPs/Apple-Tools-MCP/start.sh
 ```
 
 Add a standalone server:
@@ -127,7 +127,7 @@ Add a standalone server:
 ```bash
 claude mcp add --transport stdio --scope project \
   apple-notes \
-  -- /Users/jonathanreed/Downloads/Apple-MCPs/AppleNotes-MCP/start.sh
+  -- /path/to/Apple-MCPs/AppleNotes-MCP/start.sh
 ```
 
 </details>

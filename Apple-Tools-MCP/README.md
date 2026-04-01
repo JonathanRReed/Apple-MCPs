@@ -23,7 +23,7 @@ One entrypoint for Mail, Calendar, Reminders, Messages, Contacts, Notes, and Sho
 <summary>Quick start</summary>
 
 ```bash
-cd /Users/jonathanreed/Downloads/Apple-MCPs/Apple-Tools-MCP
+cd /path/to/Apple-MCPs/Apple-Tools-MCP
 ./start.sh
 ```
 
@@ -40,7 +40,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 {
   "mcpServers": {
     "apple-tools": {
-      "command": "/Users/jonathanreed/Downloads/Apple-MCPs/Apple-Tools-MCP/start.sh",
+      "command": "/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh",
       "args": [],
       "env": {
         "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
@@ -64,7 +64,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 ```bash
 claude mcp add --transport stdio --scope project \
   apple-tools \
-  -- /Users/jonathanreed/Downloads/Apple-MCPs/Apple-Tools-MCP/start.sh
+  -- /path/to/Apple-MCPs/Apple-Tools-MCP/start.sh
 ```
 
 </details>
@@ -91,7 +91,7 @@ claude mcp add --transport stdio --scope project \
 ## Launch Checklist
 
 - Start the server once with `./start.sh`
-- Add `/Users/jonathanreed/Downloads/Apple-MCPs/Apple-Tools-MCP/start.sh` to your MCP client
+- Add `/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh` to your MCP client
 - Reload or reconnect the client so the Apple-Tools-MCP tool surface is loaded into context
 - Call `apple_health` first to verify every domain
 - If a domain is blocked, call `apple_permission_guide`

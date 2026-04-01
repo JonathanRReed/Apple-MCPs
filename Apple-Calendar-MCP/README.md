@@ -24,7 +24,7 @@ Provides access to calendars and events through EventKit. Keep Calendar as the s
 <summary>Quick start</summary>
 
 ```bash
-cd /Users/jonathanreed/Downloads/Apple-MCPs/Apple-Calendar-MCP
+cd /path/to/Apple-MCPs/Apple-Calendar-MCP
 ./start.sh
 ```
 
@@ -41,7 +41,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 {
   "mcpServers": {
     "apple-calendar": {
-      "command": "/Users/jonathanreed/Downloads/Apple-MCPs/Apple-Calendar-MCP/start.sh",
+      "command": "/path/to/Apple-MCPs/Apple-Calendar-MCP/start.sh",
       "args": [],
       "env": {
         "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage"
@@ -59,7 +59,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 ```bash
 claude mcp add --transport stdio --scope project \
   apple-calendar \
-  -- /Users/jonathanreed/Downloads/Apple-MCPs/Apple-Calendar-MCP/start.sh
+  -- /path/to/Apple-MCPs/Apple-Calendar-MCP/start.sh
 ```
 
 </details>
@@ -78,7 +78,7 @@ claude mcp add --transport stdio --scope project \
 ## Launch Checklist
 
 - Start the server once with `./start.sh`
-- Add `/Users/jonathanreed/Downloads/Apple-MCPs/Apple-Calendar-MCP/start.sh` to your MCP client
+- Add `/path/to/Apple-MCPs/Apple-Calendar-MCP/start.sh` to your MCP client
 - Reload or reconnect the client so the Calendar tool surface is loaded into context
 - Call `calendar_health` first
 - If access is blocked or `access_status` is `not_determined`, call `calendar_permission_guide`

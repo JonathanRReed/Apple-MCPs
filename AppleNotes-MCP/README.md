@@ -24,7 +24,7 @@ Provides access to notes and folders for creation, organization, and management.
 <summary>Quick start</summary>
 
 ```bash
-cd /Users/jonathanreed/Downloads/Apple-MCPs/AppleNotes-MCP
+cd /path/to/Apple-MCPs/AppleNotes-MCP
 ./start.sh
 ```
 
@@ -41,7 +41,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 {
   "mcpServers": {
     "apple-notes": {
-      "command": "/Users/jonathanreed/Downloads/Apple-MCPs/AppleNotes-MCP/start.sh",
+      "command": "/path/to/Apple-MCPs/AppleNotes-MCP/start.sh",
       "args": [],
       "env": {
         "APPLE_NOTES_MCP_SAFETY_MODE": "full_access"
@@ -59,7 +59,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 ```bash
 claude mcp add --transport stdio --scope project \
   apple-notes \
-  -- /Users/jonathanreed/Downloads/Apple-MCPs/AppleNotes-MCP/start.sh
+  -- /path/to/Apple-MCPs/AppleNotes-MCP/start.sh
 ```
 
 </details>
@@ -77,7 +77,7 @@ claude mcp add --transport stdio --scope project \
 ## Launch Checklist
 
 - Start the server once with `./start.sh`
-- Add `/Users/jonathanreed/Downloads/Apple-MCPs/AppleNotes-MCP/start.sh` to your MCP client
+- Add `/path/to/Apple-MCPs/AppleNotes-MCP/start.sh` to your MCP client
 - Reload or reconnect the client so the Notes tool surface is loaded into context
 - Call `notes_health` first
 - If Notes automation is blocked, call `notes_permission_guide`

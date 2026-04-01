@@ -24,7 +24,7 @@ Provides access to contacts for lookup, search, and recipient resolution. Use be
 <summary>Quick start</summary>
 
 ```bash
-cd /Users/jonathanreed/Downloads/Apple-MCPs/AppleContacts-MCP
+cd /path/to/Apple-MCPs/AppleContacts-MCP
 ./start.sh
 ```
 
@@ -41,7 +41,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 {
   "mcpServers": {
     "apple-contacts": {
-      "command": "/Users/jonathanreed/Downloads/Apple-MCPs/AppleContacts-MCP/start.sh",
+      "command": "/path/to/Apple-MCPs/AppleContacts-MCP/start.sh",
       "args": [],
       "env": {
         "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_readonly"
@@ -59,7 +59,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 ```bash
 claude mcp add --transport stdio --scope project \
   apple-contacts \
-  -- /Users/jonathanreed/Downloads/Apple-MCPs/AppleContacts-MCP/start.sh
+  -- /path/to/Apple-MCPs/AppleContacts-MCP/start.sh
 ```
 
 </details>
@@ -78,7 +78,7 @@ claude mcp add --transport stdio --scope project \
 ## Launch Checklist
 
 - Start the server once with `./start.sh`
-- Add `/Users/jonathanreed/Downloads/Apple-MCPs/AppleContacts-MCP/start.sh` to your MCP client
+- Add `/path/to/Apple-MCPs/AppleContacts-MCP/start.sh` to your MCP client
 - Reload or reconnect the client so the Contacts tool surface is loaded into context
 - Call `contacts_health` first
 - If Contacts access is blocked, call `contacts_permission_guide`

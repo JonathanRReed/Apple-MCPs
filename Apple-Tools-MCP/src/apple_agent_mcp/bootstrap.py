@@ -11,6 +11,9 @@ DOMAIN_FOLDERS = (
     "AppleNotes-MCP",
     "AppleMessages-MCP",
     "AppleContacts-MCP",
+    "AppleFiles-MCP",
+    "AppleSystem-MCP",
+    "AppleMaps-MCP",
 )
 
 

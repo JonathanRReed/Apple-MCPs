@@ -7,7 +7,7 @@ from mcp.types import Annotations, ToolAnnotations
 
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.contacts_bridge import AppleContactsBridge, ContactsBridgeError, build_bridge
-from apple_contacts_mcp.models import ContactListResponse, ContactResponse, ErrorResponse, HealthResponse, ResolvedRecipientResponse, ToolError
+from apple_contacts_mcp.models import ContactListResponse, ContactMethod, ContactResponse, CreateContactResponse, DeleteContactResponse, ErrorResponse, HealthResponse, ResolvedRecipientResponse, ToolError
 from apple_contacts_mcp.permissions import SafetyError, ensure_action_allowed
 
 SERVER_INSTRUCTIONS = (
@@ -83,6 +83,9 @@ def contacts_health() -> HealthResponse:
             "search_contacts",
             "get_contact",
             "resolve_message_recipient",
+            "create_contact",
+            "update_contact",
+            "delete_contact",
             "resources",
             "prompts",
         ],
@@ -201,6 +204,132 @@ def contacts_resolve_message_recipient(query: str, channel: str = "phone") -> Re
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except ContactsBridgeError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Create Contact",
+    description="Create a new contact in Apple Contacts with a first name (required) and optional last name, organization, and note.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def contacts_create_contact(
+    first_name: str,
+    last_name: str = "",
+    organization: str = "",
+    phones: list[ContactMethod] | None = None,
+    emails: list[ContactMethod] | None = None,
+    note: str = "",
+) -> CreateContactResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("contacts_create_contact")
+        return _bridge().create_contact(
+            first_name=first_name,
+            last_name=last_name,
+            organization=organization,
+            phones=phones,
+            emails=emails,
+            note=note,
+        )
+    except SafetyError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except ContactsBridgeError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Update Contact",
+    description="Update an existing contact's information. Only the fields you provide will be changed.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def contacts_update_contact(
+    contact_id: str,
+    first_name: str = "",
+    last_name: str = "",
+    organization: str = "",
+    phones: list[ContactMethod] | None = None,
+    emails: list[ContactMethod] | None = None,
+    note: str = "",
+) -> ContactResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("contacts_update_contact")
+        contact = _bridge().update_contact(
+            contact_id,
+            first_name=first_name,
+            last_name=last_name,
+            organization=organization,
+            phones=phones,
+            emails=emails,
+            note=note,
+        )
+        return ContactResponse(contact=contact)
+    except SafetyError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except ContactsBridgeError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Delete Contact",
+    description="Permanently delete a contact by contact_id. Requires full_access safety mode.",
+    annotations=ToolAnnotations(destructiveHint=True, idempotentHint=True, openWorldHint=False),
+    structured_output=True,
+)
+def contacts_delete_contact(contact_id: str) -> DeleteContactResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("contacts_delete_contact")
+        return _bridge().delete_contact(contact_id)
+    except SafetyError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except ContactsBridgeError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+    return [
+        {
+            "role": getattr(message, "role", "user"),
+            "content": message.content.model_dump(mode="json") if hasattr(message.content, "model_dump") else message.content,
+        }
+        for message in messages
+    ]
+
+
+@mcp.tool(
+    title="Contacts List Prompts",
+    description="Fallback prompt discovery tool for tool-only MCP clients.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+async def contacts_list_prompts() -> dict[str, object]:
+    prompts = await mcp.list_prompts()
+    return {
+        "ok": True,
+        "prompts": [{"name": prompt.name, "title": prompt.title, "description": prompt.description} for prompt in prompts],
+        "count": len(prompts),
+    }
+
+
+@mcp.tool(
+    title="Contacts Get Prompt",
+    description="Fallback prompt rendering tool for tool-only MCP clients.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+async def contacts_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+    arguments = json.loads(arguments_json) if arguments_json else None
+    prompt = await mcp.get_prompt(name, arguments)
+    return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
+
+
+@mcp._mcp_server.subscribe_resource()
+async def _contacts_subscribe_resource(uri) -> None:
+    del uri
+
+
+@mcp._mcp_server.unsubscribe_resource()
+async def _contacts_unsubscribe_resource(uri) -> None:
+    del uri
 
 
 def main() -> None:

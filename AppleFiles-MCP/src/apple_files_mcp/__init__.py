@@ -1,0 +1,1 @@
+"""Apple Files MCP package."""

@@ -64,3 +64,17 @@ class ResolvedRecipientResponse(BaseModel):
     recipient_kind: Literal["phone", "email"]
     recipient_label: str
     recipient_value: str
+
+
+class CreateContactResponse(BaseModel):
+    ok: Literal[True] = True
+    contact_id: str
+    name: str
+    created: bool = True
+
+
+class DeleteContactResponse(BaseModel):
+    ok: Literal[True] = True
+    contact_id: str
+    deleted: bool
+

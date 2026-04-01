@@ -11,6 +11,7 @@ class Settings:
     log_level: str
     host: str
     port: int
+    state_file: str
 
 
 def _parse_int(value: str | None, default: int) -> int:
@@ -31,4 +32,5 @@ def load_settings() -> Settings:
         log_level=os.environ.get("APPLE_AGENT_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",
         host=os.environ.get("APPLE_AGENT_MCP_HOST", "127.0.0.1"),
         port=_parse_int(os.environ.get("APPLE_AGENT_MCP_PORT"), 8000),
+        state_file=os.environ.get("APPLE_AGENT_MCP_STATE_FILE", os.path.expanduser("~/.apple-tools-mcp/preferences.json")),
     )

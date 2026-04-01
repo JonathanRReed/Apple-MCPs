@@ -1,0 +1,37 @@
+{
+  "dxt_version": "0.1",
+  "name": "apple-tools",
+  "display_name": "Apple Tools",
+  "version": "0.1.0",
+  "description": "Unified Apple tools MCP server for macOS, including Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps.",
+  "long_description": "Local MCP server for Apple Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps on macOS. Provides one coherent agent entrypoint, unified health, cross-app prompts, and aggregated Apple overview resources.",
+  "author": {
+    "name": "Jonathan Reed"
+  },
+  "icon": "icon.png",
+  "license": "MIT",
+  "keywords": ["apple", "assistant", "macos", "mail", "calendar", "reminders", "messages", "contacts", "notes", "shortcuts", "files", "system", "maps"],
+  "compatibility": {
+    "platforms": ["darwin"]
+  },
+  "server": {
+    "type": "python",
+    "mcp_config": {
+      "command": "/bin/bash",
+      "args": ["${__dirname}/start.sh"],
+      "env": {
+        "HOME": "${HOME}",
+        "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
+        "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_FILES_MCP_ALLOWED_ROOTS": "${HOME}/Desktop,${HOME}/Documents,${HOME}/Downloads",
+        "APPLE_FILES_MCP_SAFETY_MODE": "safe_readonly",
+        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_readonly",
+        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_readonly",
+        "APPLE_NOTES_MCP_SAFETY_MODE": "full_access",
+        "APPLE_MESSAGES_MCP_SAFETY_MODE": "full_access",
+        "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "full_access"
+      }
+    }
+  }
+}

@@ -50,6 +50,8 @@ class ReminderSummary(BaseModel):
     priority: int = 0
     completed: bool = False
     completion_date: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    subtask_ids: list[str] = Field(default_factory=list)
 
 
 class ReminderDetail(ReminderSummary):
@@ -73,3 +75,16 @@ class DeleteReminderResponse(BaseModel):
     ok: Literal[True] = True
     deleted: bool
     reminder_id: str
+
+
+class ReminderListMutationResponse(BaseModel):
+    ok: Literal[True] = True
+    list_id: str
+    title: str
+    created: bool = True
+
+
+class DeleteReminderListResponse(BaseModel):
+    ok: Literal[True] = True
+    deleted: bool
+    list_id: str

@@ -47,6 +47,7 @@ on run argv
     set bodyText to item 5 of argv
     set attachmentRaw to item 6 of argv
     set visibleText to item 7 of argv
+    set senderRaw to item 8 of argv
 
     set fieldSeparator to ASCII character 31
     set recordSeparator to ASCII character 30
@@ -62,6 +63,9 @@ on run argv
 
     tell application "Mail"
         set newMessage to make new outgoing message with properties {visible:shouldBeVisible, subject:subjectText, content:bodyText}
+        if senderRaw is not "" then
+            set sender of newMessage to senderRaw
+        end if
         tell newMessage
             repeat with addressText in toList
                 if (addressText as text) is not "" then

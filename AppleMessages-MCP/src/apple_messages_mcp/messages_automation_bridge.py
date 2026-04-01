@@ -53,6 +53,50 @@ class MessagesAutomationBridge:
             "service_name": service_name or "iMessage",
         }
 
+    def send_to_group(self, chat_id: str, text: str) -> dict[str, str | bool | None]:
+        if not chat_id.strip():
+            raise MessagesAutomationBridgeError("INVALID_INPUT", "chat_id must not be empty", "Provide a valid chat_id from conversation history.")
+        if not text.strip():
+            raise MessagesAutomationBridgeError("INVALID_INPUT", "text must not be empty", "Provide a non-empty message body.")
+
+        script = f'''
+        tell application "Messages"
+            set targetChat to chat id "{self._escape(chat_id)}"
+            send "{self._escape(text)}" to targetChat
+        end tell
+        '''
+        self._run_script(script)
+        return {
+            "sent": True,
+            "chat_id": chat_id,
+            "text": text,
+        }
+
+    def send_attachment(self, recipient: str, file_path: str, text: str | None = None) -> dict[str, str | bool | None]:
+        if not recipient.strip():
+            raise MessagesAutomationBridgeError("INVALID_INPUT", "recipient must not be empty", "Provide an explicit iMessage address or phone number.")
+        if not file_path.strip():
+            raise MessagesAutomationBridgeError("INVALID_INPUT", "file_path must not be empty", "Provide a valid file path.")
+
+        send_parts = [f'send POSIX file "{self._escape(file_path)}" to targetBuddy']
+        if text and text.strip():
+            send_parts.append(f'send "{self._escape(text)}" to targetBuddy')
+
+        script = f'''
+        tell application "Messages"
+            set targetService to first service whose service type = iMessage
+            set targetBuddy to buddy "{self._escape(recipient)}" of targetService
+            {chr(10).join(send_parts)}
+        end tell
+        '''
+        self._run_script(script)
+        return {
+            "sent": True,
+            "recipient": recipient,
+            "file_path": file_path,
+            "text": text,
+        }
+
     def _run_script(self, script: str) -> str:
         completed = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, check=False)
         if completed.returncode != 0:

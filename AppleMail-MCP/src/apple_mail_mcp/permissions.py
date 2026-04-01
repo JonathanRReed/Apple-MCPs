@@ -13,6 +13,7 @@ _ALLOWED_TOOLS: dict[SafetyProfile, set[str]] = {
         "mail_list_mailboxes",
         "mail_search_messages",
         "mail_get_message",
+        "mail_get_thread",
     },
     SafetyProfile.SAFE_MANAGE: {
         "health",
@@ -20,6 +21,14 @@ _ALLOWED_TOOLS: dict[SafetyProfile, set[str]] = {
         "mail_search_messages",
         "mail_get_message",
         "mail_compose_draft",
+        "mail_mark_message",
+        "mail_move_message",
+        "mail_delete_message",
+        "mail_reply_message",
+        "mail_forward_message",
+        "mail_get_thread",
+        "mail_reply_latest_in_thread",
+        "mail_archive_thread",
     },
     SafetyProfile.FULL_ACCESS: {
         "health",
@@ -28,6 +37,14 @@ _ALLOWED_TOOLS: dict[SafetyProfile, set[str]] = {
         "mail_get_message",
         "mail_compose_draft",
         "mail_send_message",
+        "mail_mark_message",
+        "mail_move_message",
+        "mail_delete_message",
+        "mail_reply_message",
+        "mail_forward_message",
+        "mail_get_thread",
+        "mail_reply_latest_in_thread",
+        "mail_archive_thread",
     },
 }
 

@@ -6,7 +6,11 @@ import re
 import subprocess
 
 from apple_contacts_mcp.config import load_settings
-from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSummary, ResolvedRecipientResponse
+from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSummary, CreateContactResponse, DeleteContactResponse, ResolvedRecipientResponse
+
+METHOD_FIELD_SEPARATOR = "\x1f"
+METHOD_RECORD_SEPARATOR = "\x1e"
+NO_CHANGE_SENTINEL = "__NOCHANGE__"
 
 
 class ContactsBridgeError(Exception):
@@ -102,6 +106,67 @@ class AppleContactsBridge:
             recipient_kind=recipient_kind,
             recipient_label=recipient.label,
             recipient_value=recipient.value,
+        )
+
+    def create_contact(
+        self,
+        *,
+        first_name: str,
+        last_name: str = "",
+        organization: str = "",
+        phones: list[ContactMethod] | None = None,
+        emails: list[ContactMethod] | None = None,
+        note: str = "",
+    ) -> CreateContactResponse:
+        payload = self._run_script(
+            "create_contact.applescript",
+            first_name,
+            last_name,
+            organization,
+            self._serialize_methods(phones),
+            self._serialize_methods(emails),
+            note,
+        )
+        return CreateContactResponse(
+            contact_id=str(payload.get("contact_id", "")),
+            name=str(payload.get("name", "")),
+            created=bool(payload.get("created", True)),
+        )
+
+    def update_contact(
+        self,
+        contact_id: str,
+        *,
+        first_name: str = "",
+        last_name: str = "",
+        organization: str = "",
+        phones: list[ContactMethod] | None = None,
+        emails: list[ContactMethod] | None = None,
+        note: str = "",
+    ) -> ContactDetail:
+        payload = self._run_script(
+            "update_contact.applescript",
+            contact_id,
+            first_name,
+            last_name,
+            organization,
+            self._serialize_methods(phones) if phones is not None else NO_CHANGE_SENTINEL,
+            self._serialize_methods(emails) if emails is not None else NO_CHANGE_SENTINEL,
+            note,
+        )
+        if not payload.get("updated", False):
+            raise ContactsBridgeError(
+                "UPDATE_FAILED",
+                f"Failed to update contact '{contact_id}'.",
+                "Ensure the contact exists and try again.",
+            )
+        return self.get_contact(contact_id)
+
+    def delete_contact(self, contact_id: str) -> DeleteContactResponse:
+        payload = self._run_script("delete_contact.applescript", contact_id)
+        return DeleteContactResponse(
+            contact_id=contact_id,
+            deleted=bool(payload.get("deleted", False)),
         )
 
     def _choose_recipient(self, contact: ContactDetail, channel: str) -> tuple[str, ContactMethod]:
@@ -239,6 +304,16 @@ class AppleContactsBridge:
         if "@" in lowered:
             return lowered
         return re.sub(r"\D+", "", lowered)
+
+    def _serialize_methods(self, methods: list[ContactMethod] | None) -> str:
+        if not methods:
+            return ""
+        rows: list[str] = []
+        for method in methods:
+            label = method.label.replace(METHOD_FIELD_SEPARATOR, " ").replace(METHOD_RECORD_SEPARATOR, " ")
+            value = method.value.replace(METHOD_FIELD_SEPARATOR, " ").replace(METHOD_RECORD_SEPARATOR, " ")
+            rows.append(f"{label}{METHOD_FIELD_SEPARATOR}{value}")
+        return METHOD_RECORD_SEPARATOR.join(rows)
 
     def _optional_text(self, value: object) -> str | None:
         if value is None:

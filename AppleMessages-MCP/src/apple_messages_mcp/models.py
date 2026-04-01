@@ -111,6 +111,8 @@ class AttachmentListResponse(BaseModel):
 class SendResponse(BaseModel):
     ok: Literal[True] = True
     sent: bool
-    recipient: str
-    text: str
+    recipient: str | None = None
+    chat_id: str | None = None
+    file_path: str | None = None
+    text: str | None = None
     service_name: str | None = None

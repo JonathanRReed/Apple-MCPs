@@ -23,7 +23,7 @@ class FakeBridge:
     def view_shortcut(self, shortcut_name_or_identifier: str):
         return ShortcutInfo(name="Open Trunk", identifier="9A2D4AFE-D4B5-418E-814A-DB97BAB3BE4D", folder_name="Home")
 
-    def run_shortcut(self, shortcut_name_or_identifier: str, input_paths=None, output_path=None, output_type=None):
+    def run_shortcut(self, shortcut_name_or_identifier: str, input_paths=None, output_path=None, output_type=None, input_text=None):
         return ShortcutRunResponse(
             shortcut_name="Open Trunk",
             shortcut_identifier="9A2D4AFE-D4B5-418E-814A-DB97BAB3BE4D",
@@ -81,6 +81,15 @@ def test_run_shortcut_returns_structured_payload(monkeypatch) -> None:
     assert result.exit_code == 0
 
 
+def test_run_shortcut_accepts_input_text(monkeypatch) -> None:
+    monkeypatch.setattr(tools, "_bridge", lambda: FakeBridge())
+
+    result = tools.shortcuts_run_shortcut_tool("Open Trunk", input_text="hello from stdin")
+
+    assert result.ok is True
+    assert result.stdout == "done"
+
+
 def test_resource_rendering(monkeypatch) -> None:
     monkeypatch.setattr(tools, "_bridge", lambda: FakeBridge())
 
@@ -89,6 +98,37 @@ def test_resource_rendering(monkeypatch) -> None:
 
     assert "Open Trunk" in all_snapshot
     assert "Home" in folder_snapshot
+
+
+def test_main_uses_streamable_http_settings(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_SHORTCUTS_MCP_TRANSPORT", "streamable-http")
+    monkeypatch.setenv("APPLE_SHORTCUTS_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("APPLE_SHORTCUTS_MCP_PORT", "8766")
+    monkeypatch.setenv("APPLE_SHORTCUTS_MCP_LOG_LEVEL", "DEBUG")
+    load_settings.cache_clear()
+
+    captured: dict[str, object] = {}
+
+    def fake_run(*, transport: str) -> None:
+        captured["transport"] = transport
+        captured["host"] = tools.mcp.settings.host
+        captured["port"] = tools.mcp.settings.port
+        captured["log_level"] = tools.mcp.settings.log_level
+        captured["stateless_http"] = tools.mcp.settings.stateless_http
+        captured["json_response"] = tools.mcp.settings.json_response
+
+    monkeypatch.setattr(tools.mcp, "run", fake_run)
+
+    tools.main()
+
+    assert captured == {
+        "transport": "streamable-http",
+        "host": "0.0.0.0",
+        "port": 8766,
+        "log_level": "DEBUG",
+        "stateless_http": True,
+        "json_response": True,
+    }
 
 
 def teardown_function() -> None:

@@ -44,6 +44,18 @@ class CalendarListResponse(BaseModel):
     count: int
 
 
+class RecurrenceInfo(BaseModel):
+    frequency: str
+    interval: int
+    end_date: str | None = None
+
+
+class AttendeeInfo(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    status: str
+
+
 class EventSummary(BaseModel):
     event_id: str
     title: str
@@ -58,6 +70,8 @@ class EventSummary(BaseModel):
 
 class EventDetail(EventSummary):
     notes: str | None = None
+    recurrence_rule: RecurrenceInfo | None = None
+    attendees: list[AttendeeInfo] | None = None
 
 
 class EventListResponse(BaseModel):

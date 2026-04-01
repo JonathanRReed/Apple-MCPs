@@ -5,7 +5,13 @@ import json
 import subprocess
 
 from apple_reminders_mcp.config import load_settings
-from apple_reminders_mcp.models import ReminderDetail, ReminderListInfo, ReminderSummary
+from apple_reminders_mcp.models import (
+    DeleteReminderListResponse,
+    ReminderDetail,
+    ReminderListInfo,
+    ReminderListMutationResponse,
+    ReminderSummary,
+)
 
 
 class RemindersBridgeError(Exception):
@@ -27,6 +33,10 @@ class RemindersBridge:
     def list_lists(self) -> list[ReminderListInfo]:
         payload = self._run_helper("list-reminder-lists")
         return [ReminderListInfo.model_validate(item) for item in payload.get("items", [])]
+
+    def create_list(self, title: str) -> ReminderListMutationResponse:
+        payload = self._run_helper("create-reminder-list", json.dumps({"title": title}))
+        return ReminderListMutationResponse.model_validate(payload)
 
     def list_reminders(
         self,
@@ -63,16 +73,25 @@ class RemindersBridge:
         due_all_day: bool = False,
         remind_at: str | None = None,
         priority: int = 0,
+        parent_reminder_id: str | None = None,
+        tags: list[str] | None = None,
     ) -> ReminderDetail:
+        combined_notes = notes or ""
+        if tags:
+            tag_str = " ".join(f"#{t.lstrip('#')}" for t in tags)
+            combined_notes = f"{combined_notes}\n\n{tag_str}".strip()
+
         request = {
             "title": title,
             "list_id": list_id,
-            "notes": notes,
+            "notes": combined_notes or None,
             "due_date": due_date,
             "due_all_day": due_all_day,
             "remind_at": remind_at,
             "priority": priority,
         }
+        if parent_reminder_id is not None:
+            raise self._subtasks_unsupported()
         payload = self._run_helper("create-reminder", json.dumps(request))
         return ReminderDetail.model_validate(payload)
 
@@ -88,14 +107,14 @@ class RemindersBridge:
         remind_at: str | None = None,
         priority: int | None = None,
         completed: bool | None = None,
+        parent_reminder_id: str | None = None,
+        tags: list[str] | None = None,
     ) -> ReminderDetail:
         request: dict[str, object] = {}
         if title is not None:
             request["title"] = title
         if list_id is not None:
             request["list_id"] = list_id
-        if notes is not None:
-            request["notes"] = notes
         if due_date is not None:
             request["due_date"] = due_date
         if due_all_day is not None:
@@ -106,6 +125,21 @@ class RemindersBridge:
             request["priority"] = priority
         if completed is not None:
             request["completed"] = completed
+
+        # Handle notes and tags
+        if notes is not None or tags is not None:
+            combined_notes = notes
+            if combined_notes is None:
+                # Need to fetch the current note to append tags properly without overwriting
+                current = self.get_reminder(reminder_id)
+                combined_notes = current.notes or ""
+            if tags:
+                tag_str = " ".join(f"#{t.lstrip('#')}" for t in tags)
+                combined_notes = f"{combined_notes}\n\n{tag_str}".strip()
+            request["notes"] = combined_notes
+
+        if parent_reminder_id is not None:
+            raise self._subtasks_unsupported()
         payload = self._run_helper("update-reminder", reminder_id, json.dumps(request))
         return ReminderDetail.model_validate(payload)
 
@@ -116,6 +150,10 @@ class RemindersBridge:
     def delete_reminder(self, reminder_id: str) -> bool:
         payload = self._run_helper("delete-reminder", reminder_id)
         return bool(payload.get("deleted", False))
+
+    def delete_list(self, list_id: str) -> DeleteReminderListResponse:
+        payload = self._run_helper("delete-reminder-list", list_id)
+        return DeleteReminderListResponse.model_validate(payload)
 
     def _run_helper(self, command: str, *args: str) -> dict[str, object]:
         self._ensure_helper()
@@ -193,6 +231,13 @@ class RemindersBridge:
 
     def _to_summary(self, payload: object) -> ReminderSummary:
         return ReminderSummary.model_validate(payload)
+
+    def _subtasks_unsupported(self) -> RemindersBridgeError:
+        return RemindersBridgeError(
+            "SUBTASKS_UNSUPPORTED",
+            "Apple Reminders subtasks are not available through the public APIs used by this MCP.",
+            "Create a top-level reminder instead, or omit parent_reminder_id.",
+        )
 
 
 def build_bridge() -> RemindersBridge:

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "apple-files",
+  "display_name": "Apple Files",
+  "version": "0.1.0",
+  "description": "Inspect and manage local files and folders inside allowed roots on macOS.",
+  "long_description": "Local MCP server for scoped file and folder workflows on macOS. Use it to inspect directories, search files, read text files, prepare attachments, and perform bounded file mutations inside explicit allowed roots.",
+  "icon": "icon.png",
+  "author": {
+    "name": "Jonathan Reed"
+  },
+  "license": "MIT",
+  "keywords": ["files", "finder", "attachments", "macos", "documents", "folders"],
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": { "python": ">=3.11" }
+  },
+  "server": {
+    "type": "python",
+    "mcp_config": {
+      "command": "${__dirname}/start.sh",
+      "args": [],
+      "env": {
+        "APPLE_FILES_MCP_ALLOWED_ROOTS": "${HOME}/Desktop,${HOME}/Documents,${HOME}/Downloads",
+        "APPLE_FILES_MCP_SAFETY_MODE": "safe_readonly"
+      }
+    }
+  }
+}

@@ -15,6 +15,8 @@ Provides access to contacts for lookup, search, and recipient resolution. Use be
 - Contact listing and search
 - Full contact detail lookup
 - Message recipient resolution
+- Contact creation, update, and delete
+- Phone number and email method editing with labels
 - Directory resources and recipient-check prompts
 - `contacts_health`, `contacts_permission_guide`, and `contacts_recheck_permissions` for launch checks
 
@@ -89,6 +91,8 @@ claude mcp add --transport stdio --scope project \
 - Run Contacts before any iMessage or Mail action when the user gives a person name.
 - Resolve by name, phone number, or email before acting.
 - If multiple contacts match, confirm the intended person before sending.
+- When updating a person, pass explicit `phones` or `emails` arrays only when you intend to replace that method set.
+- Keep a labeled phone or email on the contact before routing Messages or Mail through it.
 
 ## Related
 

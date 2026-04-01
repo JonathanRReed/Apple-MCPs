@@ -1,0 +1,1 @@
+"""Apple Maps MCP package."""

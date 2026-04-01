@@ -10,7 +10,7 @@ READ_ACTIONS = frozenset(
         "messages_list_attachments",
     }
 )
-MANAGE_ACTIONS = frozenset({"messages_send_message", "messages_reply_in_conversation"})
+MANAGE_ACTIONS = frozenset({"messages_send_message", "messages_reply_in_conversation", "messages_send_attachment"})
 
 
 class SafetyError(Exception):

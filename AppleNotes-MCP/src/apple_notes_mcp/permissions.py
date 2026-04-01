@@ -15,6 +15,7 @@ MANAGE_ACTIONS = frozenset(
     {
         "notes_create_note",
         "notes_update_note",
+        "notes_append_to_note",
         "notes_delete_note",
         "notes_move_note",
         "notes_create_folder",

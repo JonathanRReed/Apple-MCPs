@@ -63,6 +63,7 @@ class CalendarBridge:
         notes: str | None = None,
         location: str | None = None,
         all_day: bool = False,
+        recurrence: dict[str, object] | None = None,
     ) -> EventDetail:
         request = {
             "title": title,
@@ -73,6 +74,8 @@ class CalendarBridge:
             "location": location,
             "all_day": all_day,
         }
+        if recurrence is not None:
+            request["recurrence"] = recurrence
         payload = self._run_helper("create-calendar-event", json.dumps(request))
         return self._normalize_detail(payload)
 
@@ -87,6 +90,7 @@ class CalendarBridge:
         notes: str | None = None,
         location: str | None = None,
         all_day: bool | None = None,
+        recurrence: dict[str, object] | None = None,
     ) -> EventDetail:
         request: dict[str, object] = {}
         if title is not None:
@@ -103,6 +107,8 @@ class CalendarBridge:
             request["location"] = location
         if all_day is not None:
             request["all_day"] = all_day
+        if recurrence is not None:
+            request["recurrence"] = recurrence
         payload = self._run_helper("update-calendar-event", event_id, json.dumps(request))
         return self._normalize_detail(payload)
 
@@ -197,8 +203,13 @@ class CalendarBridge:
         )
 
     def _normalize_detail(self, raw_event: dict[str, object]) -> EventDetail:
-        summary = self._normalize_summary(raw_event)
-        return EventDetail(**summary.model_dump(), notes=self._optional_text(raw_event.get("notes")))
+        summary_dict = self._normalize_summary(raw_event).model_dump()
+        summary_dict["notes"] = self._optional_text(raw_event.get("notes"))
+        if raw_event.get("recurrence_rule") is not None:
+            summary_dict["recurrence_rule"] = raw_event["recurrence_rule"]
+        if raw_event.get("attendees") is not None:
+            summary_dict["attendees"] = raw_event["attendees"]
+        return EventDetail.model_validate(summary_dict)
 
     def _optional_text(self, value: object) -> str | None:
         if value is None:

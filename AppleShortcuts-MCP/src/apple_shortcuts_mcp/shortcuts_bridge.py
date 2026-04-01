@@ -67,6 +67,7 @@ class ShortcutsBridge:
         input_paths: list[str] | None = None,
         output_path: str | None = None,
         output_type: str | None = None,
+        input_text: str | None = None,
     ) -> ShortcutRunResponse:
         shortcut = self.resolve_shortcut(shortcut_name_or_identifier)
         args = ["run", shortcut.identifier or shortcut.name]
@@ -77,7 +78,7 @@ class ShortcutsBridge:
         if output_type is not None:
             args.extend(["--output-type", output_type])
 
-        output = self._run_cli(args)
+        output = self._run_cli(args, input_data=input_text)
         if output.returncode != 0:
             raise self._map_error("run", output)
 
@@ -155,7 +156,7 @@ class ShortcutsBridge:
             "count": len(shortcuts),
         }
 
-    def _run_cli(self, args: list[str]) -> ShortcutCLIResult:
+    def _run_cli(self, args: list[str], input_data: str | None = None) -> ShortcutCLIResult:
         if not self.cli_available():
             raise ShortcutsBridgeError(
                 "SHORTCUTS_CLI_NOT_FOUND",
@@ -166,6 +167,7 @@ class ShortcutsBridge:
         try:
             completed = subprocess.run(
                 [self.shortcuts_command, *args],
+                input=input_data,
                 capture_output=True,
                 text=True,
                 check=False,

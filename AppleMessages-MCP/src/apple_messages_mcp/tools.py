@@ -332,7 +332,7 @@ def messages_send_message(recipient: str, text: str, service_name: str | None = 
 
 @mcp.tool(
     title="Reply In Conversation",
-    description="Reply to a one-to-one Apple Messages conversation using its chat_id.",
+    description="Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats.",
     annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
     structured_output=True,
 )
@@ -340,13 +340,16 @@ def messages_reply_in_conversation(chat_id: str, text: str) -> SendResponse | Er
     try:
         ensure_action_allowed("messages_reply_in_conversation")
         participants = _db_bridge().participant_addresses_for_chat(chat_id)
-        if len(participants) != 1:
+        if len(participants) == 1:
+            result = _automation_bridge().send_message(recipient=participants[0], text=text)
+        elif len(participants) > 1:
+            result = _automation_bridge().send_to_group(chat_id=chat_id, text=text)
+        else:
             return _error_response(
-                "UNSUPPORTED_OPERATION",
-                "Reply by chat_id currently supports deterministic one-to-one conversations only.",
-                "Use messages_send_message with an explicit recipient for group or ambiguous chats.",
+                "EMPTY_CONVERSATION",
+                "Could not determine participants for this conversation.",
+                "Use messages_send_message with an explicit recipient.",
             )
-        result = _automation_bridge().send_message(recipient=participants[0], text=text)
         return SendResponse(**result)
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
@@ -354,6 +357,70 @@ def messages_reply_in_conversation(chat_id: str, text: str) -> SendResponse | Er
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except MessagesAutomationBridgeError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Send Attachment",
+    description="Send a file attachment via Apple Messages to a recipient. Optionally include a text message.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+    structured_output=True,
+)
+def messages_send_attachment(recipient: str, file_path: str, text: str | None = None) -> SendResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("messages_send_attachment")
+        result = _automation_bridge().send_attachment(recipient=recipient, file_path=file_path, text=text)
+        return SendResponse(**result)
+    except SafetyError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except MessagesAutomationBridgeError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+    return [
+        {
+            "role": getattr(message, "role", "user"),
+            "content": message.content.model_dump(mode="json") if hasattr(message.content, "model_dump") else message.content,
+        }
+        for message in messages
+    ]
+
+
+@mcp.tool(
+    title="Messages List Prompts",
+    description="Fallback prompt discovery tool for tool-only MCP clients.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+async def messages_list_prompts() -> dict[str, object]:
+    prompts = await mcp.list_prompts()
+    return {
+        "ok": True,
+        "prompts": [{"name": prompt.name, "title": prompt.title, "description": prompt.description} for prompt in prompts],
+        "count": len(prompts),
+    }
+
+
+@mcp.tool(
+    title="Messages Get Prompt",
+    description="Fallback prompt rendering tool for tool-only MCP clients.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+async def messages_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+    arguments = json.loads(arguments_json) if arguments_json else None
+    prompt = await mcp.get_prompt(name, arguments)
+    return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
+
+
+@mcp._mcp_server.subscribe_resource()
+async def _messages_subscribe_resource(uri) -> None:
+    del uri
+
+
+@mcp._mcp_server.unsubscribe_resource()
+async def _messages_unsubscribe_resource(uri) -> None:
+    del uri
 
 
 def main() -> None:

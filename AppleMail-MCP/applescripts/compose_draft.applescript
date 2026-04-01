@@ -1,14 +1,3 @@
-on joinText(theItems, separatorValue)
-    if (count of theItems) is 0 then
-        return ""
-    end if
-    set previousDelimiters to AppleScript's text item delimiters
-    set AppleScript's text item delimiters to separatorValue
-    set joinedText to theItems as text
-    set AppleScript's text item delimiters to previousDelimiters
-    return joinedText
-end joinText
-
 on splitText(sourceText, separatorValue)
     if sourceText is "" then
         return {}
@@ -57,6 +46,8 @@ on run argv
     set subjectText to item 4 of argv
     set bodyText to item 5 of argv
     set attachmentRaw to item 6 of argv
+    set visibleText to item 7 of argv
+    set senderRaw to item 8 of argv
 
     set fieldSeparator to ASCII character 31
     set recordSeparator to ASCII character 30
@@ -65,9 +56,16 @@ on run argv
     set ccList to my splitText(ccRaw, listSeparator)
     set bccList to my splitText(bccRaw, listSeparator)
     set attachmentList to my splitText(attachmentRaw, listSeparator)
+    set shouldBeVisible to true
+    if visibleText is "false" then
+        set shouldBeVisible to false
+    end if
 
     tell application "Mail"
-        set newMessage to make new outgoing message with properties {visible:true, subject:subjectText, content:bodyText}
+        set newMessage to make new outgoing message with properties {visible:shouldBeVisible, subject:subjectText, content:bodyText}
+        if senderRaw is not "" then
+            set sender of newMessage to senderRaw
+        end if
         tell newMessage
             repeat with addressText in toList
                 if (addressText as text) is not "" then

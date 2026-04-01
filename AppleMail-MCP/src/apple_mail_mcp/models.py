@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+import re
 
 
 class SafetyProfile(str, Enum):
@@ -81,6 +82,11 @@ class MessageRecord(MessageSummary):
         return result
 
 
+def normalized_thread_subject(subject: str) -> str:
+    cleaned = re.sub(r"^\s*((re|fw|fwd):\s*)+", "", subject or "", flags=re.IGNORECASE).strip()
+    return cleaned or (subject or "").strip()
+
+
 @dataclass
 class DraftRecord:
     draft_id: str
@@ -89,6 +95,7 @@ class DraftRecord:
     cc: list[str] = field(default_factory=list)
     bcc: list[str] = field(default_factory=list)
     visible: bool = True
+    from_account: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -98,6 +105,7 @@ class DraftRecord:
             "cc": self.cc,
             "bcc": self.bcc,
             "visible": self.visible,
+            "from_account": self.from_account,
         }
 
 
@@ -108,6 +116,7 @@ class SendRecord:
     cc: list[str] = field(default_factory=list)
     bcc: list[str] = field(default_factory=list)
     sent: bool = True
+    from_account: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -116,6 +125,7 @@ class SendRecord:
             "cc": self.cc,
             "bcc": self.bcc,
             "sent": self.sent,
+            "from_account": self.from_account,
         }
 
 
@@ -148,6 +158,114 @@ class ErrorResponse:
     ok: bool
     error_code: str
     message: str
+
+
+@dataclass
+class ReplyRecord:
+    sent: bool
+    subject: str
+    reply_all: bool = False
+    from_account: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "sent": self.sent,
+            "subject": self.subject,
+            "reply_all": self.reply_all,
+            "from_account": self.from_account,
+        }
+
+
+@dataclass
+class ForwardRecord:
+    sent: bool
+    subject: str
+    to: list[str] = field(default_factory=list)
+    from_account: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "sent": self.sent,
+            "subject": self.subject,
+            "to": self.to,
+            "from_account": self.from_account,
+        }
+
+
+@dataclass
+class MarkRecord:
+    message_id: str
+    is_read: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "message_id": self.message_id,
+            "is_read": self.is_read,
+        }
+
+
+@dataclass
+class MoveRecord:
+    message_id: str
+    moved: bool
+    target_mailbox: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "message_id": self.message_id,
+            "moved": self.moved,
+            "target_mailbox": self.target_mailbox,
+        }
+
+
+@dataclass
+class DeleteRecord:
+    message_id: str
+    deleted: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "message_id": self.message_id,
+            "deleted": self.deleted,
+        }
+
+
+@dataclass
+class ThreadRecord:
+    message_id: str
+    normalized_subject: str
+    anchor_subject: str
+    mailbox: str
+    account: str
+    messages: list[MessageSummary] = field(default_factory=list)
+    count: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "message_id": self.message_id,
+            "normalized_subject": self.normalized_subject,
+            "anchor_subject": self.anchor_subject,
+            "mailbox": self.mailbox,
+            "account": self.account,
+            "messages": [message.to_dict() for message in self.messages],
+            "count": self.count,
+        }
+
+
+@dataclass
+class ThreadMutationRecord:
+    anchor_message_id: str
+    normalized_subject: str
+    affected_message_ids: list[str] = field(default_factory=list)
+    count: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "anchor_message_id": self.anchor_message_id,
+            "normalized_subject": self.normalized_subject,
+            "affected_message_ids": self.affected_message_ids,
+            "count": self.count,
+        }
 
 
 def error_response(error_code: str, message: str) -> ErrorResponse:

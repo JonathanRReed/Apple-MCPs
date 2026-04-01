@@ -5,7 +5,7 @@ from pathlib import Path
 from subprocess import run
 from urllib.parse import quote, unquote
 
-from apple_mail_mcp.models import AttachmentRecord, DraftRecord, MailboxRecord, MessageRecord, MessageSummary, SendRecord
+from apple_mail_mcp.models import AttachmentRecord, DeleteRecord, DraftRecord, ForwardRecord, MailboxRecord, MarkRecord, MessageRecord, MessageSummary, MoveRecord, ReplyRecord, SendRecord
 
 FIELD_SEPARATOR = "\x1f"
 LIST_SEPARATOR = "\x1d"
@@ -158,6 +158,7 @@ class AppleMailBridge:
         body: str,
         attachments: list[str] | None,
         visible: bool,
+        from_account: str | None = None,
     ) -> DraftRecord:
         raw = self._run_script(
             "compose_draft.applescript",
@@ -169,6 +170,7 @@ class AppleMailBridge:
                 body,
                 LIST_SEPARATOR.join(attachments or []),
                 "true" if visible else "false",
+                from_account or "",
             ],
         )
         rows = _split_records(raw)
@@ -183,6 +185,7 @@ class AppleMailBridge:
             cc=cc or [],
             bcc=bcc or [],
             visible=_parse_bool(visible),
+            from_account=from_account,
         )
 
     def send_message(
@@ -193,6 +196,7 @@ class AppleMailBridge:
         subject: str,
         body: str,
         attachments: list[str] | None,
+        from_account: str | None = None,
     ) -> SendRecord:
         raw = self._run_script(
             "send_message.applescript",
@@ -203,6 +207,7 @@ class AppleMailBridge:
                 subject,
                 body,
                 LIST_SEPARATOR.join(attachments or []),
+                from_account or "",
             ],
         )
         rows = _split_records(raw)
@@ -215,4 +220,94 @@ class AppleMailBridge:
             cc=cc or [],
             bcc=bcc or [],
             sent=_parse_bool(sent_flag),
+            from_account=from_account,
         )
+
+    def reply_message(
+        self,
+        message_id: str,
+        body: str,
+        reply_all: bool = False,
+        from_account: str | None = None,
+    ) -> ReplyRecord:
+        account, mailbox, apple_id = decode_message_id(message_id)
+        raw = self._run_script(
+            "reply_message.applescript",
+            [account, mailbox, apple_id, body, "true" if reply_all else "false", from_account or ""],
+        )
+        rows = _split_records(raw)
+        if not rows or len(rows[0]) < 3:
+            raise MailBridgeError("Reply payload was incomplete.")
+        sent_flag, subject, reply_all_flag = rows[0][:3]
+        return ReplyRecord(
+            sent=_parse_bool(sent_flag),
+            subject=_restore_text(subject),
+            reply_all=_parse_bool(reply_all_flag),
+            from_account=from_account,
+        )
+
+    def forward_message(
+        self,
+        message_id: str,
+        to: list[str],
+        body: str = "",
+        from_account: str | None = None,
+    ) -> ForwardRecord:
+        account, mailbox, apple_id = decode_message_id(message_id)
+        raw = self._run_script(
+            "forward_message.applescript",
+            [account, mailbox, apple_id, LIST_SEPARATOR.join(to), body, from_account or ""],
+        )
+        rows = _split_records(raw)
+        if not rows or len(rows[0]) < 2:
+            raise MailBridgeError("Forward payload was incomplete.")
+        sent_flag, subject = rows[0][:2]
+        return ForwardRecord(
+            sent=_parse_bool(sent_flag),
+            subject=_restore_text(subject),
+            to=to,
+            from_account=from_account,
+        )
+
+    def mark_message(self, message_id: str, is_read: bool) -> MarkRecord:
+        account, mailbox, apple_id = decode_message_id(message_id)
+        raw = self._run_script(
+            "mark_message.applescript",
+            [account, mailbox, apple_id, "true" if is_read else "false"],
+        )
+        rows = _split_records(raw)
+        if not rows or len(rows[0]) < 1:
+            raise MailBridgeError("Mark payload was incomplete.")
+        return MarkRecord(message_id=message_id, is_read=_parse_bool(rows[0][0]))
+
+    def move_message(
+        self,
+        message_id: str,
+        target_mailbox: str,
+        target_account: str | None = None,
+    ) -> MoveRecord:
+        account, mailbox, apple_id = decode_message_id(message_id)
+        raw = self._run_script(
+            "move_message.applescript",
+            [account, mailbox, apple_id, target_mailbox, target_account or ""],
+        )
+        rows = _split_records(raw)
+        if not rows or len(rows[0]) < 2:
+            raise MailBridgeError("Move payload was incomplete.")
+        moved_flag, dest_mailbox = rows[0][:2]
+        return MoveRecord(
+            message_id=message_id,
+            moved=_parse_bool(moved_flag),
+            target_mailbox=_restore_text(dest_mailbox),
+        )
+
+    def delete_message(self, message_id: str) -> DeleteRecord:
+        account, mailbox, apple_id = decode_message_id(message_id)
+        raw = self._run_script(
+            "delete_message.applescript",
+            [account, mailbox, apple_id],
+        )
+        rows = _split_records(raw)
+        if not rows or len(rows[0]) < 1:
+            raise MailBridgeError("Delete payload was incomplete.")
+        return DeleteRecord(message_id=message_id, deleted=_parse_bool(rows[0][0]))

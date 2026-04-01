@@ -62,6 +62,12 @@ class FakeBridge:
     def delete_note(self, note_id: str) -> bool:
         return True
 
+    def append_to_note(self, note_id: str, body_html: str) -> NoteDetail:
+        note = self.get_note(note_id)
+        note.body_html = f"{note.body_html}{body_html}"
+        note.plaintext = "Places to visitAdd flights"
+        return note
+
     def move_note(self, note_id: str, folder_id: str) -> NoteDetail:
         return self.list_notes(folder_id=folder_id)[0]
 
@@ -132,6 +138,18 @@ def test_list_folders_accepts_string_limit_and_offset(monkeypatch) -> None:
 
     assert result.ok is True
     assert result.count == 1
+
+
+def test_append_to_note_preserves_existing_content(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_NOTES_MCP_SAFETY_MODE", "full_access")
+    load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: FakeBridge())
+
+    result = tools.notes_append_to_note(note_id="note-1", body_html="<div>Add flights</div>")
+
+    assert result.ok is True
+    assert "Places to visit" in result.note.body_html
+    assert "Add flights" in result.note.body_html
 
 
 def teardown_function() -> None:

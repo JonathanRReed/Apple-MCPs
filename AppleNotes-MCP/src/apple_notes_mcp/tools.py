@@ -344,6 +344,31 @@ def notes_update_note(note_id: str, title: str | None = None, body_html: str | N
 
 
 @mcp.tool(
+    title="Append to Note",
+    description="Append text to an existing note without replacing its current content. Provide body_text for plain text or body_html for rich content.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def notes_append_to_note(note_id: str, body_text: str | None = None, body_html: str | None = None) -> NoteResponse | ErrorResponse:
+    try:
+        current = _bridge().get_note(note_id)
+        ensure_action_allowed("notes_append_to_note", current.account_name, current.folder_name)
+        if body_html is None and body_text is not None:
+            from html import escape as html_escape
+
+            lines = body_text.splitlines() or [body_text]
+            body_html = "".join(f"<div>{html_escape(line)}</div>" if line.strip() else "<div><br></div>" for line in lines)
+        if not body_html:
+            return _error_response("INVALID_INPUT", "Provide body_text or body_html.", "Supply at least one of body_text or body_html.")
+        note = _bridge().append_to_note(note_id, body_html)
+        return NoteResponse(note=note)
+    except SafetyError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except NotesBridgeError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
     title="Delete Note",
     description="Delete a note by note_id.",
     annotations=ToolAnnotations(destructiveHint=True, idempotentHint=False, openWorldHint=False),
@@ -455,6 +480,53 @@ def notes_list_attachments(note_id: str) -> AttachmentListResponse | ErrorRespon
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except NotesBridgeError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+    return [
+        {
+            "role": getattr(message, "role", "user"),
+            "content": message.content.model_dump(mode="json") if hasattr(message.content, "model_dump") else message.content,
+        }
+        for message in messages
+    ]
+
+
+@mcp.tool(
+    title="Notes List Prompts",
+    description="Fallback prompt discovery tool for tool-only MCP clients.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+async def notes_list_prompts() -> dict[str, object]:
+    prompts = await mcp.list_prompts()
+    return {
+        "ok": True,
+        "prompts": [{"name": prompt.name, "title": prompt.title, "description": prompt.description} for prompt in prompts],
+        "count": len(prompts),
+    }
+
+
+@mcp.tool(
+    title="Notes Get Prompt",
+    description="Fallback prompt rendering tool for tool-only MCP clients.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+async def notes_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+    arguments = json.loads(arguments_json) if arguments_json else None
+    prompt = await mcp.get_prompt(name, arguments)
+    return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
+
+
+@mcp._mcp_server.subscribe_resource()
+async def _notes_subscribe_resource(uri) -> None:
+    del uri
+
+
+@mcp._mcp_server.unsubscribe_resource()
+async def _notes_unsubscribe_resource(uri) -> None:
+    del uri
 
 
 def main() -> None:

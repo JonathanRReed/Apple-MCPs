@@ -126,6 +126,12 @@ class AppleNotesBridge:
     def move_note(self, note_id: str, folder_id: str) -> NoteDetail:
         return self.update_note(note_id, folder_id=folder_id)
 
+    def append_to_note(self, note_id: str, body_html: str) -> NoteDetail:
+        current = self.get_note(note_id)
+        existing_html = current.body_html or self._html_from_plaintext(current.plaintext)
+        combined_html = existing_html + body_html
+        return self.update_note(note_id, title=current.title, body_html=combined_html)
+
     def delete_note(self, note_id: str) -> bool:
         payload = self._run_script("delete_note.applescript", note_id)
         deleted = bool(payload.get("deleted", False))

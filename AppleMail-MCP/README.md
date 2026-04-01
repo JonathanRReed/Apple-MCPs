@@ -15,6 +15,8 @@ Provides access to mailboxes, message search, reading, and composition. Keep Mai
 - Mailbox listing
 - Message search and read access
 - Draft creation and message sending
+- Message mutation workflows, reply, forward, read or unread, move, and delete
+- Thread helpers, `mail_get_thread`, `mail_reply_latest_in_thread`, and `mail_archive_thread`
 - Mailbox resources and reply-oriented prompts
 - `mail_health`, `mail_permission_guide`, and `mail_recheck_permissions` for launch and permission checks
 
@@ -89,6 +91,9 @@ claude mcp add --transport stdio --scope project \
 - Run Contacts before any send or reply when the user identifies a person rather than an email address.
 - `mail_search_messages` requires a query string. Use a sender, a subject fragment, or `*` as a wildcard.
 - There is no list-all recent-mail endpoint.
+- Use `mail_get_thread` when the user means a conversation, not a single message.
+- Use `mail_reply_latest_in_thread` when the agent should reply to the newest message in the conversation.
+- Use `mail_archive_thread` when the user wants thread-level cleanup and Archive is the intended mailbox.
 - If the user could mean text or email, ask once before choosing Messages or Mail.
 
 ## Related

@@ -8,7 +8,7 @@ from mcp.types import Annotations, ToolAnnotations
 
 from apple_mail_mcp.config import Settings, load_settings
 from apple_mail_mcp.mail_bridge import AppleMailBridge, MailBridgeError
-from apple_mail_mcp.models import DraftRecord, ErrorResponse, HealthResponse, MailboxListResponse, MessageRecord, MessageSearchResponse, SendRecord, error_response
+from apple_mail_mcp.models import DeleteRecord, DraftRecord, ErrorResponse, ForwardRecord, HealthResponse, MailboxListResponse, MarkRecord, MessageRecord, MessageSearchResponse, MoveRecord, ReplyRecord, SendRecord, ThreadMutationRecord, ThreadRecord, error_response, normalized_thread_subject
 from apple_mail_mcp.permissions import SafetyPolicyError, ensure_tool_allowed
 
 LOGGER = logging.getLogger("apple_mail_mcp")
@@ -50,8 +50,16 @@ def health_tool(settings: Settings) -> HealthResponse:
             "list_mailboxes",
             "search_messages",
             "get_message",
+            "get_thread",
             "compose_draft",
             "send_message",
+            "reply_message",
+            "forward_message",
+            "mark_message",
+            "move_message",
+            "delete_message",
+            "reply_latest_in_thread",
+            "archive_thread",
             "resources",
             "prompts",
         ],
@@ -140,6 +148,7 @@ def mail_compose_draft_tool(
     subject: str,
     body: str,
     attachments: list[str] | None,
+    from_account: str | None = None,
 ) -> DraftRecord:
     ensure_tool_allowed(settings.safety_profile, "mail_compose_draft")
     draft = bridge.compose_draft(
@@ -150,6 +159,7 @@ def mail_compose_draft_tool(
         body=body,
         attachments=attachments,
         visible=settings.visible_drafts,
+        from_account=from_account,
     )
     LOGGER.info("mail_compose_draft ok subject=%s recipients=%s", subject, len(to))
     return draft
@@ -164,6 +174,7 @@ def mail_send_message_tool(
     subject: str,
     body: str,
     attachments: list[str] | None,
+    from_account: str | None = None,
 ) -> SendRecord:
     ensure_tool_allowed(settings.safety_profile, "mail_send_message")
     result = bridge.send_message(
@@ -173,9 +184,179 @@ def mail_send_message_tool(
         subject=subject,
         body=body,
         attachments=attachments,
+        from_account=from_account,
     )
     LOGGER.info("mail_send_message ok subject=%s recipients=%s", subject, len(to))
     return result
+
+
+def mail_reply_message_tool(
+    bridge: AppleMailBridge,
+    settings: Settings,
+    message_id: str,
+    body: str,
+    reply_all: bool = False,
+    from_account: str | None = None,
+) -> ReplyRecord:
+    ensure_tool_allowed(settings.safety_profile, "mail_reply_message")
+    result = bridge.reply_message(
+        message_id=message_id,
+        body=body,
+        reply_all=reply_all,
+        from_account=from_account,
+    )
+    LOGGER.info("mail_reply_message ok message_id=%s reply_all=%s", message_id, reply_all)
+    return result
+
+
+def mail_forward_message_tool(
+    bridge: AppleMailBridge,
+    settings: Settings,
+    message_id: str,
+    to: list[str],
+    body: str = "",
+    from_account: str | None = None,
+) -> ForwardRecord:
+    ensure_tool_allowed(settings.safety_profile, "mail_forward_message")
+    result = bridge.forward_message(
+        message_id=message_id,
+        to=to,
+        body=body,
+        from_account=from_account,
+    )
+    LOGGER.info("mail_forward_message ok message_id=%s recipients=%s", message_id, len(to))
+    return result
+
+
+def mail_mark_message_tool(
+    bridge: AppleMailBridge,
+    settings: Settings,
+    message_id: str,
+    is_read: bool,
+) -> MarkRecord:
+    ensure_tool_allowed(settings.safety_profile, "mail_mark_message")
+    result = bridge.mark_message(message_id=message_id, is_read=is_read)
+    LOGGER.info("mail_mark_message ok message_id=%s is_read=%s", message_id, is_read)
+    return result
+
+
+def mail_move_message_tool(
+    bridge: AppleMailBridge,
+    settings: Settings,
+    message_id: str,
+    target_mailbox: str,
+    target_account: str | None = None,
+) -> MoveRecord:
+    ensure_tool_allowed(settings.safety_profile, "mail_move_message")
+    result = bridge.move_message(
+        message_id=message_id,
+        target_mailbox=target_mailbox,
+        target_account=target_account,
+    )
+    LOGGER.info("mail_move_message ok message_id=%s target=%s", message_id, target_mailbox)
+    return result
+
+
+def mail_delete_message_tool(
+    bridge: AppleMailBridge,
+    settings: Settings,
+    message_id: str,
+) -> DeleteRecord:
+    ensure_tool_allowed(settings.safety_profile, "mail_delete_message")
+    result = bridge.delete_message(message_id=message_id)
+    LOGGER.info("mail_delete_message ok message_id=%s", message_id)
+    return result
+
+
+def mail_get_thread_tool(
+    bridge: AppleMailBridge,
+    settings: Settings,
+    message_id: str,
+    limit: int = 25,
+) -> ThreadRecord:
+    ensure_tool_allowed(settings.safety_profile, "mail_get_thread")
+    anchor = bridge.get_message(message_id)
+    normalized_subject = normalized_thread_subject(anchor.subject)
+    search_query = normalized_subject or anchor.sender or "*"
+    search_limit = max(25, min(limit * 4, 100))
+    candidates = bridge.search_messages(
+        query=search_query or "*",
+        mailbox=anchor.mailbox,
+        unread_only=False,
+        limit=search_limit,
+    )
+    matched: list[object] = []
+    seen: set[str] = set()
+    for candidate in [*candidates, anchor]:
+        candidate_subject = normalized_thread_subject(candidate.subject)
+        if normalized_subject and candidate_subject.lower() != normalized_subject.lower():
+            continue
+        if candidate.message_id in seen:
+            continue
+        seen.add(candidate.message_id)
+        matched.append(candidate)
+    matched.sort(key=lambda item: item.date_received)
+    page = matched[:limit]
+    return ThreadRecord(
+        message_id=anchor.message_id,
+        normalized_subject=normalized_subject,
+        anchor_subject=anchor.subject,
+        mailbox=anchor.mailbox,
+        account=anchor.account,
+        messages=page,
+        count=len(page),
+    )
+
+
+def mail_reply_latest_in_thread_tool(
+    bridge: AppleMailBridge,
+    settings: Settings,
+    message_id: str,
+    body: str,
+    reply_all: bool = False,
+    from_account: str | None = None,
+    limit: int = 25,
+) -> ReplyRecord:
+    ensure_tool_allowed(settings.safety_profile, "mail_reply_latest_in_thread")
+    thread = mail_get_thread_tool(bridge, settings, message_id=message_id, limit=limit)
+    latest_message_id = thread.messages[-1].message_id if thread.messages else message_id
+    return mail_reply_message_tool(
+        bridge,
+        settings,
+        message_id=latest_message_id,
+        body=body,
+        reply_all=reply_all,
+        from_account=from_account,
+    )
+
+
+def mail_archive_thread_tool(
+    bridge: AppleMailBridge,
+    settings: Settings,
+    message_id: str,
+    archive_mailbox: str = "Archive",
+    archive_account: str | None = None,
+    limit: int = 25,
+) -> ThreadMutationRecord:
+    ensure_tool_allowed(settings.safety_profile, "mail_archive_thread")
+    thread = mail_get_thread_tool(bridge, settings, message_id=message_id, limit=limit)
+    affected: list[str] = []
+    for item in thread.messages:
+        result = mail_move_message_tool(
+            bridge,
+            settings,
+            message_id=item.message_id,
+            target_mailbox=archive_mailbox,
+            target_account=archive_account,
+        )
+        if result.moved:
+            affected.append(result.message_id)
+    return ThreadMutationRecord(
+        anchor_message_id=message_id,
+        normalized_subject=thread.normalized_subject,
+        affected_message_ids=affected,
+        count=len(affected),
+    )
 
 
 def mail_list_mailboxes(
@@ -232,6 +413,7 @@ def mail_compose_draft(
     subject: str = "",
     body: str = "",
     attachments: list[str] | None = None,
+    from_account: str | None = None,
     *,
     bridge: AppleMailBridge | None = None,
     settings: Settings | None = None,
@@ -247,6 +429,7 @@ def mail_compose_draft(
             subject=subject,
             body=body,
             attachments=attachments,
+            from_account=from_account,
         )
     except SafetyPolicyError as exc:
         return error_response("SAFETY_POLICY_BLOCK", str(exc))
@@ -261,6 +444,7 @@ def mail_send_message(
     subject: str = "",
     body: str = "",
     attachments: list[str] | None = None,
+    from_account: str | None = None,
     *,
     bridge: AppleMailBridge | None = None,
     settings: Settings | None = None,
@@ -276,6 +460,7 @@ def mail_send_message(
             subject=subject,
             body=body,
             attachments=attachments,
+            from_account=from_account,
         )
     except SafetyPolicyError as exc:
         return error_response("SAFETY_POLICY_BLOCK", str(exc))
@@ -283,11 +468,209 @@ def mail_send_message(
         return error_response("SEND_FAILED", str(exc))
 
 
+def mail_reply_message(
+    message_id: str,
+    body: str,
+    reply_all: bool = False,
+    from_account: str | None = None,
+    *,
+    bridge: AppleMailBridge | None = None,
+    settings: Settings | None = None,
+) -> ReplyRecord | ErrorResponse:
+    active_settings = settings or load_settings()
+    try:
+        return mail_reply_message_tool(
+            bridge or AppleMailBridge(),
+            active_settings,
+            message_id=message_id,
+            body=body,
+            reply_all=reply_all,
+            from_account=from_account,
+        )
+    except SafetyPolicyError as exc:
+        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+    except MailBridgeError as exc:
+        return error_response("REPLY_FAILED", str(exc))
+
+
+def mail_forward_message(
+    message_id: str,
+    to: list[str],
+    body: str = "",
+    from_account: str | None = None,
+    *,
+    bridge: AppleMailBridge | None = None,
+    settings: Settings | None = None,
+) -> ForwardRecord | ErrorResponse:
+    active_settings = settings or load_settings()
+    try:
+        return mail_forward_message_tool(
+            bridge or AppleMailBridge(),
+            active_settings,
+            message_id=message_id,
+            to=to,
+            body=body,
+            from_account=from_account,
+        )
+    except SafetyPolicyError as exc:
+        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+    except MailBridgeError as exc:
+        return error_response("FORWARD_FAILED", str(exc))
+
+
+def mail_mark_message(
+    message_id: str,
+    is_read: bool,
+    *,
+    bridge: AppleMailBridge | None = None,
+    settings: Settings | None = None,
+) -> MarkRecord | ErrorResponse:
+    active_settings = settings or load_settings()
+    try:
+        return mail_mark_message_tool(
+            bridge or AppleMailBridge(),
+            active_settings,
+            message_id=message_id,
+            is_read=is_read,
+        )
+    except SafetyPolicyError as exc:
+        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+    except MailBridgeError as exc:
+        return error_response("MARK_FAILED", str(exc))
+
+
+def mail_move_message(
+    message_id: str,
+    target_mailbox: str,
+    target_account: str | None = None,
+    *,
+    bridge: AppleMailBridge | None = None,
+    settings: Settings | None = None,
+) -> MoveRecord | ErrorResponse:
+    active_settings = settings or load_settings()
+    try:
+        return mail_move_message_tool(
+            bridge or AppleMailBridge(),
+            active_settings,
+            message_id=message_id,
+            target_mailbox=target_mailbox,
+            target_account=target_account,
+        )
+    except SafetyPolicyError as exc:
+        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+    except MailBridgeError as exc:
+        return error_response("MOVE_FAILED", str(exc))
+
+
+def mail_delete_message(
+    message_id: str,
+    *,
+    bridge: AppleMailBridge | None = None,
+    settings: Settings | None = None,
+) -> DeleteRecord | ErrorResponse:
+    active_settings = settings or load_settings()
+    try:
+        return mail_delete_message_tool(
+            bridge or AppleMailBridge(),
+            active_settings,
+            message_id=message_id,
+        )
+    except SafetyPolicyError as exc:
+        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+    except MailBridgeError as exc:
+        return error_response("DELETE_FAILED", str(exc))
+
+
+def mail_get_thread(
+    message_id: str,
+    limit: int | str = 25,
+    *,
+    bridge: AppleMailBridge | None = None,
+    settings: Settings | None = None,
+) -> ThreadRecord | ErrorResponse:
+    active_settings = settings or load_settings()
+    try:
+        limit_value = _coerce_int_arg("limit", limit, minimum=1)
+        return mail_get_thread_tool(bridge or AppleMailBridge(), active_settings, message_id=message_id, limit=limit_value)
+    except ValueError as exc:
+        return error_response("INVALID_INPUT", str(exc))
+    except SafetyPolicyError as exc:
+        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+    except MailBridgeError as exc:
+        return error_response("THREAD_LOOKUP_FAILED", str(exc))
+
+
+def mail_reply_latest_in_thread(
+    message_id: str,
+    body: str,
+    reply_all: bool = False,
+    from_account: str | None = None,
+    limit: int | str = 25,
+    *,
+    bridge: AppleMailBridge | None = None,
+    settings: Settings | None = None,
+) -> ReplyRecord | ErrorResponse:
+    active_settings = settings or load_settings()
+    try:
+        limit_value = _coerce_int_arg("limit", limit, minimum=1)
+        return mail_reply_latest_in_thread_tool(
+            bridge or AppleMailBridge(),
+            active_settings,
+            message_id=message_id,
+            body=body,
+            reply_all=reply_all,
+            from_account=from_account,
+            limit=limit_value,
+        )
+    except ValueError as exc:
+        return error_response("INVALID_INPUT", str(exc))
+    except SafetyPolicyError as exc:
+        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+    except MailBridgeError as exc:
+        return error_response("THREAD_REPLY_FAILED", str(exc))
+
+
+def mail_archive_thread(
+    message_id: str,
+    archive_mailbox: str = "Archive",
+    archive_account: str | None = None,
+    limit: int | str = 25,
+    *,
+    bridge: AppleMailBridge | None = None,
+    settings: Settings | None = None,
+) -> ThreadMutationRecord | ErrorResponse:
+    active_settings = settings or load_settings()
+    try:
+        limit_value = _coerce_int_arg("limit", limit, minimum=1)
+        return mail_archive_thread_tool(
+            bridge or AppleMailBridge(),
+            active_settings,
+            message_id=message_id,
+            archive_mailbox=archive_mailbox,
+            archive_account=archive_account,
+            limit=limit_value,
+        )
+    except ValueError as exc:
+        return error_response("INVALID_INPUT", str(exc))
+    except SafetyPolicyError as exc:
+        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+    except MailBridgeError as exc:
+        return error_response("THREAD_ARCHIVE_FAILED", str(exc))
+
+
 def create_server(settings: Settings | None = None, bridge: AppleMailBridge | None = None) -> FastMCP:
     server_settings = settings or load_settings()
     configure_logging(server_settings)
     mail_bridge = bridge or AppleMailBridge()
-    mcp = FastMCP("Apple Mail MCP", instructions=SERVER_INSTRUCTIONS, json_response=True)
+    mcp = FastMCP(
+        "Apple Mail MCP",
+        instructions=SERVER_INSTRUCTIONS,
+        host=server_settings.host,
+        port=server_settings.port,
+        log_level=server_settings.log_level,
+        json_response=True,
+        stateless_http=True,
+    )
 
     @mcp.resource(
         "mail://mailboxes",
@@ -375,8 +758,17 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         return mail_get_message(message_id=message_id, bridge=mail_bridge)
 
     @mcp.tool(
+        title="Get Thread",
+        description="Find related messages in the same mailbox thread by normalized subject, anchored on a message_id.",
+        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        structured_output=True,
+    )
+    def mail_get_thread_registered(message_id: str, limit: int | str = 25) -> ThreadRecord | ErrorResponse:
+        return mail_get_thread(message_id=message_id, limit=limit, bridge=mail_bridge, settings=server_settings)
+
+    @mcp.tool(
         title="Compose Draft",
-        description="Create a draft message in Apple Mail without sending it.",
+        description="Create a draft message in Apple Mail without sending it. Optionally specify from_account as an email address or account name to set the sender.",
         annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
         structured_output=True,
     )
@@ -387,6 +779,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         subject: str = "",
         body: str = "",
         attachments: list[str] | None = None,
+        from_account: str | None = None,
     ) -> DraftRecord | ErrorResponse:
         return mail_compose_draft(
             to=to,
@@ -395,13 +788,14 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
             subject=subject,
             body=body,
             attachments=attachments,
+            from_account=from_account,
             bridge=mail_bridge,
             settings=server_settings,
         )
 
     @mcp.tool(
         title="Send Message",
-        description="Send an email immediately via Apple Mail.",
+        description="Send an email immediately via Apple Mail. Optionally specify from_account as an email address or account name to set the sender.",
         annotations=ToolAnnotations(destructiveHint=True, idempotentHint=False, openWorldHint=True),
         structured_output=True,
     )
@@ -412,6 +806,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         subject: str = "",
         body: str = "",
         attachments: list[str] | None = None,
+        from_account: str | None = None,
     ) -> SendRecord | ErrorResponse:
         return mail_send_message(
             to=to,
@@ -420,9 +815,189 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
             subject=subject,
             body=body,
             attachments=attachments,
+            from_account=from_account,
             bridge=mail_bridge,
             settings=server_settings,
         )
+
+    @mcp.tool(
+        title="Reply to Message",
+        description="Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account.",
+        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+        structured_output=True,
+    )
+    def mail_reply_message_registered(
+        message_id: str,
+        body: str,
+        reply_all: bool = False,
+        from_account: str | None = None,
+    ) -> ReplyRecord | ErrorResponse:
+        return mail_reply_message(
+            message_id=message_id,
+            body=body,
+            reply_all=reply_all,
+            from_account=from_account,
+            bridge=mail_bridge,
+            settings=server_settings,
+        )
+
+    @mcp.tool(
+        title="Forward Message",
+        description="Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account.",
+        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+        structured_output=True,
+    )
+    def mail_forward_message_registered(
+        message_id: str,
+        to: list[str],
+        body: str = "",
+        from_account: str | None = None,
+    ) -> ForwardRecord | ErrorResponse:
+        return mail_forward_message(
+            message_id=message_id,
+            to=to,
+            body=body,
+            from_account=from_account,
+            bridge=mail_bridge,
+            settings=server_settings,
+        )
+
+    @mcp.tool(
+        title="Mark Message Read/Unread",
+        description="Set the read status of an email message. Pass is_read=true to mark as read, is_read=false to mark as unread.",
+        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        structured_output=True,
+    )
+    def mail_mark_message_registered(
+        message_id: str,
+        is_read: bool,
+    ) -> MarkRecord | ErrorResponse:
+        return mail_mark_message(
+            message_id=message_id,
+            is_read=is_read,
+            bridge=mail_bridge,
+            settings=server_settings,
+        )
+
+    @mcp.tool(
+        title="Move Message",
+        description="Move an email message to a different mailbox. Optionally specify target_account if the mailbox is in a different account.",
+        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        structured_output=True,
+    )
+    def mail_move_message_registered(
+        message_id: str,
+        target_mailbox: str,
+        target_account: str | None = None,
+    ) -> MoveRecord | ErrorResponse:
+        return mail_move_message(
+            message_id=message_id,
+            target_mailbox=target_mailbox,
+            target_account=target_account,
+            bridge=mail_bridge,
+            settings=server_settings,
+        )
+
+    @mcp.tool(
+        title="Delete Message",
+        description="Delete (trash) an email message by its message_id.",
+        annotations=ToolAnnotations(destructiveHint=True, idempotentHint=True, openWorldHint=False),
+        structured_output=True,
+    )
+    def mail_delete_message_registered(
+        message_id: str,
+    ) -> DeleteRecord | ErrorResponse:
+        return mail_delete_message(
+            message_id=message_id,
+            bridge=mail_bridge,
+            settings=server_settings,
+        )
+
+    @mcp.tool(
+        title="Reply To Latest In Thread",
+        description="Find the latest related message in the same mailbox thread and reply to that message.",
+        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+        structured_output=True,
+    )
+    def mail_reply_latest_in_thread_registered(
+        message_id: str,
+        body: str,
+        reply_all: bool = False,
+        from_account: str | None = None,
+        limit: int | str = 25,
+    ) -> ReplyRecord | ErrorResponse:
+        return mail_reply_latest_in_thread(
+            message_id=message_id,
+            body=body,
+            reply_all=reply_all,
+            from_account=from_account,
+            limit=limit,
+            bridge=mail_bridge,
+            settings=server_settings,
+        )
+
+    @mcp.tool(
+        title="Archive Thread",
+        description="Move related messages in the same mailbox thread to the target archive mailbox.",
+        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        structured_output=True,
+    )
+    def mail_archive_thread_registered(
+        message_id: str,
+        archive_mailbox: str = "Archive",
+        archive_account: str | None = None,
+        limit: int | str = 25,
+    ) -> ThreadMutationRecord | ErrorResponse:
+        return mail_archive_thread(
+            message_id=message_id,
+            archive_mailbox=archive_mailbox,
+            archive_account=archive_account,
+            limit=limit,
+            bridge=mail_bridge,
+            settings=server_settings,
+        )
+
+    def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+        return [
+            {
+                "role": getattr(message, "role", "user"),
+                "content": message.content.model_dump(mode="json") if hasattr(message.content, "model_dump") else message.content,
+            }
+            for message in messages
+        ]
+
+    @mcp.tool(
+        title="Mail List Prompts",
+        description="Fallback prompt discovery tool for tool-only MCP clients.",
+        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        structured_output=True,
+    )
+    async def mail_list_prompts() -> dict[str, object]:
+        prompts = await mcp.list_prompts()
+        return {
+            "ok": True,
+            "prompts": [{"name": prompt.name, "title": prompt.title, "description": prompt.description} for prompt in prompts],
+            "count": len(prompts),
+        }
+
+    @mcp.tool(
+        title="Mail Get Prompt",
+        description="Fallback prompt rendering tool for tool-only MCP clients.",
+        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        structured_output=True,
+    )
+    async def mail_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+        arguments = json.loads(arguments_json) if arguments_json else None
+        prompt = await mcp.get_prompt(name, arguments)
+        return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
+
+    @mcp._mcp_server.subscribe_resource()
+    async def _mail_subscribe_resource(uri) -> None:
+        del uri
+
+    @mcp._mcp_server.unsubscribe_resource()
+    async def _mail_unsubscribe_resource(uri) -> None:
+        del uri
 
     return mcp
 
@@ -433,10 +1008,4 @@ def main() -> None:
     if settings.transport == "stdio":
         server.run(transport="stdio")
         return
-    server.run(
-        transport="streamable-http",
-        host=settings.host,
-        port=settings.port,
-        stateless_http=True,
-        json_response=True,
-    )
+    server.run(transport="streamable-http")

@@ -271,6 +271,7 @@ def calendar_create_event(
     notes: str | None = None,
     location: str | None = None,
     all_day: bool = False,
+    recurrence: dict[str, object] | None = None,
 ) -> EventResponse | ErrorResponse:
     try:
         if not title.strip():
@@ -285,6 +286,7 @@ def calendar_create_event(
             notes=notes,
             location=location,
             all_day=all_day,
+            recurrence=recurrence,
         )
         return EventResponse(event=event)
     except SafetyError as exc:
@@ -310,6 +312,7 @@ def calendar_update_event(
     notes: str | None = None,
     location: str | None = None,
     all_day: bool | None = None,
+    recurrence: dict[str, object] | None = None,
 ) -> EventResponse | ErrorResponse:
     try:
         ensure_action_allowed("calendar_update_event", _event_owner_calendar(event_id))
@@ -322,6 +325,7 @@ def calendar_update_event(
             notes=notes,
             location=location,
             all_day=all_day,
+            recurrence=recurrence,
         )
         return EventResponse(event=event)
     except SafetyError as exc:
@@ -345,6 +349,53 @@ def calendar_delete_event(event_id: str) -> DeleteEventResponse | ErrorResponse:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except CalendarBridgeError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+    return [
+        {
+            "role": getattr(message, "role", "user"),
+            "content": message.content.model_dump(mode="json") if hasattr(message.content, "model_dump") else message.content,
+        }
+        for message in messages
+    ]
+
+
+@mcp.tool(
+    title="Calendar List Prompts",
+    description="Fallback prompt discovery tool for tool-only MCP clients.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+async def calendar_list_prompts() -> dict[str, object]:
+    prompts = await mcp.list_prompts()
+    return {
+        "ok": True,
+        "prompts": [{"name": prompt.name, "title": prompt.title, "description": prompt.description} for prompt in prompts],
+        "count": len(prompts),
+    }
+
+
+@mcp.tool(
+    title="Calendar Get Prompt",
+    description="Fallback prompt rendering tool for tool-only MCP clients.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+async def calendar_get_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+    arguments = json.loads(arguments_json) if arguments_json else None
+    prompt = await mcp.get_prompt(name, arguments)
+    return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
+
+
+@mcp._mcp_server.subscribe_resource()
+async def _calendar_subscribe_resource(uri) -> None:
+    del uri
+
+
+@mcp._mcp_server.unsubscribe_resource()
+async def _calendar_unsubscribe_resource(uri) -> None:
+    del uri
 
 
 def main() -> None:

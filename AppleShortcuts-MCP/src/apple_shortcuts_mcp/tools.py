@@ -82,12 +82,14 @@ def shortcuts_run_shortcut_tool(
     input_paths: list[str] | None = None,
     output_path: str | None = None,
     output_type: str | None = None,
+    input_text: str | None = None,
 ) -> ShortcutRunResponse:
     return _bridge().run_shortcut(
         shortcut_name_or_identifier,
         input_paths=input_paths,
         output_path=output_path,
         output_type=output_type,
+        input_text=input_text,
     )
 
 
@@ -235,6 +237,7 @@ def shortcuts_run_shortcut(
     input_paths: list[str] | None = None,
     output_path: str | None = None,
     output_type: str | None = None,
+    input_text: str | None = None,
 ) -> ShortcutRunResponse | ErrorResponse:
     try:
         ensure_action_allowed("shortcuts_run_shortcut")
@@ -243,9 +246,57 @@ def shortcuts_run_shortcut(
             input_paths=input_paths,
             output_path=output_path,
             output_type=output_type,
+            input_text=input_text,
         )
     except (SafetyError, ShortcutsBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+    return [
+        {
+            "role": getattr(message, "role", "user"),
+            "content": message.content.model_dump(mode="json") if hasattr(message.content, "model_dump") else message.content,
+        }
+        for message in messages
+    ]
+
+
+@mcp.tool(
+    title="Shortcuts List Prompts",
+    description="Fallback prompt discovery tool for tool-only MCP clients.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+async def shortcuts_list_prompts() -> dict[str, object]:
+    prompts = await mcp.list_prompts()
+    return {
+        "ok": True,
+        "prompts": [{"name": prompt.name, "title": prompt.title, "description": prompt.description} for prompt in prompts],
+        "count": len(prompts),
+    }
+
+
+@mcp.tool(
+    title="Shortcuts Get Prompt",
+    description="Fallback prompt rendering tool for tool-only MCP clients.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+async def shortcuts_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+    arguments = json.loads(arguments_json) if arguments_json else None
+    prompt = await mcp.get_prompt(name, arguments)
+    return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
+
+
+@mcp._mcp_server.subscribe_resource()
+async def _shortcuts_subscribe_resource(uri) -> None:
+    del uri
+
+
+@mcp._mcp_server.unsubscribe_resource()
+async def _shortcuts_unsubscribe_resource(uri) -> None:
+    del uri
 
 
 def main() -> None:
@@ -254,10 +305,9 @@ def main() -> None:
     if settings.transport == "stdio":
         mcp.run(transport="stdio")
         return
-    mcp.run(
-        transport="streamable-http",
-        host=settings.host,
-        port=settings.port,
-        stateless_http=True,
-        json_response=True,
-    )
+    mcp.settings.host = settings.host
+    mcp.settings.port = settings.port
+    mcp.settings.log_level = settings.log_level
+    mcp.settings.stateless_http = True
+    mcp.settings.json_response = True
+    mcp.run(transport="streamable-http")

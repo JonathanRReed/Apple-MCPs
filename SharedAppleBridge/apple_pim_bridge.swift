@@ -36,6 +36,8 @@ struct ReminderRecord: Encodable {
     let completion_date: String?
     let creation_date: String?
     let modification_date: String?
+    let tags: [String]
+    let subtask_ids: [String]
 }
 
 struct CalendarRecord: Encodable {
@@ -56,6 +58,26 @@ struct EventRecord: Encodable {
     let all_day: Bool
     let location: String?
     let notes: String?
+    let recurrence_rule: RecurrenceInfo?
+    let attendees: [AttendeeInfo]?
+}
+
+struct RecurrenceInfo: Encodable {
+    let frequency: String
+    let interval: Int
+    let end_date: String?
+}
+
+struct AttendeeInfo: Encodable {
+    let name: String?
+    let email: String?
+    let status: String
+}
+
+struct ReminderListMutationPayload: Encodable {
+    let list_id: String
+    let title: String
+    let created: Bool
 }
 
 struct BooleanMutationPayload: Encodable {
@@ -220,6 +242,18 @@ struct ApplePIMBridge {
                 message: "Unknown command '\(command)'.",
                 suggestion: "Use a supported bridge command."
             )
+        case "create-reminder-list":
+            let store = EKEventStore()
+            try ensureAccess(store: store, entityType: .reminder)
+            let payload = try decodeObjectArgument(arguments, expectedCount: 1)
+            return try encode(try createReminderList(store: store, payload: payload))
+        case "delete-reminder-list":
+            let store = EKEventStore()
+            try ensureAccess(store: store, entityType: .reminder)
+            guard arguments.count == 1 else {
+                throw usageError(command)
+            }
+            return try encode(try deleteReminderList(store: store, listID: arguments[0]))
         }
     }
 
@@ -475,6 +509,33 @@ struct ApplePIMBridge {
         if payload.keys.contains("calendar_id"), let calendarID = stringValue(payload, field: "calendar_id") {
             event.calendar = try eventCalendar(store: store, calendarID: calendarID)
         }
+        if payload.keys.contains("recurrence") {
+            if let recurrencePayload = payload["recurrence"] as? [String: Any] {
+                let freqString = stringValue(recurrencePayload, field: "frequency") ?? "weekly"
+                let interval = intValue(recurrencePayload, field: "interval") ?? 1
+                let frequency: EKRecurrenceFrequency
+                switch freqString.lowercased() {
+                case "daily": frequency = .daily
+                case "weekly": frequency = .weekly
+                case "monthly": frequency = .monthly
+                case "yearly": frequency = .yearly
+                default: frequency = .weekly
+                }
+                var recurrenceEnd: EKRecurrenceEnd? = nil
+                if let endDateStr = stringValue(recurrencePayload, field: "end_date") {
+                    let endDate = try parseDate(endDateStr)
+                    recurrenceEnd = EKRecurrenceEnd(end: endDate)
+                }
+                let rule = EKRecurrenceRule(
+                    recurrenceWith: frequency,
+                    interval: interval,
+                    end: recurrenceEnd
+                )
+                event.recurrenceRules = [rule]
+            } else if payload["recurrence"] is NSNull {
+                event.recurrenceRules = nil
+            }
+        }
     }
 
     static func reminderListRecord(_ calendar: EKCalendar) -> ReminderListRecord {
@@ -492,6 +553,8 @@ struct ApplePIMBridge {
         let dueDate = dueComponents?.date
         let dueAllDay = isAllDay(components: dueComponents)
         let remindAt = reminder.alarms?.first(where: { $0.absoluteDate != nil })?.absoluteDate
+        let tags = parseTags(from: reminder.notes)
+        let subtaskIds: [String] = []
         return ReminderRecord(
             reminder_id: reminderIdentifier(reminder.calendarItemIdentifier),
             title: reminder.title,
@@ -505,7 +568,9 @@ struct ApplePIMBridge {
             completed: reminder.isCompleted,
             completion_date: reminder.completionDate.map(isoString),
             creation_date: reminder.creationDate.map(isoString),
-            modification_date: reminder.lastModifiedDate.map(isoString)
+            modification_date: reminder.lastModifiedDate.map(isoString),
+            tags: tags,
+            subtask_ids: subtaskIds
         )
     }
 
@@ -520,7 +585,9 @@ struct ApplePIMBridge {
     }
 
     static func eventRecord(_ event: EKEvent) -> EventRecord {
-        EventRecord(
+        let recurrence = event.recurrenceRules?.first.map(recurrenceInfo)
+        let attendeeList = event.attendees?.map(attendeeInfo)
+        return EventRecord(
             event_id: event.calendarItemIdentifier,
             title: event.title,
             calendar_id: event.calendar.calendarIdentifier,
@@ -529,7 +596,38 @@ struct ApplePIMBridge {
             end: isoString(event.endDate),
             all_day: event.isAllDay,
             location: emptyToNil(event.location),
-            notes: emptyToNil(event.notes)
+            notes: emptyToNil(event.notes),
+            recurrence_rule: recurrence,
+            attendees: attendeeList
+        )
+    }
+
+    static func recurrenceInfo(_ rule: EKRecurrenceRule) -> RecurrenceInfo {
+        let frequency: String
+        switch rule.frequency {
+        case .daily: frequency = "daily"
+        case .weekly: frequency = "weekly"
+        case .monthly: frequency = "monthly"
+        case .yearly: frequency = "yearly"
+        @unknown default: frequency = "unknown"
+        }
+        let endDate = rule.recurrenceEnd?.endDate.map(isoString)
+        return RecurrenceInfo(frequency: frequency, interval: rule.interval, end_date: endDate)
+    }
+
+    static func attendeeInfo(_ participant: EKParticipant) -> AttendeeInfo {
+        let status: String
+        switch participant.participantStatus {
+        case .accepted: status = "accepted"
+        case .declined: status = "declined"
+        case .tentative: status = "tentative"
+        case .pending: status = "pending"
+        default: status = "unknown"
+        }
+        return AttendeeInfo(
+            name: participant.name,
+            email: participant.url.absoluteString.replacingOccurrences(of: "mailto:", with: ""),
+            status: status
         )
     }
 
@@ -945,6 +1043,54 @@ struct ApplePIMBridge {
             FileHandle.standardOutput.write(data)
         }
         Foundation.exit(1)
+    }
+
+    static func parseTags(from notes: String?) -> [String] {
+        guard let notes, !notes.isEmpty else {
+            return []
+        }
+        let pattern = #"(?<!\w)#([A-Za-z0-9_-]+)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return []
+        }
+        let range = NSRange(notes.startIndex..., in: notes)
+        let matches = regex.matches(in: notes, range: range)
+        var seen = Set<String>()
+        var tags: [String] = []
+        for match in matches {
+            if let tagRange = Range(match.range(at: 1), in: notes) {
+                let tag = String(notes[tagRange])
+                if !seen.contains(tag) {
+                    seen.insert(tag)
+                    tags.append(tag)
+                }
+            }
+        }
+        return tags
+    }
+
+    static func createReminderList(store: EKEventStore, payload: [String: Any]) throws -> ReminderListMutationPayload {
+        let title = try requiredString(payload, field: "title")
+        let calendar = EKCalendar(for: .reminder, eventStore: store)
+        calendar.title = title
+        guard let source = store.defaultCalendarForNewReminders()?.source ?? store.sources.first(where: { $0.sourceType == .calDAV || $0.sourceType == .local }) else {
+            throw BridgeFailure(
+                errorCode: "NO_SOURCE",
+                message: "No suitable calendar source found for creating a reminder list.",
+                suggestion: "Ensure at least one calendar account is configured."
+            )
+        }
+        calendar.source = source
+        try store.saveCalendar(calendar, commit: true)
+        return ReminderListMutationPayload(list_id: calendar.calendarIdentifier, title: calendar.title, created: true)
+    }
+
+    static func deleteReminderList(store: EKEventStore, listID: String) throws -> BooleanMutationPayload {
+        guard let calendar = store.calendar(withIdentifier: listID) else {
+            return BooleanMutationPayload(deleted: false, object_id: listID)
+        }
+        try store.removeCalendar(calendar, commit: true)
+        return BooleanMutationPayload(deleted: true, object_id: listID)
     }
 }
 

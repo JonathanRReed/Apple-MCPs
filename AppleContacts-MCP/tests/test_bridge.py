@@ -114,6 +114,66 @@ def test_search_contacts_matches_parenthetical_nickname(monkeypatch) -> None:
     assert sonali_matches[0].contact_id == "contact-sona"
 
 
+def test_create_contact_serializes_methods(monkeypatch) -> None:
+    bridge = AppleContactsBridge(Path("/tmp/scripts"))
+    captured: dict[str, object] = {}
+
+    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+        captured["script_name"] = script_name
+        captured["args"] = args
+        return {"contact_id": "contact-1", "name": "Alice Doe", "created": True}
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+
+    result = bridge.create_contact(
+        first_name="Alice",
+        last_name="Doe",
+        phones=[bridge._normalize_methods([{"label": "mobile", "value": "+15551234567"}])[0]],
+        emails=[bridge._normalize_methods([{"label": "work", "value": "alice@example.com"}])[0]],
+    )
+
+    assert result.contact_id == "contact-1"
+    assert captured["script_name"] == "create_contact.applescript"
+    assert "+15551234567" in captured["args"][3]
+    assert "alice@example.com" in captured["args"][4]
+
+
+def test_update_contact_supports_no_change_sentinel(monkeypatch) -> None:
+    bridge = AppleContactsBridge(Path("/tmp/scripts"))
+    calls: list[tuple[str, tuple[str, ...]]] = []
+
+    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+        calls.append((script_name, args))
+        if script_name == "update_contact.applescript":
+            return {"contact_id": "contact-1", "name": "Alice Doe", "updated": True}
+        if script_name == "get_contact.applescript":
+            return {
+                "found": True,
+                "contact": {
+                    "contact_id": "contact-1",
+                    "name": "Alice Doe",
+                    "first_name": "Alice",
+                    "last_name": "Doe",
+                    "organization": "",
+                    "phone_count": 1,
+                    "email_count": 1,
+                    "phones": [{"label": "mobile", "value": "+15551234567"}],
+                    "emails": [{"label": "work", "value": "alice@example.com"}],
+                    "note": "",
+                },
+            }
+        raise AssertionError(f"Unexpected script {script_name}")
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+
+    detail = bridge.update_contact("contact-1", first_name="Alicia")
+
+    assert detail.first_name == "Alice"
+    assert calls[0][0] == "update_contact.applescript"
+    assert calls[0][1][4] == "__NOCHANGE__"
+    assert calls[0][1][5] == "__NOCHANGE__"
+
+
 def test_contacts_scripts_compile(tmp_path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     scripts = (
@@ -121,6 +181,9 @@ def test_contacts_scripts_compile(tmp_path) -> None:
         repo_root / "applescripts" / "list_contacts.applescript",
         repo_root / "applescripts" / "search_contacts.applescript",
         repo_root / "applescripts" / "get_contact.applescript",
+        repo_root / "applescripts" / "create_contact.applescript",
+        repo_root / "applescripts" / "update_contact.applescript",
+        repo_root / "applescripts" / "delete_contact.applescript",
     )
 
     for script_path in scripts:

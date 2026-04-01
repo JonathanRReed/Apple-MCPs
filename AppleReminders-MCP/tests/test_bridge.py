@@ -41,3 +41,14 @@ def test_get_reminder_maps_not_found(monkeypatch) -> None:
         assert exc.error_code == "REMINDER_NOT_FOUND"
     else:
         raise AssertionError("Expected RemindersBridgeError")
+
+
+def test_create_reminder_rejects_subtask_parent(monkeypatch) -> None:
+    bridge = RemindersBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    try:
+        bridge.create_reminder(title="Child", list_id="list-1", parent_reminder_id="x-apple-reminder://parent")
+    except RemindersBridgeError as exc:
+        assert exc.error_code == "SUBTASKS_UNSUPPORTED"
+    else:
+        raise AssertionError("Expected RemindersBridgeError")

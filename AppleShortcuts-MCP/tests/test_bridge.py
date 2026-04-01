@@ -47,7 +47,7 @@ def test_run_shortcut_maps_failure(monkeypatch) -> None:
             name=value, identifier="9A2D4AFE-D4B5-418E-814A-DB97BAB3BE4D"
         ),
     )
-    monkeypatch.setattr(bridge, "_run_cli", lambda args: Completed(1, "", "Error: The input of the shortcut could not be processed."))
+    monkeypatch.setattr(bridge, "_run_cli", lambda args, input_data=None: Completed(1, "", "Error: The input of the shortcut could not be processed."))
 
     try:
         bridge.run_shortcut("Open Trunk", input_paths=["/etc/hosts"])
@@ -55,3 +55,29 @@ def test_run_shortcut_maps_failure(monkeypatch) -> None:
         assert exc.error_code == "SHORTCUT_INPUT_FAILED"
     else:
         raise AssertionError("Expected ShortcutsBridgeError")
+
+
+def test_run_shortcut_passes_input_text(monkeypatch) -> None:
+    bridge = ShortcutsBridge(shortcuts_command="shortcuts", timeout_seconds=5)
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        bridge,
+        "resolve_shortcut",
+        lambda value: __import__("apple_shortcuts_mcp.models", fromlist=["ShortcutInfo"]).ShortcutInfo(
+            name=value, identifier="9A2D4AFE-D4B5-418E-814A-DB97BAB3BE4D"
+        ),
+    )
+
+    def fake_run_cli(args, input_data=None):
+        captured["args"] = args
+        captured["input_data"] = input_data
+        return Completed(0, "done", "")
+
+    monkeypatch.setattr(bridge, "_run_cli", fake_run_cli)
+
+    result = bridge.run_shortcut("Open Trunk", input_text="hello from stdin")
+
+    assert result.exit_code == 0
+    assert captured["args"] == ["run", "9A2D4AFE-D4B5-418E-814A-DB97BAB3BE4D"]
+    assert captured["input_data"] == "hello from stdin"

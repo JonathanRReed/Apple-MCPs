@@ -1,5 +1,5 @@
 from apple_calendar_mcp.config import load_settings
-from apple_calendar_mcp.models import EventDetail
+from apple_calendar_mcp.models import AttendeeInfo, EventDetail, RecurrenceInfo
 from apple_calendar_mcp import tools
 from apple_calendar_mcp.permissions import SafetyError
 
@@ -33,9 +33,11 @@ class FakeBridge:
             location="Room 1",
             availability=None,
             notes="Bring notes",
+            recurrence_rule=RecurrenceInfo(frequency="weekly", interval=1, end_date=None),
+            attendees=[AttendeeInfo(name="Alex", email="alex@example.com", status="accepted")],
         )
 
-    def create_event(self, title: str, calendar_id: str, start_iso: str, end_iso: str, notes=None, location=None, all_day=False) -> EventDetail:
+    def create_event(self, title: str, calendar_id: str, start_iso: str, end_iso: str, notes=None, location=None, all_day=False, recurrence=None) -> EventDetail:
         return EventDetail(
             event_id="event-new",
             title=title,
@@ -123,6 +125,20 @@ def test_calendar_list_events_accepts_string_limit(monkeypatch) -> None:
     result = tools.calendar_list_events("2026-03-27T10:00:00-05:00", "2026-03-27T11:00:00-05:00", limit="5")
 
     assert result.ok is True
+
+
+def test_calendar_get_event_exposes_attendees_and_recurrence(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: FakeBridge())
+
+    result = tools.calendar_get_event("event-1")
+
+    assert result.ok is True
+    assert result.event.recurrence_rule is not None
+    assert result.event.recurrence_rule.frequency == "weekly"
+    assert result.event.attendees is not None
+    assert result.event.attendees[0].status == "accepted"
 
 
 def teardown_function() -> None:

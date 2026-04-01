@@ -10,7 +10,7 @@ def test_contacts_read_actions_are_allowed() -> None:
 
 def test_unknown_action_is_rejected() -> None:
     try:
-        ensure_action_allowed("contacts_delete_contact")
+        ensure_action_allowed("contacts_fake_action")
     except SafetyError as exc:
         assert exc.error_code == "UNKNOWN_ACTION"
     else:

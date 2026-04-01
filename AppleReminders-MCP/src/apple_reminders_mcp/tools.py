@@ -6,7 +6,17 @@ from mcp.server.fastmcp import Context, FastMCP
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_reminders_mcp.config import load_settings
-from apple_reminders_mcp.models import DeleteReminderResponse, ErrorResponse, HealthResponse, ReminderListItemsResponse, ReminderListResponse, ReminderResponse, ToolError
+from apple_reminders_mcp.models import (
+    DeleteReminderListResponse,
+    DeleteReminderResponse,
+    ErrorResponse,
+    HealthResponse,
+    ReminderListItemsResponse,
+    ReminderListMutationResponse,
+    ReminderListResponse,
+    ReminderResponse,
+    ToolError,
+)
 from apple_reminders_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_reminders_mcp.reminders_bridge import RemindersBridge, RemindersBridgeError, build_bridge
 
@@ -47,6 +57,8 @@ def _capabilities() -> tuple[list[str], bool, bool]:
     return (
         [
             "list_lists",
+            "create_list",
+            "delete_list",
             "list_reminders",
             "get_reminder",
             "create_reminder",
@@ -178,6 +190,40 @@ def reminders_list_lists() -> ReminderListResponse | ErrorResponse:
 
 
 @mcp.tool(
+    title="Create Reminder List",
+    description="Create a new Apple Reminders list.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def reminders_create_list(title: str) -> ReminderListMutationResponse | ErrorResponse:
+    if not title.strip():
+        return _error_response("INVALID_INPUT", "title must not be empty", "Provide a non-empty title.")
+    try:
+        ensure_action_allowed("reminders_create_list")
+        return _bridge().create_list(title=title.strip())
+    except SafetyError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except RemindersBridgeError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Delete Reminder List",
+    description="Delete a reminder list entirely. Requires full_access safety mode.",
+    annotations=ToolAnnotations(destructiveHint=True, idempotentHint=True, openWorldHint=False),
+    structured_output=True,
+)
+def reminders_delete_list(list_id: str) -> DeleteReminderListResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("reminders_delete_list")
+        return _bridge().delete_list(list_id=list_id)
+    except SafetyError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except RemindersBridgeError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
     title="List Reminders",
     description="List reminders with optional list and due-date filters.",
     annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
@@ -248,10 +294,18 @@ def reminders_create_reminder(
     due_all_day: bool = False,
     remind_at: str | None = None,
     priority: int | str = 0,
+    parent_reminder_id: str | None = None,
+    tags: list[str] | None = None,
 ) -> ReminderResponse | ErrorResponse:
     try:
         if not title.strip():
             raise ValueError("title must not be empty")
+        if parent_reminder_id is not None:
+            return _error_response(
+                "SUBTASKS_UNSUPPORTED",
+                "Apple Reminders subtasks are not available through the public APIs used by this MCP.",
+                "Create a top-level reminder instead, or omit parent_reminder_id.",
+            )
         priority_value = _coerce_int_arg("priority", priority, minimum=0)
         list_title = None
         for list_info in _bridge().list_lists():
@@ -267,6 +321,8 @@ def reminders_create_reminder(
             due_all_day=due_all_day,
             remind_at=remind_at,
             priority=priority_value,
+            parent_reminder_id=parent_reminder_id,
+            tags=tags,
         )
         return ReminderResponse(reminder=detail)
     except SafetyError as exc:
@@ -292,8 +348,16 @@ def reminders_update_reminder(
     due_all_day: bool | None = None,
     remind_at: str | None = None,
     priority: int | str | None = None,
+    parent_reminder_id: str | None = None,
+    tags: list[str] | None = None,
 ) -> ReminderResponse | ErrorResponse:
     try:
+        if parent_reminder_id is not None:
+            return _error_response(
+                "SUBTASKS_UNSUPPORTED",
+                "Apple Reminders subtasks are not available through the public APIs used by this MCP.",
+                "Update the reminder without parent_reminder_id.",
+            )
         ensure_action_allowed("reminders_update_reminder", _reminder_owner_list(reminder_id))
         priority_value = _coerce_int_arg("priority", priority, minimum=0) if priority is not None else None
         detail = _bridge().update_reminder(
@@ -305,6 +369,8 @@ def reminders_update_reminder(
             due_all_day=due_all_day,
             remind_at=remind_at,
             priority=priority_value,
+            parent_reminder_id=parent_reminder_id,
+            tags=tags,
         )
         return ReminderResponse(reminder=detail)
     except SafetyError as exc:
@@ -362,6 +428,53 @@ def reminders_delete_reminder(reminder_id: str) -> DeleteReminderResponse | Erro
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except RemindersBridgeError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+    return [
+        {
+            "role": getattr(message, "role", "user"),
+            "content": message.content.model_dump(mode="json") if hasattr(message.content, "model_dump") else message.content,
+        }
+        for message in messages
+    ]
+
+
+@mcp.tool(
+    title="Reminders List Prompts",
+    description="Fallback prompt discovery tool for tool-only MCP clients.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+async def reminders_list_prompts() -> dict[str, object]:
+    prompts = await mcp.list_prompts()
+    return {
+        "ok": True,
+        "prompts": [{"name": prompt.name, "title": prompt.title, "description": prompt.description} for prompt in prompts],
+        "count": len(prompts),
+    }
+
+
+@mcp.tool(
+    title="Reminders Get Prompt",
+    description="Fallback prompt rendering tool for tool-only MCP clients.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+async def reminders_get_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+    arguments = json.loads(arguments_json) if arguments_json else None
+    prompt = await mcp.get_prompt(name, arguments)
+    return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
+
+
+@mcp._mcp_server.subscribe_resource()
+async def _reminders_subscribe_resource(uri) -> None:
+    del uri
+
+
+@mcp._mcp_server.unsubscribe_resource()
+async def _reminders_unsubscribe_resource(uri) -> None:
+    del uri
 
 
 def main() -> None:

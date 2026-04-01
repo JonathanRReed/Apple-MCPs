@@ -7,7 +7,14 @@ MANAGE_ACTIONS = frozenset(
         "reminders_update_reminder",
         "reminders_complete_reminder",
         "reminders_uncomplete_reminder",
+        "reminders_create_list",
+    }
+)
+
+FULL_ACCESS_ACTIONS = frozenset(
+    {
         "reminders_delete_reminder",
+        "reminders_delete_list",
     }
 )
 
@@ -38,6 +45,21 @@ def ensure_action_allowed(action: str, list_name: str | None = None) -> None:
                 "WRITE_BLOCKED",
                 f"Action '{action}' is blocked in safety mode '{settings.safety_mode}'.",
                 "Switch to safe_manage or full_access to mutate reminders.",
+            )
+        if list_name is not None and settings.allowed_lists and list_name not in settings.allowed_lists:
+            raise SafetyError(
+                "LIST_BLOCKED",
+                f"Reminder list '{list_name}' is not in the allowed list set.",
+                "Choose one of the configured allowed lists or clear the allowlist.",
+            )
+        return
+
+    if action in FULL_ACCESS_ACTIONS:
+        if settings.safety_mode != "full_access":
+             raise SafetyError(
+                "WRITE_BLOCKED",
+                f"Action '{action}' requires full_access mode (current: '{settings.safety_mode}').",
+                "Switch to full_access to delete reminders or lists.",
             )
         if list_name is not None and settings.allowed_lists and list_name not in settings.allowed_lists:
             raise SafetyError(

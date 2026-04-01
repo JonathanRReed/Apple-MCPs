@@ -4,6 +4,9 @@ from apple_reminders_mcp import tools
 
 
 class FakeBridge:
+    def create_list(self, title: str):
+        return tools.ReminderListMutationResponse(list_id="list-new", title=title, created=True)
+
     def list_lists(self):
         return [
             ReminderListInfo(
@@ -48,6 +51,9 @@ class FakeBridge:
 
     def delete_reminder(self, reminder_id: str) -> bool:
         return True
+
+    def delete_list(self, list_id: str):
+        return tools.DeleteReminderListResponse(list_id=list_id, deleted=True)
 
 
 def test_create_reminder_returns_structured_payload(monkeypatch) -> None:
@@ -94,6 +100,35 @@ def test_create_reminder_accepts_string_priority(monkeypatch) -> None:
     result = tools.reminders_create_reminder(title="Trash day", list_id="list-1", priority="2")
 
     assert result.ok is True
+
+
+def test_create_and_delete_list_return_structured_payload(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_REMINDERS_MCP_SAFETY_MODE", "full_access")
+    load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: FakeBridge())
+
+    created = tools.reminders_create_list("General")
+    deleted = tools.reminders_delete_list("list-new")
+
+    assert created.ok is True
+    assert created.title == "General"
+    assert deleted.ok is True
+    assert deleted.deleted is True
+
+
+def test_create_reminder_rejects_subtasks_until_supported(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_REMINDERS_MCP_SAFETY_MODE", "full_access")
+    load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: FakeBridge())
+
+    result = tools.reminders_create_reminder(
+        title="Child",
+        list_id="list-1",
+        parent_reminder_id="x-apple-reminder://parent",
+    )
+
+    assert result.ok is False
+    assert result.error.error_code == "SUBTASKS_UNSUPPORTED"
 
 
 def teardown_function() -> None:

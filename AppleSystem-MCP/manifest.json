@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "apple-system",
+  "display_name": "Apple System",
+  "version": "0.1.0",
+  "description": "Read lightweight macOS system context and perform scoped desktop actions.",
+  "long_description": "Local MCP server for macOS system context. Use it to read battery state, inspect the frontmost app and running apps, read or write the clipboard, show local notifications, and open applications with scoped safety controls.",
+  "icon": "icon.png",
+  "author": {
+    "name": "Jonathan Reed"
+  },
+  "license": "MIT",
+  "keywords": ["system", "macos", "clipboard", "notifications", "applications", "desktop"],
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": { "python": ">=3.11" }
+  },
+  "server": {
+    "type": "python",
+    "mcp_config": {
+      "command": "${__dirname}/start.sh",
+      "args": [],
+      "env": {
+        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_readonly"
+      }
+    }
+  }
+}

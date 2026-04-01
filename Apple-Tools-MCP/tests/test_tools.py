@@ -18,6 +18,17 @@ def test_registered_tool_names_cover_core_domains() -> None:
     assert "shortcuts_run_shortcut" in tools.REGISTERED_TOOL_NAMES
 
 
+def test_aio_prompt_list_includes_routing_and_contacts_prompts() -> None:
+    async def load_prompt_names() -> list[str]:
+        prompt_list = await tools.mcp.list_prompts()
+        return [prompt.name for prompt in prompt_list]
+
+    prompt_names = asyncio.run(load_prompt_names())
+
+    assert "apple_route_request" in prompt_names
+    assert "contacts_prepare_message_recipient" in prompt_names
+
+
 def test_apple_health_aggregates_domains(monkeypatch) -> None:
     monkeypatch.setattr(tools, "mail_health", lambda: {"ok": True, "server_name": "Mail"})
     monkeypatch.setattr(tools, "calendar_health", lambda: {"ok": True, "server_name": "Calendar"})

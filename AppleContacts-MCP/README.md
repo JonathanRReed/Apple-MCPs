@@ -1,22 +1,21 @@
 # Apple Contacts MCP
 
-Apple Contacts access for AI agents on macOS.
+MCP server for Apple Contacts on macOS.
 
-This MCP lets an agent inspect contacts, search by name, phone, or email, fetch full contact details, and resolve a contact into a message-ready recipient before sending through Apple Messages.
+Provides access to contacts for lookup, search, and recipient resolution. Use before sending messages to resolve names into phone numbers or email addresses.
 
-## Use This Server When
+## When to use
 
-- you want a contacts-only assistant
-- you want to validate or resolve a recipient before messaging
-- you want contact lookup separated from the all-in-one server
+- Contact-only assistant workflows
+- Recipient validation before messaging
+- Contact lookup separated from the all-in-one server
 
-## What This MCP Gives An Agent
+## Capabilities
 
-- contact listing
-- contact search
-- full contact detail lookup
-- message-recipient resolution from a contact
-- directory resources and recipient-check prompts
+- Contact listing and search
+- Full contact detail lookup
+- Message recipient resolution
+- Directory resources and recipient-check prompts
 - `contacts_health`, `contacts_permission_guide`, and `contacts_recheck_permissions` for launch checks
 
 ## Install On This Mac

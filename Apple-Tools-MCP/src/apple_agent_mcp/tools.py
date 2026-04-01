@@ -74,6 +74,7 @@ from apple_contacts_mcp.tools import (  # noqa: E402
     contacts_get_contact,
     contacts_health,
     contacts_list_contacts,
+    contacts_prepare_message_recipient_prompt,
     contacts_resolve_message_recipient,
     contacts_search_contacts,
 )
@@ -132,7 +133,15 @@ from apple_shortcuts_mcp.tools import (  # noqa: E402
 SERVER_INSTRUCTIONS = (
     "Use this server for unified Apple ecosystem access on macOS. "
     "Search here when the user wants one Apple-native entrypoint across Mail, Calendar, Reminders, Messages, Contacts, Notes, and Shortcuts. "
-    "Prefer cross-app overview resources and prompts first, then use namespaced domain tools for specific actions."
+    "Prefer Apple overview resources and prompts first, then use namespaced domain tools for specific actions. "
+    "Route person-based communication through Contacts before Messages or Mail, confirm if multiple contacts match, and omit service_name entirely on iMessage sends. "
+    "For Mail, searches require a query string such as sender, subject fragment, or '*'; if text versus email is ambiguous, ask once. "
+    "For Calendar writes, confirm date, time, duration, and title before creating or updating an event. "
+    "For Reminders, use due items and follow-ups, identify available lists on first use, and require due_date values with a timezone offset like 2026-03-29T23:59:00-05:00. "
+    "For Notes, identify available accounts and folders on first use and use Notes for reference material rather than time-sensitive work. "
+    "For Shortcuts, list available shortcuts before running one if the request is vague. "
+    "Disambiguate as follows: due date or time goes to Reminders, reference material with no action goes to Notes, and requests involving another person usually go to Messages or Mail after Contacts resolution. "
+    "Some clients defer tool schemas, so batch tool discovery on first use when needed."
 )
 
 mcp = FastMCP("Apple-Tools-MCP", instructions=SERVER_INSTRUCTIONS, json_response=True)
@@ -662,6 +671,18 @@ def apple_prepare_next_meeting_prompt() -> str:
     )
 
 
+@mcp.prompt(name="apple_route_request", title="Route Apple Request")
+def apple_route_request_prompt() -> str:
+    return (
+        "Route Apple requests carefully. Use Contacts before Messages or Mail when the user names a person, confirm multiple matches, "
+        "and omit service_name entirely on iMessage sends. Use Mail for email workflows, but remember search requires a query string and ask once if text versus email is unclear. "
+        "Use Calendar for scheduled time and confirm date, time, duration, and title before writing. Use Reminders for due items and follow-ups, identify the available lists on first use, "
+        "and require due_date values with timezone offsets like 2026-03-29T23:59:00-05:00. Use Notes for reference material, identify available accounts and folders on first use, and send time-sensitive items to Reminders or Calendar instead. "
+        "For Shortcuts, list available shortcuts before running when the request is vague. As a quick disambiguation rule: due date or time goes to Reminders, reference material with no action goes to Notes, "
+        "and requests involving another person usually go to Messages or Mail after Contacts resolution."
+    )
+
+
 @mcp.tool(
     title="Apple Health",
     description="Report aggregated health across the unified Apple ecosystem MCP domains.",
@@ -956,6 +977,7 @@ mcp.prompt(name="notes_cleanup", title="Clean Up Notes")(notes_cleanup_prompt)
 mcp.prompt(name="messages_triage_unread", title="Triage Unread")(messages_triage_unread_prompt)
 mcp.prompt(name="messages_summarize_thread", title="Summarize Thread")(messages_summarize_thread_prompt)
 mcp.prompt(name="messages_draft_reply", title="Draft Reply")(messages_draft_reply_prompt)
+mcp.prompt(name="contacts_prepare_message_recipient", title="Prepare Message Recipient")(contacts_prepare_message_recipient_prompt)
 
 
 def main() -> None:

@@ -1,22 +1,21 @@
 # Apple Shortcuts MCP
 
-Apple Shortcuts access for AI agents on macOS.
+MCP server for Apple Shortcuts on macOS.
 
-This MCP lets an agent discover shortcuts, inspect shortcut metadata, browse shortcut folders, and run shortcuts with structured input and output handling.
+Provides access to shortcuts for discovery, inspection, and execution. Run shortcuts with structured input and output handling.
 
-## Use This Server When
+## When to use
 
-- you want an agent to trigger existing Apple Shortcuts
-- you want a local automation bridge without shell orchestration
-- you want a smaller scope than the all-in-one server
+- Triggering existing Apple Shortcuts from agents
+- Local automation without shell orchestration
+- Smaller scope than the all-in-one server
 
-## What This MCP Gives An Agent
+## Capabilities
 
-- shortcut listing
-- folder listing
-- shortcut inspection
-- shortcut execution
-- shortcut resources and execution prompts
+- Shortcut and folder listing
+- Shortcut inspection
+- Shortcut execution with input/output handling
+- Shortcut resources and execution prompts
 - `shortcuts_health`, `shortcuts_permission_guide`, and `shortcuts_refresh_state` for launch checks
 
 ## Install On This Mac
@@ -80,8 +79,8 @@ claude mcp add --transport stdio --scope project \
 
 ## Prompting Notes
 
-- If the user asks for a shortcut vaguely, list the available shortcuts first.
-- Run a shortcut only after the intended shortcut is clear.
+- If the user asks for a shortcut vaguely, list available shortcuts first.
+- Run a shortcut only after confirming which shortcut to run.
 
 ## Related
 

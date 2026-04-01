@@ -1,24 +1,22 @@
 # Apple Messages MCP
 
-Apple Messages access for AI agents on macOS.
+MCP server for Apple Messages on macOS.
 
-This MCP lets an agent read Messages history, inspect threads, search messages, list attachments, and send or reply through Messages.app.
+Provides access to message history, conversation search, and sending via Messages.app. Requires Full Disk Access for history and Automation access for sending.
 
-## Use This Server When
+## When to use
 
-- you want an agent focused on Messages only
-- you want message history and sending without the all-in-one server
-- you want tighter app-level separation for permissions
+- Messages-only assistant workflows
+- Message history and sending without the all-in-one server
+- Tighter app-level separation for permissions
 
-## What This MCP Gives An Agent
+## Capabilities
 
-- conversation listing
-- conversation detail and pagination
-- message search
-- attachment metadata
-- send and reply tools
-- unread and recent conversation resources
-- health output that separates history access failures from automation failures
+- Conversation listing and detail with pagination
+- Message search and attachment metadata
+- Send and reply tools
+- Unread and recent conversation resources
+- Health checks that separate history access from automation failures
 - `messages_permission_guide` and `messages_recheck_permissions` for permission recovery
 
 ## Install On This Mac

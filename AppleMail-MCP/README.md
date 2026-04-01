@@ -1,23 +1,21 @@
 # Apple Mail MCP
 
-Apple Mail access for AI agents on macOS.
+MCP server for Apple Mail on macOS.
 
-This MCP lets an agent inspect mailboxes, search messages, read message details, compose drafts, and send mail through Apple Mail while keeping Mail as the system of record.
+Provides access to mailboxes, message search, reading, and composition. Keep Mail as the system of record while enabling agents to search, read, draft, and send email.
 
-## Use This Server When
+## When to use
 
-- you want an agent to work only with Apple Mail
-- you want tighter Mail-only permissions instead of the all-in-one server
-- you want draft and send workflows in the native Mail app
+- Mail-only assistant workflows
+- Tighter Mail-only permissions instead of the all-in-one server
+- Draft and send workflows through the native Mail app
 
-## What This MCP Gives An Agent
+## Capabilities
 
-- mailbox listing
-- message search
-- message read access
-- draft creation
-- message sending
-- mailbox resources and reply-oriented prompts
+- Mailbox listing
+- Message search and read access
+- Draft creation and message sending
+- Mailbox resources and reply-oriented prompts
 - `mail_health`, `mail_permission_guide`, and `mail_recheck_permissions` for launch and permission checks
 
 ## Install On This Mac

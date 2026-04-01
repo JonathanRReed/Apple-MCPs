@@ -1,23 +1,22 @@
 # Apple Reminders MCP
 
-Apple Reminders access for AI agents on macOS.
+MCP server for Apple Reminders on macOS.
 
-This MCP lets an agent list reminder lists, inspect reminders, create reminders, edit reminder details, complete tasks, uncomplete tasks, and delete reminders while keeping Reminders as the system of record.
+Provides access to reminder lists and tasks through EventKit. Keep Reminders as the system of record while enabling agents to read, create, update, complete, and delete reminders.
 
-## Use This Server When
+## When to use
 
-- you want a task and reminders assistant
-- you want reminders isolated from the rest of the Apple stack
-- you want EventKit-backed reminder management
+- Task and reminder assistant workflows
+- Reminders isolated from the rest of the Apple stack
+- EventKit-backed reminder management
 
-## What This MCP Gives An Agent
+## Capabilities
 
-- reminder-list discovery
-- reminder listing and detail
-- create and update tools
-- complete and uncomplete tools
-- today and list resources
-- planning and inbox-triage prompts
+- Reminder-list discovery
+- Reminder listing, detail, and CRUD operations
+- Complete and uncomplete tools
+- Today and list resources
+- Planning and inbox-triage prompts
 - `reminders_health`, `reminders_permission_guide`, and `reminders_recheck_permissions` for launch checks
 
 ## Install On This Mac
@@ -87,9 +86,9 @@ claude mcp add --transport stdio --scope project \
 
 ## Prompting Notes
 
-- Reminders are organized into lists. Identify the available lists on first use and set a default.
+- Reminders are organized into lists. Identify available lists on first use and set a default.
 - Use Reminders for due items, tasks, and follow-ups.
-- `due_date` requires a timezone offset in the form `yyyy-MM-ddTHH:mm:ss-HH:00`.
+- `due_date` requires a timezone offset: `yyyy-MM-ddTHH:mm:ss-HH:00`
 
 ## Related
 

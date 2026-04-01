@@ -1,21 +1,21 @@
 # Apple-Tools-MCP
 
-One Apple-native MCP server for macOS.
+Unified MCP server for Apple apps on macOS.
 
-This server gives an AI agent one entrypoint for Apple Mail, Calendar, Reminders, Messages, Contacts, Notes, and Shortcuts. It reuses the standalone servers in this repo and exposes one unified MCP surface on top of them.
+One entrypoint for Mail, Calendar, Reminders, Messages, Contacts, Notes, and Shortcuts. This server wraps the standalone servers in this repository and exposes a unified MCP interface.
 
-## What This MCP Gives An Agent
+## Capabilities
 
-- one place to read Apple context across apps
-- one place to act across apps
-- cross-app prompts for day planning, communications triage, and meeting prep
-- one install target instead of seven separate agent configs
+- Cross-app context reading
+- Unified action interface across all apps
+- Cross-app prompts for day planning, communications triage, and meeting prep
+- Single install target instead of seven separate configurations
 
-## Use This Server When
+## When to use
 
-- you want one personal-assistant MCP for the Apple apps in this repo
-- you want cross-app workflows, like using Calendar and Reminders together
-- you do not want to wire each standalone MCP separately
+- Personal assistant workflows across multiple Apple apps
+- Cross-app operations (e.g., Calendar and Reminders together)
+- Simpler setup without wiring each standalone MCP separately
 
 ## Install On This Mac
 

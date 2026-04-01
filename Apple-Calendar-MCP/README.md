@@ -1,22 +1,21 @@
 # Apple Calendar
 
-Apple Calendar access for AI agents on macOS.
+MCP server for Apple Calendar on macOS.
 
-This MCP lets an agent list calendars, read events, create events, update events, and delete events while keeping Calendar as the system of record.
+Provides access to calendars and events through EventKit. Keep Calendar as the system of record while enabling agents to read, create, update, and delete events.
 
-## Use This Server When
+## When to use
 
-- you want a calendar-only assistant
-- you want EventKit-backed calendar access without the all-in-one server
-- you want tighter app-level separation for scheduling workflows
+- Calendar-only assistant workflows
+- EventKit-backed calendar access without the all-in-one server
+- Tighter app-level separation for scheduling
 
-## What This MCP Gives An Agent
+## Capabilities
 
-- calendar discovery
-- event listing and detail
-- event create, update, and delete
-- today resources and planning prompts
-- health output that distinguishes empty results from blocked Calendar access
+- Calendar discovery and listing
+- Event CRUD operations (create, read, update, delete)
+- Today resources and planning prompts
+- Health checks that distinguish empty results from blocked access
 - `calendar_permission_guide` and `calendar_recheck_permissions` for permission recovery
 
 ## Install On This Mac
@@ -87,8 +86,8 @@ claude mcp add --transport stdio --scope project \
 
 ## Prompting Notes
 
-- Before writing, confirm the date, the time, the duration, and the event title.
-- Use Calendar for scheduled time blocks, meetings, appointments, and events.
+- Before creating events, confirm the date, time, duration, and title with the user
+- Use Calendar for scheduled time blocks, meetings, and appointments
 
 ## Related
 

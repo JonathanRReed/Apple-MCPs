@@ -2,7 +2,7 @@
 
 Apple-native MCP servers for macOS.
 
-This repo gives AI agents direct, local access to core Apple apps through the Model Context Protocol, or MCP. In practice, that means an agent can call structured tools, read lightweight resources, and use built-in prompts instead of trying to control your Mac blindly.
+This repository gives AI agents direct, local access to core Apple apps through the Model Context Protocol (MCP). Agents can use structured tools, read resources, and follow built-in prompts instead of attempting to control your Mac blindly.
 
 ## What MCP Means Here
 
@@ -27,8 +27,8 @@ Because these servers run on your Mac, the Apple apps stay the system of record.
 
 ## Which One To Use
 
-- Use `Apple-Tools-MCP` if you want one assistant entrypoint across the Apple apps in this repo.
-- Use the standalone servers if you want tighter app boundaries, simpler permissions, or separate agent configs.
+- Use `Apple-Tools-MCP` for a single entrypoint across all Apple apps
+- Use standalone servers for tighter app boundaries, simpler permissions, or separate agent configurations
 
 ## Agent Routing
 

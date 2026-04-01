@@ -1,23 +1,21 @@
 # Apple Notes MCP
 
-Apple Notes access for AI agents on macOS.
+MCP server for Apple Notes on macOS.
 
-This MCP lets an agent inspect accounts and folders, list and search notes, create and update notes, move notes, delete notes, and organize note folders while keeping Notes as the system of record.
+Provides access to notes and folders for creation, organization, and management. Keep Notes as the system of record while enabling agents to read, create, update, move, and delete notes.
 
-## Use This Server When
+## When to use
 
-- you want a notes-only assistant
-- you want stronger isolation than the all-in-one server
-- you want structured note and folder operations through the native Notes app
+- Notes-only assistant workflows
+- Stronger isolation than the all-in-one server
+- Structured note and folder operations through the native Notes app
 
-## What This MCP Gives An Agent
+## Capabilities
 
-- account and folder listing
-- note listing and search
-- note create, update, move, and delete
-- folder create, rename, and delete
-- recent-note resources and organization prompts
-- Notes mutations that resolve folders explicitly before create, update, and move operations
+- Account and folder listing
+- Note listing, search, and CRUD operations
+- Folder create, rename, and delete
+- Recent-note resources and organization prompts
 - `notes_health`, `notes_permission_guide`, and `notes_recheck_permissions` for launch checks
 
 ## Install On This Mac
@@ -87,8 +85,8 @@ claude mcp add --transport stdio --scope project \
 
 ## Prompting Notes
 
-- Multiple accounts may each contain a `Notes` folder. Identify the available accounts and folders on first use and set a default.
-- Use Notes for reference material, summaries, and saved context.
+- Multiple accounts may each contain a Notes folder. Identify available accounts and folders on first use and set a default.
+- Use Notes for reference material and saved context.
 - Time-sensitive items should go to Reminders or Calendar instead.
 
 ## Related

@@ -18,10 +18,17 @@ Local MCP server for file and folder access on macOS.
 
 ## Install On This Mac
 
+<details>
+<summary>Quick start</summary>
+
 ```bash
 cd /path/to/Apple-MCPs/AppleFiles-MCP
 ./start.sh
 ```
+
+On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the server over `stdio`.
+
+</details>
 
 ## Install In AI Agents
 
@@ -52,3 +59,12 @@ cd /path/to/Apple-MCPs/AppleFiles-MCP
 - `files_health`
 - `files_permission_guide`
 - `files_list_allowed_roots`
+
+## Launch Checklist
+
+- Start the server once with `./start.sh`
+- Add `/path/to/Apple-MCPs/AppleFiles-MCP/start.sh` to your MCP client
+- Reload or reconnect the client so the Files tool surface is loaded into context
+- Call `files_health` first
+- If access looks wrong, call `files_permission_guide`
+- Confirm `APPLE_FILES_MCP_ALLOWED_ROOTS` before any file mutation workflow

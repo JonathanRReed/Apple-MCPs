@@ -54,3 +54,4 @@ htmlcov/
 # Misc
 *.bak
 *.tmp
+docs/private/

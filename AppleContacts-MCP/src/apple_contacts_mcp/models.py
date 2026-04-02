@@ -58,6 +58,25 @@ class ContactResponse(BaseModel):
     contact: ContactDetail
 
 
+class DuplicateEvidence(BaseModel):
+    kind: Literal["name", "nickname", "phone", "email"]
+    value: str
+
+
+class DuplicateCandidateGroup(BaseModel):
+    duplicate_group_id: str
+    confidence: float
+    evidence: list[DuplicateEvidence] = Field(default_factory=list)
+    contacts: list[ContactSummary] = Field(default_factory=list)
+    merge_recommended: bool = False
+
+
+class DuplicateContactListResponse(BaseModel):
+    ok: Literal[True] = True
+    groups: list[DuplicateCandidateGroup]
+    count: int
+
+
 class ResolvedRecipientResponse(BaseModel):
     ok: Literal[True] = True
     contact: ContactDetail
@@ -77,4 +96,3 @@ class DeleteContactResponse(BaseModel):
     ok: Literal[True] = True
     contact_id: str
     deleted: bool
-

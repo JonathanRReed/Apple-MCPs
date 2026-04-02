@@ -33,6 +33,9 @@ class FileEntry(BaseModel):
     size_bytes: int | None = None
     modified_at: str | None = None
     extension: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    is_icloud: bool = False
+    location_kind: str = "local"
 
 
 class FileListResponse(BaseModel):
@@ -60,6 +63,37 @@ class FileMutationResponse(BaseModel):
     path: str
     action: str
     destination: str | None = None
+
+
+class FileTagsResponse(BaseModel):
+    ok: bool = True
+    path: str
+    tags: list[str]
+    count: int
+    is_icloud: bool = False
+
+
+class FileActionResponse(BaseModel):
+    ok: bool = True
+    path: str
+    action: str
+    opened: bool = True
+    revealed: bool = False
+    is_icloud: bool = False
+
+
+class ICloudStatusResponse(BaseModel):
+    ok: bool = True
+    available: bool
+    root_path: str | None = None
+    allowed_root_present: bool = False
+    allowed_roots: list[dict[str, object]] = Field(default_factory=list)
+
+
+class RecentLocationsResponse(BaseModel):
+    ok: bool = True
+    locations: list[FileEntry]
+    count: int
 
 
 class RootsResponse(BaseModel):

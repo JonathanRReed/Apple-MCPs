@@ -1,6 +1,6 @@
 # Apple Files MCP
 
-Local MCP server for file and folder access on macOS.
+Local MCP server for file, Finder-adjacent, and iCloud Drive workflows on macOS.
 
 ## Capabilities
 
@@ -10,10 +10,15 @@ Local MCP server for file and folder access on macOS.
 - read UTF-8 text files
 - inspect file metadata
 - list recent files
+- open a path in the default app
+- reveal a path in Finder
+- read and write Finder tags
+- list recent locations
+- report local iCloud Drive availability
 - create folders
 - move or rename paths
 - delete files or empty folders
-- resources: `files://allowed-roots`, `files://recent`
+- resources: `files://allowed-roots`, `files://recent`, `files://recent-locations`, `files://icloud-status`
 - prompts: `files_prepare_attachment`, `files_organize_workspace`
 
 ## Install On This Mac
@@ -39,7 +44,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
       "command": "/path/to/Apple-MCPs/AppleFiles-MCP/start.sh",
       "args": [],
       "env": {
-        "APPLE_FILES_MCP_ALLOWED_ROOTS": "/Users/you/Desktop,/Users/you/Documents,/Users/you/Downloads",
+        "APPLE_FILES_MCP_ALLOWED_ROOTS": "/Users/you/Desktop,/Users/you/Documents,/Users/you/Downloads,/Users/you/Library/Mobile Documents/com~apple~CloudDocs",
         "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage"
       }
     }
@@ -50,8 +55,10 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 ## Prompting Notes
 
 - Use this server before Mail, Messages, Notes, or Shortcuts when the user references a local file or attachment.
+- Use this server for Finder-style workflows, iCloud Drive paths, and file tagging, not raw shell fallbacks.
 - Confirm the exact path before sending or attaching a file.
 - Keep `APPLE_FILES_MCP_ALLOWED_ROOTS` narrow for safety.
+- Include the local iCloud Drive root when you want the assistant to work with iCloud documents.
 - Use `APPLE_FILES_MCP_SAFETY_MODE=safe_manage` for assistant workflows that need create and move, and `full_access` only for delete workflows.
 
 ## Health And Recovery
@@ -59,6 +66,9 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 - `files_health`
 - `files_permission_guide`
 - `files_list_allowed_roots`
+- `files_get_icloud_status`
+- `files_list_recent_locations`
+- `files_get_tags`
 
 ## Launch Checklist
 

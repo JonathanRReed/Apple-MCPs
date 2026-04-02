@@ -25,6 +25,8 @@ READ_ONLY_ACTIONS = {
     "system_get_dock_settings",
     "system_get_finder_settings",
     "system_get_settings_snapshot",
+    "system_get_focus_status",
+    "system_get_context_snapshot",
     "system_read_preference_domain",
 }
 

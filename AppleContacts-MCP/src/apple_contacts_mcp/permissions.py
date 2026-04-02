@@ -7,6 +7,8 @@ READ_ACTIONS = frozenset(
         "contacts_search_contacts",
         "contacts_get_contact",
         "contacts_resolve_message_recipient",
+        "contacts_find_duplicates",
+        "contacts_suggest_merge_candidates",
     }
 )
 

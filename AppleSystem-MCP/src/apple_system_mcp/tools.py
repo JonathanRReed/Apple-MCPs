@@ -6,13 +6,13 @@ from mcp.server.fastmcp import Context, FastMCP
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_system_mcp.config import load_settings
-from apple_system_mcp.models import ClipboardResponse, ErrorResponse, GuiActionResponse, GuiMenuItemsResponse, HealthResponse, NotificationResponse, OpenAppResponse, PreferenceDomainResponse, RunningAppsResponse, SettingMutationResponse, SettingsDomainsResponse, SettingsSectionResponse, SettingsSnapshotResponse, StatusResponse, ToolError
+from apple_system_mcp.models import ClipboardResponse, ErrorResponse, FocusStatusResponse, GuiActionResponse, GuiMenuItemsResponse, HealthResponse, NotificationResponse, OpenAppResponse, PreferenceDomainResponse, RunningAppsResponse, SettingMutationResponse, SettingsDomainsResponse, SettingsSectionResponse, SettingsSnapshotResponse, StatusResponse, SystemContextResponse, ToolError
 from apple_system_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_system_mcp.system_bridge import SystemBridgeError, build_bridge
 
 SERVER_INSTRUCTIONS = (
     "Use this server for macOS system context and control. "
-    "Search here when the user wants battery state, the frontmost app, running applications, clipboard access, local notifications, application launch, assistant-relevant macOS settings reads or writes, or bounded GUI fallback automation for the frontmost app."
+    "Search here when the user wants battery state, the frontmost app, running applications, clipboard access, local notifications, truthful Focus support metadata, application launch, assistant-relevant macOS settings reads or writes, or bounded GUI fallback automation for the frontmost app."
 )
 
 mcp = FastMCP("Apple System MCP", instructions=SERVER_INSTRUCTIONS, json_response=True)
@@ -106,6 +106,18 @@ def system_settings_resource() -> str:
     return _resource_json(_bridge().settings_snapshot())
 
 
+@mcp.resource(
+    "system://context",
+    name="system_context",
+    title="System Context Snapshot",
+    description="Current macOS context, including frontmost app, battery, and truthful Focus support metadata.",
+    mime_type="application/json",
+    annotations=Annotations(audience=["assistant"], priority=0.82),
+)
+def system_context_resource() -> str:
+    return _resource_json(_bridge().context_snapshot())
+
+
 @mcp.prompt(name="system_capture_context", title="Capture System Context")
 def system_capture_context_prompt() -> str:
     return (
@@ -134,6 +146,8 @@ def system_health() -> HealthResponse:
         "get_dock_settings",
         "get_finder_settings",
         "get_settings_snapshot",
+        "get_focus_status",
+        "get_context_snapshot",
         "read_preference_domain",
         "resources",
         "prompts",
@@ -184,15 +198,19 @@ def system_permission_guide() -> dict[str, object]:
         "ok": True,
         "domain": "system",
         "can_prompt_in_app": True,
-        "requires_manual_system_settings": False,
+        "requires_manual_system_settings": True,
         "steps": [
             "Read-only system tools usually work without a prompt.",
             "If System Events prompts for permission, approve the macOS automation request.",
             "GUI fallback tools require Accessibility access for the host app in System Settings -> Privacy & Security -> Accessibility.",
             "Settings inspection tools read macOS preference domains through the defaults system.",
+            "Focus support is best-effort and truthful on unsigned local installs, and this MCP does not claim Notification Center history support where macOS does not expose it cleanly.",
             "If clipboard or notification behavior is blocked, re-open the host app after granting access.",
         ],
-        "notes": [f"Current safety mode: {settings.safety_mode}"],
+        "notes": [
+            f"Current safety mode: {settings.safety_mode}",
+            "Accessibility access is a manual System Settings step for GUI fallback tools.",
+        ],
     }
 
 
@@ -363,6 +381,34 @@ def system_get_settings_snapshot() -> SettingsSnapshotResponse | ErrorResponse:
             dock=snapshot["dock"],
             finder=snapshot["finder"],
         )
+    except (SafetyError, SystemBridgeError) as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Get Focus Status",
+    description="Return truthful Focus support metadata and the best available current Focus state.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def system_get_focus_status() -> FocusStatusResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("system_get_focus_status")
+        return FocusStatusResponse(**_bridge().focus_status())
+    except (SafetyError, SystemBridgeError) as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Get System Context Snapshot",
+    description="Return a richer macOS context snapshot, including battery, frontmost app, and Focus metadata.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def system_get_context_snapshot() -> SystemContextResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("system_get_context_snapshot")
+        return SystemContextResponse(**_bridge().context_snapshot())
     except (SafetyError, SystemBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 

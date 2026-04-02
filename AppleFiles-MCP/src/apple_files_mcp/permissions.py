@@ -20,11 +20,19 @@ READ_ONLY_ACTIONS = {
     "files_get_file_info",
     "files_read_text_file",
     "files_recent_files",
+    "files_get_tags",
+    "files_list_recent_locations",
+    "files_get_icloud_status",
 }
 
 MANAGE_ACTIONS = {
     "files_create_folder",
     "files_move_path",
+    "files_open_path",
+    "files_reveal_in_finder",
+    "files_set_tags",
+    "files_add_tags",
+    "files_remove_tags",
 }
 
 FULL_ACCESS_ACTIONS = {

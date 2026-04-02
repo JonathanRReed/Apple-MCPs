@@ -549,6 +549,47 @@ class SystemBridge:
         )
         return target_app
 
+    def focus_status(self) -> dict[str, object]:
+        observed_at = datetime.now().astimezone().isoformat()
+        checked_sources: list[str] = []
+
+        for domain in ("com.apple.controlcenter", "com.apple.ncprefs"):
+            checked_sources.append(domain)
+            try:
+                self.read_preference_domain(domain)
+            except SystemBridgeError:
+                continue
+
+        return {
+            "focus_supported": False,
+            "focus_active": None,
+            "focus_name": None,
+            "observed_at": observed_at,
+            "source": "unsupported_local_install",
+            "confidence": 0.0,
+            "notes": [
+                "No reliable unsigned local API was found for the active Focus mode on this setup.",
+                "Checked preference domains: " + ", ".join(checked_sources) + ".",
+                "Notification Center history is also not exposed through this MCP.",
+            ],
+        }
+
+    def context_snapshot(self) -> dict[str, object]:
+        frontmost_application = self.frontmost_application()
+        running_apps = self.running_apps()
+        return {
+            "observed_at": datetime.now().astimezone().isoformat(),
+            "battery": self.battery().model_dump(),
+            "frontmost_app": frontmost_application.name,
+            "frontmost_application": frontmost_application.model_dump(),
+            "running_apps_count": len(running_apps),
+            "focus": self.focus_status(),
+            "notification_history_supported": False,
+            "notification_history_notes": [
+                "Notification Center history is not exposed through a reliable unsigned local API on this setup.",
+            ],
+        }
+
     def read_preference_domain(self, domain: str, current_host: bool = False) -> dict[str, object]:
         normalized_domain = domain.strip()
         if not normalized_domain:

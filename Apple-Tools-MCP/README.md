@@ -16,8 +16,10 @@ One entrypoint for Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcu
 - Preview, audit, and undo for reversible actions
 - Files-aware attachment and document workflows within scoped roots
 - System-aware workflows using the frontmost app, clipboard, notifications, running apps, and assistant-relevant macOS settings
+- Truthful Focus context and combined system snapshots for briefing and routing
 - Explicit macOS settings writes for appearance, Finder, Dock, and key accessibility preferences
 - Bounded GUI fallback tools when a native app-domain MCP cannot complete a task directly
+- Finder-aware file workflows, Finder tags, recent locations, and iCloud Drive awareness through Apple Files
 - Travel-aware workflows using Apple Maps for place search and route estimates
 - Long-running briefing and triage tools for clients that support MCP tasks
 - Prompt fallback via `apple_list_prompts` and `apple_get_prompt`
@@ -70,7 +72,7 @@ This installs `Apple-Tools-MCP` plus every standalone package into one environme
         "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
         "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage",
-        "APPLE_FILES_MCP_ALLOWED_ROOTS": "/Users/you/Desktop,/Users/you/Documents,/Users/you/Downloads",
+        "APPLE_FILES_MCP_ALLOWED_ROOTS": "/Users/you/Desktop,/Users/you/Documents,/Users/you/Downloads,/Users/you/Library/Mobile Documents/com~apple~CloudDocs",
         "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_manage",
@@ -103,9 +105,11 @@ claude mcp add --transport stdio --scope project \
 - Delegated tools from Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps
 - Suggestions and permission guides
 - Files, System, and Maps resources and prompts
+- Unified wrappers for Focus, system context, Finder reveal, file open, and file tagging
 - Preference tools: get, detect, and update defaults and contact preferences
 - Communication tools: prepare, send, preview
 - Workflow tools: archive, create reminders and notes with defaults, preview those defaulted writes, capture follow-ups, preview follow-up capture, and summarize event collaboration
+- Launch-hardening tools: strict Maps wrappers, duplicate-contact detection, digest-folder helpers, and Shortcut bridge routing
 - Audit tools: list recent actions and undo
 - Briefing tools: daily, weekly, and communications triage (with task support)
 - Prompt fallback: `apple_list_prompts` and `apple_get_prompt`
@@ -143,9 +147,13 @@ Apple-Tools-MCP also stores recent assistant actions in `~/.apple-tools-mcp/acti
 - Keep contact info current so communication routing works reliably.
 - Use Files before Mail, Messages, Notes, or Shortcuts when the request involves local documents.
 - Check System context before interruptive actions, especially when the frontmost app, clipboard, or battery state matters.
+- Treat Focus support as truthful best-effort. Use it when available, and do not invent a current Focus mode if the MCP reports unsupported on the local setup.
 - Use `apple_update_system_setting` for macOS preference changes and `apple_control_frontmost_app` only when a native app-domain tool cannot complete the task.
 - Prefer explicit System settings tools over generic GUI automation when the request is really a macOS preference change.
 - Use GUI fallback tools only when the native domain MCP cannot complete the task and the client has granted Accessibility access.
+- Use native Maps MCP tools for maps search and directions. Do not substitute shell, web, or external map providers when validating supported Maps behavior.
+- Use Shortcuts as the explicit bridge when native domain support is missing, rather than ad hoc shell or GUI work.
+- Use the dedicated digest folder helpers before saving daily or weekly briefings into Notes.
 - Use Maps when routing or travel time affects scheduling or communication.
 - Use `apple_list_recent_actions` and `apple_undo_action` for reversible operations.
 
@@ -160,6 +168,8 @@ Apple-Tools-MCP also stores recent assistant actions in `~/.apple-tools-mcp/acti
 - Shortcuts usually works without a separate privacy prompt
 - Files access is controlled by `APPLE_FILES_MCP_ALLOWED_ROOTS`, not by a macOS privacy prompt
 - System actions may trigger System Events, Accessibility, or automation prompts depending on the host app
+- Focus status is best-effort and truthful on unsigned local installs
+- Notification Center history is not claimed where macOS does not expose it cleanly
 - Maps does not need a privacy prompt, but search and directions require the local Swift helper to compile
 
 ## Launch Checklist

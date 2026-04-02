@@ -9,12 +9,15 @@ Recommended server:
 
 Expected flow:
 1. Resolve the person through Contacts first.
-2. If multiple contacts match, ask once and do not send yet.
-3. Choose Messages only after the contact resolves to a message-ready phone number or email.
-4. Omit `service_name` on iMessage sends.
+2. Check for likely duplicate contacts before sending.
+3. If multiple contacts or duplicate records match, ask once and do not send yet.
+4. Choose Messages only after the contact resolves to a message-ready phone number or email.
+5. Omit `service_name` on iMessage sends.
 
 Core tools:
 - `apple_prepare_communication`
+- `apple_prepare_unique_contact`
+- `apple_find_duplicate_contacts`
 - `apple_preview_communication`
 - `apple_send_communication`
 
@@ -54,13 +57,15 @@ Recommended server:
 Expected flow:
 1. Read calendar state, reminders, recent messages, recent notes, system context, and recent files.
 2. Generate a concise daily or weekly summary.
-3. Store the result in Notes when the user asks for a persistent digest.
-4. If the client supports MCP tasks, task-capable tools may run asynchronously.
-5. If the client does not support tasks, the same tools should still return a direct result.
+3. Ensure the dedicated digest folder exists before storing a persistent digest.
+4. Store the result in the dedicated digest folder when the user asks for a persistent digest.
+5. If the client supports MCP tasks, task-capable tools may run asynchronously.
+6. If the client does not support tasks, the same tools should still return a direct result.
 
 Core tools:
 - `apple_generate_daily_briefing`
 - `apple_generate_weekly_briefing`
+- `apple_ensure_digest_folder`
 - `apple_create_note_with_defaults`
 
 ## 4. Create an event, then create follow-up reminders
@@ -86,6 +91,12 @@ Standalone equivalent:
 ## Launch expectations
 
 - Contacts-first routing for person-based communication
+- duplicate-contact detection before person-targeted sends when ambiguity is likely
 - Health check before the first real action
 - Permission-guide fallback when access is blocked
 - Preview before destructive or externally visible actions when the client wants a confirm step
+- No shell, curl, external API, or UI-scrape fallback for capabilities with a native MCP
+- Maps acceptance requires native Apple Maps MCP success, not just opening an Apple Maps URL
+- Focus and notifications must be truthful. Do not invent a current Focus mode or Notification Center history.
+- Finder and iCloud workflows should go through Apple Files, not raw shell fallbacks
+- Shortcuts should be the first bridge when native coverage is insufficient

@@ -7,13 +7,13 @@ from mcp.types import Annotations, ToolAnnotations
 
 from apple_files_mcp.config import load_settings
 from apple_files_mcp.files_bridge import FilesBridgeError, build_bridge
-from apple_files_mcp.models import ErrorResponse, FileListResponse, FileMutationResponse, FileResponse, FileTextResponse, HealthResponse, RootsResponse, ToolError
+from apple_files_mcp.models import ErrorResponse, FileActionResponse, FileListResponse, FileMutationResponse, FileResponse, FileTagsResponse, FileTextResponse, HealthResponse, ICloudStatusResponse, RecentLocationsResponse, RootsResponse, ToolError
 from apple_files_mcp.permissions import SafetyError, ensure_action_allowed
 
 SERVER_INSTRUCTIONS = (
     "Use this server for file and folder access on macOS. "
     "Search here when the user wants to inspect Downloads, Desktop, Documents, iCloud Drive, or other allowed folders, "
-    "read a text file, prepare an attachment, create a folder, move a file, or delete a path."
+    "read a text file, prepare an attachment, create a folder, move a file, open or reveal a path, manage Finder tags, or delete a path."
 )
 
 mcp = FastMCP("Apple Files MCP", instructions=SERVER_INSTRUCTIONS, json_response=True)
@@ -57,6 +57,31 @@ def files_recent_resource() -> str:
     return _resource_json({"files": [item.model_dump() for item in entries], "count": len(entries)})
 
 
+@mcp.resource(
+    "files://recent-locations",
+    name="files_recent_locations",
+    title="Recent File Locations",
+    description="Recently active parent folders across the allowed roots, including iCloud-aware metadata.",
+    mime_type="application/json",
+    annotations=Annotations(audience=["assistant"], priority=0.78),
+)
+def files_recent_locations_resource() -> str:
+    entries = _bridge().list_recent_locations(limit=15)
+    return _resource_json({"locations": [item.model_dump() for item in entries], "count": len(entries)})
+
+
+@mcp.resource(
+    "files://icloud-status",
+    name="files_icloud_status",
+    title="iCloud Drive Status",
+    description="Availability and allowed-root status for local iCloud Drive access.",
+    mime_type="application/json",
+    annotations=Annotations(audience=["assistant"], priority=0.76),
+)
+def files_icloud_status_resource() -> str:
+    return _resource_json(_bridge().icloud_status())
+
+
 @mcp.prompt(name="files_prepare_attachment", title="Prepare Attachment")
 def files_prepare_attachment_prompt() -> str:
     return (
@@ -88,11 +113,14 @@ def files_health() -> HealthResponse:
         "get_file_info",
         "read_text_file",
         "recent_files",
+        "get_tags",
+        "list_recent_locations",
+        "get_icloud_status",
         "resources",
         "prompts",
     ]
     if settings.safety_mode in {"safe_manage", "full_access"}:
-        capabilities.extend(["create_folder", "move_path"])
+        capabilities.extend(["create_folder", "move_path", "open_path", "reveal_in_finder", "set_tags", "add_tags", "remove_tags"])
     if settings.safety_mode == "full_access":
         capabilities.append("delete_path")
     return HealthResponse(
@@ -123,6 +151,7 @@ def files_permission_guide() -> dict[str, object]:
             "Use files_list_allowed_roots to inspect the current file access scope.",
             "If you need a broader file scope, restart the MCP with APPLE_FILES_MCP_ALLOWED_ROOTS set to a comma-separated list of root folders.",
             "Use APPLE_FILES_MCP_SAFETY_MODE=safe_manage or full_access only when mutation tools are actually needed.",
+            "iCloud Drive is supported through the local Mobile Documents root when it exists on this Mac.",
         ],
         "notes": [
             f"Current safety mode: {settings.safety_mode}",
@@ -212,6 +241,127 @@ def files_recent_files(limit: int = 25) -> FileListResponse | ErrorResponse:
         ensure_action_allowed("files_recent_files")
         entries = _bridge().recent_files(limit=limit)
         return FileListResponse(base_path="allowed-roots", entries=entries, count=len(entries))
+    except (SafetyError, FilesBridgeError) as exc:
+        return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))
+
+
+@mcp.tool(
+    title="Open Path",
+    description="Open a file or folder in the default app. Requires safe_manage or full_access safety mode.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+    structured_output=True,
+)
+def files_open_path(path: str) -> FileActionResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("files_open_path")
+        opened = _bridge().open_path(path)
+        info = _bridge().file_info(opened)
+        return FileActionResponse(path=opened, action="opened", opened=True, revealed=False, is_icloud=info.is_icloud)
+    except (SafetyError, FilesBridgeError) as exc:
+        return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))
+
+
+@mcp.tool(
+    title="Reveal In Finder",
+    description="Reveal a file or folder in Finder. Requires safe_manage or full_access safety mode.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+    structured_output=True,
+)
+def files_reveal_in_finder(path: str) -> FileActionResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("files_reveal_in_finder")
+        revealed = _bridge().reveal_in_finder(path)
+        info = _bridge().file_info(revealed)
+        return FileActionResponse(path=revealed, action="revealed", opened=False, revealed=True, is_icloud=info.is_icloud)
+    except (SafetyError, FilesBridgeError) as exc:
+        return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))
+
+
+@mcp.tool(
+    title="Get Tags",
+    description="Read Finder tags for a file or folder inside the allowed roots.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def files_get_tags(path: str) -> FileTagsResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("files_get_tags")
+        resolved_path, tags, is_icloud = _bridge().get_tags(path)
+        return FileTagsResponse(path=resolved_path, tags=tags, count=len(tags), is_icloud=is_icloud)
+    except (SafetyError, FilesBridgeError) as exc:
+        return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))
+
+
+@mcp.tool(
+    title="Set Tags",
+    description="Replace Finder tags for a file or folder. Requires safe_manage or full_access safety mode.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def files_set_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("files_set_tags")
+        resolved_path, current_tags, is_icloud = _bridge().set_tags(path, tags)
+        return FileTagsResponse(path=resolved_path, tags=current_tags, count=len(current_tags), is_icloud=is_icloud)
+    except (SafetyError, FilesBridgeError) as exc:
+        return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))
+
+
+@mcp.tool(
+    title="Add Tags",
+    description="Add Finder tags to a file or folder. Requires safe_manage or full_access safety mode.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def files_add_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("files_add_tags")
+        resolved_path, current_tags, is_icloud = _bridge().add_tags(path, tags)
+        return FileTagsResponse(path=resolved_path, tags=current_tags, count=len(current_tags), is_icloud=is_icloud)
+    except (SafetyError, FilesBridgeError) as exc:
+        return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))
+
+
+@mcp.tool(
+    title="Remove Tags",
+    description="Remove Finder tags from a file or folder. Requires safe_manage or full_access safety mode.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def files_remove_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("files_remove_tags")
+        resolved_path, current_tags, is_icloud = _bridge().remove_tags(path, tags)
+        return FileTagsResponse(path=resolved_path, tags=current_tags, count=len(current_tags), is_icloud=is_icloud)
+    except (SafetyError, FilesBridgeError) as exc:
+        return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))
+
+
+@mcp.tool(
+    title="List Recent Locations",
+    description="List recently active parent folders across the allowed roots, including iCloud-aware metadata.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def files_list_recent_locations(limit: int = 15) -> RecentLocationsResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("files_list_recent_locations")
+        entries = _bridge().list_recent_locations(limit=limit)
+        return RecentLocationsResponse(locations=entries, count=len(entries))
+    except (SafetyError, FilesBridgeError) as exc:
+        return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))
+
+
+@mcp.tool(
+    title="Get iCloud Status",
+    description="Report whether local iCloud Drive is available and whether it is part of the current allowed roots.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def files_get_icloud_status() -> ICloudStatusResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("files_get_icloud_status")
+        return ICloudStatusResponse(**_bridge().icloud_status())
     except (SafetyError, FilesBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))
 

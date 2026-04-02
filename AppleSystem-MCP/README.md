@@ -1,6 +1,6 @@
 # Apple System MCP
 
-Local MCP server for macOS system context, assistant-relevant settings reads, explicit settings writes, and bounded GUI fallback automation.
+Local MCP server for macOS system context, truthful Focus support metadata, assistant-relevant settings reads, explicit settings writes, and bounded GUI fallback automation.
 
 ## Capabilities
 
@@ -14,14 +14,15 @@ Local MCP server for macOS system context, assistant-relevant settings reads, ex
 - accessibility settings
 - Dock settings
 - Finder settings
+- truthful Focus support metadata
+- combined system context snapshots
 - appearance mode write
 - Finder visibility and bar writes
 - Dock write controls for autohide and recent apps
 - accessibility writes for reduce motion, increase contrast, and reduce transparency
 - GUI fallback tools for menu clicks, key presses, text entry, button clicks, and pop-up selection
 - preference-domain inspection via `defaults export`
-- resources: `system://status`, `system://applications`
-- resource: `system://settings`
+- resources: `system://status`, `system://applications`, `system://settings`, `system://context`
 - prompt: `system_capture_context`
 
 ## Install On This Mac
@@ -62,12 +63,15 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 - Use `APPLE_SYSTEM_MCP_SAFETY_MODE=safe_manage` for assistant-grade operation.
 - Keep `safe_readonly` only for audit-only or context-only deployments.
 - Keep GUI fallback narrow. Prefer native app-domain MCPs first, then explicit System tools, then GUI tools only when native support is missing.
+- Focus reporting is best-effort and truthful. This server does not claim Notification Center history support when macOS does not expose it cleanly on an unsigned local install.
 
 ## Health And Recovery
 
 - `system_health`
 - `system_permission_guide`
 - `system_get_settings_snapshot`
+- `system_get_focus_status`
+- `system_get_context_snapshot`
 - `system_read_preference_domain`
 
 ## Assistant-Grade Control Surface

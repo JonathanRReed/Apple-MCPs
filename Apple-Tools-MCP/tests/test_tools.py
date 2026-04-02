@@ -7,7 +7,7 @@ from mcp.server.fastmcp import FastMCP
 from apple_agent_mcp.conformance import enable_conformance_mode
 from apple_agent_mcp import tools
 from apple_agent_mcp.config import load_settings
-from apple_contacts_mcp.models import ContactDetail, ContactMethod, ResolvedRecipientResponse
+from apple_contacts_mcp.models import ContactDetail, ContactMethod, DuplicateCandidateGroup, DuplicateEvidence, ResolvedRecipientResponse
 
 
 def test_registered_tool_names_cover_core_domains() -> None:
@@ -30,6 +30,20 @@ def test_registered_tool_names_cover_core_domains() -> None:
     assert "apple_create_event_interactive" in tools.REGISTERED_TOOL_NAMES
     assert "apple_archive_message" in tools.REGISTERED_TOOL_NAMES
     assert "apple_capture_follow_up_from_mail" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_maps_search_places_strict" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_maps_get_directions_strict" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_find_duplicate_contacts" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_prepare_unique_contact" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_detect_digest_folder" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_set_digest_folder" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_ensure_digest_folder" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_list_shortcuts_for_capability" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_route_or_run_shortcut" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_get_focus_status" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_get_system_context" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_open_file_path" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_reveal_in_finder" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_tag_file" in tools.REGISTERED_TOOL_NAMES
     assert "apple_open_application" in tools.REGISTERED_TOOL_NAMES
     assert "apple_update_system_setting" in tools.REGISTERED_TOOL_NAMES
     assert "apple_control_frontmost_app" in tools.REGISTERED_TOOL_NAMES
@@ -207,6 +221,7 @@ def test_apple_get_prompt_fallback(monkeypatch) -> None:
 
 def test_apple_today_resource_combines_domain_payloads(monkeypatch) -> None:
     monkeypatch.setattr(tools, "system_status_resource", lambda: json.dumps({"frontmost_app": "Mail"}))
+    monkeypatch.setattr(tools, "system_context_resource", lambda: json.dumps({"focus": {"focus_supported": False}}))
     monkeypatch.setattr(tools, "calendar_events_today_resource", lambda: json.dumps({"events": [{"title": "Standup"}]}))
     monkeypatch.setattr(tools, "reminders_today_resource", lambda: json.dumps({"reminders": [{"title": "Ship"}]}))
     monkeypatch.setattr(tools, "messages_unread_resource", lambda: json.dumps({"conversations": [{"chat_id": "1"}]}))
@@ -216,6 +231,7 @@ def test_apple_today_resource_combines_domain_payloads(monkeypatch) -> None:
     payload = json.loads(tools.apple_today_resource())
 
     assert payload["system_status"]["frontmost_app"] == "Mail"
+    assert payload["system_context"]["focus"]["focus_supported"] is False
     assert payload["calendar_today"]["events"][0]["title"] == "Standup"
     assert payload["reminders_today"]["reminders"][0]["title"] == "Ship"
     assert payload["files_recent"]["files"][0]["path"] == "/tmp/a.txt"
@@ -240,7 +256,10 @@ def test_apple_overview_resource_includes_files_system_and_maps(monkeypatch) -> 
         },
     )
     monkeypatch.setattr(tools, "files_recent_resource", lambda: json.dumps({"files": []}))
+    monkeypatch.setattr(tools, "files_recent_locations_resource", lambda: json.dumps({"locations": []}))
+    monkeypatch.setattr(tools, "files_icloud_status_resource", lambda: json.dumps({"available": True}))
     monkeypatch.setattr(tools, "system_status_resource", lambda: json.dumps({"frontmost_app": "Mail"}))
+    monkeypatch.setattr(tools, "system_context_resource", lambda: json.dumps({"focus": {"focus_supported": False}}))
     monkeypatch.setattr(tools, "system_settings_resource", lambda: json.dumps({"appearance": {"mode": "dark"}}))
     monkeypatch.setattr(tools, "maps_status_resource", lambda: json.dumps({"helper_available": True}))
     monkeypatch.setattr(tools, "calendar_calendars_resource", lambda: json.dumps({"calendars": []}))
@@ -257,7 +276,10 @@ def test_apple_overview_resource_includes_files_system_and_maps(monkeypatch) -> 
     assert payload["health"]["system"]["ok"] is True
     assert payload["health"]["maps"]["ok"] is True
     assert payload["resources"]["files"]["files"] == []
+    assert payload["resources"]["files_recent_locations"]["locations"] == []
+    assert payload["resources"]["files_icloud_status"]["available"] is True
     assert payload["resources"]["system"]["frontmost_app"] == "Mail"
+    assert payload["resources"]["system_context"]["focus"]["focus_supported"] is False
     assert "system_settings" in payload["resources"]
     assert payload["resources"]["maps"]["helper_available"] is True
 
@@ -266,15 +288,100 @@ def test_apple_permission_guide_supports_files_system_and_maps() -> None:
     files_guide = tools.apple_permission_guide("files")
     system_guide = tools.apple_permission_guide("system")
     maps_guide = tools.apple_permission_guide("maps")
+    all_guide = tools.apple_permission_guide("all")
 
     assert files_guide.domain == "files"
     assert files_guide.can_prompt_in_app is False
     assert any("allowed root" in step.lower() or "apple_files_mcp_allowed_roots" in step.lower() for step in files_guide.steps)
     assert system_guide.domain == "system"
+    assert system_guide.requires_manual_system_settings is True
     assert len(system_guide.steps) > 0
     assert maps_guide.domain == "maps"
     assert maps_guide.requires_manual_system_settings is False
     assert len(maps_guide.steps) > 0
+    assert all_guide.requires_manual_system_settings is True
+    assert any("Accessibility" in step for step in all_guide.steps)
+
+
+def test_apple_get_system_context_and_focus(monkeypatch) -> None:
+    monkeypatch.setattr(
+        tools,
+        "system_get_focus_status",
+        lambda: type(
+            "Focus",
+            (),
+            {
+                "ok": True,
+                "focus_supported": False,
+                "focus_active": None,
+                "focus_name": None,
+                "observed_at": "2026-04-02T12:00:00-05:00",
+                "source": "unsupported_local_install",
+                "confidence": 0.0,
+                "notes": ["Unsupported"],
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        tools,
+        "system_get_context_snapshot",
+        lambda: type(
+            "Context",
+            (),
+            {
+                "ok": True,
+                "observed_at": "2026-04-02T12:00:00-05:00",
+                "frontmost_app": "Mail",
+                "focus": type("Focus", (), {"focus_supported": False})(),
+                "notification_history_supported": False,
+            },
+        )(),
+    )
+
+    focus = tools.apple_get_focus_status()
+    context = tools.apple_get_system_context()
+
+    assert focus.ok is True
+    assert focus.focus_supported is False
+    assert context.ok is True
+    assert context.frontmost_app == "Mail"
+
+
+def test_apple_file_wrappers(monkeypatch) -> None:
+    monkeypatch.setattr(
+        tools,
+        "files_open_path",
+        lambda path: type("Open", (), {"ok": True, "path": path, "action": "opened", "opened": True, "revealed": False, "is_icloud": False})(),
+    )
+    monkeypatch.setattr(
+        tools,
+        "files_reveal_in_finder",
+        lambda path: type("Reveal", (), {"ok": True, "path": path, "action": "revealed", "opened": False, "revealed": True, "is_icloud": True})(),
+    )
+    monkeypatch.setattr(
+        tools,
+        "files_get_tags",
+        lambda path: type("Tags", (), {"ok": True, "path": path, "tags": ["Work"], "count": 1, "is_icloud": False})(),
+    )
+    monkeypatch.setattr(
+        tools,
+        "files_add_tags",
+        lambda path, tags: type("Tags", (), {"ok": True, "path": path, "tags": ["Work", *tags], "count": 1 + len(tags), "is_icloud": False})(),
+    )
+
+    opened = tools.apple_open_file_path("/tmp/a.txt")
+    revealed = tools.apple_reveal_in_finder("/tmp/a.txt")
+    tags = tools.apple_tag_file("/tmp/a.txt", action="get")
+    added = tools.apple_tag_file("/tmp/a.txt", action="add", tags=["Important"])
+
+    assert opened.ok is True
+    assert opened.action == "opened"
+    assert revealed.ok is True
+    assert revealed.revealed is True
+    assert tags.ok is True
+    assert tags.tags == ["Work"]
+    assert added.ok is True
+    assert "Important" in added.tags
 
 
 def test_aio_messages_get_conversation_schema_uses_integer_limit() -> None:
@@ -301,7 +408,19 @@ def test_aio_list_tools_includes_files_system_and_maps() -> None:
     assert "system_gui_list_menu_bar_items" in tool_names
     assert "apple_update_system_setting" in tool_names
     assert "apple_control_frontmost_app" in tool_names
+    assert "apple_get_focus_status" in tool_names
+    assert "apple_get_system_context" in tool_names
+    assert "apple_open_file_path" in tool_names
+    assert "apple_reveal_in_finder" in tool_names
+    assert "apple_tag_file" in tool_names
+    assert "apple_maps_search_places_strict" in tool_names
+    assert "apple_find_duplicate_contacts" in tool_names
+    assert "apple_ensure_digest_folder" in tool_names
+    assert "apple_route_or_run_shortcut" in tool_names
     assert "maps_search_places" in tool_names
+    assert "files_get_tags" in tool_names
+    assert "files_get_icloud_status" in tool_names
+    assert "system_get_focus_status" in tool_names
 
 
 def test_aio_mail_send_message_schema_includes_from_account() -> None:
@@ -450,6 +569,184 @@ def test_apple_control_frontmost_app_dispatches(monkeypatch) -> None:
     assert result.ok is True
     assert result.selector_type == "keystroke"
     assert result.used_gui_fallback is True
+
+
+def test_apple_maps_search_places_strict_fails_closed(monkeypatch) -> None:
+    monkeypatch.setattr(tools, "maps_health", lambda: type("Health", (), {"ok": True, "helper_available": False})())
+
+    result = tools.apple_maps_search_places_strict("coffee")
+
+    assert result.ok is False
+    assert result.error.error_code == "MAPS_HELPER_UNAVAILABLE"
+
+
+def test_apple_maps_get_directions_strict_uses_native_maps(monkeypatch) -> None:
+    monkeypatch.setattr(tools, "maps_health", lambda: type("Health", (), {"ok": True, "helper_available": True})())
+    monkeypatch.setattr(
+        tools,
+        "maps_get_directions",
+        lambda origin, destination, transport="driving": type(
+            "Resp",
+            (),
+            {
+                "ok": True,
+                "origin": {"name": origin},
+                "destination": {"name": destination},
+                "transport": transport,
+                "distance_meters": 1200.0,
+                "expected_travel_time_seconds": 600.0,
+                "advisory_notices": [],
+                "maps_url": "https://maps.apple.com",
+            },
+        )(),
+    )
+
+    result = tools.apple_maps_get_directions_strict("UTD", "Coffee")
+
+    assert result.ok is True
+    assert result.transport == "driving"
+
+
+def test_apple_find_duplicate_contacts_delegates(monkeypatch) -> None:
+    monkeypatch.setattr(
+        tools,
+        "contacts_find_duplicates",
+        lambda: type(
+            "Resp",
+            (),
+            {
+                "ok": True,
+                "groups": [
+                    DuplicateCandidateGroup(
+                        duplicate_group_id="dup-1",
+                        confidence=0.95,
+                        evidence=[DuplicateEvidence(kind="email", value="jonathan@example.com")],
+                        contacts=[],
+                        merge_recommended=True,
+                    )
+                ],
+                "count": 1,
+            },
+        )(),
+    )
+
+    result = tools.apple_find_duplicate_contacts()
+
+    assert result.ok is True
+    assert result.count == 1
+
+
+def test_apple_prepare_unique_contact_returns_duplicates(monkeypatch) -> None:
+    monkeypatch.setattr(
+        tools,
+        "contacts_search_contacts",
+        lambda query, limit=10: type(
+            "Search",
+            (),
+            {
+                "count": 2,
+                "contacts": [
+                    type("ContactSummary", (), {"contact_id": "c1", "name": "Jonathan Reed"})(),
+                    type("ContactSummary", (), {"contact_id": "c2", "name": "Jonathan Reed"})(),
+                ],
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        tools,
+        "contacts_find_duplicates",
+        lambda: type(
+            "Resp",
+            (),
+            {
+                "ok": True,
+                "groups": [
+                    DuplicateCandidateGroup(
+                        duplicate_group_id="dup-1",
+                        confidence=0.95,
+                        evidence=[DuplicateEvidence(kind="name", value="jonathan reed")],
+                        contacts=[
+                            ContactDetail(contact_id="c1", name="Jonathan Reed", phones=[], emails=[]),
+                            ContactDetail(contact_id="c2", name="Jonathan Reed", phones=[], emails=[]),
+                        ],
+                        merge_recommended=True,
+                    )
+                ],
+                "count": 1,
+            },
+        )(),
+    )
+
+    result = tools.apple_prepare_unique_contact("Jonathan Reed")
+
+    assert result.ok is True
+    assert result.count == 1
+
+
+def test_apple_ensure_digest_folder_creates_and_persists(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(tmp_path / "prefs.json"))
+    load_settings.cache_clear()
+    monkeypatch.setattr(tools, "notes_list_folders", lambda limit=100, offset=0: type("Resp", (), {"ok": True, "folders": []})())
+    monkeypatch.setattr(
+        tools,
+        "notes_list_accounts",
+        lambda: type("Accounts", (), {"ok": True, "accounts": [type("Account", (), {"name": "iCloud", "upgraded": True})()]})(),
+    )
+    monkeypatch.setattr(
+        tools,
+        "notes_create_folder",
+        lambda folder_name, account_name, parent_folder_id=None: type(
+            "Resp",
+            (),
+            {
+                "ok": True,
+                "folder": type("Folder", (), {"folder_id": "digest-1", "name": folder_name, "account_name": account_name})(),
+            },
+        )(),
+    )
+
+    result = tools.apple_ensure_digest_folder()
+
+    assert result.ok is True
+    assert result.created is True
+    assert result.preferences.default_digest_folder_id == "digest-1"
+
+
+def test_apple_route_or_run_shortcut_runs_single_match(monkeypatch) -> None:
+    monkeypatch.setattr(
+        tools,
+        "shortcuts_list_shortcuts",
+        lambda: type(
+            "Resp",
+            (),
+            {
+                "ok": True,
+                "shortcuts": [
+                    type("Shortcut", (), {"name": "Share ETA", "identifier": "shortcut-1"})(),
+                    type("Shortcut", (), {"name": "Morning Briefing", "identifier": "shortcut-2"})(),
+                ],
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        tools,
+        "shortcuts_run_shortcut",
+        lambda shortcut_name_or_identifier, input_paths=None, output_path=None, output_type=None, input_text=None: {
+            "ok": True,
+            "shortcut_name": "Share ETA",
+            "shortcut_identifier": shortcut_name_or_identifier,
+            "stdout": "done",
+            "stderr": "",
+            "exit_code": 0,
+            "artifacts": [],
+        },
+    )
+
+    result = tools.apple_route_or_run_shortcut("share eta", dry_run=False)
+
+    assert result.ok is True
+    assert result.shortcut_name == "Share ETA"
+    assert result.result["shortcut_name"] == "Share ETA"
 
 
 def test_apple_detect_defaults_persists_preferences(monkeypatch, tmp_path) -> None:

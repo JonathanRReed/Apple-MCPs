@@ -33,11 +33,13 @@ from apple_agent_mcp.models import (
     CommunicationActionResponse,
     CommunicationPlanResponse,
     ContactRoutingPreference,
+    DigestFolderResponse,
     EventCollaborationResponse,
     MailFollowupResponse,
     PermissionGuideResponse,
     PreferencesDetectResponse,
     PreferencesResponse,
+    ShortcutRouteResponse,
     SuggestionListResponse,
 )
 from apple_agent_mcp.state import StateStoreError, load_action_history, load_preferences, save_action_history, save_preferences
@@ -115,17 +117,19 @@ from apple_messages_mcp.models import ConversationResponse, ErrorResponse as Mes
 from apple_contacts_mcp.tools import (  # noqa: E402
     contacts_contact_resource,
     contacts_directory_resource,
+    contacts_find_duplicates,
     contacts_get_contact,
     contacts_health,
     contacts_list_contacts,
     contacts_create_contact as _contacts_create_contact,
+    contacts_suggest_merge_candidates,
     contacts_update_contact as _contacts_update_contact,
     contacts_delete_contact as _contacts_delete_contact,
     contacts_prepare_message_recipient_prompt,
     contacts_resolve_message_recipient,
     contacts_search_contacts,
 )
-from apple_contacts_mcp.models import ErrorResponse as ContactsErrorResponse, ContactMethod, CreateContactResponse, ContactResponse, DeleteContactResponse  # noqa: E402
+from apple_contacts_mcp.models import ContactMethod, ContactResponse, CreateContactResponse, DeleteContactResponse, DuplicateContactListResponse, ErrorResponse as ContactsErrorResponse  # noqa: E402
 from apple_notes_mcp.tools import (  # noqa: E402
     notes_cleanup_prompt,
     notes_create_folder,
@@ -181,26 +185,39 @@ from apple_shortcuts_mcp.tools import (  # noqa: E402
     shortcuts_run_with_input_prompt,
     shortcuts_view_shortcut,
 )
+from apple_shortcuts_mcp.models import ErrorResponse as ShortcutsErrorResponse  # noqa: E402
 from apple_files_mcp.tools import (  # noqa: E402
     files_allowed_roots_resource,
+    files_add_tags,
     files_create_folder,
     files_delete_path,
     files_get_file_info,
+    files_get_icloud_status,
+    files_get_tags,
     files_health,
     files_list_allowed_roots,
     files_list_directory,
+    files_list_recent_locations,
     files_move_path,
+    files_open_path,
     files_organize_workspace_prompt,
     files_prepare_attachment_prompt,
     files_read_text_file,
     files_recent_files,
+    files_recent_locations_resource,
     files_recent_resource,
+    files_reveal_in_finder,
     files_search_files,
+    files_set_tags,
+    files_icloud_status_resource,
+    files_remove_tags,
 )
-from apple_system_mcp.models import ErrorResponse as SystemErrorResponse, GuiActionResponse, GuiMenuItemsResponse, OpenAppResponse, SettingMutationResponse  # noqa: E402
+from apple_files_mcp.models import ErrorResponse as FilesErrorResponse, FileActionResponse, FileTagsResponse  # noqa: E402
+from apple_system_mcp.models import ErrorResponse as SystemErrorResponse, FocusStatusResponse, GuiActionResponse, GuiMenuItemsResponse, OpenAppResponse, SettingMutationResponse, SystemContextResponse  # noqa: E402
 from apple_system_mcp.tools import (  # noqa: E402
     system_applications_resource,
     system_capture_context_prompt,
+    system_context_resource,
     system_gui_choose_popup_value,
     system_gui_click_button,
     system_gui_click_menu_path,
@@ -210,7 +227,9 @@ from apple_system_mcp.tools import (  # noqa: E402
     system_get_accessibility_settings,
     system_get_battery,
     system_get_clipboard,
+    system_get_context_snapshot,
     system_get_dock_settings,
+    system_get_focus_status,
     system_get_finder_settings,
     system_get_frontmost_app,
     system_get_appearance_settings,
@@ -247,6 +266,7 @@ from apple_maps_mcp.tools import (  # noqa: E402
     maps_search_places,
     maps_status_resource,
 )
+from apple_maps_mcp.models import DirectionsResponse, ErrorResponse as MapsErrorResponse, PlaceSearchResponse  # noqa: E402
 
 SERVER_INSTRUCTIONS = (
     "Use this server for unified Apple ecosystem access on macOS. "
@@ -258,8 +278,8 @@ SERVER_INSTRUCTIONS = (
     "For Reminders, use due items and follow-ups, identify available lists on first use, and require due_date values with a timezone offset like 2026-03-29T23:59:00-05:00. "
     "For Notes, identify available accounts and folders on first use and use Notes for reference material rather than time-sensitive work. "
     "For Shortcuts, list available shortcuts before running one if the request is vague. "
-    "Use Files before Mail, Messages, Notes, or Shortcuts when the user references a local document or attachment, and keep file mutations inside the allowed roots. "
-    "Use System when clipboard state, the frontmost app, running applications, notifications, app launch, macOS settings reads or writes, or bounded GUI fallback automation matters. "
+    "Use Files before Mail, Messages, Notes, or Shortcuts when the user references a local document, Finder workflow, attachment, or iCloud Drive path, and keep file mutations inside the allowed roots. "
+    "Use System when clipboard state, truthful Focus context, the frontmost app, running applications, notification support limits, app launch, macOS settings reads or writes, or bounded GUI fallback automation matters. "
     "Use Maps when a route, place lookup, or travel estimate affects scheduling or communication. "
     "Disambiguate as follows: due date or time goes to Reminders, reference material with no action goes to Notes, and requests involving another person usually go to Messages or Mail after Contacts resolution. "
     "Some clients defer tool schemas, so batch tool discovery on first use when needed."
@@ -474,6 +494,31 @@ def _pick_default_notes_folder() -> tuple[str | None, str | None, str | None]:
     return chosen.folder_id, chosen.name, chosen.account_name
 
 
+def _pick_digest_folder() -> tuple[str | None, str | None, str | None]:
+    response = notes_list_folders(limit=100, offset=0)
+    if not getattr(response, "ok", False):
+        return None, None, None
+    preferred_names = ("digests", "digest")
+    for folder in response.folders:
+        if folder.name.strip().lower() in preferred_names:
+            return folder.folder_id, folder.name, folder.account_name
+    return None, None, None
+
+
+def _default_notes_account_name(preferences: AssistantPreferences) -> str | None:
+    if preferences.default_digest_account_name:
+        return preferences.default_digest_account_name
+    if preferences.default_notes_account_name:
+        return preferences.default_notes_account_name
+    response = notes_list_accounts()
+    if not getattr(response, "ok", False) or not response.accounts:
+        return None
+    for account in response.accounts:
+        if getattr(account, "upgraded", True):
+            return account.name
+    return response.accounts[0].name
+
+
 def _detect_preferences(base: AssistantPreferences | None = None) -> tuple[AssistantPreferences, list[str]]:
     current = base or _get_preferences()
     detected: list[str] = []
@@ -508,6 +553,14 @@ def _detect_preferences(base: AssistantPreferences | None = None) -> tuple[Assis
         updates["default_notes_account_name"] = notes_account_name
         label = f"{notes_account_name} / {notes_folder_name}" if notes_account_name else str(notes_folder_name)
         detected.append(f"default notes folder -> {label}")
+
+    digest_folder_id, digest_folder_name, digest_account_name = _pick_digest_folder()
+    if digest_folder_id and current.default_digest_folder_id is None:
+        updates["default_digest_folder_id"] = digest_folder_id
+        updates["default_digest_folder_name"] = digest_folder_name
+        updates["default_digest_account_name"] = digest_account_name
+        label = f"{digest_account_name} / {digest_folder_name}" if digest_account_name else str(digest_folder_name)
+        detected.append(f"default digest folder -> {label}")
 
     return current.model_copy(update=updates), detected
 
@@ -584,23 +637,57 @@ def _resolve_reminder_target(
 def _resolve_notes_target(
     preferences: AssistantPreferences,
     folder_id: str | None = None,
+    prefer_digest_folder: bool = False,
 ) -> tuple[tuple[str, AssistantPreferences], AppleErrorResponse | None]:
-    effective_folder_id = folder_id or preferences.default_notes_folder_id
+    preferred_folder_id = preferences.default_digest_folder_id if prefer_digest_folder else preferences.default_notes_folder_id
+    effective_folder_id = folder_id or preferred_folder_id
     updated_preferences = preferences
     if not effective_folder_id:
         detected_preferences, detected = _detect_preferences(preferences)
         updated_preferences = _save_preferences(detected_preferences) if detected else preferences
-        effective_folder_id = updated_preferences.default_notes_folder_id
+        effective_folder_id = updated_preferences.default_digest_folder_id if prefer_digest_folder else updated_preferences.default_notes_folder_id
     if not effective_folder_id:
         return (
             ("", updated_preferences),
             _apple_error_response(
-                "DEFAULT_NOTES_FOLDER_MISSING",
-                "No default notes folder is configured.",
-                "Call apple_detect_defaults, set default_notes_folder_id, or pass folder_id explicitly.",
+                "DEFAULT_NOTES_FOLDER_MISSING" if not prefer_digest_folder else "DEFAULT_DIGEST_FOLDER_MISSING",
+                "No default notes folder is configured." if not prefer_digest_folder else "No default digest folder is configured.",
+                "Call apple_detect_defaults, set the appropriate folder preference, or pass folder_id explicitly.",
             ),
         )
     return (effective_folder_id, updated_preferences), None
+
+
+def _ensure_maps_available() -> tuple[bool, AppleErrorResponse | None]:
+    health = maps_health()
+    if isinstance(health, MapsErrorResponse):
+        return False, _apple_error_response(health.error.error_code, health.error.message, health.error.suggestion)
+    if not getattr(health, "ok", False):
+        return False, _apple_error_response("MAPS_UNAVAILABLE", "Apple Maps MCP is not available.", "Check the Maps MCP server and retry.")
+    if not getattr(health, "helper_available", False):
+        return False, _apple_error_response(
+            "MAPS_HELPER_UNAVAILABLE",
+            "Apple Maps helper is unavailable, so native place search and routing cannot run.",
+            "Call maps_health, fix the helper compilation issue, and retry without using non-Apple fallback data.",
+        )
+    return True, None
+
+
+def _matching_duplicate_groups(query: str, contact_ids: set[str] | None = None, merge_candidates_only: bool = False) -> DuplicateContactListResponse | ContactsErrorResponse:
+    response = contacts_suggest_merge_candidates(query=query) if merge_candidates_only else contacts_find_duplicates()
+    if isinstance(response, ContactsErrorResponse):
+        return response
+    normalized_query = query.strip().lower()
+    groups = []
+    for group in response.groups:
+        group_contact_ids = {contact.contact_id for contact in group.contacts}
+        if contact_ids is not None and group_contact_ids.isdisjoint(contact_ids):
+            continue
+        if any(normalized_query in contact.name.lower() for contact in group.contacts) or any(
+            normalized_query in evidence.value.lower() for evidence in group.evidence
+        ):
+            groups.append(group)
+    return DuplicateContactListResponse(groups=groups, count=len(groups))
 
 
 def _resolve_contact_for_communication(recipient: str) -> tuple[Any | None, AppleErrorResponse | None]:
@@ -618,6 +705,13 @@ def _resolve_contact_for_communication(recipient: str) -> tuple[Any | None, Appl
             "CONTACT_NOT_FOUND",
             f"No contact matched '{recipient}'.",
             "Search contacts first or provide a direct email address or phone number.",
+        )
+    duplicate_groups = _matching_duplicate_groups(recipient, {contact.contact_id for contact in search_result.contacts})
+    if not isinstance(duplicate_groups, ContactsErrorResponse) and duplicate_groups.count > 0:
+        return None, _apple_error_response(
+            "AMBIGUOUS_CONTACT",
+            f"Likely duplicate contacts matched '{recipient}'.",
+            "Call apple_find_duplicate_contacts or apple_prepare_unique_contact before sending.",
         )
     exact_matches = [contact for contact in search_result.contacts if contact.name.strip().lower() == recipient.strip().lower()]
     if len(exact_matches) == 1:
@@ -785,15 +879,15 @@ def _permission_guide(domain: str) -> PermissionGuideResponse:
             requires_manual_system_settings=False,
             steps=[
                 "Use files_list_allowed_roots to inspect the current file access scope.",
-                "Restart the MCP with APPLE_FILES_MCP_ALLOWED_ROOTS if you need different root folders.",
+                "Restart the MCP with APPLE_FILES_MCP_ALLOWED_ROOTS if you need different root folders, including the local iCloud Drive root when needed.",
                 "Use APPLE_FILES_MCP_SAFETY_MODE=safe_manage or full_access only when file mutations are necessary.",
             ],
             notes=["Files access is controlled by environment-scoped roots rather than a macOS privacy prompt."],
         ),
         "system": PermissionGuideResponse(
             domain="system",
-            can_prompt_in_app=True,
-            requires_manual_system_settings=False,
+            can_prompt_in_app=standalone_system_permission_guide()["can_prompt_in_app"],
+            requires_manual_system_settings=standalone_system_permission_guide()["requires_manual_system_settings"],
             steps=standalone_system_permission_guide()["steps"],
             notes=standalone_system_permission_guide().get("notes", []),
         ),
@@ -813,9 +907,14 @@ def _permission_guide(domain: str) -> PermissionGuideResponse:
                 "Grant automation prompts when they appear.",
                 "Grant Contacts access if you want to resolve recipients by contact name before messaging.",
                 "Grant Full Disk Access manually for Apple Messages history access.",
+                "Grant Accessibility manually if you want Apple System GUI fallback tools to operate the frontmost app.",
                 "Keep Apple Files roots scoped to the folders the assistant should use.",
             ],
-            notes=["Some Apple permissions can be prompted in-app.", "Full Disk Access must be granted manually in System Settings."],
+            notes=[
+                "Some Apple permissions can be prompted in-app.",
+                "Full Disk Access must be granted manually in System Settings.",
+                "Accessibility for GUI fallback is also a manual System Settings step.",
+            ],
         ),
     }
     return guides.get(normalized, guides["all"])
@@ -1075,6 +1174,9 @@ def apple_update_preferences(
     default_notes_folder_id: str | None = None,
     default_notes_folder_name: str | None = None,
     default_notes_account_name: str | None = None,
+    default_digest_folder_id: str | None = None,
+    default_digest_folder_name: str | None = None,
+    default_digest_account_name: str | None = None,
     preferred_communication_channel: str | None = None,
     preferred_message_channel: str | None = None,
 ) -> PreferencesResponse | AppleErrorResponse:
@@ -1093,6 +1195,9 @@ def apple_update_preferences(
                 "default_notes_folder_id": default_notes_folder_id,
                 "default_notes_folder_name": default_notes_folder_name,
                 "default_notes_account_name": default_notes_account_name,
+                "default_digest_folder_id": default_digest_folder_id,
+                "default_digest_folder_name": default_digest_folder_name,
+                "default_digest_account_name": default_digest_account_name,
                 "preferred_communication_channel": preferred_communication_channel,
                 "preferred_message_channel": preferred_message_channel,
             }.items()
@@ -1105,6 +1210,136 @@ def apple_update_preferences(
         return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
     except Exception as exc:
         return _apple_error_response("INVALID_INPUT", str(exc), "Check the preference values and retry.")
+
+
+@mcp.tool(
+    title="Apple Detect Digest Folder",
+    description="Detect the preferred Notes folder for daily and weekly digests, and persist it if found.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=False),
+    structured_output=True,
+)
+def apple_detect_digest_folder() -> DigestFolderResponse | AppleErrorResponse:
+    try:
+        current = _get_preferences()
+        folder_id, folder_name, account_name = _pick_digest_folder()
+        if not folder_id:
+            return _apple_error_response(
+                "DIGEST_FOLDER_NOT_FOUND",
+                "No Notes folder named 'Digests' exists yet.",
+                "Call apple_ensure_digest_folder to create it, or set the digest folder preference explicitly.",
+            )
+        stored = _save_preferences(
+            AssistantPreferences.model_validate(
+                current.model_copy(
+                    update={
+                        "default_digest_folder_id": folder_id,
+                        "default_digest_folder_name": folder_name,
+                        "default_digest_account_name": account_name,
+                    }
+                ).model_dump()
+            )
+        )
+        return DigestFolderResponse(
+            folder_id=folder_id,
+            folder_name=folder_name or "Digests",
+            account_name=account_name,
+            created=False,
+            preferences=stored,
+        )
+    except StateStoreError as exc:
+        return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Apple Set Digest Folder",
+    description="Persist the dedicated Notes folder that Apple-Tools should use for daily and weekly digests.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def apple_set_digest_folder(folder_id: str, folder_name: str | None = None, account_name: str | None = None) -> DigestFolderResponse | AppleErrorResponse:
+    try:
+        current = _get_preferences()
+        stored = _save_preferences(
+            AssistantPreferences.model_validate(
+                current.model_copy(
+                    update={
+                        "default_digest_folder_id": folder_id,
+                        "default_digest_folder_name": folder_name,
+                        "default_digest_account_name": account_name,
+                    }
+                ).model_dump()
+            )
+        )
+        return DigestFolderResponse(
+            folder_id=folder_id,
+            folder_name=folder_name or folder_id,
+            account_name=account_name,
+            created=False,
+            preferences=stored,
+        )
+    except StateStoreError as exc:
+        return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Apple Ensure Digest Folder",
+    description="Ensure a dedicated Notes folder exists for daily and weekly digests, creating it when necessary and persisting the preference.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def apple_ensure_digest_folder(folder_name: str = "Digests", account_name: str | None = None) -> DigestFolderResponse | AppleErrorResponse:
+    try:
+        current = _get_preferences()
+        existing_id, existing_name, existing_account = _pick_digest_folder()
+        resolved_account = account_name or existing_account or _default_notes_account_name(current)
+        if existing_id:
+            stored = _save_preferences(
+                AssistantPreferences.model_validate(
+                    current.model_copy(
+                        update={
+                            "default_digest_folder_id": existing_id,
+                            "default_digest_folder_name": existing_name,
+                            "default_digest_account_name": existing_account,
+                        }
+                    ).model_dump()
+                )
+            )
+            return DigestFolderResponse(
+                folder_id=existing_id,
+                folder_name=existing_name or folder_name,
+                account_name=existing_account,
+                created=False,
+                preferences=stored,
+            )
+        if not resolved_account:
+            return _apple_error_response(
+                "DIGEST_ACCOUNT_NOT_FOUND",
+                "Could not determine which Notes account should hold the digest folder.",
+                "Set default_notes_account_name or pass account_name explicitly.",
+            )
+        created = notes_create_folder(folder_name=folder_name, account_name=resolved_account)
+        if isinstance(created, NotesErrorResponse):
+            return _apple_error_response(created.error.error_code, created.error.message, created.error.suggestion)
+        stored = _save_preferences(
+            AssistantPreferences.model_validate(
+                current.model_copy(
+                    update={
+                        "default_digest_folder_id": created.folder.folder_id,
+                        "default_digest_folder_name": created.folder.name,
+                        "default_digest_account_name": created.folder.account_name,
+                    }
+                ).model_dump()
+            )
+        )
+        return DigestFolderResponse(
+            folder_id=created.folder.folder_id,
+            folder_name=created.folder.name,
+            account_name=created.folder.account_name,
+            created=True,
+            preferences=stored,
+        )
+    except StateStoreError as exc:
+        return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
 
 
 @mcp.tool(
@@ -1720,7 +1955,8 @@ def apple_create_note_with_defaults(
 ) -> NotesNoteResponse | NotesErrorResponse | AppleErrorResponse:
     try:
         preferences = _get_preferences()
-        resolved, error = _resolve_notes_target(preferences, folder_id=folder_id)
+        prefer_digest_folder = "digest" in title.strip().lower()
+        resolved, error = _resolve_notes_target(preferences, folder_id=folder_id, prefer_digest_folder=prefer_digest_folder)
         if error is not None:
             return error
         effective_folder_id, _ = resolved
@@ -1834,6 +2070,158 @@ def apple_event_collaboration_summary(event_id: str) -> EventCollaborationRespon
 
 
 @mcp.tool(
+    title="Apple Maps Search Places Strict",
+    description="Search places through the native Apple Maps MCP and fail closed if the Maps helper is unavailable.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def apple_maps_search_places_strict(query: str, limit: int = 5) -> PlaceSearchResponse | AppleErrorResponse:
+    ok, error = _ensure_maps_available()
+    if not ok:
+        return error
+    result = maps_search_places(query=query, limit=limit)
+    if isinstance(result, MapsErrorResponse):
+        return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
+    return result
+
+
+@mcp.tool(
+    title="Apple Maps Get Directions Strict",
+    description="Get directions through the native Apple Maps MCP and fail closed if the Maps helper is unavailable.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def apple_maps_get_directions_strict(origin: str, destination: str, transport: str = "driving") -> DirectionsResponse | AppleErrorResponse:
+    ok, error = _ensure_maps_available()
+    if not ok:
+        return error
+    result = maps_get_directions(origin=origin, destination=destination, transport=transport)
+    if isinstance(result, MapsErrorResponse):
+        return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
+    return result
+
+
+@mcp.tool(
+    title="Apple Find Duplicate Contacts",
+    description="Find likely duplicate contacts through Apple Contacts so assistants can disambiguate people before acting.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def apple_find_duplicate_contacts(query: str | None = None, merge_candidates_only: bool = False) -> DuplicateContactListResponse | AppleErrorResponse:
+    response = _matching_duplicate_groups(query or "", None, merge_candidates_only=merge_candidates_only) if query else (
+        contacts_suggest_merge_candidates() if merge_candidates_only else contacts_find_duplicates()
+    )
+    if isinstance(response, ContactsErrorResponse):
+        return _apple_error_response(response.error.error_code, response.error.message, response.error.suggestion)
+    return response
+
+
+@mcp.tool(
+    title="Apple Prepare Unique Contact",
+    description="Resolve a contact for a person-targeted workflow, but stop and return duplicate groups if likely duplicate records need cleanup first.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def apple_prepare_unique_contact(query: str) -> ContactResponse | DuplicateContactListResponse | AppleErrorResponse:
+    search_result = contacts_search_contacts(query=query, limit=10)
+    if isinstance(search_result, ContactsErrorResponse):
+        return _apple_error_response(search_result.error.error_code, search_result.error.message, search_result.error.suggestion)
+    if search_result.count == 0:
+        return _apple_error_response("CONTACT_NOT_FOUND", f"No contact matched '{query}'.", "Search contacts first or refine the contact name.")
+    duplicates = _matching_duplicate_groups(query, {contact.contact_id for contact in search_result.contacts})
+    if not isinstance(duplicates, ContactsErrorResponse) and duplicates.count > 0:
+        return duplicates
+    if search_result.count > 1:
+        return _apple_error_response("AMBIGUOUS_CONTACT", f"Multiple contacts matched '{query}'.", "Refine the contact name or contact_id.")
+    detail = contacts_get_contact(search_result.contacts[0].contact_id)
+    if isinstance(detail, ContactsErrorResponse):
+        return _apple_error_response(detail.error.error_code, detail.error.message, detail.error.suggestion)
+    return detail
+
+
+@mcp.tool(
+    title="Apple List Shortcuts For Capability",
+    description="List likely shortcuts for a requested capability so Apple-Tools can use Shortcuts as an intentional bridge when native coverage is missing.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def apple_list_shortcuts_for_capability(query: str, limit: int | str = 10) -> SuggestionListResponse | AppleErrorResponse:
+    normalized_limit = _coerce_int_arg("limit", limit, minimum=1)
+    shortcuts = shortcuts_list_shortcuts()
+    if isinstance(shortcuts, ShortcutsErrorResponse):
+        return _apple_error_response(shortcuts.error.error_code, shortcuts.error.message, shortcuts.error.suggestion)
+    values = [item.name for item in shortcuts.shortcuts]
+    suggestions = _filter_text(values, query=query, limit=normalized_limit)
+    return SuggestionListResponse(domain="shortcuts", suggestions=suggestions, count=len(suggestions))
+
+
+@mcp.tool(
+    title="Apple Route Or Run Shortcut",
+    description="Use Apple Shortcuts as the explicit bridge when native Apple MCP coverage is insufficient or when the user names a shortcut directly.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def apple_route_or_run_shortcut(
+    request: str,
+    shortcut_name_or_identifier: str | None = None,
+    input_text: str | None = None,
+    input_paths: list[str] | None = None,
+    dry_run: bool = False,
+) -> ShortcutRouteResponse | AppleErrorResponse:
+    shortcut_response = shortcuts_list_shortcuts()
+    if isinstance(shortcut_response, ShortcutsErrorResponse):
+        return _apple_error_response(shortcut_response.error.error_code, shortcut_response.error.message, shortcut_response.error.suggestion)
+
+    chosen = None
+    if shortcut_name_or_identifier:
+        chosen = next(
+            (
+                item
+                for item in shortcut_response.shortcuts
+                if item.name == shortcut_name_or_identifier or item.identifier == shortcut_name_or_identifier
+            ),
+            None,
+        )
+        if chosen is None:
+            return _apple_error_response("SHORTCUT_NOT_FOUND", f"Shortcut '{shortcut_name_or_identifier}' was not found.", "Call apple_list_shortcuts_for_capability first.")
+        reason = "User explicitly named the shortcut."
+    else:
+        suggestions = _filter_text([item.name for item in shortcut_response.shortcuts], query=request, limit=5)
+        if len(suggestions) != 1:
+            return _apple_error_response(
+                "SHORTCUT_ROUTE_UNCLEAR",
+                "Could not choose a single shortcut confidently for this request.",
+                "Call apple_list_shortcuts_for_capability to inspect likely shortcuts first.",
+            )
+        chosen = next(item for item in shortcut_response.shortcuts if item.name == suggestions[0])
+        reason = "Shortcut routing matched a single likely shortcut."
+
+    if dry_run:
+        return ShortcutRouteResponse(
+            route="shortcut",
+            shortcut_name=chosen.name,
+            shortcut_identifier=chosen.identifier,
+            reason=reason,
+            result=None,
+        )
+
+    run_result = shortcuts_run_shortcut(
+        shortcut_name_or_identifier=chosen.identifier or chosen.name,
+        input_paths=input_paths,
+        input_text=input_text,
+    )
+    if isinstance(run_result, ShortcutsErrorResponse):
+        return _apple_error_response(run_result.error.error_code, run_result.error.message, run_result.error.suggestion)
+    return ShortcutRouteResponse(
+        route="shortcut",
+        shortcut_name=chosen.name,
+        shortcut_identifier=chosen.identifier,
+        reason=reason,
+        result=_to_jsonable(run_result),
+    )
+
+
+@mcp.tool(
     title="Apple Open Application",
     description="Open an application through the unified Apple control plane using its name or bundle identifier.",
     annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
@@ -1846,6 +2234,84 @@ async def apple_open_application(
 ) -> OpenAppResponse | AppleErrorResponse:
     result = await system_open_application(application=application, bundle_id=bundle_id, ctx=ctx)
     if isinstance(result, SystemErrorResponse):
+        return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
+    return result
+
+
+@mcp.tool(
+    title="Apple Get Focus Status",
+    description="Return truthful Focus support metadata through the unified Apple control plane.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def apple_get_focus_status() -> FocusStatusResponse | AppleErrorResponse:
+    result = system_get_focus_status()
+    if isinstance(result, SystemErrorResponse):
+        return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
+    return result
+
+
+@mcp.tool(
+    title="Apple Get System Context",
+    description="Return a richer Apple system context snapshot, including Focus, frontmost app, and battery state.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def apple_get_system_context() -> SystemContextResponse | AppleErrorResponse:
+    result = system_get_context_snapshot()
+    if isinstance(result, SystemErrorResponse):
+        return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
+    return result
+
+
+@mcp.tool(
+    title="Apple Open File Path",
+    description="Open a file or folder through Apple Files and return iCloud-aware path metadata.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+    structured_output=True,
+)
+def apple_open_file_path(path: str) -> FileActionResponse | AppleErrorResponse:
+    result = files_open_path(path)
+    if isinstance(result, FilesErrorResponse):
+        return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
+    return result
+
+
+@mcp.tool(
+    title="Apple Reveal In Finder",
+    description="Reveal a file or folder in Finder through Apple Files.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+    structured_output=True,
+)
+def apple_reveal_in_finder(path: str) -> FileActionResponse | AppleErrorResponse:
+    result = files_reveal_in_finder(path)
+    if isinstance(result, FilesErrorResponse):
+        return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
+    return result
+
+
+@mcp.tool(
+    title="Apple Tag File",
+    description="Read, replace, add, or remove Finder tags on a file or folder through Apple Files.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def apple_tag_file(path: str, action: str = "get", tags: list[str] | None = None) -> FileTagsResponse | AppleErrorResponse:
+    normalized = action.strip().lower()
+    if normalized == "get":
+        result = files_get_tags(path)
+    else:
+        if not tags:
+            return _apple_error_response("MISSING_INPUT", "tags are required for file tag mutations.", "Provide one or more tags.")
+        if normalized == "set":
+            result = files_set_tags(path, tags)
+        elif normalized == "add":
+            result = files_add_tags(path, tags)
+        elif normalized == "remove":
+            result = files_remove_tags(path, tags)
+        else:
+            return _apple_error_response("INVALID_INPUT", f"Unsupported file tag action '{action}'.", "Use get, set, add, or remove.")
+    if isinstance(result, FilesErrorResponse):
         return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
     return result
 
@@ -2026,7 +2492,7 @@ def apple_suggest_places(query: str | None = None, limit: int | str = 10) -> Sug
     normalized_limit = _coerce_int_arg("limit", limit, minimum=1)
     if not query:
         return SuggestionListResponse(domain="maps", suggestions=[], count=0)
-    response = maps_search_places(query=query, limit=normalized_limit)
+    response = apple_maps_search_places_strict(query=query, limit=normalized_limit)
     values = []
     if getattr(response, "ok", False):
         values = [f"{item.name} / {item.address or ''}".strip() for item in response.places]
@@ -2213,7 +2679,10 @@ def apple_overview_resource() -> str:
             "preferences": preferences_payload,
             "resources": {
                 "files": _safe_resource_call(files_recent_resource),
+                "files_recent_locations": _safe_resource_call(files_recent_locations_resource),
+                "files_icloud_status": _safe_resource_call(files_icloud_status_resource),
                 "system": _safe_resource_call(system_status_resource),
+                "system_context": _safe_resource_call(system_context_resource),
                 "system_settings": _safe_resource_call(system_settings_resource),
                 "calendar": _safe_resource_call(calendar_calendars_resource),
                 "reminders": _safe_resource_call(reminders_lists_resource),
@@ -2243,12 +2712,14 @@ def apple_today_resource() -> str:
     return json.dumps(
         {
             "system_status": _safe_resource_call(system_status_resource),
+            "system_context": _safe_resource_call(system_context_resource),
             "system_settings": _safe_resource_call(system_settings_resource),
             "calendar_today": _safe_resource_call(calendar_events_today_resource),
             "reminders_today": _safe_resource_call(reminders_today_resource),
             "messages_unread": _safe_resource_call(messages_unread_resource),
             "notes_recent": _safe_resource_call(notes_recent_resource),
             "files_recent": _safe_resource_call(files_recent_resource),
+            "files_recent_locations": _safe_resource_call(files_recent_locations_resource),
         },
         indent=2,
         sort_keys=True,
@@ -2422,6 +2893,7 @@ def _build_daily_briefing_payload(mail_query: str, mail_limit: int) -> dict[str,
         "kind": "daily_briefing",
         "summary": "Daily Apple briefing generated from today, overview, and Mail context.",
         "today": today,
+        "focus": today.get("system_context", {}).get("focus"),
         "mail_highlights": mail_highlights,
         "domain_health": overview["health"],
     }
@@ -2435,6 +2907,7 @@ def _build_weekly_briefing_payload(days: int, mail_query: str, mail_limit: int) 
     )
     reminders = reminders_list_reminders(limit=25)
     mail_highlights = _summarize_mail_results(mail_query, mail_limit)
+    system_context = _safe_resource_call(system_context_resource)
     calendar_payload = [] if isinstance(upcoming, CalendarErrorResponse) else [event.model_dump(mode="json") for event in upcoming.events]
     reminders_payload = [] if getattr(reminders, "ok", False) is not True else [item.model_dump(mode="json") for item in reminders.reminders]
     return {
@@ -2444,6 +2917,7 @@ def _build_weekly_briefing_payload(days: int, mail_query: str, mail_limit: int) 
         "summary": f"Weekly Apple briefing generated for the next {days} days.",
         "calendar_events": calendar_payload,
         "reminders": reminders_payload,
+        "focus": system_context.get("focus"),
         "mail_highlights": mail_highlights,
     }
 
@@ -2624,8 +3098,16 @@ UNIFIED_TOOL_FUNCTIONS: list[Callable[..., Any]] = [
     files_get_file_info,
     files_read_text_file,
     files_recent_files,
+    files_get_tags,
+    files_list_recent_locations,
+    files_get_icloud_status,
     files_create_folder,
     files_move_path,
+    files_open_path,
+    files_reveal_in_finder,
+    files_set_tags,
+    files_add_tags,
+    files_remove_tags,
     files_delete_path,
     system_health,
     system_status,
@@ -2639,6 +3121,8 @@ UNIFIED_TOOL_FUNCTIONS: list[Callable[..., Any]] = [
     system_get_dock_settings,
     system_get_finder_settings,
     system_get_settings_snapshot,
+    system_get_focus_status,
+    system_get_context_snapshot,
     system_read_preference_domain,
     system_set_appearance_mode,
     system_set_show_all_extensions,
@@ -2725,6 +3209,20 @@ APPLE_AGENT_TOOL_NAMES = [
     "apple_create_note_with_defaults",
     "apple_capture_follow_up_from_mail",
     "apple_event_collaboration_summary",
+    "apple_maps_search_places_strict",
+    "apple_maps_get_directions_strict",
+    "apple_find_duplicate_contacts",
+    "apple_prepare_unique_contact",
+    "apple_detect_digest_folder",
+    "apple_set_digest_folder",
+    "apple_ensure_digest_folder",
+    "apple_list_shortcuts_for_capability",
+    "apple_route_or_run_shortcut",
+    "apple_get_focus_status",
+    "apple_get_system_context",
+    "apple_open_file_path",
+    "apple_reveal_in_finder",
+    "apple_tag_file",
     "apple_open_application",
     "apple_update_system_setting",
     "apple_control_frontmost_app",

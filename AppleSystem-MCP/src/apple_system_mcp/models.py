@@ -89,6 +89,29 @@ class SettingsSnapshotResponse(BaseModel):
     finder: dict[str, object]
 
 
+class FocusStatusResponse(BaseModel):
+    ok: bool = True
+    focus_supported: bool
+    focus_active: bool | None = None
+    focus_name: str | None = None
+    observed_at: str
+    source: str
+    confidence: float | None = None
+    notes: list[str] = Field(default_factory=list)
+
+
+class SystemContextResponse(BaseModel):
+    ok: bool = True
+    observed_at: str
+    battery: BatteryStatus | None = None
+    frontmost_app: str | None = None
+    frontmost_application: AppRecord | None = None
+    running_apps_count: int | None = None
+    focus: FocusStatusResponse
+    notification_history_supported: bool = False
+    notification_history_notes: list[str] = Field(default_factory=list)
+
+
 class PreferenceDomainResponse(BaseModel):
     ok: bool = True
     domain: str

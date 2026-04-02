@@ -30,8 +30,8 @@ Everything happens on your Mac. Your data stays in Apple's apps where it belongs
 ## Servers
 
 - [Apple-Tools-MCP](./Apple-Tools-MCP/README.md), recommended. One unified server for Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps.
-- [Apple Files MCP](./AppleFiles-MCP/README.md), for safe file and folder workflows inside allowed roots.
-- [Apple System MCP](./AppleSystem-MCP/README.md), for frontmost app, battery, clipboard, notifications, app-launch context, assistant-relevant macOS settings reads and writes, and bounded GUI fallback automation.
+- [Apple Files MCP](./AppleFiles-MCP/README.md), for safe file, Finder-adjacent, and iCloud Drive workflows inside allowed roots.
+- [Apple System MCP](./AppleSystem-MCP/README.md), for frontmost app, battery, clipboard, truthful Focus support metadata, app-launch context, assistant-relevant macOS settings reads and writes, and bounded GUI fallback automation.
 - [Apple Maps MCP](./AppleMaps-MCP/README.md), for place search, travel estimates, and Apple Maps links.
 - [Apple Mail MCP](./AppleMail-MCP/README.md), for Mail-only workflows.
 - [Apple Calendar](./Apple-Calendar-MCP/README.md), for Calendar-only workflows.
@@ -43,7 +43,7 @@ Everything happens on your Mac. Your data stays in Apple's apps where it belongs
 
 ## Which One To Use
 
-**Apple-Tools-MCP** (recommended) — One server that covers everything: Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps. Includes extras like saved defaults, per-contact routing preferences, thread-aware Mail helpers, and undo support.
+**Apple-Tools-MCP** (recommended) — One server that covers everything: Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps. Includes extras like saved defaults, per-contact routing preferences, thread-aware Mail helpers, undo support, truthful Focus context, Finder-aware file workflows, and iCloud Drive awareness.
 
 **Standalone servers** — Pick one if you want tighter boundaries or simpler permissions:
 - [Apple Files MCP](./AppleFiles-MCP/README.md), [Apple System MCP](./AppleSystem-MCP/README.md), [Apple Maps MCP](./AppleMaps-MCP/README.md) for focused workflows
@@ -125,7 +125,7 @@ Example for the all-in-one server:
         "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
         "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage",
-        "APPLE_FILES_MCP_ALLOWED_ROOTS": "/Users/you/Desktop,/Users/you/Documents,/Users/you/Downloads",
+        "APPLE_FILES_MCP_ALLOWED_ROOTS": "/Users/you/Desktop,/Users/you/Documents,/Users/you/Downloads,/Users/you/Library/Mobile Documents/com~apple~CloudDocs",
         "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_manage",
@@ -137,6 +137,8 @@ Example for the all-in-one server:
   }
 }
 ```
+
+For launch-quality assistant behavior, use the assistant-grade safety settings shown in [Apple-Tools-MCP/README.md](./Apple-Tools-MCP/README.md) instead of an empty `env` block.
 
 Example for a standalone server:
 
@@ -185,6 +187,9 @@ claude mcp add --transport stdio --scope project \
 - Call the health tool to verify it's working
 - If permissions fail, call the permission guide tool
 - After fixing permissions, call the recheck tool (or `shortcuts_refresh_state` for Shortcuts)
+- Do not treat shell, `curl`, UI scraping, or external APIs as a passing result when the suite claims native MCP support for that capability
+- For Maps, a pass requires native Apple Maps MCP success
+- For Focus and notifications, a pass requires truthful MCP output. Do not invent active Focus state or Notification Center history that the suite does not actually expose.
 
 ## Protocol Verification
 

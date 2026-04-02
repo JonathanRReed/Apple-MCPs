@@ -1,5 +1,5 @@
 from apple_contacts_mcp.config import load_settings
-from apple_contacts_mcp.models import ContactDetail, ContactMethod
+from apple_contacts_mcp.models import ContactDetail, ContactMethod, DuplicateCandidateGroup, DuplicateEvidence
 from apple_contacts_mcp import tools
 
 
@@ -61,6 +61,7 @@ def test_contacts_health_reports_access(monkeypatch) -> None:
     assert result.contacts_accessible is True
     assert "create_contact" not in result.capabilities
     assert "delete_contact" not in result.capabilities
+    assert "find_duplicates" in result.capabilities
 
 
 def test_contacts_health_respects_safety_mode(monkeypatch) -> None:
@@ -135,6 +136,35 @@ def test_contacts_create_and_update_accept_methods(monkeypatch) -> None:
     assert captured["create"]["emails"][0].value == "alice@example.com"
     assert captured["update"]["phones"][0].label == "mobile"
     assert captured["update"]["emails"][0].label == "work"
+
+
+def test_contacts_find_duplicates_tool(monkeypatch) -> None:
+    class DuplicateBridge(FakeBridge):
+        def find_duplicates(self):
+            return [
+                DuplicateCandidateGroup(
+                    duplicate_group_id="dup-1",
+                    confidence=0.96,
+                    evidence=[DuplicateEvidence(kind="email", value="jonathan@example.com")],
+                    contacts=self.list_contacts(),
+                    merge_recommended=True,
+                )
+            ]
+
+        def suggest_merge_candidates(self, query: str | None = None):
+            return self.find_duplicates()
+
+    monkeypatch.setenv("APPLE_CONTACTS_MCP_SAFETY_MODE", "safe_manage")
+    load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: DuplicateBridge())
+
+    result = tools.contacts_find_duplicates()
+    filtered = tools.contacts_suggest_merge_candidates("alice")
+
+    assert result.ok is True
+    assert result.count == 1
+    assert result.groups[0].merge_recommended is True
+    assert filtered.ok is True
 
 
 def teardown_function() -> None:

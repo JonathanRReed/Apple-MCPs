@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
 import json
 import re
 import subprocess
 
 from apple_contacts_mcp.config import load_settings
-from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSummary, CreateContactResponse, DeleteContactResponse, ResolvedRecipientResponse
+from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSummary, CreateContactResponse, DeleteContactResponse, DuplicateCandidateGroup, DuplicateEvidence, ResolvedRecipientResponse
 
 METHOD_FIELD_SEPARATOR = "\x1f"
 METHOD_RECORD_SEPARATOR = "\x1e"
@@ -169,6 +170,84 @@ class AppleContactsBridge:
             deleted=bool(payload.get("deleted", False)),
         )
 
+    def find_duplicates(self) -> list[DuplicateCandidateGroup]:
+        contacts = self.list_contacts()
+        if len(contacts) < 2:
+            return []
+
+        indexes: dict[str, dict[str, list[tuple[ContactSummary, DuplicateEvidence]]]] = {
+            "phone": {},
+            "email": {},
+            "name": {},
+            "nickname": {},
+        }
+
+        for contact in contacts:
+            full_name = self._normalize_name_key(contact.name) or self._normalize_name_key(f"{contact.first_name} {contact.last_name}")
+            if full_name:
+                indexes["name"].setdefault(full_name, []).append((contact, DuplicateEvidence(kind="name", value=full_name)))
+
+            for nickname in self._extract_name_tokens(contact):
+                indexes["nickname"].setdefault(nickname, []).append((contact, DuplicateEvidence(kind="nickname", value=nickname)))
+
+            for phone in contact.phones:
+                normalized_phone = self._normalize_lookup_value(phone.value)
+                if normalized_phone:
+                    indexes["phone"].setdefault(normalized_phone, []).append((contact, DuplicateEvidence(kind="phone", value=normalized_phone)))
+
+            for email in contact.emails:
+                normalized_email = self._normalize_lookup_value(email.value)
+                if normalized_email:
+                    indexes["email"].setdefault(normalized_email, []).append((contact, DuplicateEvidence(kind="email", value=normalized_email)))
+
+        grouped: dict[frozenset[str], DuplicateCandidateGroup] = {}
+        for kind, minimum_confidence in (("phone", 0.96), ("email", 0.96), ("name", 0.82), ("nickname", 0.74)):
+            for matches in indexes[kind].values():
+                unique_contacts = {contact.contact_id: contact for contact, _ in matches}
+                if len(unique_contacts) < 2:
+                    continue
+                key = frozenset(unique_contacts)
+                evidence = [item for _, item in matches]
+                if key in grouped:
+                    current = grouped[key]
+                    current_evidence = list(current.evidence)
+                    existing_pairs = {(item.kind, item.value) for item in current_evidence}
+                    for item in evidence:
+                        if (item.kind, item.value) not in existing_pairs:
+                            current_evidence.append(item)
+                    grouped[key] = current.model_copy(
+                        update={
+                            "evidence": current_evidence,
+                            "confidence": min(0.99, max(current.confidence, minimum_confidence) + (0.04 * max(0, len(current_evidence) - 1))),
+                            "merge_recommended": min(0.99, max(current.confidence, minimum_confidence) + (0.04 * max(0, len(current_evidence) - 1))) >= 0.9,
+                        }
+                    )
+                    continue
+                group_key = "|".join(sorted(key))
+                confidence = minimum_confidence + (0.04 * max(0, len(evidence) - 1))
+                grouped[key] = DuplicateCandidateGroup(
+                    duplicate_group_id=hashlib.sha1(group_key.encode("utf-8")).hexdigest()[:12],
+                    confidence=min(0.99, confidence),
+                    evidence=self._dedupe_evidence(evidence),
+                    contacts=list(unique_contacts.values()),
+                    merge_recommended=min(0.99, confidence) >= 0.9,
+                )
+
+        groups = sorted(grouped.values(), key=lambda item: (-item.confidence, item.duplicate_group_id))
+        return groups
+
+    def suggest_merge_candidates(self, query: str | None = None) -> list[DuplicateCandidateGroup]:
+        groups = [group for group in self.find_duplicates() if group.merge_recommended]
+        if not query:
+            return groups
+        normalized_query = query.strip().lower()
+        return [
+            group
+            for group in groups
+            if any(normalized_query in contact.name.lower() for contact in group.contacts)
+            or any(normalized_query in evidence.value.lower() for evidence in group.evidence)
+        ]
+
     def _choose_recipient(self, contact: ContactDetail, channel: str) -> tuple[str, ContactMethod]:
         if channel == "phone":
             if contact.phones:
@@ -304,6 +383,38 @@ class AppleContactsBridge:
         if "@" in lowered:
             return lowered
         return re.sub(r"\D+", "", lowered)
+
+    def _normalize_name_key(self, value: str) -> str:
+        lowered = re.sub(r"\s+", " ", value.strip().lower())
+        return re.sub(r"[^a-z0-9() ]+", "", lowered)
+
+    def _extract_name_tokens(self, contact: ContactSummary) -> set[str]:
+        tokens: set[str] = set()
+        for value in (contact.name, contact.first_name, contact.last_name):
+            normalized = self._normalize_name_key(value)
+            if not normalized:
+                continue
+            tokens.add(normalized)
+            for item in re.findall(r"\(([^)]+)\)", normalized):
+                token = item.strip()
+                if token:
+                    tokens.add(token)
+            for item in re.split(r"[() ]+", normalized):
+                token = item.strip()
+                if token:
+                    tokens.add(token)
+        return tokens
+
+    def _dedupe_evidence(self, evidence: list[DuplicateEvidence]) -> list[DuplicateEvidence]:
+        seen: set[tuple[str, str]] = set()
+        result: list[DuplicateEvidence] = []
+        for item in evidence:
+            key = (item.kind, item.value)
+            if key in seen:
+                continue
+            seen.add(key)
+            result.append(item)
+        return result
 
     def _serialize_methods(self, methods: list[ContactMethod] | None) -> str:
         if not methods:

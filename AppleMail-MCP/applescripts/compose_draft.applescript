@@ -39,6 +39,69 @@ on boolText(flagValue)
     return "false"
 end boolText
 
+on resolveAccountBySender(senderRaw)
+    if senderRaw is "" then
+        return missing value
+    end if
+    tell application "Mail"
+        repeat with theAccount in every account
+            try
+                if (name of theAccount as text) is senderRaw then
+                    return theAccount
+                end if
+            end try
+            try
+                if (email addresses of theAccount) contains senderRaw then
+                    return theAccount
+                end if
+            end try
+        end repeat
+    end tell
+    error "ACCOUNT_NOT_FOUND"
+end resolveAccountBySender
+
+on primaryEmailForAccount(theAccount)
+    tell application "Mail"
+        try
+            return item 1 of (email addresses of theAccount) as text
+        end try
+    end tell
+    return ""
+end primaryEmailForAccount
+
+on selectSenderPopup(senderRaw, senderEmail)
+    tell application "Mail" to activate
+    delay 0.4
+    tell application "System Events"
+        tell process "Mail"
+            set frontmost to true
+            set composeWindow to front window
+            set fromPopup to first pop up button of composeWindow whose name is "From:"
+            click fromPopup
+            delay 0.2
+            set matchingItem to missing value
+            repeat with menuItemRef in every menu item of menu 1 of fromPopup
+                set itemName to name of menuItemRef as text
+                if senderEmail is not "" and itemName contains senderEmail then
+                    set matchingItem to menuItemRef
+                    exit repeat
+                end if
+                if senderRaw is not "" and itemName contains senderRaw then
+                    set matchingItem to menuItemRef
+                    exit repeat
+                end if
+            end repeat
+            if matchingItem is missing value then
+                key code 53
+                error "ACCOUNT_MENU_ITEM_NOT_FOUND"
+            end if
+            click matchingItem
+            delay 0.3
+            return value of fromPopup as text
+        end tell
+    end tell
+end selectSenderPopup
+
 on run argv
     set toRaw to item 1 of argv
     set ccRaw to item 2 of argv
@@ -61,9 +124,18 @@ on run argv
         set shouldBeVisible to false
     end if
 
+    set resolvedAccountLabel to ""
+    set senderEmail to ""
+
     tell application "Mail"
-        set newMessage to make new outgoing message with properties {visible:shouldBeVisible, subject:subjectText, content:bodyText}
+        set effectiveVisible to shouldBeVisible
         if senderRaw is not "" then
+            set effectiveVisible to true
+        end if
+        set newMessage to make new outgoing message with properties {visible:effectiveVisible, subject:subjectText, content:bodyText}
+        if senderRaw is not "" then
+            set matchedAccount to my resolveAccountBySender(senderRaw)
+            set senderEmail to my primaryEmailForAccount(matchedAccount)
             set sender of newMessage to senderRaw
         end if
         tell newMessage
@@ -88,6 +160,13 @@ on run argv
                 end if
             end repeat
         end tell
-        return my sanitizeText((id of newMessage) as text) & fieldSeparator & my boolText(visible of newMessage) & recordSeparator
+    end tell
+
+    if senderRaw is not "" then
+        set resolvedAccountLabel to my sanitizeText(my selectSenderPopup(senderRaw, senderEmail))
+    end if
+
+    tell application "Mail"
+        return my sanitizeText((id of newMessage) as text) & fieldSeparator & my boolText(visible of newMessage) & fieldSeparator & resolvedAccountLabel & recordSeparator
     end tell
 end run

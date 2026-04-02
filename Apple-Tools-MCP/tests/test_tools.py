@@ -33,6 +33,15 @@ def test_registered_tool_names_cover_core_domains() -> None:
     assert "apple_suggest_files" in tools.REGISTERED_TOOL_NAMES
     assert "apple_suggest_running_apps" in tools.REGISTERED_TOOL_NAMES
     assert "apple_suggest_places" in tools.REGISTERED_TOOL_NAMES
+    assert "files_recent_files" in tools.REGISTERED_TOOL_NAMES
+    assert "system_list_running_apps" in tools.REGISTERED_TOOL_NAMES
+    assert "system_get_settings_snapshot" in tools.REGISTERED_TOOL_NAMES
+    assert "system_read_preference_domain" in tools.REGISTERED_TOOL_NAMES
+    assert "system_set_appearance_mode" in tools.REGISTERED_TOOL_NAMES
+    assert "system_set_show_hidden_files" in tools.REGISTERED_TOOL_NAMES
+    assert "system_gui_click_menu_path" in tools.REGISTERED_TOOL_NAMES
+    assert "system_gui_type_text" in tools.REGISTERED_TOOL_NAMES
+    assert "maps_search_places" in tools.REGISTERED_TOOL_NAMES
     assert "mail_list_mailboxes" in tools.REGISTERED_TOOL_NAMES
     assert "calendar_list_events" in tools.REGISTERED_TOOL_NAMES
     assert "reminders_list_reminders" in tools.REGISTERED_TOOL_NAMES
@@ -229,6 +238,7 @@ def test_apple_overview_resource_includes_files_system_and_maps(monkeypatch) -> 
     )
     monkeypatch.setattr(tools, "files_recent_resource", lambda: json.dumps({"files": []}))
     monkeypatch.setattr(tools, "system_status_resource", lambda: json.dumps({"frontmost_app": "Mail"}))
+    monkeypatch.setattr(tools, "system_settings_resource", lambda: json.dumps({"appearance": {"mode": "dark"}}))
     monkeypatch.setattr(tools, "maps_status_resource", lambda: json.dumps({"helper_available": True}))
     monkeypatch.setattr(tools, "calendar_calendars_resource", lambda: json.dumps({"calendars": []}))
     monkeypatch.setattr(tools, "reminders_lists_resource", lambda: json.dumps({"lists": []}))
@@ -245,6 +255,7 @@ def test_apple_overview_resource_includes_files_system_and_maps(monkeypatch) -> 
     assert payload["health"]["maps"]["ok"] is True
     assert payload["resources"]["files"]["files"] == []
     assert payload["resources"]["system"]["frontmost_app"] == "Mail"
+    assert "system_settings" in payload["resources"]
     assert payload["resources"]["maps"]["helper_available"] is True
 
 
@@ -271,6 +282,31 @@ def test_aio_messages_get_conversation_schema_uses_integer_limit() -> None:
     schema = asyncio.run(load_schema())
 
     assert schema["properties"]["limit"]["anyOf"] == [{"type": "integer"}, {"type": "string"}]
+
+
+def test_aio_list_tools_includes_files_system_and_maps() -> None:
+    async def load_tool_names():
+        tool_list = await tools.mcp.list_tools()
+        return {tool.name for tool in tool_list}
+
+    tool_names = asyncio.run(load_tool_names())
+
+    assert "files_recent_files" in tool_names
+    assert "system_list_running_apps" in tool_names
+    assert "system_get_settings_snapshot" in tool_names
+    assert "system_set_appearance_mode" in tool_names
+    assert "system_gui_list_menu_bar_items" in tool_names
+    assert "maps_search_places" in tool_names
+
+
+def test_aio_mail_send_message_schema_includes_from_account() -> None:
+    async def load_schema():
+        tool_list = await tools.mcp.list_tools()
+        return next(tool.inputSchema for tool in tool_list if tool.name == "mail_send_message")
+
+    schema = asyncio.run(load_schema())
+
+    assert "from_account" in schema["properties"]
 
 
 def test_aio_messages_get_conversation_accepts_string_limit(monkeypatch) -> None:

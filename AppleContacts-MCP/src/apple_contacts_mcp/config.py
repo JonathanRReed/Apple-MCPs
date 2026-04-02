@@ -19,7 +19,7 @@ class Settings:
 
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
-    root_dir = Path(__file__).resolve().parents[2]
+    package_dir = Path(__file__).resolve().parent
     raw_safety_mode = os.environ.get("APPLE_CONTACTS_MCP_SAFETY_MODE", "safe_readonly").strip() or "safe_readonly"
     if raw_safety_mode not in VALID_SAFETY_MODES:
         raw_safety_mode = "safe_readonly"
@@ -29,5 +29,5 @@ def load_settings() -> Settings:
         version="0.1.0",
         safety_mode=cast(SafetyMode, raw_safety_mode),
         log_level=os.environ.get("APPLE_CONTACTS_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",
-        scripts_dir=root_dir / "applescripts",
+        scripts_dir=package_dir / "applescripts",
     )

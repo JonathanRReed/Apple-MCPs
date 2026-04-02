@@ -1,6 +1,6 @@
 # Apple System MCP
 
-Local MCP server for lightweight macOS system context.
+Local MCP server for macOS system context, assistant-relevant settings reads, explicit settings writes, and bounded GUI fallback automation.
 
 ## Capabilities
 
@@ -10,7 +10,18 @@ Local MCP server for lightweight macOS system context.
 - clipboard read and write
 - local notifications
 - open an application
+- appearance settings
+- accessibility settings
+- Dock settings
+- Finder settings
+- appearance mode write
+- Finder visibility and bar writes
+- Dock write controls for autohide and recent apps
+- accessibility writes for reduce motion, increase contrast, and reduce transparency
+- GUI fallback tools for menu clicks, key presses, text entry, button clicks, and pop-up selection
+- preference-domain inspection via `defaults export`
 - resources: `system://status`, `system://applications`
+- resource: `system://settings`
 - prompt: `system_capture_context`
 
 ## Install On This Mac
@@ -47,13 +58,41 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 
 - Use this server when the user’s current desktop context matters.
 - Read battery state and the frontmost app before interruptive actions.
+- Use the settings tools before falling back to raw `defaults read` in prompts or E2E checks.
 - Keep `APPLE_SYSTEM_MCP_SAFETY_MODE=safe_readonly` by default.
-- Use `safe_manage` only when the agent truly needs clipboard writes, notifications, or app launches.
+- Use `safe_manage` when the agent needs explicit settings writes or bounded GUI fallback tools.
+- Keep GUI fallback narrow. Prefer native app-domain MCPs first, then explicit System tools, then GUI tools only when native support is missing.
 
 ## Health And Recovery
 
 - `system_health`
 - `system_permission_guide`
+- `system_get_settings_snapshot`
+- `system_read_preference_domain`
+
+## Assistant-Grade Control Surface
+
+The launch System write surface is explicit, not generic:
+
+- `system_set_appearance_mode`
+- `system_set_show_all_extensions`
+- `system_set_show_hidden_files`
+- `system_set_finder_path_bar`
+- `system_set_finder_status_bar`
+- `system_set_dock_autohide`
+- `system_set_dock_show_recents`
+- `system_set_reduce_motion`
+- `system_set_increase_contrast`
+- `system_set_reduce_transparency`
+
+The bounded GUI fallback surface is:
+
+- `system_gui_list_menu_bar_items`
+- `system_gui_click_menu_path`
+- `system_gui_press_keys`
+- `system_gui_type_text`
+- `system_gui_click_button`
+- `system_gui_choose_popup_value`
 
 ## Launch Checklist
 

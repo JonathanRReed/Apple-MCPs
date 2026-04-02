@@ -178,6 +178,7 @@ class AppleMailBridge:
             raise MailBridgeError("Draft payload was incomplete.")
 
         draft_id, visible = rows[0][:2]
+        resolved_from_account = _restore_text(rows[0][2]) if len(rows[0]) >= 3 and rows[0][2] else from_account
         return DraftRecord(
             draft_id=_restore_text(draft_id),
             subject=subject,
@@ -185,7 +186,7 @@ class AppleMailBridge:
             cc=cc or [],
             bcc=bcc or [],
             visible=_parse_bool(visible),
-            from_account=from_account,
+            from_account=resolved_from_account,
         )
 
     def send_message(
@@ -214,13 +215,14 @@ class AppleMailBridge:
         if not rows or len(rows[0]) < 1:
             raise MailBridgeError("Send payload was incomplete.")
         sent_flag = rows[0][0]
+        resolved_from_account = _restore_text(rows[0][2]) if len(rows[0]) >= 3 and rows[0][2] else from_account
         return SendRecord(
             subject=subject,
             to=to,
             cc=cc or [],
             bcc=bcc or [],
             sent=_parse_bool(sent_flag),
-            from_account=from_account,
+            from_account=resolved_from_account,
         )
 
     def reply_message(
@@ -239,11 +241,12 @@ class AppleMailBridge:
         if not rows or len(rows[0]) < 3:
             raise MailBridgeError("Reply payload was incomplete.")
         sent_flag, subject, reply_all_flag = rows[0][:3]
+        resolved_from_account = _restore_text(rows[0][3]) if len(rows[0]) >= 4 and rows[0][3] else from_account
         return ReplyRecord(
             sent=_parse_bool(sent_flag),
             subject=_restore_text(subject),
             reply_all=_parse_bool(reply_all_flag),
-            from_account=from_account,
+            from_account=resolved_from_account,
         )
 
     def forward_message(
@@ -262,11 +265,12 @@ class AppleMailBridge:
         if not rows or len(rows[0]) < 2:
             raise MailBridgeError("Forward payload was incomplete.")
         sent_flag, subject = rows[0][:2]
+        resolved_from_account = _restore_text(rows[0][2]) if len(rows[0]) >= 3 and rows[0][2] else from_account
         return ForwardRecord(
             sent=_parse_bool(sent_flag),
             subject=_restore_text(subject),
             to=to,
-            from_account=from_account,
+            from_account=resolved_from_account,
         )
 
     def mark_message(self, message_id: str, is_read: bool) -> MarkRecord:

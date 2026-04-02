@@ -20,11 +20,18 @@ class AppleMapsBridge:
     def __init__(self, helper_source: Path, helper_binary: Path) -> None:
         self.helper_source = helper_source
         self.helper_binary = helper_binary
+        self.timeout_seconds = 20
 
     def helper_available(self) -> tuple[bool, bool]:
         return self.helper_source.exists(), self.helper_binary.exists()
 
     def _ensure_helper(self) -> None:
+        if not self.helper_source.exists():
+            raise MapsBridgeError(
+                "HELPER_SOURCE_MISSING",
+                f"Missing Apple Maps helper source at '{self.helper_source}'.",
+                "Reinstall apple-maps-mcp and retry.",
+            )
         self.helper_binary.parent.mkdir(parents=True, exist_ok=True)
         if self.helper_binary.exists() and self.helper_binary.stat().st_mtime >= self.helper_source.stat().st_mtime:
             return
@@ -34,7 +41,14 @@ class AppleMapsBridge:
                 capture_output=True,
                 check=True,
                 text=True,
+                timeout=self.timeout_seconds,
             )
+        except subprocess.TimeoutExpired as exc:
+            raise MapsBridgeError(
+                "HELPER_COMPILE_TIMEOUT",
+                "Timed out while compiling the Apple Maps helper.",
+                "Confirm Xcode command line tools are installed, then retry.",
+            ) from exc
         except (FileNotFoundError, subprocess.CalledProcessError) as exc:
             stderr = exc.stderr.strip() if isinstance(exc, subprocess.CalledProcessError) and exc.stderr else ""
             raise MapsBridgeError(
@@ -51,7 +65,14 @@ class AppleMapsBridge:
                 capture_output=True,
                 check=True,
                 text=True,
+                timeout=self.timeout_seconds,
             )
+        except subprocess.TimeoutExpired as exc:
+            raise MapsBridgeError(
+                "HELPER_TIMEOUT",
+                "Apple Maps helper timed out while waiting for MapKit.",
+                "Retry the request, or confirm Maps and Location Services are available on this Mac.",
+            ) from exc
         except subprocess.CalledProcessError as exc:
             stderr = exc.stderr.strip() or exc.stdout.strip()
             raise MapsBridgeError("HELPER_FAILED", stderr or "Apple Maps helper failed.", "Retry the request.") from exc

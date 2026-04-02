@@ -27,8 +27,13 @@ def _parse_allowed_calendars(value: str | None) -> tuple[str, ...]:
 
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
-    root_dir = Path(__file__).resolve().parents[2]
-    repo_dir = root_dir.parent
+    package_dir = Path(__file__).resolve().parent
+    helper_build_dir = Path(
+        os.environ.get(
+            "APPLE_CALENDAR_MCP_HELPER_BUILD_DIR",
+            str(Path.home() / ".apple-mcps" / "build"),
+        )
+    ).expanduser()
     raw_safety_mode = os.environ.get("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage").strip() or "safe_manage"
     if raw_safety_mode not in VALID_SAFETY_MODES:
         raw_safety_mode = "safe_manage"
@@ -39,6 +44,6 @@ def load_settings() -> Settings:
         safety_mode=cast(SafetyMode, raw_safety_mode),
         allowed_calendars=_parse_allowed_calendars(os.environ.get("APPLE_CALENDAR_MCP_ALLOWED_CALENDARS")),
         log_level=os.environ.get("APPLE_CALENDAR_MCP_LOG_LEVEL", "INFO").strip() or "INFO",
-        helper_source=repo_dir / "SharedAppleBridge" / "apple_pim_bridge.swift",
-        helper_binary=repo_dir / ".build" / "apple-pim-bridge",
+        helper_source=package_dir / "apple_pim_bridge.swift",
+        helper_binary=helper_build_dir / "apple-calendar-pim-bridge",
     )

@@ -25,6 +25,9 @@ dev = [
 [tool.setuptools]
 package-dir = {"" = "src"}
 
+[tool.setuptools.package-data]
+apple_calendar_mcp = ["*.swift"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

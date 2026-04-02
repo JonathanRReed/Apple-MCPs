@@ -31,7 +31,7 @@ Everything happens on your Mac. Your data stays in Apple's apps where it belongs
 
 - [Apple-Tools-MCP](./Apple-Tools-MCP/README.md), recommended. One unified server for Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps.
 - [Apple Files MCP](./AppleFiles-MCP/README.md), for safe file and folder workflows inside allowed roots.
-- [Apple System MCP](./AppleSystem-MCP/README.md), for frontmost app, battery, clipboard, notifications, and app-launch context.
+- [Apple System MCP](./AppleSystem-MCP/README.md), for frontmost app, battery, clipboard, notifications, app-launch context, assistant-relevant macOS settings reads and writes, and bounded GUI fallback automation.
 - [Apple Maps MCP](./AppleMaps-MCP/README.md), for place search, travel estimates, and Apple Maps links.
 - [Apple Mail MCP](./AppleMail-MCP/README.md), for Mail-only workflows.
 - [Apple Calendar](./Apple-Calendar-MCP/README.md), for Calendar-only workflows.
@@ -236,7 +236,7 @@ Different Apple apps require different permissions:
 | Apple Notes | Automation access to Notes |
 | Apple Shortcuts | Usually no separate privacy prompt |
 | Apple Files | No privacy prompt, access is limited by the configured allowed roots |
-| Apple System | Some actions may trigger System Events or automation prompts |
+| Apple System | Some actions may trigger System Events, Accessibility, or automation prompts |
 | Apple Maps | No privacy prompt, but local Swift helper compilation needs Xcode command line tools |
 
 ## Repo Layout

@@ -74,21 +74,23 @@ def contacts_prepare_message_recipient_prompt() -> str:
 def contacts_health() -> HealthResponse:
     settings = load_settings()
     accessible, error = _bridge().permission_diagnostic()
+    capabilities = [
+        "list_contacts",
+        "search_contacts",
+        "get_contact",
+        "resolve_message_recipient",
+        "resources",
+        "prompts",
+    ]
+    if settings.safety_mode in {"safe_manage", "full_access"}:
+        capabilities.extend(["create_contact", "update_contact"])
+    if settings.safety_mode == "full_access":
+        capabilities.append("delete_contact")
     return HealthResponse(
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
-        capabilities=[
-            "list_contacts",
-            "search_contacts",
-            "get_contact",
-            "resolve_message_recipient",
-            "create_contact",
-            "update_contact",
-            "delete_contact",
-            "resources",
-            "prompts",
-        ],
+        capabilities=capabilities,
         contacts_accessible=accessible,
         permission_error=error.message if error is not None else None,
         permission_suggestion=error.suggestion if error is not None else None,

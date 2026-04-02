@@ -59,6 +59,27 @@ def test_contacts_health_reports_access(monkeypatch) -> None:
 
     assert result.ok is True
     assert result.contacts_accessible is True
+    assert "create_contact" not in result.capabilities
+    assert "delete_contact" not in result.capabilities
+
+
+def test_contacts_health_respects_safety_mode(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CONTACTS_MCP_SAFETY_MODE", "safe_manage")
+    load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: FakeBridge())
+
+    manage = tools.contacts_health()
+
+    assert "create_contact" in manage.capabilities
+    assert "update_contact" in manage.capabilities
+    assert "delete_contact" not in manage.capabilities
+
+    monkeypatch.setenv("APPLE_CONTACTS_MCP_SAFETY_MODE", "full_access")
+    load_settings.cache_clear()
+
+    full = tools.contacts_health()
+
+    assert "delete_contact" in full.capabilities
 
 
 def test_contacts_resolve_message_recipient_returns_value(monkeypatch) -> None:

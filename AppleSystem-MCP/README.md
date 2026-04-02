@@ -47,7 +47,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
       "command": "/path/to/Apple-MCPs/AppleSystem-MCP/start.sh",
       "args": [],
       "env": {
-        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_readonly"
+        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_manage"
       }
     }
   }
@@ -59,8 +59,8 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 - Use this server when the user’s current desktop context matters.
 - Read battery state and the frontmost app before interruptive actions.
 - Use the settings tools before falling back to raw `defaults read` in prompts or E2E checks.
-- Keep `APPLE_SYSTEM_MCP_SAFETY_MODE=safe_readonly` by default.
-- Use `safe_manage` when the agent needs explicit settings writes or bounded GUI fallback tools.
+- Use `APPLE_SYSTEM_MCP_SAFETY_MODE=safe_manage` for assistant-grade operation.
+- Keep `safe_readonly` only for audit-only or context-only deployments.
 - Keep GUI fallback narrow. Prefer native app-domain MCPs first, then explicit System tools, then GUI tools only when native support is missing.
 
 ## Health And Recovery

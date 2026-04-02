@@ -4,8 +4,8 @@
   "name": "apple-system",
   "display_name": "Apple System",
   "version": "0.1.0",
-  "description": "Read lightweight macOS system context and perform scoped desktop actions.",
-  "long_description": "Local MCP server for macOS system context. Use it to read battery state, inspect the frontmost app and running apps, read or write the clipboard, show local notifications, and open applications with scoped safety controls.",
+  "description": "Read and manage macOS system settings and perform scoped desktop actions.",
+  "long_description": "Local MCP server for macOS system context and control. Use it to inspect battery state, application state, system settings, clipboard, and notifications, and to apply bounded settings writes or GUI fallback actions with scoped safety controls.",
   "icon": "icon.png",
   "author": {
     "name": "Jonathan Reed"
@@ -22,7 +22,7 @@
       "command": "${__dirname}/start.sh",
       "args": [],
       "env": {
-        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_readonly"
+        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_manage"
       }
     }
   }

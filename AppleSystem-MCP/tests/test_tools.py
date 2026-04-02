@@ -6,11 +6,17 @@ class StubBridge:
     def battery(self):
         return BatteryStatus(percentage=85, power_source="AC Power", charging=True, raw="now drawing from 'AC Power'")
 
+    def frontmost_application(self):
+        return AppRecord(name="Mail", bundle_id="com.apple.mail", process_id=100)
+
     def frontmost_app(self):
         return "Mail"
 
     def running_apps(self):
-        return [AppRecord(name="Mail"), AppRecord(name="Notes")]
+        return [
+            AppRecord(name="Mail", bundle_id="com.apple.mail", process_id=100),
+            AppRecord(name="Notes", bundle_id="com.apple.Notes", process_id=200),
+        ]
 
     def get_clipboard(self):
         return "hello"
@@ -21,8 +27,9 @@ class StubBridge:
     def show_notification(self, title: str, body: str, subtitle: str | None = None):
         self.last_notification = (title, body, subtitle)
 
-    def open_application(self, application: str):
-        self.last_application = application
+    def open_application(self, application: str | None = None, bundle_id: str | None = None):
+        self.last_application = (application, bundle_id)
+        return AppRecord(name=application or "Mail", bundle_id=bundle_id or "com.apple.mail", process_id=300)
 
     def list_settings_domains(self):
         return [
@@ -83,23 +90,23 @@ class StubBridge:
     def set_reduce_transparency(self, enabled: bool):
         return {"requested_value": enabled, "observed_value": enabled, "restarted_processes": []}
 
-    def gui_list_menu_bar_items(self, application: str | None = None):
-        return ["Apple", "File", "Edit"]
+    def gui_list_menu_bar_items(self, application: str | None = None, bundle_id: str | None = None):
+        return AppRecord(name=application or "Mail", bundle_id=bundle_id or "com.apple.mail", process_id=100), ["Apple", "File", "Edit"]
 
-    def gui_click_menu_path(self, menu_path: list[str], application: str | None = None):
-        return application or "Mail"
+    def gui_click_menu_path(self, menu_path: list[str], application: str | None = None, bundle_id: str | None = None):
+        return AppRecord(name=application or "Mail", bundle_id=bundle_id or "com.apple.mail", process_id=100)
 
-    def gui_press_keys(self, key: str, modifiers: list[str] | None = None, application: str | None = None):
-        return application or "Mail"
+    def gui_press_keys(self, key: str, modifiers: list[str] | None = None, application: str | None = None, bundle_id: str | None = None):
+        return AppRecord(name=application or "Mail", bundle_id=bundle_id or "com.apple.mail", process_id=100)
 
-    def gui_type_text(self, text: str, application: str | None = None):
-        return application or "Mail"
+    def gui_type_text(self, text: str, application: str | None = None, bundle_id: str | None = None):
+        return AppRecord(name=application or "Mail", bundle_id=bundle_id or "com.apple.mail", process_id=100)
 
-    def gui_click_button(self, label: str, application: str | None = None):
-        return application or "Mail"
+    def gui_click_button(self, label: str | None = None, description: str | None = None, index: int = 1, application: str | None = None, bundle_id: str | None = None):
+        return AppRecord(name=application or "Mail", bundle_id=bundle_id or "com.apple.mail", process_id=100)
 
-    def gui_choose_popup_value(self, label: str, value: str, application: str | None = None):
-        return application or "Mail"
+    def gui_choose_popup_value(self, label: str | None, value: str, description: str | None = None, application: str | None = None, bundle_id: str | None = None):
+        return AppRecord(name=application or "Mail", bundle_id=bundle_id or "com.apple.mail", process_id=100)
 
 
 def test_system_status(monkeypatch):
@@ -107,7 +114,27 @@ def test_system_status(monkeypatch):
     result = tools.system_status()
     assert result.ok is True
     assert result.frontmost_app == "Mail"
+    assert result.frontmost_application.bundle_id == "com.apple.mail"
     assert result.running_apps_count == 2
+
+
+def test_system_health_respects_safety_mode(monkeypatch):
+    monkeypatch.setenv("APPLE_SYSTEM_MCP_SAFETY_MODE", "safe_readonly")
+    tools.load_settings.cache_clear()
+
+    readonly = tools.system_health()
+
+    assert "get_settings_snapshot" in readonly.capabilities
+    assert "set_appearance_mode" not in readonly.capabilities
+    assert "gui_press_keys" not in readonly.capabilities
+
+    monkeypatch.setenv("APPLE_SYSTEM_MCP_SAFETY_MODE", "safe_manage")
+    tools.load_settings.cache_clear()
+
+    manage = tools.system_health()
+
+    assert "set_appearance_mode" in manage.capabilities
+    assert "gui_press_keys" in manage.capabilities
 
 
 def test_system_get_clipboard(monkeypatch):
@@ -170,7 +197,9 @@ def test_system_gui_fallback_tools(monkeypatch):
     assert menu_items.ok is True
     assert menu_items.used_gui_fallback is True
     assert menu_items.count == 3
+    assert menu_items.bundle_id == "com.apple.mail"
     assert click_result.target == "File > New Viewer"
+    assert click_result.selector_type == "menu_path"
     assert click_result.used_gui_fallback is True
     assert type_result.value == "hello"
 

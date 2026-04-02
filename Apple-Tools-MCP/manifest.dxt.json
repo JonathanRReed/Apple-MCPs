@@ -25,9 +25,9 @@
         "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_FILES_MCP_ALLOWED_ROOTS": "${HOME}/Desktop,${HOME}/Documents,${HOME}/Downloads",
-        "APPLE_FILES_MCP_SAFETY_MODE": "safe_readonly",
-        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_readonly",
-        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_readonly",
+        "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_NOTES_MCP_SAFETY_MODE": "full_access",
         "APPLE_MESSAGES_MCP_SAFETY_MODE": "full_access",
         "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "full_access"

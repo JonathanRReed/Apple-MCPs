@@ -30,6 +30,9 @@ def test_registered_tool_names_cover_core_domains() -> None:
     assert "apple_create_event_interactive" in tools.REGISTERED_TOOL_NAMES
     assert "apple_archive_message" in tools.REGISTERED_TOOL_NAMES
     assert "apple_capture_follow_up_from_mail" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_open_application" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_update_system_setting" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_control_frontmost_app" in tools.REGISTERED_TOOL_NAMES
     assert "apple_suggest_files" in tools.REGISTERED_TOOL_NAMES
     assert "apple_suggest_running_apps" in tools.REGISTERED_TOOL_NAMES
     assert "apple_suggest_places" in tools.REGISTERED_TOOL_NAMES
@@ -296,6 +299,8 @@ def test_aio_list_tools_includes_files_system_and_maps() -> None:
     assert "system_get_settings_snapshot" in tool_names
     assert "system_set_appearance_mode" in tool_names
     assert "system_gui_list_menu_bar_items" in tool_names
+    assert "apple_update_system_setting" in tool_names
+    assert "apple_control_frontmost_app" in tool_names
     assert "maps_search_places" in tool_names
 
 
@@ -363,6 +368,7 @@ def test_apple_send_message_interactive_resolves_contact_name(monkeypatch) -> No
 
     assert result["ok"] is True
     assert captured["recipient"] == "+15551234567"
+    assert captured["service_name"] is None
 
 
 def test_apple_send_message_interactive_falls_back_to_contact_email(monkeypatch) -> None:
@@ -402,6 +408,48 @@ def test_apple_send_message_interactive_falls_back_to_contact_email(monkeypatch)
 
     assert result["ok"] is True
     assert captured["recipient"] == "alice@example.com"
+    assert captured["service_name"] is None
+
+
+def test_apple_update_system_setting_dispatches(monkeypatch) -> None:
+    monkeypatch.setattr(
+        tools,
+        "system_set_dock_autohide",
+        lambda enabled: type("Resp", (), {"ok": True, "section": "dock", "setting": "autohide", "observed_value": enabled})(),
+    )
+
+    result = tools.apple_update_system_setting("dock_autohide", enabled=True)
+
+    assert result.ok is True
+    assert result.setting == "autohide"
+
+
+def test_apple_control_frontmost_app_dispatches(monkeypatch) -> None:
+    monkeypatch.setattr(
+        tools,
+        "system_gui_press_keys",
+        lambda key, modifiers=None, application=None, bundle_id=None: type(
+            "Resp",
+            (),
+            {
+                "ok": True,
+                "action": "press_keys",
+                "application": "Mail",
+                "bundle_id": "com.apple.mail",
+                "process_id": 100,
+                "target": key,
+                "selector_type": "keystroke",
+                "value": [key, *(modifiers or [])] if modifiers else key,
+                "used_gui_fallback": True,
+            },
+        )(),
+    )
+
+    result = tools.apple_control_frontmost_app("press_keys", key="escape", modifiers=["command"], application="Mail")
+
+    assert result.ok is True
+    assert result.selector_type == "keystroke"
+    assert result.used_gui_fallback is True
 
 
 def test_apple_detect_defaults_persists_preferences(monkeypatch, tmp_path) -> None:

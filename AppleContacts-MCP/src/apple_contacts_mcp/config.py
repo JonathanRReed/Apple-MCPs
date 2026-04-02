@@ -20,9 +20,9 @@ class Settings:
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
     package_dir = Path(__file__).resolve().parent
-    raw_safety_mode = os.environ.get("APPLE_CONTACTS_MCP_SAFETY_MODE", "safe_readonly").strip() or "safe_readonly"
+    raw_safety_mode = os.environ.get("APPLE_CONTACTS_MCP_SAFETY_MODE", "safe_manage").strip() or "safe_manage"
     if raw_safety_mode not in VALID_SAFETY_MODES:
-        raw_safety_mode = "safe_readonly"
+        raw_safety_mode = "safe_manage"
 
     return Settings(
         server_name="Apple Contacts",

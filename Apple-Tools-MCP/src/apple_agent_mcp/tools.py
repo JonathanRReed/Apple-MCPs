@@ -197,6 +197,7 @@ from apple_files_mcp.tools import (  # noqa: E402
     files_recent_resource,
     files_search_files,
 )
+from apple_system_mcp.models import ErrorResponse as SystemErrorResponse, GuiActionResponse, GuiMenuItemsResponse, OpenAppResponse, SettingMutationResponse  # noqa: E402
 from apple_system_mcp.tools import (  # noqa: E402
     system_applications_resource,
     system_capture_context_prompt,
@@ -258,7 +259,7 @@ SERVER_INSTRUCTIONS = (
     "For Notes, identify available accounts and folders on first use and use Notes for reference material rather than time-sensitive work. "
     "For Shortcuts, list available shortcuts before running one if the request is vague. "
     "Use Files before Mail, Messages, Notes, or Shortcuts when the user references a local document or attachment, and keep file mutations inside the allowed roots. "
-    "Use System when clipboard state, the frontmost app, running applications, notifications, or battery state matters. "
+    "Use System when clipboard state, the frontmost app, running applications, notifications, app launch, macOS settings reads or writes, or bounded GUI fallback automation matters. "
     "Use Maps when a route, place lookup, or travel estimate affects scheduling or communication. "
     "Disambiguate as follows: due date or time goes to Reminders, reference material with no action goes to Notes, and requests involving another person usually go to Messages or Mail after Contacts resolution. "
     "Some clients defer tool schemas, so batch tool discovery on first use when needed."
@@ -278,7 +279,6 @@ LOGGER = logging.getLogger("apple_agent_mcp")
 class MessageInputRequest(BaseModel):
     recipient: str
     text: str
-    service_name: str | None = None
 
 
 class EventInputRequest(BaseModel):
@@ -1833,6 +1833,118 @@ def apple_event_collaboration_summary(event_id: str) -> EventCollaborationRespon
     )
 
 
+@mcp.tool(
+    title="Apple Open Application",
+    description="Open an application through the unified Apple control plane using its name or bundle identifier.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+    structured_output=True,
+)
+async def apple_open_application(
+    application: str | None = None,
+    bundle_id: str | None = None,
+    ctx: Context | None = None,
+) -> OpenAppResponse | AppleErrorResponse:
+    result = await system_open_application(application=application, bundle_id=bundle_id, ctx=ctx)
+    if isinstance(result, SystemErrorResponse):
+        return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
+    return result
+
+
+@mcp.tool(
+    title="Apple Update System Setting",
+    description="Apply an assistant-relevant macOS setting through the unified Apple control plane.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    structured_output=True,
+)
+def apple_update_system_setting(
+    setting: str,
+    enabled: bool | None = None,
+    mode: str | None = None,
+) -> SettingMutationResponse | AppleErrorResponse:
+    normalized = setting.strip().lower()
+    bool_dispatch = {
+        "show_all_extensions": system_set_show_all_extensions,
+        "show_hidden_files": system_set_show_hidden_files,
+        "finder_path_bar": system_set_finder_path_bar,
+        "finder_status_bar": system_set_finder_status_bar,
+        "dock_autohide": system_set_dock_autohide,
+        "dock_show_recents": system_set_dock_show_recents,
+        "reduce_motion": system_set_reduce_motion,
+        "increase_contrast": system_set_increase_contrast,
+        "reduce_transparency": system_set_reduce_transparency,
+    }
+    if normalized == "appearance_mode":
+        if mode is None:
+            return _apple_error_response("MISSING_INPUT", "mode is required for appearance_mode.", "Provide mode='light' or mode='dark'.")
+        result = system_set_appearance_mode(mode)
+    else:
+        if normalized not in bool_dispatch:
+            return _apple_error_response(
+                "INVALID_INPUT",
+                f"Unknown system setting '{setting}'.",
+                "Use one of: appearance_mode, show_all_extensions, show_hidden_files, finder_path_bar, finder_status_bar, dock_autohide, dock_show_recents, reduce_motion, increase_contrast, reduce_transparency.",
+            )
+        if enabled is None:
+            return _apple_error_response("MISSING_INPUT", f"enabled is required for {normalized}.", "Provide enabled=true or enabled=false.")
+        result = bool_dispatch[normalized](enabled)
+    if isinstance(result, SystemErrorResponse):
+        return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
+    return result
+
+
+@mcp.tool(
+    title="Apple Control Frontmost App",
+    description="Use the unified Apple control plane for bounded GUI fallback actions when a native app-domain tool cannot complete the task.",
+    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+    structured_output=True,
+)
+def apple_control_frontmost_app(
+    action: str,
+    application: str | None = None,
+    bundle_id: str | None = None,
+    menu_path: list[str] | None = None,
+    key: str | None = None,
+    modifiers: list[str] | None = None,
+    text: str | None = None,
+    label: str | None = None,
+    description: str | None = None,
+    index: int = 1,
+    value: str | None = None,
+) -> GuiMenuItemsResponse | GuiActionResponse | AppleErrorResponse:
+    normalized = action.strip().lower()
+    if normalized == "list_menu_bar_items":
+        result = system_gui_list_menu_bar_items(application=application, bundle_id=bundle_id)
+    elif normalized == "click_menu_path":
+        if not menu_path:
+            return _apple_error_response("MISSING_INPUT", "menu_path is required for click_menu_path.", "Provide a menu path like ['File', 'New Window'].")
+        result = system_gui_click_menu_path(menu_path=menu_path, application=application, bundle_id=bundle_id)
+    elif normalized == "press_keys":
+        if not key:
+            return _apple_error_response("MISSING_INPUT", "key is required for press_keys.", "Provide a printable key or supported special key name.")
+        result = system_gui_press_keys(key=key, modifiers=modifiers, application=application, bundle_id=bundle_id)
+    elif normalized == "type_text":
+        if text is None:
+            return _apple_error_response("MISSING_INPUT", "text is required for type_text.", "Provide text to type.")
+        result = system_gui_type_text(text=text, application=application, bundle_id=bundle_id)
+    elif normalized == "click_button":
+        if label is None and description is None:
+            return _apple_error_response("MISSING_INPUT", "label or description is required for click_button.", "Provide a button label or accessibility description.")
+        result = system_gui_click_button(label=label, description=description, index=index, application=application, bundle_id=bundle_id)
+    elif normalized == "choose_popup_value":
+        if value is None:
+            return _apple_error_response("MISSING_INPUT", "value is required for choose_popup_value.", "Provide the pop-up value to select.")
+        result = system_gui_choose_popup_value(label=label, description=description, value=value, application=application, bundle_id=bundle_id)
+    else:
+        return _apple_error_response(
+            "INVALID_INPUT",
+            f"Unsupported GUI control action '{action}'.",
+            "Use one of: list_menu_bar_items, click_menu_path, press_keys, type_text, click_button, choose_popup_value.",
+        )
+    if isinstance(result, SystemErrorResponse):
+        return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
+    return result
+
+
 def apple_suggest_mailboxes(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
     response = mail_list_mailboxes()
     if isinstance(response, MailErrorResponse):
@@ -1905,7 +2017,7 @@ def apple_suggest_files(query: str | None = None, limit: int | str = 25) -> Sugg
 def apple_suggest_running_apps(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
     normalized_limit = _coerce_int_arg("limit", limit, minimum=1)
     response = system_list_running_apps()
-    values = [] if not getattr(response, "ok", False) else [item.name for item in response.apps]
+    values = [] if not getattr(response, "ok", False) else [f"{item.name} / {item.bundle_id or ''}".strip(" /") for item in response.apps]
     suggestions = _filter_text(values, query=query, limit=normalized_limit)
     return SuggestionListResponse(domain="system", suggestions=suggestions, count=len(suggestions))
 
@@ -1976,7 +2088,6 @@ async def apple_recheck_permissions(ctx: Context) -> AppleHealthResponse:
 async def apple_send_message_interactive(
     recipient: str | None = None,
     text: str | None = None,
-    service_name: str | None = None,
     ctx: Context | None = None,
 ) -> SendResponse | MessagesErrorResponse:
     if ctx is not None and (not recipient or not text):
@@ -1994,7 +2105,6 @@ async def apple_send_message_interactive(
             )
         recipient = result.data.recipient
         text = result.data.text
-        service_name = result.data.service_name if service_name is None else service_name
     if not recipient or not text:
         return MessagesErrorResponse(
             error=MessagesToolError(
@@ -2014,7 +2124,7 @@ async def apple_send_message_interactive(
                 )
             )
         recipient = resolved.recipient_value
-    return messages_send_message(recipient=recipient, text=text, service_name=service_name)
+    return messages_send_message(recipient=recipient, text=text)
 
 
 @mcp.tool(
@@ -2194,7 +2304,8 @@ def apple_route_request_prompt() -> str:
         "Use Calendar for scheduled time and confirm date, time, duration, and title before writing. Use Reminders for due items and follow-ups, identify the available lists on first use, "
         "and require due_date values with timezone offsets like 2026-03-29T23:59:00-05:00. Use Notes for reference material, identify available accounts and folders on first use, and send time-sensitive items to Reminders or Calendar instead. "
         "For Shortcuts, list available shortcuts before running when the request is vague. Use Files before Mail, Messages, Notes, or Shortcuts when the user references a local document or attachment. "
-        "Use System when the frontmost app, clipboard, notifications, or battery status affects the next action. Use Maps when a route, place lookup, or travel estimate affects scheduling or communication. "
+        "Use System when the frontmost app, clipboard, notifications, battery status, application launch, macOS settings reads or writes, or bounded GUI fallback automation affects the next action. Prefer explicit System setting tools before generic GUI fallback. "
+        "Use Maps when a route, place lookup, or travel estimate affects scheduling or communication. "
         "As a quick disambiguation rule: due date or time goes to Reminders, reference material with no action goes to Notes, and requests involving another person usually go to Messages or Mail after Contacts resolution."
     )
 
@@ -2614,6 +2725,9 @@ APPLE_AGENT_TOOL_NAMES = [
     "apple_create_note_with_defaults",
     "apple_capture_follow_up_from_mail",
     "apple_event_collaboration_summary",
+    "apple_open_application",
+    "apple_update_system_setting",
+    "apple_control_frontmost_app",
     "apple_suggest_mailboxes",
     "apple_suggest_calendars",
     "apple_suggest_reminder_lists",

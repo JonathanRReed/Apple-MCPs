@@ -319,10 +319,10 @@ def messages_list_attachments(chat_id: str | None = None, message_id: str | None
     annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
     structured_output=True,
 )
-def messages_send_message(recipient: str, text: str, service_name: str | None = None) -> SendResponse | ErrorResponse:
+def messages_send_message(recipient: str, text: str) -> SendResponse | ErrorResponse:
     try:
         ensure_action_allowed("messages_send_message")
-        result = _automation_bridge().send_message(recipient=recipient, text=text, service_name=service_name)
+        result = _automation_bridge().send_message(recipient=recipient, text=text)
         return SendResponse(**result)
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)

@@ -23,34 +23,24 @@ class MessagesAutomationBridge:
         except MessagesAutomationBridgeError as exc:
             return False, exc
 
-    def send_message(self, recipient: str, text: str, service_name: str | None = None) -> dict[str, str | bool | None]:
+    def send_message(self, recipient: str, text: str) -> dict[str, str | bool | None]:
         if not recipient.strip():
             raise MessagesAutomationBridgeError("INVALID_INPUT", "recipient must not be empty", "Provide an explicit iMessage address or phone number.")
         if not text.strip():
             raise MessagesAutomationBridgeError("INVALID_INPUT", "text must not be empty", "Provide a non-empty message body.")
-
-        if service_name:
-            script = f'''
-            tell application "Messages"
-                set targetService to first service whose name is "{self._escape(service_name)}"
-                set targetBuddy to buddy "{self._escape(recipient)}" of targetService
-                send "{self._escape(text)}" to targetBuddy
-            end tell
-            '''
-        else:
-            script = f'''
-            tell application "Messages"
-                set targetService to first service whose service type = iMessage
-                set targetBuddy to buddy "{self._escape(recipient)}" of targetService
-                send "{self._escape(text)}" to targetBuddy
-            end tell
-            '''
+        script = f'''
+        tell application "Messages"
+            set targetService to first service whose service type = iMessage
+            set targetBuddy to buddy "{self._escape(recipient)}" of targetService
+            send "{self._escape(text)}" to targetBuddy
+        end tell
+        '''
         self._run_script(script)
         return {
             "sent": True,
             "recipient": recipient,
             "text": text,
-            "service_name": service_name or "iMessage",
+            "service_name": "iMessage",
         }
 
     def send_to_group(self, chat_id: str, text: str) -> dict[str, str | bool | None]:

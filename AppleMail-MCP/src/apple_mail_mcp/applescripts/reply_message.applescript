@@ -65,28 +65,32 @@ on selectSenderPopup(senderRaw, senderEmail)
         tell process "Mail"
             set frontmost to true
             set composeWindow to front window
-            set fromPopup to first pop up button of composeWindow whose name is "From:"
-            click fromPopup
-            delay 0.2
-            set matchingItem to missing value
-            repeat with menuItemRef in every menu item of menu 1 of fromPopup
-                set itemName to name of menuItemRef as text
-                if senderEmail is not "" and itemName contains senderEmail then
-                    set matchingItem to menuItemRef
-                    exit repeat
+            repeat with popupRef in every pop up button of composeWindow
+                click popupRef
+                delay 0.2
+                set matchingItem to missing value
+                try
+                    repeat with menuItemRef in every menu item of menu 1 of popupRef
+                        set itemName to name of menuItemRef as text
+                        if senderEmail is not "" and itemName contains senderEmail then
+                            set matchingItem to menuItemRef
+                            exit repeat
+                        end if
+                        if senderRaw is not "" and itemName contains senderRaw then
+                            set matchingItem to menuItemRef
+                            exit repeat
+                        end if
+                    end repeat
+                end try
+                if matchingItem is not missing value then
+                    click matchingItem
+                    delay 0.3
+                    return value of popupRef as text
                 end if
-                if senderRaw is not "" and itemName contains senderRaw then
-                    set matchingItem to menuItemRef
-                    exit repeat
-                end if
-            end repeat
-            if matchingItem is missing value then
                 key code 53
-                error "ACCOUNT_MENU_ITEM_NOT_FOUND"
-            end if
-            click matchingItem
-            delay 0.3
-            return value of fromPopup as text
+                delay 0.1
+            end repeat
+            error "ACCOUNT_MENU_ITEM_NOT_FOUND"
         end tell
     end tell
 end selectSenderPopup

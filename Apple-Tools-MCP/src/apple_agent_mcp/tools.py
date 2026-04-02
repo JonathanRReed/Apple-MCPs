@@ -531,8 +531,52 @@ def _resolve_archive_target(
                 "Could not determine an Archive mailbox.",
                 "Set default_archive_mailbox or pass archive_mailbox explicitly.",
             ),
-        )
+    )
     return (target_mailbox, target_account, updated_preferences), None
+
+
+def _resolve_reminder_target(
+    preferences: AssistantPreferences,
+    list_id: str | None = None,
+) -> tuple[tuple[str, AssistantPreferences], AppleErrorResponse | None]:
+    effective_list_id = list_id or preferences.default_reminder_list_id
+    updated_preferences = preferences
+    if not effective_list_id:
+        detected_preferences, detected = _detect_preferences(preferences)
+        updated_preferences = _save_preferences(detected_preferences) if detected else preferences
+        effective_list_id = updated_preferences.default_reminder_list_id
+    if not effective_list_id:
+        return (
+            ("", updated_preferences),
+            _apple_error_response(
+                "DEFAULT_REMINDER_LIST_MISSING",
+                "No default reminder list is configured.",
+                "Call apple_detect_defaults, set default_reminder_list_id, or pass list_id explicitly.",
+            ),
+        )
+    return (effective_list_id, updated_preferences), None
+
+
+def _resolve_notes_target(
+    preferences: AssistantPreferences,
+    folder_id: str | None = None,
+) -> tuple[tuple[str, AssistantPreferences], AppleErrorResponse | None]:
+    effective_folder_id = folder_id or preferences.default_notes_folder_id
+    updated_preferences = preferences
+    if not effective_folder_id:
+        detected_preferences, detected = _detect_preferences(preferences)
+        updated_preferences = _save_preferences(detected_preferences) if detected else preferences
+        effective_folder_id = updated_preferences.default_notes_folder_id
+    if not effective_folder_id:
+        return (
+            ("", updated_preferences),
+            _apple_error_response(
+                "DEFAULT_NOTES_FOLDER_MISSING",
+                "No default notes folder is configured.",
+                "Call apple_detect_defaults, set default_notes_folder_id, or pass folder_id explicitly.",
+            ),
+        )
+    return (effective_folder_id, updated_preferences), None
 
 
 def _resolve_contact_for_communication(recipient: str) -> tuple[Any | None, AppleErrorResponse | None]:
@@ -1282,6 +1326,146 @@ def apple_preview_archive_message(
 
 
 @mcp.tool(
+    title="Apple Preview Create Reminder With Defaults",
+    description="Preview how Apple-Tools will create a reminder with the configured default reminder list.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def apple_preview_create_reminder_with_defaults(
+    title: str,
+    due_date: str | None = None,
+    notes: str | None = None,
+    list_id: str | None = None,
+    priority: int | str = 0,
+) -> ActionPreviewResponse | AppleErrorResponse:
+    try:
+        preferences = _get_preferences()
+        resolved, error = _resolve_reminder_target(preferences, list_id=list_id)
+        if error is not None:
+            return error
+        effective_list_id, updated_preferences = resolved
+        target_label = updated_preferences.default_reminder_list_name or effective_list_id
+        warnings = [] if due_date else ["Reminder preview has no due date."]
+        return ActionPreviewResponse(
+            action_type="create_reminder",
+            summary=f"Create reminder '{title}' in {target_label}.",
+            execution_tool="apple_create_reminder_with_defaults",
+            execution_arguments={
+                "title": title,
+                "due_date": due_date,
+                "notes": notes,
+                "list_id": list_id,
+                "priority": priority,
+            },
+            undo_supported=True,
+            warnings=warnings,
+        )
+    except StateStoreError as exc:
+        return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Apple Preview Create Note With Defaults",
+    description="Preview how Apple-Tools will create a note with the configured default notes folder.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def apple_preview_create_note_with_defaults(
+    title: str,
+    body_text: str | None = None,
+    body_html: str | None = None,
+    folder_id: str | None = None,
+    tags: list[str] | None = None,
+) -> ActionPreviewResponse | AppleErrorResponse:
+    try:
+        preferences = _get_preferences()
+        resolved, error = _resolve_notes_target(preferences, folder_id=folder_id)
+        if error is not None:
+            return error
+        effective_folder_id, updated_preferences = resolved
+        folder_label = updated_preferences.default_notes_folder_name or effective_folder_id
+        account_label = updated_preferences.default_notes_account_name
+        destination = f"{account_label} / {folder_label}" if account_label else folder_label
+        warnings = [] if (body_text or body_html) else ["Note preview has an empty body."]
+        return ActionPreviewResponse(
+            action_type="create_note",
+            summary=f"Create note '{title}' in {destination}.",
+            execution_tool="apple_create_note_with_defaults",
+            execution_arguments={
+                "title": title,
+                "body_text": body_text,
+                "body_html": body_html,
+                "folder_id": folder_id,
+                "tags": tags,
+            },
+            undo_supported=True,
+            warnings=warnings,
+        )
+    except StateStoreError as exc:
+        return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Apple Preview Follow-Up From Mail",
+    description="Preview how Apple-Tools will turn an email into a reminder and note before creating either item.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def apple_preview_follow_up_from_mail(
+    message_id: str,
+    due_date: str | None = None,
+    reminder_title: str | None = None,
+    note_title: str | None = None,
+    create_reminder: bool = True,
+    create_note: bool = True,
+) -> ActionPreviewResponse | AppleErrorResponse:
+    try:
+        message = mail_get_message(message_id)
+        if isinstance(message, MailErrorResponse):
+            return _apple_error_response(message.error_code, message.message, None)
+        warnings: list[str] = []
+        summary_parts: list[str] = [f"Capture follow-up from '{message.subject or message.message_id}'."]
+        preferences = _get_preferences()
+        if create_reminder:
+            reminder_resolved, reminder_error = _resolve_reminder_target(preferences)
+            if reminder_error is not None:
+                return reminder_error
+            _, updated_preferences = reminder_resolved
+            reminder_target = updated_preferences.default_reminder_list_name or updated_preferences.default_reminder_list_id
+            summary_parts.append(
+                f"Create reminder '{reminder_title or f'Follow up: {message.subject or message.sender}'}' in {reminder_target}."
+            )
+            if not due_date:
+                warnings.append("Follow-up reminder preview has no due date.")
+        if create_note:
+            note_resolved, note_error = _resolve_notes_target(preferences)
+            if note_error is not None:
+                return note_error
+            _, updated_preferences = note_resolved
+            note_target = updated_preferences.default_notes_folder_name or updated_preferences.default_notes_folder_id
+            summary_parts.append(
+                f"Create note '{note_title or f'Mail: {message.subject or message.sender}'}' in {note_target}."
+            )
+        return ActionPreviewResponse(
+            action_type="capture_follow_up_from_mail",
+            summary=" ".join(summary_parts),
+            execution_tool="apple_capture_follow_up_from_mail",
+            execution_arguments={
+                "message_id": message_id,
+                "due_date": due_date,
+                "reminder_title": reminder_title,
+                "note_title": note_title,
+                "create_reminder": create_reminder,
+                "create_note": create_note,
+            },
+            undo_supported=False,
+            warnings=warnings,
+        )
+    except StateStoreError as exc:
+        return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
     title="Apple Send Communication",
     description="Send a communication through Messages or Mail using Contacts resolution and assistant defaults.",
     annotations=ToolAnnotations(destructiveHint=True, idempotentHint=False, openWorldHint=True),
@@ -1475,17 +1659,10 @@ def apple_create_reminder_with_defaults(
 ) -> RemindersReminderResponse | RemindersErrorResponse | AppleErrorResponse:
     try:
         preferences = _get_preferences()
-        effective_list_id = list_id or preferences.default_reminder_list_id
-        if not effective_list_id:
-            detected_preferences, detected = _detect_preferences(preferences)
-            preferences = _save_preferences(detected_preferences) if detected else preferences
-            effective_list_id = preferences.default_reminder_list_id
-        if not effective_list_id:
-            return _apple_error_response(
-                "DEFAULT_REMINDER_LIST_MISSING",
-                "No default reminder list is configured.",
-                "Call apple_detect_defaults, set default_reminder_list_id, or pass list_id explicitly.",
-            )
+        resolved, error = _resolve_reminder_target(preferences, list_id=list_id)
+        if error is not None:
+            return error
+        effective_list_id, _ = resolved
         result = reminders_create_reminder(title=title, list_id=effective_list_id, due_date=due_date, notes=notes, priority=priority)
         if not isinstance(result, RemindersErrorResponse):
             result_payload = _to_jsonable(result)
@@ -1519,17 +1696,10 @@ def apple_create_note_with_defaults(
 ) -> NotesNoteResponse | NotesErrorResponse | AppleErrorResponse:
     try:
         preferences = _get_preferences()
-        effective_folder_id = folder_id or preferences.default_notes_folder_id
-        if not effective_folder_id:
-            detected_preferences, detected = _detect_preferences(preferences)
-            preferences = _save_preferences(detected_preferences) if detected else preferences
-            effective_folder_id = preferences.default_notes_folder_id
-        if not effective_folder_id:
-            return _apple_error_response(
-                "DEFAULT_NOTES_FOLDER_MISSING",
-                "No default notes folder is configured.",
-                "Call apple_detect_defaults, set default_notes_folder_id, or pass folder_id explicitly.",
-            )
+        resolved, error = _resolve_notes_target(preferences, folder_id=folder_id)
+        if error is not None:
+            return error
+        effective_folder_id, _ = resolved
         if body_html is None and body_text is not None:
             lines = body_text.splitlines() or [body_text]
             body_html = "".join(f"<div>{html_escape(line)}</div>" if line else "<div><br></div>" for line in lines)
@@ -2381,6 +2551,9 @@ APPLE_AGENT_TOOL_NAMES = [
     "apple_get_prompt",
     "apple_prepare_communication",
     "apple_preview_communication",
+    "apple_preview_create_reminder_with_defaults",
+    "apple_preview_create_note_with_defaults",
+    "apple_preview_follow_up_from_mail",
     "apple_send_communication",
     "apple_send_message_interactive",
     "apple_create_event_interactive",

@@ -236,12 +236,6 @@ struct ApplePIMBridge {
                 throw usageError(command)
             }
             return try encode(try deleteEvent(store: store, eventID: arguments[0]))
-        default:
-            throw BridgeFailure(
-                errorCode: "UNKNOWN_COMMAND",
-                message: "Unknown command '\(command)'.",
-                suggestion: "Use a supported bridge command."
-            )
         case "create-reminder-list":
             let store = EKEventStore()
             try ensureAccess(store: store, entityType: .reminder)
@@ -254,6 +248,12 @@ struct ApplePIMBridge {
                 throw usageError(command)
             }
             return try encode(try deleteReminderList(store: store, listID: arguments[0]))
+        default:
+            throw BridgeFailure(
+                errorCode: "UNKNOWN_COMMAND",
+                message: "Unknown command '\(command)'.",
+                suggestion: "Use a supported bridge command."
+            )
         }
     }
 

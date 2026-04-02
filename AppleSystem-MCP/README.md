@@ -15,10 +15,17 @@ Local MCP server for lightweight macOS system context.
 
 ## Install On This Mac
 
+<details>
+<summary>Quick start</summary>
+
 ```bash
 cd /path/to/Apple-MCPs/AppleSystem-MCP
 ./start.sh
 ```
+
+On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the server over `stdio`.
+
+</details>
 
 ## Install In AI Agents
 
@@ -47,4 +54,12 @@ cd /path/to/Apple-MCPs/AppleSystem-MCP
 
 - `system_health`
 - `system_permission_guide`
+
+## Launch Checklist
+
+- Start the server once with `./start.sh`
+- Add `/path/to/Apple-MCPs/AppleSystem-MCP/start.sh` to your MCP client
+- Reload or reconnect the client so the System tool surface is loaded into context
+- Call `system_health` first
+- If a scoped system action is blocked, call `system_permission_guide`
 - `system_status`

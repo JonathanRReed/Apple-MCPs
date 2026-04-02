@@ -41,6 +41,18 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 
 </details>
 
+<details>
+<summary>Install all Apple MCP packages into one shared environment</summary>
+
+```bash
+cd /path/to/Apple-MCPs
+bash scripts/install_all.sh
+```
+
+This installs `Apple-Tools-MCP` plus every standalone package into one environment. Use this path when you want the unified server to import installed domain packages directly instead of relying on the monorepo fallback.
+
+</details>
+
 ## Install In AI Agents
 
 <details>
@@ -91,7 +103,7 @@ claude mcp add --transport stdio --scope project \
 - Files, System, and Maps resources and prompts
 - Preference tools: get, detect, and update defaults and contact preferences
 - Communication tools: prepare, send, preview
-- Workflow tools: archive, create reminders/notes with defaults, capture follow-ups, event summaries
+- Workflow tools: archive, create reminders and notes with defaults, preview those defaulted writes, capture follow-ups, preview follow-up capture, and summarize event collaboration
 - Audit tools: list recent actions and undo
 - Briefing tools: daily, weekly, and communications triage (with task support)
 - Prompt fallback: `apple_list_prompts` and `apple_get_prompt`
@@ -123,7 +135,7 @@ Apple-Tools-MCP also stores recent assistant actions in `~/.apple-tools-mcp/acti
 
 - Resolve people through Contacts first, then decide between Messages or Mail based on saved defaults.
 - Set per-contact preferences for people who always prefer a specific channel.
-- Preview risky actions (communication, archive) when the client wants confirmation.
+- Preview risky actions and defaulted create flows when the client wants confirmation.
 - Use Mail thread helpers when the user refers to a conversation, not a single message.
 - Set defaults early (archive mailbox, calendar, reminders list, notes folder) so the assistant doesn't keep asking.
 - Keep contact info current so communication routing works reliably.
@@ -181,6 +193,14 @@ npx -y @modelcontextprotocol/conformance server \
 `APPLE_AGENT_MCP_CONFORMANCE_MODE=1` adds an opt-in MCP conformance surface for tools, prompts, resources, completion, logging, progress, sampling, and elicitation. It is intended for CI and protocol testing, not normal assistant use.
 
 Apple-Tools-MCP also enables experimental MCP task support in normal operation. The task-capable briefing and triage tools advertise `taskSupport=optional`, so task-aware clients can run them asynchronously while direct clients can still call them normally.
+
+## Launch Docs
+
+- [Golden Workflows](../docs/launch/golden-workflows.md)
+- [Failure Modes](../docs/launch/failure-modes.md)
+- [Compatibility and Version Pinning](../docs/launch/compatibility.md)
+- [Demo Script](../docs/launch/demo-script.md)
+- [Checklist Template Prompt](../docs/launch/prompts/checklist-template.md)
 
 ### Inspector CLI smoke check
 

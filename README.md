@@ -18,6 +18,15 @@ Everything happens on your Mac. Your data stays in Apple's apps where it belongs
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [SECURITY.md](./SECURITY.md)
 
+## Launch Docs
+
+- [Golden Workflows](./docs/launch/golden-workflows.md)
+- [Failure Modes](./docs/launch/failure-modes.md)
+- [Compatibility and Version Pinning](./docs/launch/compatibility.md)
+- [Demo Script](./docs/launch/demo-script.md)
+- [Checklist Template Prompt](./docs/launch/prompts/checklist-template.md)
+- [Per-Server E2E Checklist](./docs/launch/prompts/per-server-e2e-checklist.md)
+
 ## Servers
 
 - [Apple-Tools-MCP](./Apple-Tools-MCP/README.md), recommended. One unified server for Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps.
@@ -61,6 +70,18 @@ cd /path/to/Apple-MCPs/Apple-Tools-MCP
 ```
 
 `start.sh` creates a local virtual environment on first run, installs the Python dependencies from `requirements.txt`, and starts the MCP server over `stdio`.
+
+</details>
+
+<details>
+<summary>Install every package into one shared environment</summary>
+
+```bash
+cd /path/to/Apple-MCPs
+bash scripts/install_all.sh
+```
+
+This creates a shared virtual environment and installs every standalone package plus `Apple-Tools-MCP` into it. Use this when you want one environment that can run any server without relying on sibling source-path imports.
 
 </details>
 

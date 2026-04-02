@@ -19,6 +19,9 @@ def test_registered_tool_names_cover_core_domains() -> None:
     assert "apple_list_prompts" in tools.REGISTERED_TOOL_NAMES
     assert "apple_get_prompt" in tools.REGISTERED_TOOL_NAMES
     assert "apple_preview_communication" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_preview_create_reminder_with_defaults" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_preview_create_note_with_defaults" in tools.REGISTERED_TOOL_NAMES
+    assert "apple_preview_follow_up_from_mail" in tools.REGISTERED_TOOL_NAMES
     assert "apple_send_communication" in tools.REGISTERED_TOOL_NAMES
     assert "apple_preview_archive_message" in tools.REGISTERED_TOOL_NAMES
     assert "apple_list_recent_actions" in tools.REGISTERED_TOOL_NAMES
@@ -568,6 +571,67 @@ def test_apple_preview_communication_reports_execution_plan(monkeypatch, tmp_pat
     assert result.execution_tool == "apple_send_communication"
     assert result.execution_arguments["recipient"] == "alice@example.com"
     assert result.undo_supported is False
+
+
+def test_apple_preview_create_reminder_with_defaults_uses_default_list(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(tmp_path / "prefs.json"))
+    load_settings.cache_clear()
+    tools.apple_update_preferences(default_reminder_list_id="list-1", default_reminder_list_name="General")
+
+    result = tools.apple_preview_create_reminder_with_defaults("Test reminder", due_date="2026-04-01T21:00:00-05:00")
+
+    assert result.ok is True
+    assert result.execution_tool == "apple_create_reminder_with_defaults"
+    assert result.undo_supported is True
+    assert "General" in result.summary
+
+
+def test_apple_preview_create_note_with_defaults_uses_default_folder(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(tmp_path / "prefs.json"))
+    load_settings.cache_clear()
+    tools.apple_update_preferences(
+        default_notes_folder_id="folder-1",
+        default_notes_folder_name="Notes",
+        default_notes_account_name="iCloud",
+    )
+
+    result = tools.apple_preview_create_note_with_defaults("Test note", body_text="hello")
+
+    assert result.ok is True
+    assert result.execution_tool == "apple_create_note_with_defaults"
+    assert result.undo_supported is True
+    assert "iCloud / Notes" in result.summary
+
+
+def test_apple_preview_follow_up_from_mail_reports_destinations(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(tmp_path / "prefs.json"))
+    load_settings.cache_clear()
+    tools.apple_update_preferences(
+        default_reminder_list_id="list-1",
+        default_reminder_list_name="General",
+        default_notes_folder_id="folder-1",
+        default_notes_folder_name="Notes",
+    )
+    monkeypatch.setattr(
+        tools,
+        "mail_get_message",
+        lambda message_id: type(
+            "MessageRecord",
+            (),
+            {
+                "message_id": message_id,
+                "subject": "Project update",
+                "sender": "alice@example.com",
+            },
+        )(),
+    )
+
+    result = tools.apple_preview_follow_up_from_mail("msg-1")
+
+    assert result.ok is True
+    assert result.execution_tool == "apple_capture_follow_up_from_mail"
+    assert "General" in result.summary
+    assert "Notes" in result.summary
 
 
 def test_apple_archive_message_uses_detected_archive(monkeypatch, tmp_path) -> None:

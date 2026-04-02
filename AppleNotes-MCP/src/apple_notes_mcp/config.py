@@ -27,7 +27,7 @@ def _parse_csv(value: str | None) -> tuple[str, ...]:
 
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
-    root_dir = Path(__file__).resolve().parents[2]
+    package_dir = Path(__file__).resolve().parent
     raw_safety_mode = os.environ.get("APPLE_NOTES_MCP_SAFETY_MODE", "full_access").strip() or "full_access"
     if raw_safety_mode not in VALID_SAFETY_MODES:
         raw_safety_mode = "full_access"
@@ -39,5 +39,5 @@ def load_settings() -> Settings:
         allowed_accounts=_parse_csv(os.environ.get("APPLE_NOTES_MCP_ALLOWED_ACCOUNTS")),
         allowed_folders=_parse_csv(os.environ.get("APPLE_NOTES_MCP_ALLOWED_FOLDERS")),
         log_level=os.environ.get("APPLE_NOTES_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",
-        scripts_dir=root_dir / "applescripts",
+        scripts_dir=package_dir / "applescripts",
     )

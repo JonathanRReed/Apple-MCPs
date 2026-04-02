@@ -63,3 +63,57 @@ class StatusResponse(BaseModel):
     battery: BatteryStatus | None = None
     frontmost_app: str | None = None
     running_apps_count: int | None = None
+
+
+class SettingsDomainsResponse(BaseModel):
+    ok: bool = True
+    domains: list[dict[str, str]]
+    count: int
+
+
+class SettingsSectionResponse(BaseModel):
+    ok: bool = True
+    section: str
+    values: dict[str, object]
+
+
+class SettingsSnapshotResponse(BaseModel):
+    ok: bool = True
+    appearance: dict[str, object]
+    accessibility: dict[str, object]
+    dock: dict[str, object]
+    finder: dict[str, object]
+
+
+class PreferenceDomainResponse(BaseModel):
+    ok: bool = True
+    domain: str
+    current_host: bool = False
+    values: dict[str, object]
+
+
+class SettingMutationResponse(BaseModel):
+    ok: bool = True
+    section: str
+    setting: str
+    requested_value: bool | str
+    observed_value: bool | str | None = None
+    restarted_processes: list[str] = Field(default_factory=list)
+    used_gui_fallback: bool = False
+
+
+class GuiMenuItemsResponse(BaseModel):
+    ok: bool = True
+    application: str
+    menu_bar_items: list[str]
+    count: int
+    used_gui_fallback: bool = True
+
+
+class GuiActionResponse(BaseModel):
+    ok: bool = True
+    action: str
+    application: str | None = None
+    target: str | None = None
+    value: bool | str | list[str] | None = None
+    used_gui_fallback: bool = True

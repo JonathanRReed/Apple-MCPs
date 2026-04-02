@@ -1,4 +1,4 @@
-from apple_mail_mcp.mail_bridge import MailBridgeError, decode_message_id, encode_message_id
+from apple_mail_mcp.mail_bridge import AppleMailBridge, MailBridgeError, decode_message_id, encode_message_id
 
 
 def test_encode_and_decode_message_id_roundtrip() -> None:
@@ -19,3 +19,27 @@ def test_decode_message_id_rejects_invalid_shape() -> None:
         return
 
     raise AssertionError("decode_message_id should reject invalid IDs")
+
+
+def test_send_message_returns_resolved_from_account(monkeypatch) -> None:
+    bridge = AppleMailBridge()
+
+    def fake_run_script(script_name: str, args: list[str]) -> str:
+        assert script_name == "send_message.applescript"
+        assert args[-1] == "jonathanrayreed@gmail.com"
+        return "true\x1fSubject\x1fiCloud Account\x1e"
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+
+    result = bridge.send_message(
+        to=["reedjonathan2016@gmail.com"],
+        cc=None,
+        bcc=None,
+        subject="Subject",
+        body="Body",
+        attachments=None,
+        from_account="jonathanrayreed@gmail.com",
+    )
+
+    assert result.sent is True
+    assert result.from_account == "iCloud Account"

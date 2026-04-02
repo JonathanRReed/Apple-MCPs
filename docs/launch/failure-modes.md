@@ -70,3 +70,19 @@ What to do:
 Notes:
 - task support in `Apple-Tools-MCP` is optional and experimental
 - daily briefing, weekly briefing, and communications triage should still work without task-aware clients
+
+## Accessibility is missing for System GUI fallback
+
+Symptoms:
+- `system_gui_*` tools return `ACCESSIBILITY_PERMISSION_REQUIRED`
+- menu clicks, key presses, or button clicks fail even though read-only System tools work
+
+What to do:
+1. Call `system_permission_guide`
+2. Grant Accessibility access to the host app or terminal in System Settings -> Privacy & Security -> Accessibility
+3. Retry the GUI fallback tool
+4. Prefer native domain MCP tools where possible instead of repeating GUI automation
+
+Notes:
+- this affects bounded GUI fallback tools, not the whole suite
+- explicit System settings writes should still be preferred over GUI fallback for macOS preference changes

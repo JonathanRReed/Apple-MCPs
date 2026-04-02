@@ -15,7 +15,9 @@ One entrypoint for Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcu
 - Mail thread helpers and Contacts method editing in one place
 - Preview, audit, and undo for reversible actions
 - Files-aware attachment and document workflows within scoped roots
-- System-aware workflows using the frontmost app, clipboard, notifications, and running apps
+- System-aware workflows using the frontmost app, clipboard, notifications, running apps, and assistant-relevant macOS settings
+- Explicit macOS settings writes for appearance, Finder, Dock, and key accessibility preferences
+- Bounded GUI fallback tools when a native app-domain MCP cannot complete a task directly
 - Travel-aware workflows using Apple Maps for place search and route estimates
 - Long-running briefing and triage tools for clients that support MCP tasks
 - Prompt fallback via `apple_list_prompts` and `apple_get_prompt`
@@ -141,6 +143,8 @@ Apple-Tools-MCP also stores recent assistant actions in `~/.apple-tools-mcp/acti
 - Keep contact info current so communication routing works reliably.
 - Use Files before Mail, Messages, Notes, or Shortcuts when the request involves local documents.
 - Check System context before interruptive actions, especially when the frontmost app, clipboard, or battery state matters.
+- Prefer explicit System settings tools over generic GUI automation when the request is really a macOS preference change.
+- Use GUI fallback tools only when the native domain MCP cannot complete the task and the client has granted Accessibility access.
 - Use Maps when routing or travel time affects scheduling or communication.
 - Use `apple_list_recent_actions` and `apple_undo_action` for reversible operations.
 
@@ -154,7 +158,7 @@ Apple-Tools-MCP also stores recent assistant actions in `~/.apple-tools-mcp/acti
 - Notes needs Automation access to Notes
 - Shortcuts usually works without a separate privacy prompt
 - Files access is controlled by `APPLE_FILES_MCP_ALLOWED_ROOTS`, not by a macOS privacy prompt
-- System actions may trigger System Events or automation prompts depending on the host app
+- System actions may trigger System Events, Accessibility, or automation prompts depending on the host app
 - Maps does not need a privacy prompt, but search and directions require the local Swift helper to compile
 
 ## Launch Checklist

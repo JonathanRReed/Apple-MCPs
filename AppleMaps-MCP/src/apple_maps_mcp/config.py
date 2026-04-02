@@ -27,13 +27,18 @@ def _parse_int(value: str | None, default: int) -> int:
 
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
-    repo_dir = Path(__file__).resolve().parents[3]
-    build_dir = repo_dir / "AppleMaps-MCP" / "build"
+    package_dir = Path(__file__).resolve().parent
+    build_dir = Path(
+        os.environ.get(
+            "APPLE_MAPS_MCP_HELPER_BUILD_DIR",
+            str(Path.home() / ".apple-mcps" / "build"),
+        )
+    ).expanduser()
     return Settings(
         server_name="Apple Maps MCP",
         version="0.1.0",
-        helper_source=repo_dir / "SharedAppleBridge" / "apple_maps_bridge.swift",
-        helper_binary=build_dir / "apple_maps_bridge",
+        helper_source=package_dir / "apple_maps_bridge.swift",
+        helper_binary=build_dir / "apple-maps-bridge",
         transport=os.environ.get("APPLE_MAPS_MCP_TRANSPORT", "stdio").strip().lower() or "stdio",
         host=os.environ.get("APPLE_MAPS_MCP_HOST", "127.0.0.1"),
         port=_parse_int(os.environ.get("APPLE_MAPS_MCP_PORT"), 8000),

@@ -6,18 +6,18 @@ Provides access to reminder lists and tasks through EventKit. Keep Reminders as 
 
 ## When to use
 
-- Task and reminder assistant workflows
+- Task and reminder workflows
 - Reminders isolated from the rest of the Apple stack
 - EventKit-backed reminder management
 
-## Capabilities
+## What It Does
 
-- Reminder-list discovery
-- Reminder listing, detail, and CRUD operations
-- Complete and uncomplete tools
+- Discover reminder lists
+- List, create, update, and delete reminders
+- Complete and uncomplete tasks
 - Today and list resources
 - Planning and inbox-triage prompts
-- `reminders_health`, `reminders_permission_guide`, and `reminders_recheck_permissions` for launch checks
+- Health and permission checks: `reminders_health`, `reminders_permission_guide`, `reminders_recheck_permissions`
 
 ## Install On This Mac
 

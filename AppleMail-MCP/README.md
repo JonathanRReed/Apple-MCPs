@@ -6,19 +6,19 @@ Provides access to mailboxes, message search, reading, and composition. Keep Mai
 
 ## When to use
 
-- Mail-only assistant workflows
-- Tighter Mail-only permissions instead of the all-in-one server
+- Mail-only workflows
+- Tighter permissions than the all-in-one server
 - Draft and send workflows through the native Mail app
 
-## Capabilities
+## What It Does
 
-- Mailbox listing
-- Message search and read access
-- Draft creation and message sending
-- Message mutation workflows, reply, forward, read or unread, move, and delete
-- Thread helpers, `mail_get_thread`, `mail_reply_latest_in_thread`, and `mail_archive_thread`
+- List mailboxes
+- Search and read messages
+- Create drafts and send messages
+- Reply, forward, mark read/unread, move, and delete
+- Thread helpers: `mail_get_thread`, `mail_reply_latest_in_thread`, `mail_archive_thread`
 - Mailbox resources and reply-oriented prompts
-- `mail_health`, `mail_permission_guide`, and `mail_recheck_permissions` for launch and permission checks
+- Health and permission checks: `mail_health`, `mail_permission_guide`, `mail_recheck_permissions`
 
 ## Install On This Mac
 

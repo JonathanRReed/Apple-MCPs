@@ -2,24 +2,24 @@
 
 Unified MCP server for Apple apps on macOS.
 
-One entrypoint for Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps. This server wraps the standalone servers in this repository and exposes a unified MCP interface.
+One entrypoint for Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps. This server wraps the standalone servers and exposes a unified MCP interface.
 
-## Capabilities
+## What It Does
 
-- Cross-app context reading
-- Unified action interface across all apps
-- Cross-app prompts for day planning, communications triage, and meeting prep
-- Persistent assistant defaults for mail, calendar, reminders, notes, and communication routing
-- Per-contact communication preferences for people who should always route a specific way
-- Cross-app helper workflows for communication routing, archiving mail, capturing follow-ups, and collaboration summaries
-- Unified access to Mail thread helpers and Contacts method editing from one server
-- Preview, audit, and undo helpers for reversible assistant actions
-- Files-aware attachment and document workflows inside scoped local roots
-- System-aware workflows that can use the frontmost app, clipboard, notifications, and running apps
-- Travel-aware workflows that can search places and estimate routes with Apple Maps
-- Task-capable long-running briefing and triage tools for clients that support MCP tasks
-- Tool-only prompt fallback through `apple_list_prompts` and `apple_get_prompt`
-- Single install target instead of ten separate configurations
+- Read context across multiple Apple apps
+- Unified actions across all apps
+- Prompts for day planning, communications triage, and meeting prep
+- Persistent defaults for mail, calendar, reminders, notes, and communication routing
+- Per-contact preferences for people who always route a specific way
+- Helper workflows for communication routing, archiving mail, capturing follow-ups, and collaboration summaries
+- Mail thread helpers and Contacts method editing in one place
+- Preview, audit, and undo for reversible actions
+- Files-aware attachment and document workflows within scoped roots
+- System-aware workflows using the frontmost app, clipboard, notifications, and running apps
+- Travel-aware workflows using Apple Maps for place search and route estimates
+- Long-running briefing and triage tools for clients that support MCP tasks
+- Prompt fallback via `apple_list_prompts` and `apple_get_prompt`
+- One install target instead of ten separate configurations
 
 ## When to use
 
@@ -84,22 +84,21 @@ claude mcp add --transport stdio --scope project \
 
 ## What It Exposes
 
-- aggregated health and overview tools
-- cross-app prompts
-- the delegated Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps tools
-- Apple-wide suggestion and permission-guide tools
-- delegated Files, System, and Maps resources and prompts
-- assistant preference tools: `apple_get_preferences`, `apple_detect_defaults`, `apple_update_preferences`, `apple_update_contact_preferences`
-- assistant routing tools: `apple_prepare_communication`, `apple_send_communication`
-- assistant preview tools: `apple_preview_communication`, `apple_preview_archive_message`
-- assistant workflow tools: `apple_archive_message`, `apple_create_reminder_with_defaults`, `apple_create_note_with_defaults`, `apple_capture_follow_up_from_mail`, `apple_event_collaboration_summary`
-- assistant audit tools: `apple_list_recent_actions`, `apple_undo_action`
-- task-capable assistant tools: `apple_generate_daily_briefing`, `apple_generate_weekly_briefing`, `apple_triage_communications_task`
-- prompt fallback tools: `apple_list_prompts`, `apple_get_prompt`
-- delegated Mail thread tools: `mail_get_thread`, `mail_reply_latest_in_thread`, `mail_archive_thread`
-- delegated Contacts mutation tools with labeled methods: `contacts_create_contact`, `contacts_update_contact`, `contacts_delete_contact`
-- aggregated Calendar and Messages permission diagnostics from the underlying standalone servers
-- `apple_health`, `apple_permission_guide`, and `apple_recheck_permissions` for launch and recovery
+- Health and overview tools across all apps
+- Cross-app prompts
+- Delegated tools from Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps
+- Suggestions and permission guides
+- Files, System, and Maps resources and prompts
+- Preference tools: get, detect, and update defaults and contact preferences
+- Communication tools: prepare, send, preview
+- Workflow tools: archive, create reminders/notes with defaults, capture follow-ups, event summaries
+- Audit tools: list recent actions and undo
+- Briefing tools: daily, weekly, and communications triage (with task support)
+- Prompt fallback: `apple_list_prompts` and `apple_get_prompt`
+- Mail thread tools: get, reply, archive
+- Contacts mutation: create, update, delete with labeled methods
+- Calendar and Messages permission diagnostics
+- Launch and recovery: `apple_health`, `apple_permission_guide`, `apple_recheck_permissions`
 
 ## Assistant Defaults
 
@@ -120,18 +119,18 @@ By default the state file is stored at `~/.apple-tools-mcp/preferences.json`. Ov
 
 Apple-Tools-MCP also stores recent assistant actions in `~/.apple-tools-mcp/actions.json` so the unified server can expose audit history and undo for reversible operations.
 
-## Apple Native Patterns
+## How to Work With It
 
-- Resolve a person through Contacts first, then let the assistant choose Messages or Mail from the saved defaults.
-- For specific people, persist a contact-level preferred channel or address with `apple_update_contact_preferences`.
-- Preview risky communication or archive actions before execution when the client wants a confirm step.
-- Use Mail thread helpers when the user is talking about a conversation instead of a single message.
-- Persist defaults early, archive mailbox, default calendar, default reminders list, and default notes folder, so later actions feel native instead of repeatedly asking.
-- Keep contact methods current through the unified Contacts mutation tools so communication routing stays reliable.
-- Keep Apple Files roots narrow and explicit, then use Files before Mail, Messages, Notes, or Shortcuts when the user references a local document.
-- Use System context before interruptive actions, especially when the frontmost app, clipboard contents, or battery state affects the next step.
-- Use Maps when routing, commute time, or a destination choice affects Calendar, Reminders, Messages, or Mail.
-- Use `apple_list_recent_actions` and `apple_undo_action` for reversible assistant actions like archive moves and create flows.
+- Resolve people through Contacts first, then decide between Messages or Mail based on saved defaults.
+- Set per-contact preferences for people who always prefer a specific channel.
+- Preview risky actions (communication, archive) when the client wants confirmation.
+- Use Mail thread helpers when the user refers to a conversation, not a single message.
+- Set defaults early (archive mailbox, calendar, reminders list, notes folder) so the assistant doesn't keep asking.
+- Keep contact info current so communication routing works reliably.
+- Use Files before Mail, Messages, Notes, or Shortcuts when the request involves local documents.
+- Check System context before interruptive actions, especially when the frontmost app, clipboard, or battery state matters.
+- Use Maps when routing or travel time affects scheduling or communication.
+- Use `apple_list_recent_actions` and `apple_undo_action` for reversible operations.
 
 ## macOS Permissions
 

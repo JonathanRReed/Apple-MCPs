@@ -10,13 +10,13 @@ Provides access to shortcuts for discovery, inspection, and execution. Run short
 - Local automation without shell orchestration
 - Smaller scope than the all-in-one server
 
-## Capabilities
+## What It Does
 
-- Shortcut and folder listing
-- Shortcut inspection
-- Shortcut execution with input/output handling
+- List shortcuts and folders
+- Inspect shortcut details
+- Run shortcuts with input/output handling
 - Shortcut resources and execution prompts
-- `shortcuts_health`, `shortcuts_permission_guide`, and `shortcuts_refresh_state` for launch checks
+- Health and state checks: `shortcuts_health`, `shortcuts_permission_guide`, `shortcuts_refresh_state`
 
 ## Install On This Mac
 

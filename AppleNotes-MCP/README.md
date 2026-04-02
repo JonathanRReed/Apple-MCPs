@@ -6,17 +6,17 @@ Provides access to notes and folders for creation, organization, and management.
 
 ## When to use
 
-- Notes-only assistant workflows
+- Notes-only workflows
 - Stronger isolation than the all-in-one server
 - Structured note and folder operations through the native Notes app
 
-## Capabilities
+## What It Does
 
-- Account and folder listing
-- Note listing, search, and CRUD operations
-- Folder create, rename, and delete
+- List accounts and folders
+- List, search, and manage notes (CRUD)
+- Create, rename, and delete folders
 - Recent-note resources and organization prompts
-- `notes_health`, `notes_permission_guide`, and `notes_recheck_permissions` for launch checks
+- Health and permission checks: `notes_health`, `notes_permission_guide`, `notes_recheck_permissions`
 
 ## Install On This Mac
 

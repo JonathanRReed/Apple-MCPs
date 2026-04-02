@@ -6,19 +6,19 @@ Provides access to contacts for lookup, search, and recipient resolution. Use be
 
 ## When to use
 
-- Contact-only assistant workflows
+- Contact-only workflows
 - Recipient validation before messaging
 - Contact lookup separated from the all-in-one server
 
-## Capabilities
+## What It Does
 
-- Contact listing and search
+- List and search contacts
 - Full contact detail lookup
 - Message recipient resolution
-- Contact creation, update, and delete
+- Create, update, and delete contacts
 - Phone number and email method editing with labels
 - Directory resources and recipient-check prompts
-- `contacts_health`, `contacts_permission_guide`, and `contacts_recheck_permissions` for launch checks
+- Health and permission checks: `contacts_health`, `contacts_permission_guide`, `contacts_recheck_permissions`
 
 ## Install On This Mac
 

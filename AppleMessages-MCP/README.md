@@ -6,18 +6,18 @@ Provides access to message history, conversation search, and sending via Message
 
 ## When to use
 
-- Messages-only assistant workflows
+- Messages-only workflows
 - Message history and sending without the all-in-one server
 - Tighter app-level separation for permissions
 
-## Capabilities
+## What It Does
 
-- Conversation listing and detail with pagination
-- Message search and attachment metadata
-- Send and reply tools
+- List conversations with pagination
+- Search messages and view attachment metadata
+- Send and reply to messages
 - Unread and recent conversation resources
 - Health checks that separate history access from automation failures
-- `messages_permission_guide` and `messages_recheck_permissions` for permission recovery
+- Permission recovery: `messages_permission_guide`, `messages_recheck_permissions`
 
 ## Install On This Mac
 

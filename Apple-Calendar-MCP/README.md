@@ -6,17 +6,17 @@ Provides access to calendars and events through EventKit. Keep Calendar as the s
 
 ## When to use
 
-- Calendar-only assistant workflows
+- Calendar-only workflows
 - EventKit-backed calendar access without the all-in-one server
 - Tighter app-level separation for scheduling
 
-## Capabilities
+## What It Does
 
-- Calendar discovery and listing
-- Event CRUD operations (create, read, update, delete)
+- Discover and list calendars
+- Create, read, update, and delete events
 - Today resources and planning prompts
 - Health checks that distinguish empty results from blocked access
-- `calendar_permission_guide` and `calendar_recheck_permissions` for permission recovery
+- Permission recovery: `calendar_permission_guide`, `calendar_recheck_permissions`
 
 ## Install On This Mac
 

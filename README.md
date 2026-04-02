@@ -2,17 +2,21 @@
 
 Apple-native MCP servers for macOS.
 
-This repository gives AI agents direct, local access to core Apple apps and adjacent macOS context through the Model Context Protocol (MCP). Agents can use structured tools, read resources, and follow built-in prompts instead of attempting to control your Mac blindly.
+This repository provides direct, local access to core Apple apps through the Model Context Protocol (MCP). Your AI assistant can use structured tools to work with your data—create reminders, send messages, check calendars—while everything stays in the native apps you already use.
 
-## What MCP Means Here
+MCP provides three primitives for working with Apple apps:
 
-Each MCP server in this repo runs locally on your Mac and exposes app-specific capabilities over `stdio`.
+- **Tools** — actions like creating a reminder or sending a message
+- **Resources** — read-only snapshots like recent notes or today's reminders
+- **Prompts** — reusable workflows for common tasks like planning your day
 
-- tools let an agent take actions, like creating a reminder or sending a message
-- resources let an agent read compact snapshots, like recent notes or today’s reminders
-- prompts give agents better app-specific workflows, like planning the day or triaging communication
+Everything happens on your Mac. Your data stays in Apple's apps where it belongs.
 
-Because these servers run on your Mac, the Apple apps stay the system of record.
+## Project Docs
+
+- [CHANGELOG.md](./CHANGELOG.md)
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [SECURITY.md](./SECURITY.md)
 
 ## Servers
 
@@ -30,21 +34,21 @@ Because these servers run on your Mac, the Apple apps stay the system of record.
 
 ## Which One To Use
 
-- Use `Apple-Tools-MCP` for a single entrypoint across all Apple apps
-- Use `Apple-Tools-MCP` if you want assistant behavior, persisted defaults, contact-specific routing, thread-aware Mail workflows, preview and undo helpers, file-aware attachment prep, system context, and travel-aware workflows on top of the raw app tools
-- Use `Apple-Tools-MCP` if you want task-capable long-running briefings, tool-only prompt fallback, and the broadest MCP protocol surface in one server
-- Use `Apple Files MCP`, `Apple System MCP`, or `Apple Maps MCP` when you want a narrower tool surface for local files, desktop context, or travel routing without the unified assistant layer
-- Use standalone servers for tighter app boundaries, simpler permissions, or separate agent configurations
+**Apple-Tools-MCP** (recommended) — One server that covers everything: Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps. Includes extras like saved defaults, per-contact routing preferences, thread-aware Mail helpers, and undo support.
+
+**Standalone servers** — Pick one if you want tighter boundaries or simpler permissions:
+- [Apple Files MCP](./AppleFiles-MCP/README.md), [Apple System MCP](./AppleSystem-MCP/README.md), [Apple Maps MCP](./AppleMaps-MCP/README.md) for focused workflows
+- [Apple Mail MCP](./AppleMail-MCP/README.md), [Apple Calendar](./Apple-Calendar-MCP/README.md), [Apple Reminders MCP](./AppleReminders-MCP/README.md), [Apple Messages MCP](./AppleMessages-MCP/README.md), [Apple Contacts MCP](./AppleContacts-MCP/README.md), [Apple Notes MCP](./AppleNotes-MCP/README.md), [Apple Shortcuts MCP](./AppleShortcuts-MCP/README.md) for single-app access
 
 ## Agent Routing
 
-- All Apple tool schemas are deferred. Batch `tool_search` calls on first use.
-- Route person-based communication through Contacts first.
-- Use Contacts to verify or update phone numbers and email addresses before a send path fails.
-- Use Mail thread helpers when the user refers to a conversation or latest reply.
-- Use Apple-Tools preview and recent-action helpers when the client needs a confirm step or an audit trail.
-- Use Reminders for due items, Notes for reference material, and Calendar for scheduled time.
-- See the standalone READMEs for app-specific prompting rules and gotchas.
+Some tips for working with these servers:
+
+- All Apple tools are deferred. The first call needs `tool_search` to load schemas.
+- Always run Contacts first when messaging a person, then choose Messages or Mail.
+- Use Mail thread helpers when the user mentions a conversation.
+- Reminders are for due items, Notes for reference material, Calendar for scheduled time.
+- See the standalone READMEs for app-specific details.
 
 ## Install On This Mac
 
@@ -143,12 +147,12 @@ claude mcp add --transport stdio --scope project \
 
 ## Launch Checklist
 
-- Start the server you want with its local `./start.sh`
-- Add that `start.sh` path to your MCP client
-- Reload or reconnect the client so the server is loaded into context
-- Call the server's health tool before doing real work
-- If permissions are blocked, call the server's permission guide tool
-- After changing permissions, call the server's recheck tool, or `shortcuts_refresh_state` for Apple Shortcuts
+- Start the server: `./start.sh`
+- Add the `start.sh` path to your MCP client
+- Reconnect the client so the server loads
+- Call the health tool to verify it's working
+- If permissions fail, call the permission guide tool
+- After fixing permissions, call the recheck tool (or `shortcuts_refresh_state` for Shortcuts)
 
 ## Protocol Verification
 

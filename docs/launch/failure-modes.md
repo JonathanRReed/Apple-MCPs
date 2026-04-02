@@ -86,3 +86,18 @@ What to do:
 Notes:
 - this affects bounded GUI fallback tools, not the whole suite
 - explicit System settings writes should still be preferred over GUI fallback for macOS preference changes
+
+## Focus status or notification history is unavailable
+
+Symptoms:
+- `system_get_focus_status` reports `focus_supported: false`
+- `system_get_context_snapshot` reports `notification_history_supported: false`
+
+What to do:
+1. Treat the result as a truthful platform limit on this setup
+2. Continue the workflow without inventing active Focus state or missed notifications
+3. Use the frontmost app, battery state, calendar, reminders, and recent communications as alternate context
+
+Notes:
+- this is not a failure if the MCP reports the limitation clearly
+- do not patch around it with fake shell parsing or unsupported UI scraping and still call the run a pass

@@ -7,7 +7,7 @@ from mcp.types import Annotations, ToolAnnotations
 
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.contacts_bridge import AppleContactsBridge, ContactsBridgeError, build_bridge
-from apple_contacts_mcp.models import ContactListResponse, ContactMethod, ContactResponse, CreateContactResponse, DeleteContactResponse, ErrorResponse, HealthResponse, ResolvedRecipientResponse, ToolError
+from apple_contacts_mcp.models import ContactListResponse, ContactMethod, ContactResponse, CreateContactResponse, DeleteContactResponse, DuplicateContactListResponse, ErrorResponse, HealthResponse, ResolvedRecipientResponse, ToolError
 from apple_contacts_mcp.permissions import SafetyError, ensure_action_allowed
 
 SERVER_INSTRUCTIONS = (
@@ -79,6 +79,8 @@ def contacts_health() -> HealthResponse:
         "search_contacts",
         "get_contact",
         "resolve_message_recipient",
+        "find_duplicates",
+        "suggest_merge_candidates",
         "resources",
         "prompts",
     ]
@@ -202,6 +204,40 @@ def contacts_resolve_message_recipient(query: str, channel: str = "phone") -> Re
     try:
         ensure_action_allowed("contacts_resolve_message_recipient")
         return _bridge().resolve_message_recipient(query=query, channel=channel)
+    except SafetyError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except ContactsBridgeError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Find Duplicate Contacts",
+    description="Find likely duplicate Apple Contacts records using names, nicknames, phone numbers, and email addresses.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def contacts_find_duplicates() -> DuplicateContactListResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("contacts_find_duplicates")
+        groups = _bridge().find_duplicates()
+        return DuplicateContactListResponse(groups=groups, count=len(groups))
+    except SafetyError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except ContactsBridgeError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+@mcp.tool(
+    title="Suggest Merge Candidates",
+    description="Return likely duplicate Apple Contacts groups that are strong candidates for cleanup review.",
+    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    structured_output=True,
+)
+def contacts_suggest_merge_candidates(query: str | None = None) -> DuplicateContactListResponse | ErrorResponse:
+    try:
+        ensure_action_allowed("contacts_suggest_merge_candidates")
+        groups = _bridge().suggest_merge_candidates(query=query)
+        return DuplicateContactListResponse(groups=groups, count=len(groups))
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except ContactsBridgeError as exc:

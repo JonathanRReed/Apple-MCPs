@@ -5,7 +5,7 @@
   "display_name": "Apple Files",
   "version": "0.1.0",
   "description": "Inspect and manage local files and folders inside allowed roots on macOS.",
-  "long_description": "Local MCP server for scoped file and folder workflows on macOS. Use it to inspect directories, search files, read text files, prepare attachments, and perform bounded file mutations inside explicit allowed roots.",
+  "long_description": "Local MCP server for scoped file, Finder-adjacent, and iCloud Drive workflows on macOS. Use it to inspect directories, search files, read text files, prepare attachments, reveal paths in Finder, manage Finder tags, and perform bounded file mutations inside explicit allowed roots.",
   "icon": "icon.png",
   "author": {
     "name": "Jonathan Reed"
@@ -22,7 +22,7 @@
       "command": "${__dirname}/start.sh",
       "args": [],
       "env": {
-        "APPLE_FILES_MCP_ALLOWED_ROOTS": "${HOME}/Desktop,${HOME}/Documents,${HOME}/Downloads",
+        "APPLE_FILES_MCP_ALLOWED_ROOTS": "${HOME}/Desktop,${HOME}/Documents,${HOME}/Downloads,${HOME}/Library/Mobile Documents/com~apple~CloudDocs",
         "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage"
       }
     }

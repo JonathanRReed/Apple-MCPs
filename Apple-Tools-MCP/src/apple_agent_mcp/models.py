@@ -61,6 +61,9 @@ class AssistantPreferences(BaseModel):
     default_notes_folder_id: str | None = None
     default_notes_folder_name: str | None = None
     default_notes_account_name: str | None = None
+    default_digest_folder_id: str | None = None
+    default_digest_folder_name: str | None = None
+    default_digest_account_name: str | None = None
     preferred_communication_channel: Literal["auto", "messages", "mail"] = "auto"
     preferred_message_channel: Literal["auto", "phone", "email"] = "auto"
     contact_preferences: dict[str, ContactRoutingPreference] = Field(default_factory=dict)
@@ -150,3 +153,21 @@ class ActionUndoResponse(BaseModel):
     ok: Literal[True] = True
     action: AssistantActionRecord
     undo_result: dict[str, Any] | None = None
+
+
+class DigestFolderResponse(BaseModel):
+    ok: Literal[True] = True
+    folder_id: str
+    folder_name: str
+    account_name: str | None = None
+    created: bool = False
+    preferences: AssistantPreferences
+
+
+class ShortcutRouteResponse(BaseModel):
+    ok: Literal[True] = True
+    route: Literal["shortcut"]
+    shortcut_name: str
+    shortcut_identifier: str | None = None
+    reason: str
+    result: dict[str, Any] | None = None

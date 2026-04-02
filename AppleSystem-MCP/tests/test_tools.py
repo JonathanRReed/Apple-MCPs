@@ -57,6 +57,29 @@ class StubBridge:
             "finder": self.finder_settings(),
         }
 
+    def focus_status(self):
+        return {
+            "focus_supported": False,
+            "focus_active": None,
+            "focus_name": None,
+            "observed_at": "2026-04-02T12:00:00-05:00",
+            "source": "unsupported_local_install",
+            "confidence": 0.0,
+            "notes": ["No reliable unsigned local API was found."],
+        }
+
+    def context_snapshot(self):
+        return {
+            "observed_at": "2026-04-02T12:00:00-05:00",
+            "battery": self.battery().model_dump(),
+            "frontmost_app": "Mail",
+            "frontmost_application": self.frontmost_application().model_dump(),
+            "running_apps_count": 2,
+            "focus": self.focus_status(),
+            "notification_history_supported": False,
+            "notification_history_notes": ["Unsupported on this setup."],
+        }
+
     def read_preference_domain(self, domain: str, current_host: bool = False):
         return {"domain": domain, "current_host": current_host, "sample": True}
 
@@ -144,12 +167,36 @@ def test_system_get_clipboard(monkeypatch):
     assert result.text == "hello"
 
 
+def test_system_permission_guide_reports_manual_settings() -> None:
+    result = tools.system_permission_guide()
+    assert result["ok"] is True
+    assert result["requires_manual_system_settings"] is True
+    assert any("Accessibility" in step for step in result["steps"])
+
+
 def test_system_get_settings_snapshot(monkeypatch):
     monkeypatch.setattr(tools, "_bridge", lambda: StubBridge())
     result = tools.system_get_settings_snapshot()
     assert result.ok is True
     assert result.appearance["mode"] == "dark"
     assert result.dock["autohide"] is True
+
+
+def test_system_get_focus_status(monkeypatch):
+    monkeypatch.setattr(tools, "_bridge", lambda: StubBridge())
+    result = tools.system_get_focus_status()
+    assert result.ok is True
+    assert result.focus_supported is False
+    assert result.source == "unsupported_local_install"
+
+
+def test_system_get_context_snapshot(monkeypatch):
+    monkeypatch.setattr(tools, "_bridge", lambda: StubBridge())
+    result = tools.system_get_context_snapshot()
+    assert result.ok is True
+    assert result.frontmost_app == "Mail"
+    assert result.focus.focus_supported is False
+    assert result.notification_history_supported is False
 
 
 def test_system_read_preference_domain(monkeypatch):

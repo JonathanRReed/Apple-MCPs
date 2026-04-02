@@ -38,6 +38,7 @@ Use these as safe launch checks for the standalone servers. Keep all outbound ac
 
 - call `contacts_health`
 - search for your own contact card
+- run duplicate detection
 - get full contact details
 - create a clearly labeled test contact
 - update it
@@ -58,6 +59,7 @@ Use these as safe launch checks for the standalone servers. Keep all outbound ac
 - list shortcuts
 - run a harmless shortcut only if you know its behavior
 - if testing stdin input, use a disposable string
+- use Shortcuts as the bridge only when a native MCP does not cover the requested action
 
 ## Apple Files
 
@@ -76,6 +78,8 @@ Use these as safe launch checks for the standalone servers. Keep all outbound ac
 ## Apple Maps
 
 - call `maps_health`
-- search places near a known anchor
-- estimate a route
+- search places near a known anchor through the native Maps MCP only
+- estimate a route through the native Maps MCP only
 - build a Maps link
+- if the helper is unavailable, mark the Maps step `blocked` or `failed`
+- do not substitute shell, `curl`, OSM, or any other map provider for acceptance

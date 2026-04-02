@@ -4,7 +4,7 @@
   "display_name": "Apple Tools",
   "version": "0.1.0",
   "description": "Unified Apple tools MCP server for macOS, including Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps.",
-  "long_description": "Local MCP server for Apple Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps on macOS. Provides one coherent agent entrypoint, unified health, cross-app prompts, and aggregated Apple overview resources.",
+  "long_description": "Local MCP server for Apple Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps on macOS. Provides one coherent agent entrypoint, unified health, cross-app prompts, aggregated Apple overview resources, Finder-aware file handling, and truthful system context.",
   "author": {
     "name": "Jonathan Reed"
   },
@@ -24,7 +24,7 @@
         "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
         "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage",
-        "APPLE_FILES_MCP_ALLOWED_ROOTS": "${HOME}/Desktop,${HOME}/Documents,${HOME}/Downloads",
+        "APPLE_FILES_MCP_ALLOWED_ROOTS": "${HOME}/Desktop,${HOME}/Documents,${HOME}/Downloads,${HOME}/Library/Mobile Documents/com~apple~CloudDocs",
         "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_manage",

@@ -23,7 +23,7 @@
       "args": [],
       "env": {
         "APPLE_FILES_MCP_ALLOWED_ROOTS": "${HOME}/Desktop,${HOME}/Documents,${HOME}/Downloads",
-        "APPLE_FILES_MCP_SAFETY_MODE": "safe_readonly"
+        "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage"
       }
     }
   }

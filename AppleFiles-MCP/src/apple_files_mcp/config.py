@@ -53,7 +53,7 @@ def load_settings() -> Settings:
     return Settings(
         server_name="Apple Files MCP",
         version="0.1.0",
-        safety_mode=os.environ.get("APPLE_FILES_MCP_SAFETY_MODE", "safe_readonly").strip().lower() or "safe_readonly",
+        safety_mode=os.environ.get("APPLE_FILES_MCP_SAFETY_MODE", "safe_manage").strip().lower() or "safe_manage",
         allowed_roots=_parse_roots(os.environ.get("APPLE_FILES_MCP_ALLOWED_ROOTS")),
         transport=os.environ.get("APPLE_FILES_MCP_TRANSPORT", "stdio").strip().lower() or "stdio",
         host=os.environ.get("APPLE_FILES_MCP_HOST", "127.0.0.1"),

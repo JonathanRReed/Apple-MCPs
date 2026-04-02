@@ -46,7 +46,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
       "command": "/path/to/Apple-MCPs/AppleContacts-MCP/start.sh",
       "args": [],
       "env": {
-        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_readonly"
+        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_manage"
       }
     }
   }

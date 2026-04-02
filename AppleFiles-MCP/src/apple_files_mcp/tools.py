@@ -81,25 +81,27 @@ def files_organize_workspace_prompt() -> str:
 )
 def files_health() -> HealthResponse:
     settings = load_settings()
+    capabilities = [
+        "list_allowed_roots",
+        "list_directory",
+        "search_files",
+        "get_file_info",
+        "read_text_file",
+        "recent_files",
+        "resources",
+        "prompts",
+    ]
+    if settings.safety_mode in {"safe_manage", "full_access"}:
+        capabilities.extend(["create_folder", "move_path"])
+    if settings.safety_mode == "full_access":
+        capabilities.append("delete_path")
     return HealthResponse(
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
         allowed_roots=[str(path) for path in settings.allowed_roots],
         transport=settings.transport,
-        capabilities=[
-            "list_allowed_roots",
-            "list_directory",
-            "search_files",
-            "get_file_info",
-            "read_text_file",
-            "recent_files",
-            "create_folder",
-            "move_path",
-            "delete_path",
-            "resources",
-            "prompts",
-        ],
+        capabilities=capabilities,
         supports=["stdio", "streamable-http"],
     )
 

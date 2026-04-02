@@ -32,11 +32,34 @@ class StubBridge:
 
 
 def test_files_health(monkeypatch):
+    monkeypatch.setenv("APPLE_FILES_MCP_SAFETY_MODE", "safe_readonly")
+    tools.load_settings.cache_clear()
     monkeypatch.setattr(tools, "_bridge", lambda: StubBridge())
     result = tools.files_health()
     assert result.server_name == "Apple Files MCP"
     assert "list_directory" in result.capabilities
+    assert "create_folder" not in result.capabilities
+    assert "delete_path" not in result.capabilities
     assert "streamable-http" in result.supports
+
+
+def test_files_health_respects_safety_mode(monkeypatch):
+    monkeypatch.setenv("APPLE_FILES_MCP_SAFETY_MODE", "safe_manage")
+    tools.load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: StubBridge())
+
+    manage = tools.files_health()
+
+    assert "create_folder" in manage.capabilities
+    assert "move_path" in manage.capabilities
+    assert "delete_path" not in manage.capabilities
+
+    monkeypatch.setenv("APPLE_FILES_MCP_SAFETY_MODE", "full_access")
+    tools.load_settings.cache_clear()
+
+    full = tools.files_health()
+
+    assert "delete_path" in full.capabilities
 
 
 def test_files_read_text_file(monkeypatch):
@@ -73,3 +96,7 @@ def test_main_uses_streamable_http(monkeypatch):
     tools.main()
 
     assert captured == {"transport": "streamable-http", "host": "0.0.0.0", "port": 8765, "log_level": "DEBUG"}
+
+
+def teardown_function():
+    tools.load_settings.cache_clear()

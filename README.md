@@ -121,7 +121,18 @@ Example for the all-in-one server:
     "apple-tools": {
       "command": "/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh",
       "args": [],
-      "env": {}
+      "env": {
+        "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
+        "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_FILES_MCP_ALLOWED_ROOTS": "/Users/you/Desktop,/Users/you/Documents,/Users/you/Downloads",
+        "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_NOTES_MCP_SAFETY_MODE": "full_access",
+        "APPLE_MESSAGES_MCP_SAFETY_MODE": "full_access",
+        "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "full_access"
+      }
     }
   }
 }

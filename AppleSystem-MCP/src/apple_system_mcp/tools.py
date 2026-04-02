@@ -11,8 +11,8 @@ from apple_system_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_system_mcp.system_bridge import SystemBridgeError, build_bridge
 
 SERVER_INSTRUCTIONS = (
-    "Use this server for macOS system context. "
-    "Search here when the user wants battery state, the frontmost app, running applications, the clipboard, local notifications, application launch, or a read-only view of macOS settings and preference domains."
+    "Use this server for macOS system context and control. "
+    "Search here when the user wants battery state, the frontmost app, running applications, clipboard access, local notifications, application launch, assistant-relevant macOS settings reads or writes, or bounded GUI fallback automation for the frontmost app."
 )
 
 mcp = FastMCP("Apple System MCP", instructions=SERVER_INSTRUCTIONS, json_response=True)
@@ -41,8 +41,24 @@ def _setting_mutation_response(section: str, setting: str, payload: dict[str, ob
     )
 
 
-def _gui_action_response(action: str, application: str | None, target: str | None = None, value: bool | str | list[str] | None = None) -> GuiActionResponse:
-    return GuiActionResponse(action=action, application=application, target=target, value=value)
+def _gui_action_response(
+    action: str,
+    application: str | None,
+    bundle_id: str | None = None,
+    process_id: int | None = None,
+    target: str | None = None,
+    selector_type: str | None = None,
+    value: bool | str | list[str] | None = None,
+) -> GuiActionResponse:
+    return GuiActionResponse(
+        action=action,
+        application=application,
+        bundle_id=bundle_id,
+        process_id=process_id,
+        target=target,
+        selector_type=selector_type,
+        value=value,
+    )
 
 
 @mcp.resource(
@@ -55,9 +71,11 @@ def _gui_action_response(action: str, application: str | None, target: str | Non
 )
 def system_status_resource() -> str:
     bridge = _bridge()
+    frontmost_application = bridge.frontmost_application()
     payload = {
         "battery": bridge.battery().model_dump(),
-        "frontmost_app": bridge.frontmost_app(),
+        "frontmost_app": frontmost_application.name,
+        "frontmost_application": frontmost_application.model_dump(),
         "running_apps_count": len(bridge.running_apps()),
     }
     return _resource_json(payload)
@@ -104,46 +122,52 @@ def system_capture_context_prompt() -> str:
 )
 def system_health() -> HealthResponse:
     settings = load_settings()
+    capabilities = [
+        "status",
+        "get_battery",
+        "get_frontmost_app",
+        "list_running_apps",
+        "get_clipboard",
+        "list_settings_domains",
+        "get_appearance_settings",
+        "get_accessibility_settings",
+        "get_dock_settings",
+        "get_finder_settings",
+        "get_settings_snapshot",
+        "read_preference_domain",
+        "resources",
+        "prompts",
+    ]
+    if settings.safety_mode in {"safe_manage", "full_access"}:
+        capabilities.extend(
+            [
+                "set_appearance_mode",
+                "set_show_all_extensions",
+                "set_show_hidden_files",
+                "set_finder_path_bar",
+                "set_finder_status_bar",
+                "set_dock_autohide",
+                "set_dock_show_recents",
+                "set_reduce_motion",
+                "set_increase_contrast",
+                "set_reduce_transparency",
+                "set_clipboard",
+                "show_notification",
+                "open_application",
+                "gui_list_menu_bar_items",
+                "gui_click_menu_path",
+                "gui_press_keys",
+                "gui_type_text",
+                "gui_click_button",
+                "gui_choose_popup_value",
+            ]
+        )
     return HealthResponse(
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
         transport=settings.transport,
-        capabilities=[
-            "status",
-            "get_battery",
-            "get_frontmost_app",
-            "list_running_apps",
-            "get_clipboard",
-            "list_settings_domains",
-            "get_appearance_settings",
-            "get_accessibility_settings",
-            "get_dock_settings",
-            "get_finder_settings",
-            "get_settings_snapshot",
-            "read_preference_domain",
-            "set_appearance_mode",
-            "set_show_all_extensions",
-            "set_show_hidden_files",
-            "set_finder_path_bar",
-            "set_finder_status_bar",
-            "set_dock_autohide",
-            "set_dock_show_recents",
-            "set_reduce_motion",
-            "set_increase_contrast",
-            "set_reduce_transparency",
-            "set_clipboard",
-            "show_notification",
-            "open_application",
-            "gui_list_menu_bar_items",
-            "gui_click_menu_path",
-            "gui_press_keys",
-            "gui_type_text",
-            "gui_click_button",
-            "gui_choose_popup_value",
-            "resources",
-            "prompts",
-        ],
+        capabilities=capabilities,
         supports=["stdio", "streamable-http"],
     )
 
@@ -183,9 +207,11 @@ def system_status() -> StatusResponse | ErrorResponse:
         ensure_action_allowed("system_status")
         bridge = _bridge()
         apps = bridge.running_apps()
+        frontmost_application = bridge.frontmost_application()
         return StatusResponse(
             battery=bridge.battery(),
-            frontmost_app=bridge.frontmost_app(),
+            frontmost_app=frontmost_application.name,
+            frontmost_application=frontmost_application,
             running_apps_count=len(apps),
         )
     except (SafetyError, SystemBridgeError) as exc:
@@ -215,7 +241,8 @@ def system_get_battery() -> dict[str, object] | ErrorResponse:
 def system_get_frontmost_app() -> dict[str, object] | ErrorResponse:
     try:
         ensure_action_allowed("system_get_frontmost_app")
-        return {"ok": True, "application": _bridge().frontmost_app()}
+        application = _bridge().frontmost_application()
+        return {"ok": True, "application": application.model_dump()}
     except (SafetyError, SystemBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 
@@ -504,12 +531,17 @@ def system_set_reduce_transparency(enabled: bool) -> SettingMutationResponse | E
     annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True, openWorldHint=True),
     structured_output=True,
 )
-def system_gui_list_menu_bar_items(application: str | None = None) -> GuiMenuItemsResponse | ErrorResponse:
+def system_gui_list_menu_bar_items(application: str | None = None, bundle_id: str | None = None) -> GuiMenuItemsResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_list_menu_bar_items")
-        app_name = application or _bridge().frontmost_app()
-        items = _bridge().gui_list_menu_bar_items(application=app_name)
-        return GuiMenuItemsResponse(application=app_name, menu_bar_items=items, count=len(items))
+        target_app, items = _bridge().gui_list_menu_bar_items(application=application, bundle_id=bundle_id)
+        return GuiMenuItemsResponse(
+            application=target_app.name,
+            bundle_id=target_app.bundle_id,
+            process_id=target_app.process_id,
+            menu_bar_items=items,
+            count=len(items),
+        )
     except (SafetyError, SystemBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 
@@ -520,11 +552,19 @@ def system_gui_list_menu_bar_items(application: str | None = None) -> GuiMenuIte
     annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
     structured_output=True,
 )
-def system_gui_click_menu_path(menu_path: list[str], application: str | None = None) -> GuiActionResponse | ErrorResponse:
+def system_gui_click_menu_path(menu_path: list[str], application: str | None = None, bundle_id: str | None = None) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_click_menu_path")
-        app_name = _bridge().gui_click_menu_path(menu_path=menu_path, application=application)
-        return _gui_action_response("click_menu_path", application=app_name, target=" > ".join(menu_path), value=menu_path)
+        target_app = _bridge().gui_click_menu_path(menu_path=menu_path, application=application, bundle_id=bundle_id)
+        return _gui_action_response(
+            "click_menu_path",
+            application=target_app.name,
+            bundle_id=target_app.bundle_id,
+            process_id=target_app.process_id,
+            target=" > ".join(menu_path),
+            selector_type="menu_path",
+            value=menu_path,
+        )
     except (SafetyError, SystemBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 
@@ -535,14 +575,22 @@ def system_gui_click_menu_path(menu_path: list[str], application: str | None = N
     annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
     structured_output=True,
 )
-def system_gui_press_keys(key: str, modifiers: list[str] | None = None, application: str | None = None) -> GuiActionResponse | ErrorResponse:
+def system_gui_press_keys(key: str, modifiers: list[str] | None = None, application: str | None = None, bundle_id: str | None = None) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_press_keys")
-        app_name = _bridge().gui_press_keys(key=key, modifiers=modifiers, application=application)
+        target_app = _bridge().gui_press_keys(key=key, modifiers=modifiers, application=application, bundle_id=bundle_id)
         value: bool | str | list[str] | None = key
         if modifiers:
             value = [key, *modifiers]
-        return _gui_action_response("press_keys", application=app_name, target=key, value=value)
+        return _gui_action_response(
+            "press_keys",
+            application=target_app.name,
+            bundle_id=target_app.bundle_id,
+            process_id=target_app.process_id,
+            target=key,
+            selector_type="keystroke",
+            value=value,
+        )
     except (SafetyError, SystemBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 
@@ -553,11 +601,18 @@ def system_gui_press_keys(key: str, modifiers: list[str] | None = None, applicat
     annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
     structured_output=True,
 )
-def system_gui_type_text(text: str, application: str | None = None) -> GuiActionResponse | ErrorResponse:
+def system_gui_type_text(text: str, application: str | None = None, bundle_id: str | None = None) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_type_text")
-        app_name = _bridge().gui_type_text(text=text, application=application)
-        return _gui_action_response("type_text", application=app_name, value=text)
+        target_app = _bridge().gui_type_text(text=text, application=application, bundle_id=bundle_id)
+        return _gui_action_response(
+            "type_text",
+            application=target_app.name,
+            bundle_id=target_app.bundle_id,
+            process_id=target_app.process_id,
+            selector_type="text",
+            value=text,
+        )
     except (SafetyError, SystemBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 
@@ -568,11 +623,27 @@ def system_gui_type_text(text: str, application: str | None = None) -> GuiAction
     annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
     structured_output=True,
 )
-def system_gui_click_button(label: str, application: str | None = None) -> GuiActionResponse | ErrorResponse:
+def system_gui_click_button(
+    label: str | None = None,
+    description: str | None = None,
+    index: int = 1,
+    application: str | None = None,
+    bundle_id: str | None = None,
+) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_click_button")
-        app_name = _bridge().gui_click_button(label=label, application=application)
-        return _gui_action_response("click_button", application=app_name, target=label, value=label)
+        target_app = _bridge().gui_click_button(label=label, description=description, index=index, application=application, bundle_id=bundle_id)
+        selector_type = "button_name" if label else "button_description"
+        target_value = label or description
+        return _gui_action_response(
+            "click_button",
+            application=target_app.name,
+            bundle_id=target_app.bundle_id,
+            process_id=target_app.process_id,
+            target=target_value,
+            selector_type=selector_type,
+            value=target_value,
+        )
     except (SafetyError, SystemBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 
@@ -583,11 +654,26 @@ def system_gui_click_button(label: str, application: str | None = None) -> GuiAc
     annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
     structured_output=True,
 )
-def system_gui_choose_popup_value(label: str, value: str, application: str | None = None) -> GuiActionResponse | ErrorResponse:
+def system_gui_choose_popup_value(
+    label: str | None,
+    value: str,
+    description: str | None = None,
+    application: str | None = None,
+    bundle_id: str | None = None,
+) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_choose_popup_value")
-        app_name = _bridge().gui_choose_popup_value(label=label, value=value, application=application)
-        return _gui_action_response("choose_popup_value", application=app_name, target=label, value=value)
+        target_app = _bridge().gui_choose_popup_value(label=label, value=value, description=description, application=application, bundle_id=bundle_id)
+        selector_type = "popup_name" if label else "popup_description"
+        return _gui_action_response(
+            "choose_popup_value",
+            application=target_app.name,
+            bundle_id=target_app.bundle_id,
+            process_id=target_app.process_id,
+            target=label or description,
+            selector_type=selector_type,
+            value=value,
+        )
     except (SafetyError, SystemBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 
@@ -628,12 +714,13 @@ def system_show_notification(title: str, body: str, subtitle: str | None = None)
     annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
     structured_output=True,
 )
-async def system_open_application(application: str, ctx: Context) -> OpenAppResponse | ErrorResponse:
+async def system_open_application(application: str | None = None, bundle_id: str | None = None, ctx: Context | None = None) -> OpenAppResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_open_application")
-        _bridge().open_application(application)
-        await ctx.session.send_resource_list_changed()
-        return OpenAppResponse(opened=True, application=application)
+        opened_application = _bridge().open_application(application=application, bundle_id=bundle_id)
+        if ctx is not None:
+            await ctx.session.send_resource_list_changed()
+        return OpenAppResponse(opened=True, application=opened_application.name, bundle_id=opened_application.bundle_id)
     except (SafetyError, SystemBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 

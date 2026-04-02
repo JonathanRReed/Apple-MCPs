@@ -17,6 +17,23 @@ class SystemBridgeError(Exception):
 
 
 class SystemBridge:
+    _RECORD_SEPARATOR = "\x1e"
+    _FIELD_SEPARATOR = "\x1f"
+    _SPECIAL_KEY_CODES = {
+        "return": 36,
+        "enter": 76,
+        "tab": 48,
+        "space": 49,
+        "escape": 53,
+        "esc": 53,
+        "delete": 51,
+        "forward_delete": 117,
+        "left": 123,
+        "right": 124,
+        "down": 125,
+        "up": 126,
+    }
+
     def _run(self, *command: str, input_text: str | None = None) -> str:
         try:
             result = subprocess.run(
@@ -96,6 +113,55 @@ class SystemBridge:
         except subprocess.TimeoutExpired as exc:
             raise SystemBridgeError("COMMAND_TIMEOUT", f"Timed out while restarting {process_name}.", "Retry the request.") from exc
 
+    def _parse_app_record(self, raw: str) -> AppRecord:
+        parts = raw.split(self._FIELD_SEPARATOR)
+        if len(parts) < 3:
+            raise SystemBridgeError("INVALID_APP_RESPONSE", "Could not parse application identity.", "Retry the request.")
+        name, bundle_id, process_id = parts[:3]
+        process_value = None
+        if process_id.strip():
+            try:
+                process_value = int(process_id.strip())
+            except ValueError:
+                process_value = None
+        return AppRecord(
+            name=name.strip(),
+            bundle_id=bundle_id.strip() or None,
+            process_id=process_value,
+        )
+
+    def _target_application(self, application: str | None = None, bundle_id: str | None = None) -> AppRecord:
+        if bundle_id is not None and not bundle_id.strip():
+            raise SystemBridgeError("INVALID_INPUT", "bundle_id must not be empty.", "Provide a valid application bundle identifier.")
+        if application is not None and not application.strip():
+            raise SystemBridgeError("INVALID_INPUT", "application must not be empty.", "Provide a valid application name.")
+        raw = self._run_osascript(
+            [
+                "on run argv",
+                "set requestedName to item 1 of argv",
+                "set requestedBundleId to item 2 of argv",
+                'tell application "System Events"',
+                "if requestedBundleId is not \"\" then",
+                "set targetProcess to first application process whose bundle identifier is requestedBundleId",
+                "else if requestedName is not \"\" then",
+                "set targetProcess to first application process whose name is requestedName",
+                "else",
+                "set targetProcess to first application process whose frontmost is true",
+                "end if",
+                "set appName to name of targetProcess",
+                "set appPid to unix id of targetProcess",
+                "set appBundleId to \"\"",
+                "try",
+                "set appBundleId to bundle identifier of targetProcess",
+                "end try",
+                "end tell",
+                f'return appName & "{self._FIELD_SEPARATOR}" & appBundleId & "{self._FIELD_SEPARATOR}" & (appPid as text)',
+                "end run",
+            ],
+            args=[application or "", bundle_id or ""],
+        )
+        return self._parse_app_record(raw)
+
     def battery(self) -> BatteryStatus:
         raw = self._run("pmset", "-g", "batt")
         percentage_match = re.search(r"(\d+)%", raw)
@@ -108,21 +174,32 @@ class SystemBridge:
         power_source = "AC Power" if "AC Power" in raw else ("Battery Power" if "Battery Power" in raw else None)
         return BatteryStatus(percentage=percentage, power_source=power_source, charging=charging, raw=raw)
 
+    def frontmost_application(self) -> AppRecord:
+        return self._target_application()
+
     def frontmost_app(self) -> str:
-        return self._run(
-            "osascript",
-            "-e",
-            'tell application "System Events" to get name of first application process whose frontmost is true',
-        )
+        return self.frontmost_application().name
 
     def running_apps(self) -> list[AppRecord]:
-        raw = self._run(
-            "osascript",
-            "-e",
-            'tell application "System Events" to get name of every application process whose background only is false',
+        raw = self._run_osascript(
+            [
+                'tell application "System Events"',
+                "set outputRows to {}",
+                "repeat with targetProcess in every application process whose background only is false",
+                "set appName to name of targetProcess",
+                "set appPid to unix id of targetProcess",
+                "set appBundleId to \"\"",
+                "try",
+                "set appBundleId to bundle identifier of targetProcess",
+                "end try",
+                f'set end of outputRows to appName & "{self._FIELD_SEPARATOR}" & appBundleId & "{self._FIELD_SEPARATOR}" & (appPid as text)',
+                "end repeat",
+                f'set AppleScript\'s text item delimiters to "{self._RECORD_SEPARATOR}"',
+                "return outputRows as text",
+                "end tell",
+            ]
         )
-        names = [name.strip() for name in raw.split(",") if name.strip()]
-        return [AppRecord(name=name) for name in names]
+        return [self._parse_app_record(item) for item in raw.split(self._RECORD_SEPARATOR) if item.strip()]
 
     def get_clipboard(self) -> str:
         return self._run("pbpaste")
@@ -139,8 +216,14 @@ class SystemBridge:
             command[0] += f' subtitle "{escaped_subtitle}"'
         self._run("osascript", "-e", command[0])
 
-    def open_application(self, application: str) -> None:
-        self._run("open", "-a", application)
+    def open_application(self, application: str | None = None, bundle_id: str | None = None) -> AppRecord:
+        if bundle_id and bundle_id.strip():
+            self._run("open", "-b", bundle_id.strip())
+            return self._target_application(bundle_id=bundle_id.strip())
+        if application and application.strip():
+            self._run("open", "-a", application.strip())
+            return self._target_application(application=application.strip())
+        raise SystemBridgeError("INVALID_INPUT", "application or bundle_id is required.", "Provide an application name or bundle identifier.")
 
     def list_settings_domains(self) -> list[dict[str, str]]:
         return [
@@ -276,8 +359,8 @@ class SystemBridge:
         observed_value = self.accessibility_settings()["reduce_transparency"]
         return {"requested_value": enabled, "observed_value": bool(observed_value), "restarted_processes": []}
 
-    def gui_list_menu_bar_items(self, application: str | None = None) -> list[str]:
-        app_name = application or self.frontmost_app()
+    def gui_list_menu_bar_items(self, application: str | None = None, bundle_id: str | None = None) -> tuple[AppRecord, list[str]]:
+        target_app = self._target_application(application=application, bundle_id=bundle_id)
         raw = self._run_osascript(
             [
                 "on run argv",
@@ -293,14 +376,14 @@ class SystemBridge:
                 "return itemNames as text",
                 "end run",
             ],
-            args=[app_name],
+            args=[target_app.name],
         )
-        return [item.strip() for item in raw.splitlines() if item.strip()]
+        return target_app, [item.strip() for item in raw.splitlines() if item.strip()]
 
-    def gui_click_menu_path(self, menu_path: list[str], application: str | None = None) -> str:
+    def gui_click_menu_path(self, menu_path: list[str], application: str | None = None, bundle_id: str | None = None) -> AppRecord:
         if len(menu_path) < 2:
             raise SystemBridgeError("INVALID_INPUT", "menu_path must contain at least two items.", "Provide a top-level menu and a target item.")
-        app_name = application or self.frontmost_app()
+        target_app = self._target_application(application=application, bundle_id=bundle_id)
         self._run_osascript(
             [
                 "on run argv",
@@ -325,11 +408,11 @@ class SystemBridge:
                 'return "ok"',
                 "end run",
             ],
-            args=[app_name, *menu_path],
+            args=[target_app.name, *menu_path],
         )
-        return app_name
+        return target_app
 
-    def gui_press_keys(self, key: str, modifiers: list[str] | None = None, application: str | None = None) -> str:
+    def gui_press_keys(self, key: str, modifiers: list[str] | None = None, application: str | None = None, bundle_id: str | None = None) -> AppRecord:
         modifier_literals: list[str] = []
         for modifier in modifiers or []:
             normalized = modifier.strip().lower()
@@ -339,7 +422,14 @@ class SystemBridge:
         modifier_clause = ""
         if modifier_literals:
             modifier_clause = " using {" + ", ".join(modifier_literals) + "}"
-        app_name = application or self.frontmost_app()
+        target_app = self._target_application(application=application, bundle_id=bundle_id)
+        key_value = key.strip()
+        if not key_value:
+            raise SystemBridgeError("INVALID_INPUT", "key must not be empty.", "Provide a printable key or supported special key name.")
+        normalized_key = key_value.lower()
+        key_command = f'keystroke keyText{modifier_clause}'
+        if normalized_key in self._SPECIAL_KEY_CODES:
+            key_command = f'key code {self._SPECIAL_KEY_CODES[normalized_key]}{modifier_clause}'
         self._run_osascript(
             [
                 "on run argv",
@@ -348,17 +438,17 @@ class SystemBridge:
                 'tell application appName to activate',
                 "delay 0.1",
                 'tell application "System Events"',
-                f"keystroke keyText{modifier_clause}",
+                key_command,
                 "end tell",
                 'return "ok"',
                 "end run",
             ],
-            args=[app_name, key],
+            args=[target_app.name, key_value, target_app.bundle_id or ""],
         )
-        return app_name
+        return target_app
 
-    def gui_type_text(self, text: str, application: str | None = None) -> str:
-        app_name = application or self.frontmost_app()
+    def gui_type_text(self, text: str, application: str | None = None, bundle_id: str | None = None) -> AppRecord:
+        target_app = self._target_application(application=application, bundle_id=bundle_id)
         self._run_osascript(
             [
                 "on run argv",
@@ -372,58 +462,92 @@ class SystemBridge:
                 'return "ok"',
                 "end run",
             ],
-            args=[app_name, text],
+            args=[target_app.name, text, target_app.bundle_id or ""],
         )
-        return app_name
+        return target_app
 
-    def gui_click_button(self, label: str, application: str | None = None) -> str:
-        app_name = application or self.frontmost_app()
+    def gui_click_button(
+        self,
+        label: str | None = None,
+        description: str | None = None,
+        index: int = 1,
+        application: str | None = None,
+        bundle_id: str | None = None,
+    ) -> AppRecord:
+        if not label and not description:
+            raise SystemBridgeError("INVALID_INPUT", "label or description is required.", "Provide a button label or accessibility description.")
+        if index < 1:
+            raise SystemBridgeError("INVALID_INPUT", "index must be at least 1.", "Use a positive button index.")
+        target_app = self._target_application(application=application, bundle_id=bundle_id)
         self._run_osascript(
             [
                 "on run argv",
                 "set appName to item 1 of argv",
                 "set buttonName to item 2 of argv",
+                "set buttonDescription to item 3 of argv",
+                "set buttonIndex to (item 4 of argv) as integer",
                 'tell application appName to activate',
                 "delay 0.15",
                 'tell application "System Events"',
                 "tell process appName",
                 "tell front window",
-                "click first button whose name is buttonName",
+                "if buttonName is not \"\" then",
+                "set matchingButtons to every button whose name is buttonName",
+                "else",
+                "set matchingButtons to every button whose description is buttonDescription",
+                "end if",
+                "if (count of matchingButtons) < buttonIndex then error \"BUTTON_NOT_FOUND\"",
+                "click item buttonIndex of matchingButtons",
                 "end tell",
                 "end tell",
                 "end tell",
                 'return "ok"',
                 "end run",
             ],
-            args=[app_name, label],
+            args=[target_app.name, label or "", description or "", str(index), target_app.bundle_id or ""],
         )
-        return app_name
+        return target_app
 
-    def gui_choose_popup_value(self, label: str, value: str, application: str | None = None) -> str:
-        app_name = application or self.frontmost_app()
+    def gui_choose_popup_value(
+        self,
+        label: str | None,
+        value: str,
+        description: str | None = None,
+        application: str | None = None,
+        bundle_id: str | None = None,
+    ) -> AppRecord:
+        if not label and not description:
+            raise SystemBridgeError("INVALID_INPUT", "label or description is required.", "Provide a pop-up label or accessibility description.")
+        target_app = self._target_application(application=application, bundle_id=bundle_id)
         self._run_osascript(
             [
                 "on run argv",
                 "set appName to item 1 of argv",
                 "set popupLabel to item 2 of argv",
                 "set popupValue to item 3 of argv",
+                "set popupDescription to item 4 of argv",
                 'tell application appName to activate',
                 "delay 0.15",
                 'tell application "System Events"',
                 "tell process appName",
                 "tell front window",
-                "click pop up button popupLabel",
+                "if popupLabel is not \"\" then",
+                "set targetPopup to first pop up button whose name is popupLabel",
+                "else",
+                "set targetPopup to first pop up button whose description is popupDescription",
+                "end if",
+                "click targetPopup",
                 "delay 0.1",
-                "click menu item popupValue of menu 1 of pop up button popupLabel",
+                "click menu item popupValue of menu 1 of targetPopup",
                 "end tell",
                 "end tell",
                 "end tell",
                 'return "ok"',
                 "end run",
             ],
-            args=[app_name, label, value],
+            args=[target_app.name, label or "", value, description or "", target_app.bundle_id or ""],
         )
-        return app_name
+        return target_app
 
     def read_preference_domain(self, domain: str, current_host: bool = False) -> dict[str, object]:
         normalized_domain = domain.strip()

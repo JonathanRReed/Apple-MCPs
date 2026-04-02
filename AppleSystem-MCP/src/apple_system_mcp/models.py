@@ -33,6 +33,8 @@ class BatteryStatus(BaseModel):
 
 class AppRecord(BaseModel):
     name: str
+    bundle_id: str | None = None
+    process_id: int | None = None
 
 
 class ClipboardResponse(BaseModel):
@@ -50,6 +52,7 @@ class OpenAppResponse(BaseModel):
     ok: bool = True
     opened: bool
     application: str
+    bundle_id: str | None = None
 
 
 class RunningAppsResponse(BaseModel):
@@ -62,6 +65,7 @@ class StatusResponse(BaseModel):
     ok: bool = True
     battery: BatteryStatus | None = None
     frontmost_app: str | None = None
+    frontmost_application: AppRecord | None = None
     running_apps_count: int | None = None
 
 
@@ -105,6 +109,8 @@ class SettingMutationResponse(BaseModel):
 class GuiMenuItemsResponse(BaseModel):
     ok: bool = True
     application: str
+    bundle_id: str | None = None
+    process_id: int | None = None
     menu_bar_items: list[str]
     count: int
     used_gui_fallback: bool = True
@@ -114,6 +120,9 @@ class GuiActionResponse(BaseModel):
     ok: bool = True
     action: str
     application: str | None = None
+    bundle_id: str | None = None
+    process_id: int | None = None
     target: str | None = None
+    selector_type: str | None = None
     value: bool | str | list[str] | None = None
     used_gui_fallback: bool = True

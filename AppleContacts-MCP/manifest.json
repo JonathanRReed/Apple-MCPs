@@ -22,7 +22,7 @@
       "command": "${__dirname}/start.sh",
       "args": [],
       "env": {
-        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_readonly"
+        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_manage"
       }
     }
   }

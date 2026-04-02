@@ -71,9 +71,9 @@ This installs `Apple-Tools-MCP` plus every standalone package into one environme
         "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_FILES_MCP_ALLOWED_ROOTS": "/Users/you/Desktop,/Users/you/Documents,/Users/you/Downloads",
-        "APPLE_FILES_MCP_SAFETY_MODE": "safe_readonly",
-        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_readonly",
-        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_readonly",
+        "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_manage",
+        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_NOTES_MCP_SAFETY_MODE": "full_access",
         "APPLE_MESSAGES_MCP_SAFETY_MODE": "full_access",
         "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "full_access"
@@ -143,6 +143,7 @@ Apple-Tools-MCP also stores recent assistant actions in `~/.apple-tools-mcp/acti
 - Keep contact info current so communication routing works reliably.
 - Use Files before Mail, Messages, Notes, or Shortcuts when the request involves local documents.
 - Check System context before interruptive actions, especially when the frontmost app, clipboard, or battery state matters.
+- Use `apple_update_system_setting` for macOS preference changes and `apple_control_frontmost_app` only when a native app-domain tool cannot complete the task.
 - Prefer explicit System settings tools over generic GUI automation when the request is really a macOS preference change.
 - Use GUI fallback tools only when the native domain MCP cannot complete the task and the client has granted Accessibility access.
 - Use Maps when routing or travel time affects scheduling or communication.

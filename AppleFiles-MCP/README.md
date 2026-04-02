@@ -40,7 +40,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
       "args": [],
       "env": {
         "APPLE_FILES_MCP_ALLOWED_ROOTS": "/Users/you/Desktop,/Users/you/Documents,/Users/you/Downloads",
-        "APPLE_FILES_MCP_SAFETY_MODE": "safe_readonly"
+        "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage"
       }
     }
   }
@@ -52,7 +52,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 - Use this server before Mail, Messages, Notes, or Shortcuts when the user references a local file or attachment.
 - Confirm the exact path before sending or attaching a file.
 - Keep `APPLE_FILES_MCP_ALLOWED_ROOTS` narrow for safety.
-- Use `APPLE_FILES_MCP_SAFETY_MODE=safe_readonly` by default, `safe_manage` for create and move, and `full_access` only for delete workflows.
+- Use `APPLE_FILES_MCP_SAFETY_MODE=safe_manage` for assistant workflows that need create and move, and `full_access` only for delete workflows.
 
 ## Health And Recovery
 

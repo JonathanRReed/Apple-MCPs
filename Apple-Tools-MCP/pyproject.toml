@@ -19,7 +19,7 @@ apple-tools-mcp = "apple_agent_mcp.tools:main"
 [project.optional-dependencies]
 dev = [
   "pytest>=8,<10",
-  "ruff>=0.11,<1",
+  "ruff>=0.12,<1",
 ]
 
 [tool.setuptools]

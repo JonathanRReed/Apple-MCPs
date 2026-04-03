@@ -1,8 +1,13 @@
 # Apple-MCPs
 
-Apple-native MCP servers for macOS.
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
+![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white)
+![License MIT](https://img.shields.io/badge/license-MIT-green)
+![MCP](https://img.shields.io/badge/MCP-v0.4-8A2BE2)
 
-This repository provides direct, local access to core Apple apps through the Model Context Protocol (MCP). Your AI assistant can use structured tools to work with your data—create reminders, send messages, check calendars—while everything stays in the native apps you already use.
+Apple-native MCP servers for macOS — turn any AI agent into what Siri should have been.
+
+This repository provides direct, local access to core Apple apps through the [Model Context Protocol](https://modelcontextprotocol.io) (MCP). Your AI assistant can use structured tools to work with your data — create reminders, send messages, check calendars, search mail, manage files, get directions — while everything stays in the native apps you already use.
 
 MCP provides three primitives for working with Apple apps:
 

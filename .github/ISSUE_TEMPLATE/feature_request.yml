@@ -1,0 +1,38 @@
+name: Feature Request
+description: Suggest a new tool, capability, or improvement
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: server
+    attributes:
+      label: Server
+      description: Which server does this relate to?
+      options:
+        - Apple-Tools-MCP (unified)
+        - Apple-Calendar-MCP
+        - AppleContacts-MCP
+        - AppleFiles-MCP
+        - AppleMail-MCP
+        - AppleMaps-MCP
+        - AppleMessages-MCP
+        - AppleNotes-MCP
+        - AppleReminders-MCP
+        - AppleShortcuts-MCP
+        - AppleSystem-MCP
+        - New server or cross-cutting
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What would you like?
+      description: Describe the feature or improvement you'd like to see.
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: What workflow or problem does this solve?
+    validations:
+      required: true

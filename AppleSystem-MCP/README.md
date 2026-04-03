@@ -105,4 +105,4 @@ The bounded GUI fallback surface is:
 - Reload or reconnect the client so the System tool surface is loaded into context
 - Call `system_health` first
 - If a scoped system action is blocked, call `system_permission_guide`
-- `system_status`
+- Call `system_status` to verify the full context surface is available

@@ -4,7 +4,7 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog, and this project intends to follow Semantic Versioning once tagged releases begin.
 
-## [Unreleased]
+## [0.1.0] - 2026-04-03
 
 ### Added
 - Unified `Apple-Tools-MCP` server covering Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps.

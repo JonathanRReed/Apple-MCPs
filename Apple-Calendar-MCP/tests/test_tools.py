@@ -141,5 +141,31 @@ def test_calendar_get_event_exposes_attendees_and_recurrence(monkeypatch) -> Non
     assert result.event.attendees[0].status == "accepted"
 
 
+def test_calendar_health_reports_applescript_fallback(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    load_settings.cache_clear()
+
+    class FallbackBridge(FakeBridge):
+        def calendar_access_status(self):
+            return {
+                "status": "not_determined",
+                "can_read_events": False,
+                "can_write_events": False,
+                "message": "Calendar access has not been granted yet.",
+                "suggestion": "Run a Calendar tool and approve the macOS permission prompt.",
+            }
+
+        def list_calendars(self):
+            return []
+
+    monkeypatch.setattr(tools, "_bridge", lambda: FallbackBridge())
+
+    result = tools.calendar_health()
+
+    assert result.access_status == "applescript_fallback"
+    assert result.can_read_events is True
+    assert result.permission_error is None
+
+
 def teardown_function() -> None:
     load_settings.cache_clear()

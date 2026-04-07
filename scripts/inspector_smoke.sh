@@ -2,22 +2,39 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SHARED_VENV="$ROOT/.venv"
+
+if [ ! -x "$SHARED_VENV/bin/python3" ]; then
+  bash "$ROOT/scripts/install_all.sh" "$SHARED_VENV"
+fi
+
+declare -A BINARIES=(
+  ["AppleFiles-MCP"]="apple-files-mcp"
+  ["AppleSystem-MCP"]="apple-system-mcp"
+  ["AppleMaps-MCP"]="apple-maps-mcp"
+  ["AppleMail-MCP"]="apple-mail-mcp"
+  ["Apple-Calendar-MCP"]="apple-calendar-mcp"
+  ["AppleReminders-MCP"]="apple-reminders-mcp"
+  ["AppleMessages-MCP"]="apple-messages-mcp"
+  ["AppleContacts-MCP"]="apple-contacts-mcp"
+  ["AppleNotes-MCP"]="apple-notes-mcp"
+  ["AppleShortcuts-MCP"]="apple-shortcuts-mcp"
+  ["Apple-Tools-MCP"]="apple-tools-mcp"
+)
 
 run_inspector_check() {
   local package="$1"
   local method="$2"
   local expected_key="$3"
   local require_nonempty="${4:-1}"
+  local binary="${BINARIES[$package]}"
   local output_file
 
   output_file="$(mktemp)"
   trap 'rm -f "$output_file"' RETURN
 
   echo "==> ${package}: ${method}"
-  (
-    cd "$ROOT/$package"
-    npx -y @modelcontextprotocol/inspector --cli bash ./start.sh --method "$method" >"$output_file"
-  )
+  npx -y @modelcontextprotocol/inspector --cli "$SHARED_VENV/bin/$binary" --method "$method" >"$output_file"
 
   python3 - "$output_file" "$expected_key" "$package" "$method" "$require_nonempty" <<'PY'
 import json

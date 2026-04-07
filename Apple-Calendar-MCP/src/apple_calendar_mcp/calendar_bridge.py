@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 import json
 import subprocess
 
@@ -22,7 +23,15 @@ class CalendarBridge:
         return self.helper_source.exists(), self.helper_binary.exists()
 
     def list_calendars(self) -> list[CalendarInfo]:
-        payload = self._run_helper("list-calendar-calendars")
+        if self._helper_read_blocked():
+            payload = self._fallback_list_calendars()
+        else:
+            try:
+                payload = self._run_helper("list-calendar-calendars")
+            except CalendarBridgeError as exc:
+                if not self._should_use_read_fallback(exc):
+                    raise
+                payload = self._fallback_list_calendars()
         calendars = payload.get("items", [])
         return [
             CalendarInfo(
@@ -46,7 +55,15 @@ class CalendarBridge:
             "calendar_id": calendar_id,
             "limit": limit,
         }
-        payload = self._run_helper("list-calendar-events", json.dumps(request))
+        if self._helper_read_blocked():
+            payload = self._fallback_list_events(start_iso, end_iso, calendar_id=calendar_id, limit=limit)
+        else:
+            try:
+                payload = self._run_helper("list-calendar-events", json.dumps(request))
+            except CalendarBridgeError as exc:
+                if not self._should_use_read_fallback(exc):
+                    raise
+                payload = self._fallback_list_events(start_iso, end_iso, calendar_id=calendar_id, limit=limit)
         return [self._normalize_summary(item) for item in payload.get("items", []) if isinstance(item, dict)]
 
     def get_event(self, event_id: str) -> EventDetail:
@@ -188,6 +205,138 @@ class CalendarBridge:
             stderr_text or stdout_text or "Native helper execution failed.",
             "Inspect helper stderr and retry.",
         )
+
+    def _should_use_read_fallback(self, error: CalendarBridgeError) -> bool:
+        return error.error_code in {
+            "PERMISSION_DENIED",
+            "PERMISSION_REQUEST_FAILED",
+            "PERMISSION_TIMEOUT",
+            "PERMISSION_UNKNOWN",
+            "HELPER_SOURCE_MISSING",
+            "HELPER_COMPILE_FAILED",
+            "HELPER_EXECUTION_FAILED",
+        }
+
+    def _helper_read_blocked(self) -> bool:
+        try:
+            payload = self.calendar_access_status()
+        except CalendarBridgeError:
+            return False
+        return not bool(payload.get("can_read_events", False))
+
+    def _fallback_list_calendars(self) -> dict[str, object]:
+        script = """
+function run(argv) {
+  const app = Application("Calendar");
+  const items = app.calendars().map(function(cal) {
+    const name = cal.name();
+    return {
+      calendar_id: name,
+      title: name,
+      source_title: null,
+      color_hex: null,
+      allows_content_modifications: null
+    };
+  });
+  return JSON.stringify({items: items});
+}
+"""
+        return self._run_jxa(script)
+
+    def _fallback_list_events(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, object]:
+        start = datetime.fromisoformat(start_iso)
+        end = datetime.fromisoformat(end_iso)
+        script = """
+function isAllDay(startDate, endDate) {
+  return startDate.getHours() === 0 &&
+    startDate.getMinutes() === 0 &&
+    startDate.getSeconds() === 0 &&
+    endDate.getHours() === 23 &&
+    endDate.getMinutes() === 59;
+}
+
+function run(argv) {
+  const start = new Date(argv[0]);
+  const end = new Date(argv[1]);
+  const calendarFilter = argv[2] || "";
+  const limit = parseInt(argv[3], 10);
+  const app = Application("Calendar");
+  const items = [];
+
+  app.calendars().forEach(function(cal) {
+    const calendarName = cal.name();
+    if (calendarFilter && calendarName !== calendarFilter) {
+      return;
+    }
+    const events = app.calendars.byName(calendarName).events.whose({
+      startDate: {
+        _greaterThan: start,
+        _lessThan: end
+      }
+    })();
+
+    events.forEach(function(evt) {
+      const startDate = evt.startDate();
+      const endDate = evt.endDate();
+      const title = evt.summary() || "";
+      const eventId = evt.uid ? evt.uid() : (evt.id ? evt.id() : null);
+      items.push({
+        event_id: eventId || ("applescript::" + calendarName + "::" + startDate.toISOString() + "::" + title),
+        title: title,
+        calendar_id: calendarName,
+        calendar_name: calendarName,
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+        all_day: isAllDay(startDate, endDate),
+        location: evt.location ? (evt.location() || null) : null
+      });
+    });
+  });
+
+  items.sort(function(a, b) {
+    const dateOrder = new Date(a.start) - new Date(b.start);
+    if (dateOrder !== 0) {
+      return dateOrder;
+    }
+    return a.title.localeCompare(b.title);
+  });
+
+  return JSON.stringify({items: items.slice(0, isNaN(limit) ? 100 : limit)});
+}
+"""
+        return self._run_jxa(script, start.isoformat(), end.isoformat(), calendar_id or "", str(limit))
+
+    def _run_jxa(self, script: str, *args: str) -> dict[str, object]:
+        completed = subprocess.run(
+            ["osascript", "-l", "JavaScript", "-e", script, *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        output = completed.stdout.strip()
+        if completed.returncode != 0:
+            raise CalendarBridgeError(
+                "APPLESCRIPT_FALLBACK_FAILED",
+                completed.stderr.strip() or output or "Calendar AppleScript fallback failed.",
+                "Confirm Calendar.app automation is allowed, then retry.",
+            )
+        if not output:
+            return {}
+        try:
+            payload = json.loads(output)
+        except json.JSONDecodeError as exc:
+            raise CalendarBridgeError(
+                "INVALID_HELPER_OUTPUT",
+                f"Calendar AppleScript fallback returned invalid JSON: {exc.msg}.",
+                "Inspect the fallback output and retry.",
+            ) from exc
+        if not isinstance(payload, dict):
+            raise CalendarBridgeError(
+                "INVALID_HELPER_OUTPUT",
+                "Calendar AppleScript fallback output must decode to a JSON object.",
+                "Inspect the fallback output and retry.",
+            )
+        return payload
 
     def _normalize_summary(self, raw_event: dict[str, object]) -> EventSummary:
         return EventSummary(

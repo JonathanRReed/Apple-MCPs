@@ -155,6 +155,15 @@ def calendar_health() -> HealthResponse:
             access_status = "helper_error"
             permission_error = exc.message
             permission_suggestion = exc.suggestion
+    if not can_read_events:
+        try:
+            _bridge().list_calendars()
+            access_status = "applescript_fallback"
+            can_read_events = True
+            permission_error = None
+            permission_suggestion = None
+        except CalendarBridgeError:
+            pass
     return HealthResponse(
         server_name=settings.server_name,
         version=settings.version,

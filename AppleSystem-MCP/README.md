@@ -24,6 +24,7 @@ Local MCP server for macOS system context, truthful Focus support metadata, assi
 - preference-domain inspection via `defaults export`
 - resources: `system://status`, `system://applications`, `system://settings`, `system://context`
 - prompt: `system_capture_context`
+- search-first discovery through `search_tools` and `get_tool_info`
 
 ## Install On This Mac
 
@@ -35,7 +36,7 @@ cd /path/to/Apple-MCPs/AppleSystem-MCP
 ./start.sh
 ```
 
-On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the server over `stdio`.
+`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the server over `stdio`.
 
 </details>
 
@@ -57,6 +58,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 
 ## Prompting Notes
 
+- `tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` for the deferred System tool you need.
 - Use this server when the user’s current desktop context matters.
 - Read battery state and the frontmost app before interruptive actions.
 - Use the settings tools before falling back to raw `defaults read` in prompts or E2E checks.

@@ -14,8 +14,10 @@ Provides access to calendars and events through EventKit. Keep Calendar as the s
 
 - Discover and list calendars
 - Create, read, update, and delete events
+- Search-first discovery through `search_tools` and `get_tool_info`
 - Today resources and planning prompts
 - Health checks that distinguish empty results from blocked access
+- Read fallback through Calendar.app automation when native EventKit reads are blocked on supported local setups
 - Permission recovery: `calendar_permission_guide`, `calendar_recheck_permissions`
 
 ## Install On This Mac
@@ -28,7 +30,7 @@ cd /path/to/Apple-MCPs/Apple-Calendar-MCP
 ./start.sh
 ```
 
-On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the server over `stdio`.
+`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the server over `stdio`.
 
 </details>
 
@@ -86,6 +88,7 @@ claude mcp add --transport stdio --scope project \
 
 ## Prompting Notes
 
+- `tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` for the deferred Calendar tool you need.
 - Before creating events, confirm the date, time, duration, and title with the user
 - Use Calendar for scheduled time blocks, meetings, and appointments
 

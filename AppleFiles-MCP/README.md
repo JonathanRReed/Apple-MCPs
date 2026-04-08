@@ -20,6 +20,7 @@ Local MCP server for file, Finder-adjacent, and iCloud Drive workflows on macOS.
 - delete files or empty folders
 - resources: `files://allowed-roots`, `files://recent`, `files://recent-locations`, `files://icloud-status`
 - prompts: `files_prepare_attachment`, `files_organize_workspace`
+- search-first discovery through `search_tools` and `get_tool_info`
 
 ## Install On This Mac
 
@@ -31,7 +32,7 @@ cd /path/to/Apple-MCPs/AppleFiles-MCP
 ./start.sh
 ```
 
-On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the server over `stdio`.
+`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the server over `stdio`.
 
 </details>
 
@@ -54,6 +55,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 
 ## Prompting Notes
 
+- `tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` for the deferred Files tool you need.
 - Use this server before Mail, Messages, Notes, or Shortcuts when the user references a local file or attachment.
 - Use this server for Finder-style workflows, iCloud Drive paths, and file tagging, not raw shell fallbacks.
 - Confirm the exact path before sending or attaching a file.

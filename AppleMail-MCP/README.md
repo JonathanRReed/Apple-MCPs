@@ -97,7 +97,7 @@ claude mcp add --transport stdio --scope project \
 - Use `mail_reply_latest_in_thread` when the agent should reply to the newest message in the conversation.
 - Use `mail_archive_thread` when the user wants thread-level cleanup and Archive is the intended mailbox.
 - If the user could mean text or email, ask once before choosing Messages or Mail.
-- When Mail must send from a specific identity, pass the exact sender email in `from_account`, for example `jonathanrayreed@gmail.com`.
+- When Mail must send from a specific identity, pass the exact sender email in `from_account`, for example `sender@example.com`.
 
 ## Related
 

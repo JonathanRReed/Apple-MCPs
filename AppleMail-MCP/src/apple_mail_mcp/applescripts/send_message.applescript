@@ -32,6 +32,14 @@ on sanitizeText(valueText)
     return safeText
 end sanitizeText
 
+on normalizeText(valueText)
+    if valueText is missing value then
+        return ""
+    end if
+    set normalizedText to do shell script "/bin/echo " & quoted form of (valueText as text) & " | /usr/bin/tr '[:upper:]' '[:lower:]'"
+    return normalizedText
+end normalizeText
+
 on resolveAccountBySender(senderRaw)
     if senderRaw is "" then
         return missing value
@@ -62,41 +70,81 @@ on primaryEmailForAccount(theAccount)
     return ""
 end primaryEmailForAccount
 
-on selectSenderPopup(senderRaw, senderEmail)
-    tell application "Mail" to activate
-    delay 0.4
+on senderMatches(candidateText, senderRaw, senderEmail)
+    set normalizedCandidate to my normalizeText(candidateText)
+    if senderEmail is not "" then
+        set normalizedEmail to my normalizeText(senderEmail)
+        if normalizedCandidate contains normalizedEmail then
+            return true
+        end if
+    end if
+    if senderRaw is not "" then
+        set normalizedSender to my normalizeText(senderRaw)
+        if normalizedCandidate contains normalizedSender then
+            return true
+        end if
+    end if
+    return false
+end senderMatches
+
+on currentSenderMatches(senderRaw, senderEmail)
     tell application "System Events"
         tell process "Mail"
             set frontmost to true
             set composeWindow to front window
             repeat with popupRef in every pop up button of composeWindow
-                click popupRef
-                delay 0.2
-                set matchingItem to missing value
                 try
-                    repeat with menuItemRef in every menu item of menu 1 of popupRef
-                        set itemName to name of menuItemRef as text
-                        if senderEmail is not "" and itemName contains senderEmail then
-                            set matchingItem to menuItemRef
-                            exit repeat
-                        end if
-                        if senderRaw is not "" and itemName contains senderRaw then
-                            set matchingItem to menuItemRef
-                            exit repeat
-                        end if
-                    end repeat
+                    set currentValue to value of popupRef as text
+                    if my senderMatches(currentValue, senderRaw, senderEmail) then
+                        return currentValue
+                    end if
                 end try
-                if matchingItem is not missing value then
-                    click matchingItem
-                    delay 0.3
-                    return value of popupRef as text
-                end if
-                key code 53
-                delay 0.1
             end repeat
-            error "ACCOUNT_MENU_ITEM_NOT_FOUND"
         end tell
     end tell
+    return ""
+end currentSenderMatches
+
+on selectSenderPopup(senderRaw, senderEmail)
+    tell application "Mail" to activate
+    repeat with attemptIndex from 1 to 5
+        delay 0.3
+        set currentMatch to my currentSenderMatches(senderRaw, senderEmail)
+        if currentMatch is not "" then
+            return currentMatch
+        end if
+        tell application "System Events"
+            tell process "Mail"
+                set frontmost to true
+                set composeWindow to front window
+                repeat with popupRef in every pop up button of composeWindow
+                    click popupRef
+                    delay 0.25
+                    set matchingItem to missing value
+                    try
+                        repeat with menuItemRef in every menu item of menu 1 of popupRef
+                            set itemName to name of menuItemRef as text
+                            if my senderMatches(itemName, senderRaw, senderEmail) then
+                                set matchingItem to menuItemRef
+                                exit repeat
+                            end if
+                        end repeat
+                    end try
+                    if matchingItem is not missing value then
+                        click matchingItem
+                        delay 0.4
+                        set updatedMatch to my currentSenderMatches(senderRaw, senderEmail)
+                        if updatedMatch is not "" then
+                            return updatedMatch
+                        end if
+                    end if
+                    key code 53
+                    delay 0.1
+                end repeat
+            end tell
+        end tell
+    end repeat
+    error "ACCOUNT_MENU_ITEM_NOT_FOUND"
 end selectSenderPopup
 
 on run argv
@@ -129,6 +177,7 @@ on run argv
             set matchedAccount to my resolveAccountBySender(senderRaw)
             set senderEmail to my primaryEmailForAccount(matchedAccount)
             set sender of newMessage to senderRaw
+            delay 0.2
         end if
         tell newMessage
             repeat with addressText in toList

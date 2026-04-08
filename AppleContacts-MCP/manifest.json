@@ -8,7 +8,7 @@
   "long_description": "Local MCP server for Apple Contacts on macOS. Uses AppleScript to inspect contacts, search by name, phone, or email, fetch full contact details, and resolve a contact into a message-ready recipient before handing off to Apple Messages.",
   "icon": "icon.png",
   "author": {
-    "name": "Jonathan Reed"
+    "name": "Apple MCP Contributors"
   },
   "license": "MIT",
   "keywords": ["contacts", "apple", "macos", "address-book", "messages", "directory"],

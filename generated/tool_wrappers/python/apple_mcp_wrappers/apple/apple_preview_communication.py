@@ -19,7 +19,7 @@ async def apple_preview_communication(
     Preview how Apple-Tools will route a communication before sending it through Messages or Mail.
 
     Example:
-        await apple_preview_communication(client, recipient='Jonathan Reed', message='example_message')
+        await apple_preview_communication(client, recipient='Example Person', message='example_message')
     """
     arguments = {
         "recipient": recipient,

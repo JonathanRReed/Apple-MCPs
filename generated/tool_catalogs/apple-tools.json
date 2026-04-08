@@ -366,7 +366,7 @@
         {
           "arguments": {
             "preferred_channel": "example_preferred_channel",
-            "recipient": "Jonathan Reed"
+            "recipient": "Example Person"
           },
           "tool": "apple_prepare_communication"
         }
@@ -423,7 +423,7 @@
         {
           "arguments": {
             "message": "example_message",
-            "recipient": "Jonathan Reed"
+            "recipient": "Example Person"
           },
           "tool": "apple_preview_communication"
         }
@@ -678,7 +678,7 @@
         {
           "arguments": {
             "message": "example_message",
-            "recipient": "Jonathan Reed"
+            "recipient": "Example Person"
           },
           "tool": "apple_send_communication"
         }
@@ -2336,7 +2336,7 @@
       "example_calls": [
         {
           "arguments": {
-            "recipient": "Jonathan Reed",
+            "recipient": "Example Person",
             "text": "example_text"
           },
           "tool": "apple_send_message_interactive"
@@ -7836,7 +7836,7 @@
       "example_calls": [
         {
           "arguments": {
-            "recipient": "Jonathan Reed",
+            "recipient": "Example Person",
             "text": "example_text"
           },
           "tool": "messages_send_message"
@@ -7928,7 +7928,7 @@
         {
           "arguments": {
             "file_path": "/path/to/item",
-            "recipient": "Jonathan Reed"
+            "recipient": "Example Person"
           },
           "tool": "messages_send_attachment"
         }

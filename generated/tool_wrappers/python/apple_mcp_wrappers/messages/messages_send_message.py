@@ -15,7 +15,7 @@ async def messages_send_message(
     Send a new iMessage through Messages.app.
 
     Example:
-        await messages_send_message(client, recipient='Jonathan Reed', text='example_text')
+        await messages_send_message(client, recipient='Example Person', text='example_text')
     """
     arguments = {
         "recipient": recipient,

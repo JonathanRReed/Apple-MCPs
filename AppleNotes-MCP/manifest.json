@@ -8,7 +8,7 @@
   "long_description": "Local MCP server for Apple Notes on macOS. Uses AppleScript as the primary bridge to list accounts and folders, inspect notes, search note contents, create and update notes, move notes between folders, and organize notes while keeping Notes as the system of record.",
   "icon": "icon.png",
   "author": {
-    "name": "Jonathan Reed"
+    "name": "Apple MCP Contributors"
   },
   "license": "MIT",
   "keywords": ["notes", "apple", "macos", "applescript", "knowledge", "organization"],

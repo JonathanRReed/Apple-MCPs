@@ -191,10 +191,10 @@ def test_compose_draft_passes_from_account() -> None:
         subject="Test",
         body="Body",
         attachments=None,
-        from_account="jonathanrayreed@gmail.com",
+        from_account="sender@example.com",
     )
 
-    assert result.from_account == "jonathanrayreed@gmail.com"
+    assert result.from_account == "sender@example.com"
     assert result.draft_id == "draft-1"
 
 
@@ -227,11 +227,11 @@ def test_send_message_passes_from_account() -> None:
         subject="Sent",
         body="Body",
         attachments=None,
-        from_account="jonathanrayreed@gmail.com",
+        from_account="sender@example.com",
     )
 
     assert result.sent is True
-    assert result.from_account == "jonathanrayreed@gmail.com"
+    assert result.from_account == "sender@example.com"
 
 
 def test_send_message_from_account_defaults_to_none() -> None:
@@ -263,7 +263,7 @@ def test_reply_forward_mark_move_and_delete_tools() -> None:
         message_id="id-1",
         to=["team@example.com"],
         body="FYI",
-        from_account="jonathanrayreed@gmail.com",
+        from_account="sender@example.com",
     )
     marked = mail_mark_message_tool(bridge, settings, message_id="id-1", is_read=True)
     moved = mail_move_message_tool(bridge, settings, message_id="id-1", target_mailbox="Archive")

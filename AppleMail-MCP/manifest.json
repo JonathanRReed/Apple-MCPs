@@ -8,7 +8,7 @@
   "long_description": "Local MCP server for Apple Mail on macOS. Uses AppleScript to list mailboxes, search and read messages, compose drafts, and send email — all with Apple Mail as the system of record. Requires macOS and Apple Mail installed.",
   "icon": "icon.png",
   "author": {
-    "name": "Jonathan Reed"
+    "name": "Apple MCP Contributors"
   },
   "license": "MIT",
   "keywords": ["mail", "email", "apple", "macos", "applescript"],

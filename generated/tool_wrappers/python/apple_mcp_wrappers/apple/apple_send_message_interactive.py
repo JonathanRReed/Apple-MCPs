@@ -15,7 +15,7 @@ async def apple_send_message_interactive(
     Send an Apple Messages message, asking for missing recipient or text when needed.
 
     Example:
-        await apple_send_message_interactive(client, recipient='Jonathan Reed', text='example_text')
+        await apple_send_message_interactive(client, recipient='Example Person', text='example_text')
     """
     arguments = {
         "recipient": recipient,

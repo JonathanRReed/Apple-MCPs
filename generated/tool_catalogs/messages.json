@@ -388,7 +388,7 @@
       "example_calls": [
         {
           "arguments": {
-            "recipient": "Jonathan Reed",
+            "recipient": "Example Person",
             "text": "example_text"
           },
           "tool": "messages_send_message"
@@ -486,7 +486,7 @@
         {
           "arguments": {
             "file_path": "/path/to/item",
-            "recipient": "Jonathan Reed"
+            "recipient": "Example Person"
           },
           "tool": "messages_send_attachment"
         }

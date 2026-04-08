@@ -26,19 +26,19 @@ def test_send_message_returns_resolved_from_account(monkeypatch) -> None:
 
     def fake_run_script(script_name: str, args: list[str]) -> str:
         assert script_name == "send_message.applescript"
-        assert args[-1] == "jonathanrayreed@gmail.com"
+        assert args[-1] == "sender@example.com"
         return "true\x1fSubject\x1fiCloud Account\x1e"
 
     monkeypatch.setattr(bridge, "_run_script", fake_run_script)
 
     result = bridge.send_message(
-        to=["reedjonathan2016@gmail.com"],
+        to=["recipient@example.com"],
         cc=None,
         bcc=None,
         subject="Subject",
         body="Body",
         attachments=None,
-        from_account="jonathanrayreed@gmail.com",
+        from_account="sender@example.com",
     )
 
     assert result.sent is True

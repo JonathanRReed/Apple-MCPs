@@ -8,7 +8,7 @@
   "long_description": "Local MCP server for Apple Shortcuts on macOS. Uses the official shortcuts CLI to list shortcuts, inspect shortcut metadata, browse folders, and run shortcuts with structured inputs and outputs. Designed for agentic use with concise resources, prompts, and typed results.",
   "icon": "icon.png",
   "author": {
-    "name": "Jonathan Reed"
+    "name": "Apple MCP Contributors"
   },
   "license": "MIT",
   "keywords": ["shortcuts", "apple", "macos", "automation", "cli", "assistant"],

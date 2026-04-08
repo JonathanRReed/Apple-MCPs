@@ -15,7 +15,7 @@ async def apple_prepare_communication(
     Resolve a recipient through Contacts, evaluate available channels, and return the recommended mail or messages target before sending.
 
     Example:
-        await apple_prepare_communication(client, recipient='Jonathan Reed', preferred_channel='example_preferred_channel')
+        await apple_prepare_communication(client, recipient='Example Person', preferred_channel='example_preferred_channel')
     """
     arguments = {
         "recipient": recipient,

@@ -670,8 +670,8 @@ def test_apple_prepare_unique_contact_returns_duplicates(monkeypatch) -> None:
             {
                 "count": 2,
                 "contacts": [
-                    type("ContactSummary", (), {"contact_id": "c1", "name": "Jonathan Reed"})(),
-                    type("ContactSummary", (), {"contact_id": "c2", "name": "Jonathan Reed"})(),
+                    type("ContactSummary", (), {"contact_id": "c1", "name": "Example Person"})(),
+                    type("ContactSummary", (), {"contact_id": "c2", "name": "Example Person"})(),
                 ],
             },
         )(),
@@ -688,10 +688,10 @@ def test_apple_prepare_unique_contact_returns_duplicates(monkeypatch) -> None:
                     DuplicateCandidateGroup(
                         duplicate_group_id="dup-1",
                         confidence=0.95,
-                        evidence=[DuplicateEvidence(kind="name", value="jonathan reed")],
+                        evidence=[DuplicateEvidence(kind="name", value="example person")],
                         contacts=[
-                            ContactDetail(contact_id="c1", name="Jonathan Reed", phones=[], emails=[]),
-                            ContactDetail(contact_id="c2", name="Jonathan Reed", phones=[], emails=[]),
+                            ContactDetail(contact_id="c1", name="Example Person", phones=[], emails=[]),
+                            ContactDetail(contact_id="c2", name="Example Person", phones=[], emails=[]),
                         ],
                         merge_recommended=True,
                     )
@@ -701,7 +701,7 @@ def test_apple_prepare_unique_contact_returns_duplicates(monkeypatch) -> None:
         )(),
     )
 
-    result = tools.apple_prepare_unique_contact("Jonathan Reed")
+    result = tools.apple_prepare_unique_contact("Example Person")
 
     assert result.ok is True
     assert result.count == 1
@@ -940,7 +940,7 @@ def test_apple_prepare_communication_uses_contact_specific_preferences(monkeypat
 def test_apple_send_communication_routes_to_mail_with_default_account(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(tmp_path / "prefs.json"))
     load_settings.cache_clear()
-    tools.apple_update_preferences(default_mail_account="jonathanrayreed@gmail.com", preferred_communication_channel="mail")
+    tools.apple_update_preferences(default_mail_account="sender@example.com", preferred_communication_channel="mail")
 
     monkeypatch.setattr(tools, "_looks_like_message_address", lambda value: "@" in value)
     captured: dict[str, object] = {}
@@ -959,14 +959,14 @@ def test_apple_send_communication_routes_to_mail_with_default_account(monkeypatc
     assert result.ok is True
     assert result.channel == "mail"
     assert result.action_id is not None
-    assert captured["from_account"] == "jonathanrayreed@gmail.com"
+    assert captured["from_account"] == "sender@example.com"
     assert captured["to"] == ["alice@example.com"]
 
 
 def test_apple_preview_communication_reports_execution_plan(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(tmp_path / "prefs.json"))
     load_settings.cache_clear()
-    tools.apple_update_preferences(default_mail_account="jonathanrayreed@gmail.com", preferred_communication_channel="mail")
+    tools.apple_update_preferences(default_mail_account="sender@example.com", preferred_communication_channel="mail")
 
     monkeypatch.setattr(tools, "_looks_like_message_address", lambda value: "@" in value)
 

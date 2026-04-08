@@ -8,7 +8,7 @@
   "long_description": "Local MCP server for scoped file, Finder-adjacent, and iCloud Drive workflows on macOS. Use it to inspect directories, search files, read text files, prepare attachments, reveal paths in Finder, manage Finder tags, and perform bounded file mutations inside explicit allowed roots.",
   "icon": "icon.png",
   "author": {
-    "name": "Jonathan Reed"
+    "name": "Apple MCP Contributors"
   },
   "license": "MIT",
   "keywords": ["files", "finder", "attachments", "macos", "documents", "folders"],

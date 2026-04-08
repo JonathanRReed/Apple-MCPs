@@ -63,7 +63,7 @@ Some tips for working with these servers:
 - Always run Contacts first when messaging a person, then choose Messages or Mail.
 - Use Mail thread helpers when the user mentions a conversation.
 - Reminders are for due items, Notes for reference material, Calendar for scheduled time.
-- When Mail must send from a specific identity, pass the exact sender email in `from_account`, for example `sender@example.com`.
+- When Mail must send from a specific identity, pass the exact sender email in `from_account`.
 - Code-mode clients can use the generated wrapper surface in `generated/tool_wrappers/python` instead of loading every tool schema into model context.
 - See the standalone READMEs for app-specific details.
 

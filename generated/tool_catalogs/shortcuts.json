@@ -1,0 +1,469 @@
+{
+  "domain": "shortcuts",
+  "server": "Apple Shortcuts MCP",
+  "tool_count": 11,
+  "tools": [
+    {
+      "aliases": [
+        "shortcut",
+        "shortcuts",
+        "automation",
+        "workflow",
+        "health",
+        "shortcuts health"
+      ],
+      "argument_summary": [],
+      "description": "Report the active Apple Shortcuts MCP configuration.",
+      "domain": "shortcuts",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "shortcuts_health"
+        }
+      ],
+      "name": "shortcuts_health",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "shortcuts_health",
+      "tags": [
+        "shortcuts",
+        "shortcut",
+        "automation",
+        "workflow",
+        "health",
+        "report",
+        "active",
+        "mcp",
+        "configuration"
+      ],
+      "title": "Shortcuts Health",
+      "usage_intent": "Report the active Apple Shortcuts MCP configuration."
+    },
+    {
+      "aliases": [
+        "shortcut",
+        "shortcuts",
+        "automation",
+        "workflow",
+        "permission guide",
+        "shortcuts permission guide"
+      ],
+      "argument_summary": [],
+      "description": "Explain the runtime requirements for Apple Shortcuts on macOS.",
+      "domain": "shortcuts",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "shortcuts_permission_guide"
+        }
+      ],
+      "name": "shortcuts_permission_guide",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "shortcuts_permission_guide",
+      "tags": [
+        "shortcuts",
+        "shortcut",
+        "automation",
+        "workflow",
+        "permission",
+        "guide",
+        "explain",
+        "runtime",
+        "requirements",
+        "requirement",
+        "maco"
+      ],
+      "title": "Shortcuts Permission Guide",
+      "usage_intent": "Explain the runtime requirements for Apple Shortcuts on macOS."
+    },
+    {
+      "aliases": [
+        "shortcut",
+        "shortcuts",
+        "automation",
+        "workflow",
+        "refresh state",
+        "shortcuts refresh state"
+      ],
+      "argument_summary": [],
+      "description": "Refresh Shortcuts resources and notify the client that the shortcut catalog may have changed.",
+      "domain": "shortcuts",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "shortcuts_refresh_state"
+        }
+      ],
+      "name": "shortcuts_refresh_state",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "shortcuts_refresh_state",
+      "tags": [
+        "shortcuts",
+        "shortcut",
+        "automation",
+        "workflow",
+        "refresh",
+        "state",
+        "resources",
+        "resourc",
+        "notify",
+        "client",
+        "that",
+        "catalog",
+        "may",
+        "have",
+        "changed"
+      ],
+      "title": "Shortcuts Refresh State",
+      "usage_intent": "Refresh Shortcuts resources and notify the client that the shortcut catalog may have changed."
+    },
+    {
+      "aliases": [
+        "shortcut",
+        "shortcuts",
+        "automation",
+        "workflow",
+        "list shortcuts",
+        "shortcuts list shortcuts"
+      ],
+      "argument_summary": [
+        "folder_name: string (optional)"
+      ],
+      "description": "List Apple Shortcuts, optionally restricted to one folder.",
+      "domain": "shortcuts",
+      "example_calls": [
+        {
+          "arguments": {
+            "folder_name": "example_folder_name"
+          },
+          "tool": "shortcuts_list_shortcuts"
+        }
+      ],
+      "name": "shortcuts_list_shortcuts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "shortcuts_list_shortcuts",
+      "tags": [
+        "shortcuts",
+        "shortcut",
+        "automation",
+        "workflow",
+        "optionally",
+        "restricted",
+        "one",
+        "folder"
+      ],
+      "title": "List Shortcuts",
+      "usage_intent": "List Apple Shortcuts, optionally restricted to one folder."
+    },
+    {
+      "aliases": [
+        "shortcut",
+        "shortcuts",
+        "automation",
+        "workflow",
+        "list folders",
+        "shortcuts list folders"
+      ],
+      "argument_summary": [],
+      "description": "List Apple Shortcuts folders.",
+      "domain": "shortcuts",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "shortcuts_list_folders"
+        }
+      ],
+      "name": "shortcuts_list_folders",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "shortcuts_list_folders",
+      "tags": [
+        "shortcuts",
+        "shortcut",
+        "automation",
+        "workflow",
+        "folders",
+        "folder"
+      ],
+      "title": "List Shortcut Folders",
+      "usage_intent": "List Apple Shortcuts folders."
+    },
+    {
+      "aliases": [
+        "shortcut",
+        "shortcuts",
+        "automation",
+        "workflow",
+        "view shortcut",
+        "shortcuts view shortcut"
+      ],
+      "argument_summary": [
+        "shortcut_name_or_identifier: string (required)"
+      ],
+      "description": "Open a shortcut in the Shortcuts app by name or identifier and return its metadata.",
+      "domain": "shortcuts",
+      "example_calls": [
+        {
+          "arguments": {
+            "shortcut_name_or_identifier": "example_shortcut_name_or_identifier"
+          },
+          "tool": "shortcuts_view_shortcut"
+        }
+      ],
+      "name": "shortcuts_view_shortcut",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "shortcuts_view_shortcut",
+      "tags": [
+        "shortcuts",
+        "shortcut",
+        "automation",
+        "workflow",
+        "view",
+        "open",
+        "name",
+        "identifier",
+        "its",
+        "metadata"
+      ],
+      "title": "View Shortcut",
+      "usage_intent": "Open a shortcut in the Shortcuts app by name or identifier and return its metadata."
+    },
+    {
+      "aliases": [
+        "shortcut",
+        "shortcuts",
+        "automation",
+        "workflow",
+        "run shortcut",
+        "shortcuts run shortcut"
+      ],
+      "argument_summary": [
+        "shortcut_name_or_identifier: string (required)",
+        "input_paths: array (optional)",
+        "output_path: string (optional)",
+        "output_type: string (optional)",
+        "input_text: string (optional)"
+      ],
+      "description": "Run a shortcut by name or identifier with optional input and output arguments.",
+      "domain": "shortcuts",
+      "example_calls": [
+        {
+          "arguments": {
+            "input_paths": [],
+            "shortcut_name_or_identifier": "example_shortcut_name_or_identifier"
+          },
+          "tool": "shortcuts_run_shortcut"
+        }
+      ],
+      "name": "shortcuts_run_shortcut",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "shortcuts_run_shortcut",
+      "tags": [
+        "shortcuts",
+        "shortcut",
+        "automation",
+        "workflow",
+        "run",
+        "name",
+        "identifier",
+        "optional",
+        "input",
+        "output",
+        "arguments",
+        "argument"
+      ],
+      "title": "Run Shortcut",
+      "usage_intent": "Run a shortcut by name or identifier with optional input and output arguments."
+    },
+    {
+      "aliases": [
+        "shortcut",
+        "shortcuts",
+        "automation",
+        "workflow",
+        "list prompts",
+        "shortcuts list prompts"
+      ],
+      "argument_summary": [],
+      "description": "Fallback prompt discovery tool for tool-only MCP clients.",
+      "domain": "shortcuts",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "shortcuts_list_prompts"
+        }
+      ],
+      "name": "shortcuts_list_prompts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "shortcuts_list_prompts",
+      "tags": [
+        "shortcuts",
+        "shortcut",
+        "automation",
+        "workflow",
+        "prompts",
+        "prompt",
+        "fallback",
+        "discovery",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Shortcuts List Prompts",
+      "usage_intent": "Fallback prompt discovery tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "shortcut",
+        "shortcuts",
+        "automation",
+        "workflow",
+        "get prompt prompt",
+        "shortcuts get prompt prompt"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "arguments_json: string (optional)"
+      ],
+      "description": "Fallback prompt rendering tool for tool-only MCP clients.",
+      "domain": "shortcuts",
+      "example_calls": [
+        {
+          "arguments": {
+            "arguments_json": "example_arguments_json",
+            "name": "example_name"
+          },
+          "tool": "shortcuts_get_prompt_prompt"
+        }
+      ],
+      "name": "shortcuts_get_prompt_prompt",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "shortcuts_get_prompt_prompt",
+      "tags": [
+        "shortcuts",
+        "shortcut",
+        "automation",
+        "workflow",
+        "prompt",
+        "fallback",
+        "rendering",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Shortcuts Get Prompt",
+      "usage_intent": "Fallback prompt rendering tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "shortcut",
+        "shortcuts",
+        "automation",
+        "workflow",
+        "search tools"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "limit: integer (optional)",
+        "domain_tags: array (optional)",
+        "mode: string (optional)"
+      ],
+      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "domain": "shortcuts",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "query": "find shortcuts"
+          },
+          "tool": "search_tools"
+        }
+      ],
+      "name": "search_tools",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "search_tools",
+      "tags": [
+        "shortcuts",
+        "shortcut",
+        "automation",
+        "workflow",
+        "search",
+        "tools",
+        "tool",
+        "this",
+        "thi",
+        "server",
+        "catalog",
+        "without",
+        "loading",
+        "every",
+        "full",
+        "schema",
+        "default"
+      ],
+      "title": "Search Tools",
+      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+    },
+    {
+      "aliases": [
+        "shortcut",
+        "shortcuts",
+        "automation",
+        "workflow",
+        "get tool info"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "include_schema: boolean (optional)",
+        "include_examples: boolean (optional)"
+      ],
+      "description": "Load the full schema, examples, and metadata for one tool from this server.",
+      "domain": "shortcuts",
+      "example_calls": [
+        {
+          "arguments": {
+            "include_schema": false,
+            "name": "example_name"
+          },
+          "tool": "get_tool_info"
+        }
+      ],
+      "name": "get_tool_info",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "get_tool_info",
+      "tags": [
+        "shortcuts",
+        "shortcut",
+        "automation",
+        "workflow",
+        "tool",
+        "info",
+        "load",
+        "full",
+        "schema",
+        "examples",
+        "exampl",
+        "metadata",
+        "one",
+        "this",
+        "thi",
+        "server"
+      ],
+      "title": "Get Tool Info",
+      "usage_intent": "Load the full schema, examples, and metadata for one tool from this server."
+    }
+  ]
+}

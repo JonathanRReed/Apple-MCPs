@@ -1,3 +1,7 @@
+import asyncio
+
+from mcp import types
+
 from apple_files_mcp import tools
 from apple_files_mcp.models import FileEntry
 
@@ -168,6 +172,29 @@ def test_main_uses_streamable_http(monkeypatch):
     tools.main()
 
     assert captured == {"transport": "streamable-http", "host": "0.0.0.0", "port": 8765, "log_level": "DEBUG"}
+
+
+def test_search_first_mcp_surface_exposes_discovery_only() -> None:
+    async def load() -> tuple[set[str], dict[str, object]]:
+        list_result = await tools.mcp._mcp_server.request_handlers[types.ListToolsRequest](None)
+        info_result = await tools.mcp._mcp_server.request_handlers[types.CallToolRequest](
+            types.CallToolRequest(
+                params=types.CallToolRequestParams(
+                    name="get_tool_info",
+                    arguments={"name": "files_search_files"},
+                )
+            )
+        )
+        names = {tool.name for tool in list_result.root.tools}
+        return names, info_result.root.structuredContent
+
+    names, info = asyncio.run(load())
+
+    assert "search_tools" in names
+    assert "get_tool_info" in names
+    assert "files_search_files" not in names
+    assert info["ok"] is True
+    assert info["name"] == "files_search_files"
 
 
 def teardown_function():

@@ -1,0 +1,22 @@
+from __future__ import annotations
+
+from typing import Any
+
+from .client import MCPToolCaller, call_tool_json
+
+
+async def system_permission_guide(
+    client: MCPToolCaller
+) -> Any:
+    """System Permission Guide
+
+    Explain what system access this MCP may need on macOS.
+
+    Example:
+        await system_permission_guide(client)
+    """
+    arguments = {
+
+    }
+    payload = {key: value for key, value in arguments.items() if value is not None}
+    return await call_tool_json(client, "system_permission_guide", payload)

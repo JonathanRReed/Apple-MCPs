@@ -1,0 +1,753 @@
+{
+  "domain": "reminders",
+  "server": "Apple Reminders MCP",
+  "tool_count": 17,
+  "tools": [
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "health",
+        "reminders health"
+      ],
+      "argument_summary": [],
+      "description": "Report the active Apple Reminders MCP server configuration.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "reminders_health"
+        }
+      ],
+      "name": "reminders_health",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "reminders_health",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "health",
+        "report",
+        "active",
+        "mcp",
+        "server",
+        "configuration"
+      ],
+      "title": "Reminders Health",
+      "usage_intent": "Report the active Apple Reminders MCP server configuration."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "permission guide",
+        "reminders permission guide"
+      ],
+      "argument_summary": [],
+      "description": "Explain how to grant Apple Reminders permission on macOS.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "reminders_permission_guide"
+        }
+      ],
+      "name": "reminders_permission_guide",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "reminders_permission_guide",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "permission",
+        "guide",
+        "explain",
+        "how",
+        "grant",
+        "maco"
+      ],
+      "title": "Reminders Permission Guide",
+      "usage_intent": "Explain how to grant Apple Reminders permission on macOS."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "recheck permissions",
+        "reminders recheck permissions"
+      ],
+      "argument_summary": [],
+      "description": "Recheck Reminders access after the user changes macOS permissions, and notify the client that Reminders resources changed.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "reminders_recheck_permissions"
+        }
+      ],
+      "name": "reminders_recheck_permissions",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "reminders_recheck_permissions",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "recheck",
+        "permissions",
+        "permission",
+        "access",
+        "acces",
+        "after",
+        "user",
+        "changes",
+        "chang",
+        "maco",
+        "notify",
+        "client",
+        "that",
+        "resources",
+        "resourc"
+      ],
+      "title": "Reminders Recheck Permissions",
+      "usage_intent": "Recheck Reminders access after the user changes macOS permissions, and notify the client that Reminders resources changed."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "list lists",
+        "reminders list lists"
+      ],
+      "argument_summary": [],
+      "description": "List available Apple Reminders lists.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "reminders_list_lists"
+        }
+      ],
+      "name": "reminders_list_lists",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "reminders_list_lists",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "lists",
+        "available"
+      ],
+      "title": "List Reminder Lists",
+      "usage_intent": "List available Apple Reminders lists."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "create list",
+        "reminders create list"
+      ],
+      "argument_summary": [
+        "title: string (required)"
+      ],
+      "description": "Create a new Apple Reminders list.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {
+            "title": "example_title"
+          },
+          "tool": "reminders_create_list"
+        }
+      ],
+      "name": "reminders_create_list",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "reminders_create_list",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "create",
+        "new"
+      ],
+      "title": "Create Reminder List",
+      "usage_intent": "Create a new Apple Reminders list."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "delete list",
+        "reminders delete list"
+      ],
+      "argument_summary": [
+        "list_id: string (required)"
+      ],
+      "description": "Delete a reminder list entirely. Requires full_access safety mode.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {
+            "list_id": "example_list_id"
+          },
+          "tool": "reminders_delete_list"
+        }
+      ],
+      "name": "reminders_delete_list",
+      "read_only": false,
+      "risk_level": "high",
+      "schema_ref": "reminders_delete_list",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "delete",
+        "entirely",
+        "requires",
+        "requir",
+        "full",
+        "access",
+        "acces",
+        "safety",
+        "mode"
+      ],
+      "title": "Delete Reminder List",
+      "usage_intent": "Delete a reminder list entirely. Requires full_access safety mode."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "list reminders",
+        "reminders list reminders"
+      ],
+      "argument_summary": [
+        "list_id: string (optional)",
+        "include_completed: boolean (optional)",
+        "limit: integer (optional)",
+        "search: string (optional)",
+        "due_after: string (optional)",
+        "due_before: string (optional)"
+      ],
+      "description": "List reminders with optional list and due-date filters.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {
+            "include_completed": false,
+            "list_id": "example_list_id"
+          },
+          "tool": "reminders_list_reminders"
+        }
+      ],
+      "name": "reminders_list_reminders",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "reminders_list_reminders",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "optional",
+        "due",
+        "date",
+        "filters",
+        "filter"
+      ],
+      "title": "List Reminders",
+      "usage_intent": "List reminders with optional list and due-date filters."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "get reminder",
+        "reminders get reminder"
+      ],
+      "argument_summary": [
+        "reminder_id: string (required)"
+      ],
+      "description": "Fetch full details for a reminder by reminder_id.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {
+            "reminder_id": "example_reminder_id"
+          },
+          "tool": "reminders_get_reminder"
+        }
+      ],
+      "name": "reminders_get_reminder",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "reminders_get_reminder",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "fetch",
+        "full",
+        "details",
+        "detail"
+      ],
+      "title": "Get Reminder",
+      "usage_intent": "Fetch full details for a reminder by reminder_id."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "create reminder",
+        "reminders create reminder"
+      ],
+      "argument_summary": [
+        "title: string (required)",
+        "list_id: string (required)",
+        "notes: string (optional)",
+        "due_date: string (optional)",
+        "due_all_day: boolean (optional)",
+        "remind_at: string (optional)",
+        "priority: integer (optional)",
+        "parent_reminder_id: string (optional)"
+      ],
+      "description": "Create a new reminder in a specific Apple Reminders list.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {
+            "list_id": "example_list_id",
+            "title": "example_title"
+          },
+          "tool": "reminders_create_reminder"
+        }
+      ],
+      "name": "reminders_create_reminder",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "reminders_create_reminder",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "create",
+        "new",
+        "specific"
+      ],
+      "title": "Create Reminder",
+      "usage_intent": "Create a new reminder in a specific Apple Reminders list."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "update reminder",
+        "reminders update reminder"
+      ],
+      "argument_summary": [
+        "reminder_id: string (required)",
+        "title: string (optional)",
+        "list_id: string (optional)",
+        "notes: string (optional)",
+        "due_date: string (optional)",
+        "due_all_day: boolean (optional)",
+        "remind_at: string (optional)",
+        "priority: integer (optional)"
+      ],
+      "description": "Update one or more fields on an existing reminder.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {
+            "reminder_id": "example_reminder_id",
+            "title": "example_title"
+          },
+          "tool": "reminders_update_reminder"
+        }
+      ],
+      "name": "reminders_update_reminder",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "reminders_update_reminder",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "update",
+        "one",
+        "more",
+        "fields",
+        "field",
+        "existing"
+      ],
+      "title": "Update Reminder",
+      "usage_intent": "Update one or more fields on an existing reminder."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "complete reminder",
+        "reminders complete reminder"
+      ],
+      "argument_summary": [
+        "reminder_id: string (required)"
+      ],
+      "description": "Mark a reminder as completed.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {
+            "reminder_id": "example_reminder_id"
+          },
+          "tool": "reminders_complete_reminder"
+        }
+      ],
+      "name": "reminders_complete_reminder",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "reminders_complete_reminder",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "complete",
+        "mark",
+        "completed"
+      ],
+      "title": "Complete Reminder",
+      "usage_intent": "Mark a reminder as completed."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "uncomplete reminder",
+        "reminders uncomplete reminder"
+      ],
+      "argument_summary": [
+        "reminder_id: string (required)"
+      ],
+      "description": "Mark a reminder as not completed.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {
+            "reminder_id": "example_reminder_id"
+          },
+          "tool": "reminders_uncomplete_reminder"
+        }
+      ],
+      "name": "reminders_uncomplete_reminder",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "reminders_uncomplete_reminder",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "uncomplete",
+        "mark",
+        "not",
+        "completed"
+      ],
+      "title": "Uncomplete Reminder",
+      "usage_intent": "Mark a reminder as not completed."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "delete reminder",
+        "reminders delete reminder"
+      ],
+      "argument_summary": [
+        "reminder_id: string (required)"
+      ],
+      "description": "Delete a reminder by reminder_id.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {
+            "reminder_id": "example_reminder_id"
+          },
+          "tool": "reminders_delete_reminder"
+        }
+      ],
+      "name": "reminders_delete_reminder",
+      "read_only": false,
+      "risk_level": "high",
+      "schema_ref": "reminders_delete_reminder",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "delete"
+      ],
+      "title": "Delete Reminder",
+      "usage_intent": "Delete a reminder by reminder_id."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "list prompts",
+        "reminders list prompts"
+      ],
+      "argument_summary": [],
+      "description": "Fallback prompt discovery tool for tool-only MCP clients.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "reminders_list_prompts"
+        }
+      ],
+      "name": "reminders_list_prompts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "reminders_list_prompts",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "prompts",
+        "prompt",
+        "fallback",
+        "discovery",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Reminders List Prompts",
+      "usage_intent": "Fallback prompt discovery tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "get prompt",
+        "reminders get prompt"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "arguments_json: string (optional)"
+      ],
+      "description": "Fallback prompt rendering tool for tool-only MCP clients.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {
+            "arguments_json": "example_arguments_json",
+            "name": "example_name"
+          },
+          "tool": "reminders_get_prompt"
+        }
+      ],
+      "name": "reminders_get_prompt",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "reminders_get_prompt",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "prompt",
+        "fallback",
+        "rendering",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Reminders Get Prompt",
+      "usage_intent": "Fallback prompt rendering tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "search tools"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "limit: integer (optional)",
+        "domain_tags: array (optional)",
+        "mode: string (optional)"
+      ],
+      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "query": "find reminders"
+          },
+          "tool": "search_tools"
+        }
+      ],
+      "name": "search_tools",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "search_tools",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "search",
+        "tools",
+        "tool",
+        "this",
+        "thi",
+        "server",
+        "catalog",
+        "without",
+        "loading",
+        "every",
+        "full",
+        "schema",
+        "default"
+      ],
+      "title": "Search Tools",
+      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+    },
+    {
+      "aliases": [
+        "reminder",
+        "reminders",
+        "task",
+        "tasks",
+        "todo",
+        "get tool info"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "include_schema: boolean (optional)",
+        "include_examples: boolean (optional)"
+      ],
+      "description": "Load the full schema, examples, and metadata for one tool from this server.",
+      "domain": "reminders",
+      "example_calls": [
+        {
+          "arguments": {
+            "include_schema": false,
+            "name": "example_name"
+          },
+          "tool": "get_tool_info"
+        }
+      ],
+      "name": "get_tool_info",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "get_tool_info",
+      "tags": [
+        "reminders",
+        "reminder",
+        "task",
+        "tasks",
+        "todo",
+        "tool",
+        "info",
+        "load",
+        "full",
+        "schema",
+        "examples",
+        "exampl",
+        "metadata",
+        "one",
+        "this",
+        "thi",
+        "server"
+      ],
+      "title": "Get Tool Info",
+      "usage_intent": "Load the full schema, examples, and metadata for one tool from this server."
+    }
+  ]
+}

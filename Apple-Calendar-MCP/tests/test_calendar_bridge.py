@@ -95,7 +95,7 @@ def test_list_calendars_falls_back_when_helper_permissions_fail(monkeypatch) -> 
     def fake_run_helper(command: str, *args: str) -> dict[str, object]:
         raise CalendarBridgeError("PERMISSION_DENIED", "blocked")
 
-    def fake_run_jxa(script: str, *args: str) -> dict[str, object]:
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
         return {
             "items": [
                 {
@@ -124,7 +124,7 @@ def test_list_events_falls_back_when_helper_permissions_fail(monkeypatch) -> Non
     def fake_run_helper(command: str, *args: str) -> dict[str, object]:
         raise CalendarBridgeError("HELPER_COMPILE_FAILED", "blocked")
 
-    def fake_run_jxa(script: str, *args: str) -> dict[str, object]:
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
         return {
             "items": [
                 {
@@ -148,3 +148,108 @@ def test_list_events_falls_back_when_helper_permissions_fail(monkeypatch) -> Non
     assert len(events) == 1
     assert events[0].event_id == "fallback-1"
     assert events[0].calendar_name == "Home"
+
+
+def test_list_events_dedupes_single_calendar_fallback_results(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        raise CalendarBridgeError("HELPER_EXECUTION_FAILED", "blocked")
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        return {
+            "items": [
+                {
+                    "event_id": "dup-1",
+                    "title": "Appointment",
+                    "calendar_id": "Home",
+                    "calendar_name": "Home",
+                    "start": "2026-03-27T15:00:00+00:00",
+                    "end": "2026-03-27T15:30:00+00:00",
+                    "all_day": False,
+                    "location": "Desk",
+                },
+                {
+                    "event_id": "dup-1",
+                    "title": "Appointment",
+                    "calendar_id": "Home",
+                    "calendar_name": "Home",
+                    "start": "2026-03-27T15:00:00+00:00",
+                    "end": "2026-03-27T15:30:00+00:00",
+                    "all_day": False,
+                    "location": "Desk",
+                },
+            ]
+        }
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    events = bridge.list_events("2026-03-27T10:00:00-05:00", "2026-03-27T12:00:00-05:00", "Home", 10)
+
+    assert len(events) == 1
+    assert events[0].event_id == "dup-1"
+
+
+def test_list_events_fallback_uses_configured_timeout(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    captured: dict[str, object] = {}
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        raise CalendarBridgeError("HELPER_EXECUTION_FAILED", "blocked")
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        captured["timeout"] = timeout
+        return {"items": []}
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    bridge.list_events("2026-03-27T10:00:00-05:00", "2026-03-27T12:00:00-05:00", "Home", 10)
+
+    assert captured["timeout"] == CalendarBridge._JXA_TIMEOUT_SECONDS
+
+
+def test_list_events_aggregates_broad_fallback_by_calendar(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        raise CalendarBridgeError("HELPER_EXECUTION_FAILED", "blocked")
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(
+        bridge,
+        "_fallback_list_calendars",
+        lambda: {
+            "items": [
+                {"calendar_id": "Work", "title": "Work"},
+                {"calendar_id": "Personal", "title": "Personal"},
+            ]
+        },
+    )
+
+    def fake_fallback_list_events(start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, object]:
+        if calendar_id == "Personal":
+            raise CalendarBridgeError("APPLESCRIPT_FALLBACK_TIMEOUT", "slow")
+        return {
+            "items": [
+                {
+                    "event_id": "work-1",
+                    "title": "Launch review",
+                    "calendar_id": "Work",
+                    "calendar_name": "Work",
+                    "start": "2026-03-27T15:00:00+00:00",
+                    "end": "2026-03-27T15:30:00+00:00",
+                    "all_day": False,
+                    "location": None,
+                }
+            ]
+        }
+
+    monkeypatch.setattr(bridge, "_fallback_list_events", fake_fallback_list_events)
+
+    events = bridge.list_events("2026-03-27T10:00:00-05:00", "2026-03-27T12:00:00-05:00", limit=10)
+
+    assert len(events) == 1
+    assert events[0].event_id == "work-1"
+    assert events[0].calendar_name == "Work"

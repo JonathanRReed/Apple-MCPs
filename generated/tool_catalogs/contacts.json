@@ -1,0 +1,781 @@
+{
+  "domain": "contacts",
+  "server": "Apple Contacts",
+  "tool_count": 16,
+  "tools": [
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "health",
+        "contacts health"
+      ],
+      "argument_summary": [],
+      "description": "Report the active Apple Contacts MCP configuration.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "contacts_health"
+        }
+      ],
+      "name": "contacts_health",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "contacts_health",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "health",
+        "report",
+        "active",
+        "mcp",
+        "configuration"
+      ],
+      "title": "Contacts Health",
+      "usage_intent": "Report the active Apple Contacts MCP configuration."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "permission guide",
+        "contacts permission guide"
+      ],
+      "argument_summary": [],
+      "description": "Explain how to grant Apple Contacts permission on macOS.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "contacts_permission_guide"
+        }
+      ],
+      "name": "contacts_permission_guide",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "contacts_permission_guide",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "permission",
+        "guide",
+        "explain",
+        "how",
+        "grant",
+        "maco"
+      ],
+      "title": "Contacts Permission Guide",
+      "usage_intent": "Explain how to grant Apple Contacts permission on macOS."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "recheck permissions",
+        "contacts recheck permissions"
+      ],
+      "argument_summary": [],
+      "description": "Recheck Contacts access after the user changes macOS permissions, and notify the client that Contacts resources changed.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "contacts_recheck_permissions"
+        }
+      ],
+      "name": "contacts_recheck_permissions",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "contacts_recheck_permissions",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "recheck",
+        "permissions",
+        "permission",
+        "access",
+        "acces",
+        "after",
+        "user",
+        "changes",
+        "chang",
+        "maco",
+        "notify",
+        "client",
+        "that",
+        "resources"
+      ],
+      "title": "Contacts Recheck Permissions",
+      "usage_intent": "Recheck Contacts access after the user changes macOS permissions, and notify the client that Contacts resources changed."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "list contacts",
+        "contacts list contacts"
+      ],
+      "argument_summary": [
+        "limit: integer (optional)",
+        "offset: integer (optional)"
+      ],
+      "description": "List Apple Contacts entries.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "offset": 1
+          },
+          "tool": "contacts_list_contacts"
+        }
+      ],
+      "name": "contacts_list_contacts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "contacts_list_contacts",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "entries",
+        "entry"
+      ],
+      "title": "List Contacts",
+      "usage_intent": "List Apple Contacts entries."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "search contacts",
+        "contacts search contacts"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "limit: integer (optional)"
+      ],
+      "description": "Search Apple Contacts by name, phone number, or email address.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "query": "find contacts"
+          },
+          "tool": "contacts_search_contacts"
+        }
+      ],
+      "name": "contacts_search_contacts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "contacts_search_contacts",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "search",
+        "name",
+        "phone",
+        "number",
+        "email",
+        "address",
+        "addres"
+      ],
+      "title": "Search Contacts",
+      "usage_intent": "Search Apple Contacts by name, phone number, or email address."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "get contact",
+        "contacts get contact"
+      ],
+      "argument_summary": [
+        "contact_id: string (required)"
+      ],
+      "description": "Fetch full details for an Apple Contacts record by contact_id.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {
+            "contact_id": "example_contact_id"
+          },
+          "tool": "contacts_get_contact"
+        }
+      ],
+      "name": "contacts_get_contact",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "contacts_get_contact",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "fetch",
+        "full",
+        "details",
+        "detail",
+        "record"
+      ],
+      "title": "Get Contact",
+      "usage_intent": "Fetch full details for an Apple Contacts record by contact_id."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "resolve message recipient",
+        "contacts resolve message recipient"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "channel: string (optional)"
+      ],
+      "description": "Resolve a contact into a message-ready phone number or email address.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {
+            "channel": "example_channel",
+            "query": "find contacts"
+          },
+          "tool": "contacts_resolve_message_recipient"
+        }
+      ],
+      "name": "contacts_resolve_message_recipient",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "contacts_resolve_message_recipient",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "resolve",
+        "message",
+        "ready",
+        "phone",
+        "number",
+        "email",
+        "address",
+        "addres"
+      ],
+      "title": "Resolve Message Recipient",
+      "usage_intent": "Resolve a contact into a message-ready phone number or email address."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "find duplicates",
+        "contacts find duplicates"
+      ],
+      "argument_summary": [],
+      "description": "Find likely duplicate Apple Contacts records using names, nicknames, phone numbers, and email addresses.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "contacts_find_duplicates"
+        }
+      ],
+      "name": "contacts_find_duplicates",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "contacts_find_duplicates",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "find",
+        "duplicates",
+        "duplicat",
+        "duplicate",
+        "likely",
+        "records",
+        "record",
+        "using",
+        "names",
+        "nam",
+        "nicknames",
+        "nicknam",
+        "phone",
+        "numbers"
+      ],
+      "title": "Find Duplicate Contacts",
+      "usage_intent": "Find likely duplicate Apple Contacts records using names, nicknames, phone numbers, and email addresses."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "suggest merge candidates",
+        "contacts suggest merge candidates"
+      ],
+      "argument_summary": [
+        "query: string (optional)"
+      ],
+      "description": "Return likely duplicate Apple Contacts groups that are strong candidates for cleanup review.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {
+            "query": "find contacts"
+          },
+          "tool": "contacts_suggest_merge_candidates"
+        }
+      ],
+      "name": "contacts_suggest_merge_candidates",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "contacts_suggest_merge_candidates",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "suggest",
+        "merge",
+        "candidates",
+        "candidat",
+        "likely",
+        "duplicate",
+        "groups",
+        "group",
+        "that",
+        "are",
+        "strong",
+        "cleanup",
+        "review"
+      ],
+      "title": "Suggest Merge Candidates",
+      "usage_intent": "Return likely duplicate Apple Contacts groups that are strong candidates for cleanup review."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "create contact",
+        "contacts create contact"
+      ],
+      "argument_summary": [
+        "first_name: string (required)",
+        "last_name: string (optional)",
+        "organization: string (optional)",
+        "phones: array (optional)",
+        "emails: array (optional)",
+        "note: string (optional)"
+      ],
+      "description": "Create a new contact in Apple Contacts with a first name (required) and optional last name, organization, and note.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {
+            "first_name": "example_first_name",
+            "last_name": "example_last_name"
+          },
+          "tool": "contacts_create_contact"
+        }
+      ],
+      "name": "contacts_create_contact",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "contacts_create_contact",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "create",
+        "new",
+        "first",
+        "name",
+        "required",
+        "optional",
+        "last",
+        "organization",
+        "note"
+      ],
+      "title": "Create Contact",
+      "usage_intent": "Create a new contact in Apple Contacts with a first name (required) and optional last name, organization, and note."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "update contact",
+        "contacts update contact"
+      ],
+      "argument_summary": [
+        "contact_id: string (required)",
+        "first_name: string (optional)",
+        "last_name: string (optional)",
+        "organization: string (optional)",
+        "phones: array (optional)",
+        "emails: array (optional)",
+        "note: string (optional)"
+      ],
+      "description": "Update an existing contact's information. Only the fields you provide will be changed.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {
+            "contact_id": "example_contact_id",
+            "first_name": "example_first_name"
+          },
+          "tool": "contacts_update_contact"
+        }
+      ],
+      "name": "contacts_update_contact",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "contacts_update_contact",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "update",
+        "existing",
+        "information",
+        "only",
+        "fields",
+        "field",
+        "you",
+        "provide",
+        "will",
+        "changed"
+      ],
+      "title": "Update Contact",
+      "usage_intent": "Update an existing contact's information. Only the fields you provide will be changed."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "delete contact",
+        "contacts delete contact"
+      ],
+      "argument_summary": [
+        "contact_id: string (required)"
+      ],
+      "description": "Permanently delete a contact by contact_id. Requires full_access safety mode.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {
+            "contact_id": "example_contact_id"
+          },
+          "tool": "contacts_delete_contact"
+        }
+      ],
+      "name": "contacts_delete_contact",
+      "read_only": false,
+      "risk_level": "high",
+      "schema_ref": "contacts_delete_contact",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "delete",
+        "permanently",
+        "requires",
+        "requir",
+        "full",
+        "access",
+        "acces",
+        "safety",
+        "mode"
+      ],
+      "title": "Delete Contact",
+      "usage_intent": "Permanently delete a contact by contact_id. Requires full_access safety mode."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "list prompts",
+        "contacts list prompts"
+      ],
+      "argument_summary": [],
+      "description": "Fallback prompt discovery tool for tool-only MCP clients.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "contacts_list_prompts"
+        }
+      ],
+      "name": "contacts_list_prompts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "contacts_list_prompts",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "prompts",
+        "prompt",
+        "fallback",
+        "discovery",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Contacts List Prompts",
+      "usage_intent": "Fallback prompt discovery tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "get prompt prompt",
+        "contacts get prompt prompt"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "arguments_json: string (optional)"
+      ],
+      "description": "Fallback prompt rendering tool for tool-only MCP clients.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {
+            "arguments_json": "example_arguments_json",
+            "name": "example_name"
+          },
+          "tool": "contacts_get_prompt_prompt"
+        }
+      ],
+      "name": "contacts_get_prompt_prompt",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "contacts_get_prompt_prompt",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "prompt",
+        "fallback",
+        "rendering",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Contacts Get Prompt",
+      "usage_intent": "Fallback prompt rendering tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "search tools"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "limit: integer (optional)",
+        "domain_tags: array (optional)",
+        "mode: string (optional)"
+      ],
+      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "query": "find contacts"
+          },
+          "tool": "search_tools"
+        }
+      ],
+      "name": "search_tools",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "search_tools",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "search",
+        "tools",
+        "tool",
+        "this",
+        "thi",
+        "server",
+        "catalog",
+        "without",
+        "loading",
+        "every",
+        "full",
+        "schema",
+        "default"
+      ],
+      "title": "Search Tools",
+      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+    },
+    {
+      "aliases": [
+        "contact",
+        "contacts",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "get tool info"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "include_schema: boolean (optional)",
+        "include_examples: boolean (optional)"
+      ],
+      "description": "Load the full schema, examples, and metadata for one tool from this server.",
+      "domain": "contacts",
+      "example_calls": [
+        {
+          "arguments": {
+            "include_schema": false,
+            "name": "example_name"
+          },
+          "tool": "get_tool_info"
+        }
+      ],
+      "name": "get_tool_info",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "get_tool_info",
+      "tags": [
+        "contacts",
+        "contact",
+        "person",
+        "people",
+        "recipient",
+        "address-book",
+        "tool",
+        "info",
+        "load",
+        "full",
+        "schema",
+        "examples",
+        "exampl",
+        "metadata",
+        "one",
+        "this",
+        "thi",
+        "server"
+      ],
+      "title": "Get Tool Info",
+      "usage_intent": "Load the full schema, examples, and metadata for one tool from this server."
+    }
+  ]
+}

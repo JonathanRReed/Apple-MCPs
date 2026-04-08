@@ -58,7 +58,7 @@ Everything happens on your Mac. Your data stays in Apple's apps where it belongs
 
 Some tips for working with these servers:
 
-- All Apple tools are deferred. The first call needs `tool_search` to load schemas.
+- `tools/list` is intentionally minimal. Use `search_tools` to discover tools, then `get_tool_info` to load full schemas and examples only when needed.
 - Always run Contacts first when messaging a person, then choose Messages or Mail.
 - Use Mail thread helpers when the user mentions a conversation.
 - Reminders are for due items, Notes for reference material, Calendar for scheduled time.

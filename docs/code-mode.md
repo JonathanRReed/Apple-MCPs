@@ -64,10 +64,10 @@ health = await apple_health(client)
 
 result = await mail_send_message(
     client,
-    to=[{"email": "recipient@example.com"}],
+    to=[{"email": "target@domain.test"}],
     subject="Apple-Tools code mode test",
     body="test",
-    from_account="sender@example.com",
+    from_account="mail-account@example.test",
 )
 ```
 

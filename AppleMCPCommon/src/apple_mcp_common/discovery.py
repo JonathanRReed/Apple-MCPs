@@ -385,8 +385,10 @@ class SearchFirstDiscovery:
             return "/path/to/item"
         if "email" in lowered:
             return "person@example.com"
-        if "phone" in lowered or "recipient" in lowered:
-            return "Jonathan Reed"
+        if "phone" in lowered:
+            return "+15551234567"
+        if "recipient" in lowered:
+            return "Example Person"
         if "date" in lowered or "time" in lowered or lowered.endswith("_iso"):
             return "2026-04-07T18:00:00"
         if "query" in lowered:

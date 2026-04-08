@@ -16,7 +16,7 @@ async def messages_send_attachment(
     Send a file attachment via Apple Messages to a recipient. Optionally include a text message.
 
     Example:
-        await messages_send_attachment(client, recipient='Jonathan Reed', file_path='/path/to/item')
+        await messages_send_attachment(client, recipient='Example Person', file_path='/path/to/item')
     """
     arguments = {
         "recipient": recipient,

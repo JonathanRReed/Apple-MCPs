@@ -206,25 +206,25 @@ def test_find_duplicates_groups_by_shared_email_and_name(monkeypatch) -> None:
                 "items": [
                     {
                         "contact_id": "contact-1",
-                        "name": "Jonathan Reed",
-                        "first_name": "Jonathan",
-                        "last_name": "Reed",
+                        "name": "Example Person",
+                        "first_name": "Example",
+                        "last_name": "Person",
                         "organization": "",
                         "phone_count": 1,
                         "email_count": 1,
                         "phones": [{"label": "mobile", "value": "+1 (555) 123-4567"}],
-                        "emails": [{"label": "home", "value": "jonathan@example.com"}],
+                        "emails": [{"label": "home", "value": "person@example.com"}],
                     },
                     {
                         "contact_id": "contact-2",
-                        "name": "Jonathan Reed",
-                        "first_name": "Jonathan",
-                        "last_name": "Reed",
+                        "name": "Example Person",
+                        "first_name": "Example",
+                        "last_name": "Person",
                         "organization": "",
                         "phone_count": 0,
                         "email_count": 1,
                         "phones": [],
-                        "emails": [{"label": "work", "value": "jonathan@example.com"}],
+                        "emails": [{"label": "work", "value": "person@example.com"}],
                     },
                 ]
             }
@@ -249,25 +249,25 @@ def test_suggest_merge_candidates_filters_query(monkeypatch) -> None:
                 "items": [
                     {
                         "contact_id": "contact-1",
-                        "name": "Jonathan Reed",
-                        "first_name": "Jonathan",
-                        "last_name": "Reed",
+                        "name": "Example Person",
+                        "first_name": "Example",
+                        "last_name": "Person",
                         "organization": "",
                         "phone_count": 0,
                         "email_count": 1,
                         "phones": [],
-                        "emails": [{"label": "home", "value": "jonathan@example.com"}],
+                        "emails": [{"label": "home", "value": "person@example.com"}],
                     },
                     {
                         "contact_id": "contact-2",
-                        "name": "Jonathan Reed",
-                        "first_name": "Jonathan",
-                        "last_name": "Reed",
+                        "name": "Example Person",
+                        "first_name": "Example",
+                        "last_name": "Person",
                         "organization": "",
                         "phone_count": 0,
                         "email_count": 1,
                         "phones": [],
-                        "emails": [{"label": "work", "value": "jonathan@example.com"}],
+                        "emails": [{"label": "work", "value": "person@example.com"}],
                     },
                     {
                         "contact_id": "contact-3",
@@ -286,7 +286,7 @@ def test_suggest_merge_candidates_filters_query(monkeypatch) -> None:
 
     monkeypatch.setattr(bridge, "_run_script", fake_run_script)
 
-    groups = bridge.suggest_merge_candidates("jonathan")
+    groups = bridge.suggest_merge_candidates("example")
 
     assert len(groups) == 1
-    assert all("Jonathan Reed" == contact.name for contact in groups[0].contacts)
+    assert all("Example Person" == contact.name for contact in groups[0].contacts)

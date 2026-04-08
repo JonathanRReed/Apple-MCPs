@@ -8,7 +8,7 @@
   "long_description": "Local MCP server for Apple Reminders on macOS. Uses Apple's EventKit framework through a small native helper to list reminder lists, read reminder state, create reminders, update details, complete tasks, and delete reminders while keeping Reminders as the system of record.",
   "icon": "icon.png",
   "author": {
-    "name": "Jonathan Reed"
+    "name": "Apple MCP Contributors"
   },
   "license": "MIT",
   "keywords": ["reminders", "tasks", "apple", "macos", "eventkit", "assistant"],

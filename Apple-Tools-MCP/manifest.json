@@ -8,7 +8,7 @@
   "long_description": "Local MCP server for Apple Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps on macOS. Reuses the standalone Apple-native integrations while providing one coherent agent entrypoint, unified health, cross-app prompts, aggregated overview resources, assistant workflows, Finder-aware file handling, and truthful system context.",
   "icon": "icon.png",
   "author": {
-    "name": "Jonathan Reed"
+    "name": "Apple MCP Contributors"
   },
   "license": "MIT",
   "keywords": ["apple", "assistant", "macos", "mail", "calendar", "reminders", "messages", "contacts", "notes", "shortcuts", "files", "system", "maps"],

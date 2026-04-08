@@ -8,7 +8,7 @@
   "long_description": "Local MCP server for Apple Messages on macOS. Uses the local Messages SQLite database for history, search, and attachment metadata when Full Disk Access is available, and uses Messages.app automation for send and reply actions.",
   "icon": "icon.png",
   "author": {
-    "name": "Jonathan Reed"
+    "name": "Apple MCP Contributors"
   },
   "license": "MIT",
   "keywords": ["messages", "imessage", "sms", "apple", "macos", "assistant"],

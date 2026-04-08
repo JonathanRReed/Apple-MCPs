@@ -19,7 +19,7 @@ async def apple_send_communication(
     Send a communication through Messages or Mail using Contacts resolution and assistant defaults.
 
     Example:
-        await apple_send_communication(client, recipient='Jonathan Reed', message='example_message')
+        await apple_send_communication(client, recipient='Example Person', message='example_message')
     """
     arguments = {
         "recipient": recipient,

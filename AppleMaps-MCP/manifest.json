@@ -8,7 +8,7 @@
   "long_description": "Local MCP server for Apple Maps workflows on macOS. Uses a local Swift helper to search places, estimate travel time, build Apple Maps links, and open directions in the Apple Maps app.",
   "icon": "icon.png",
   "author": {
-    "name": "Jonathan Reed"
+    "name": "Apple MCP Contributors"
   },
   "license": "MIT",
   "keywords": ["maps", "apple", "macos", "travel", "directions", "routing"],

@@ -13,6 +13,7 @@ This runbook gives one reproducible end-to-end flow per standalone server plus o
 - only text yourself
 - only create clearly labeled test reminders, events, notes, and contacts
 - use Contacts before Mail or Messages when the target is a person
+- when Mail must use a specific sender identity, pass the exact sender email in `from_account`
 - run the health tool before the first real action on a fresh install
 - do not use shell, `curl`, external APIs, or UI scraping when a native MCP already claims support
 - Maps steps only pass when `maps_health` is healthy and the workflow used the native Maps MCP tool surface

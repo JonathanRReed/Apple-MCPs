@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="${1:-$ROOT_DIR/.venv}"
 
 PACKAGES=(
+  "AppleMCPCommon"
   "AppleMail-MCP"
   "Apple-Calendar-MCP"
   "AppleReminders-MCP"

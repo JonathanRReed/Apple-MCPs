@@ -1,0 +1,980 @@
+{
+  "domain": "mail",
+  "server": "Apple Mail MCP",
+  "tool_count": 20,
+  "tools": [
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "health"
+      ],
+      "argument_summary": [],
+      "description": "Report the active Apple Mail MCP configuration.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "health"
+        }
+      ],
+      "name": "health",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "health",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "health",
+        "report",
+        "active",
+        "mcp",
+        "configuration"
+      ],
+      "title": "Mail Health",
+      "usage_intent": "Report the active Apple Mail MCP configuration."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "permission guide registered",
+        "mail permission guide registered"
+      ],
+      "argument_summary": [],
+      "description": "Explain how to grant Apple Mail automation permission on macOS.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "mail_permission_guide_registered"
+        }
+      ],
+      "name": "mail_permission_guide_registered",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "mail_permission_guide_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "permission",
+        "guide",
+        "registered",
+        "explain",
+        "how",
+        "grant",
+        "automation",
+        "maco"
+      ],
+      "title": "Mail Permission Guide",
+      "usage_intent": "Explain how to grant Apple Mail automation permission on macOS."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "recheck permissions registered",
+        "mail recheck permissions registered"
+      ],
+      "argument_summary": [],
+      "description": "Recheck Mail access after the user changes macOS permissions, and notify the client that Mail resources changed.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "mail_recheck_permissions_registered"
+        }
+      ],
+      "name": "mail_recheck_permissions_registered",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "mail_recheck_permissions_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "recheck",
+        "permissions",
+        "permission",
+        "registered",
+        "access",
+        "acces",
+        "after",
+        "user",
+        "changes",
+        "chang",
+        "maco",
+        "notify",
+        "client",
+        "that",
+        "resources"
+      ],
+      "title": "Mail Recheck Permissions",
+      "usage_intent": "Recheck Mail access after the user changes macOS permissions, and notify the client that Mail resources changed."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "list mailboxes registered",
+        "mail list mailboxes registered"
+      ],
+      "argument_summary": [
+        "account: string (optional)"
+      ],
+      "description": "List Apple Mail mailboxes, optionally filtered by account.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "account": "example_account"
+          },
+          "tool": "mail_list_mailboxes_registered"
+        }
+      ],
+      "name": "mail_list_mailboxes_registered",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "mail_list_mailboxes_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "mailboxes",
+        "mailbox",
+        "registered",
+        "optionally",
+        "filtered",
+        "account"
+      ],
+      "title": "List Mailboxes",
+      "usage_intent": "List Apple Mail mailboxes, optionally filtered by account."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "search messages registered",
+        "mail search messages registered"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "mailbox: string (optional)",
+        "unread_only: boolean (optional)",
+        "limit: integer (optional)"
+      ],
+      "description": "Search Apple Mail messages by query with optional mailbox and unread filters.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "mailbox": "example_mailbox",
+            "query": "find mail"
+          },
+          "tool": "mail_search_messages_registered"
+        }
+      ],
+      "name": "mail_search_messages_registered",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "mail_search_messages_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "search",
+        "messages",
+        "messag",
+        "registered",
+        "query",
+        "optional",
+        "mailbox",
+        "unread",
+        "filters",
+        "filter"
+      ],
+      "title": "Search Messages",
+      "usage_intent": "Search Apple Mail messages by query with optional mailbox and unread filters."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "get message registered",
+        "mail get message registered"
+      ],
+      "argument_summary": [
+        "message_id: string (required)"
+      ],
+      "description": "Fetch a single Apple Mail message by message_id.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "message_id": "example_message_id"
+          },
+          "tool": "mail_get_message_registered"
+        }
+      ],
+      "name": "mail_get_message_registered",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "mail_get_message_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "message",
+        "registered",
+        "fetch",
+        "single"
+      ],
+      "title": "Get Message",
+      "usage_intent": "Fetch a single Apple Mail message by message_id."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "get thread registered",
+        "mail get thread registered"
+      ],
+      "argument_summary": [
+        "message_id: string (required)",
+        "limit: integer (optional)"
+      ],
+      "description": "Find related messages in the same mailbox thread by normalized subject, anchored on a message_id.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "message_id": "example_message_id"
+          },
+          "tool": "mail_get_thread_registered"
+        }
+      ],
+      "name": "mail_get_thread_registered",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "mail_get_thread_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "registered",
+        "find",
+        "related",
+        "messages",
+        "messag",
+        "same",
+        "mailbox",
+        "normalized",
+        "subject",
+        "anchored",
+        "message"
+      ],
+      "title": "Get Thread",
+      "usage_intent": "Find related messages in the same mailbox thread by normalized subject, anchored on a message_id."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "compose draft registered",
+        "mail compose draft registered"
+      ],
+      "argument_summary": [
+        "to: array (required)",
+        "cc: array (optional)",
+        "bcc: array (optional)",
+        "subject: string (optional)",
+        "body: string (optional)",
+        "attachments: array (optional)",
+        "from_account: string (optional)"
+      ],
+      "description": "Create a draft message in Apple Mail without sending it. Optionally specify from_account as an email address or account name to set the sender.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "cc": [],
+            "to": []
+          },
+          "tool": "mail_compose_draft_registered"
+        }
+      ],
+      "name": "mail_compose_draft_registered",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "mail_compose_draft_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "compose",
+        "draft",
+        "registered",
+        "create",
+        "message",
+        "without",
+        "sending",
+        "optionally",
+        "specify",
+        "account",
+        "address",
+        "addres",
+        "name",
+        "set",
+        "sender"
+      ],
+      "title": "Compose Draft",
+      "usage_intent": "Create a draft message in Apple Mail without sending it. Optionally specify from_account as an email address or account name to set the sender."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "send message registered",
+        "mail send message registered"
+      ],
+      "argument_summary": [
+        "to: array (required)",
+        "cc: array (optional)",
+        "bcc: array (optional)",
+        "subject: string (optional)",
+        "body: string (optional)",
+        "attachments: array (optional)",
+        "from_account: string (optional)"
+      ],
+      "description": "Send an email immediately via Apple Mail. Optionally specify from_account as an email address or account name to set the sender.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "cc": [],
+            "to": []
+          },
+          "tool": "mail_send_message_registered"
+        }
+      ],
+      "name": "mail_send_message_registered",
+      "read_only": false,
+      "risk_level": "high",
+      "schema_ref": "mail_send_message_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "send",
+        "message",
+        "registered",
+        "immediately",
+        "via",
+        "optionally",
+        "specify",
+        "account",
+        "address",
+        "addres",
+        "name",
+        "set",
+        "sender"
+      ],
+      "title": "Send Message",
+      "usage_intent": "Send an email immediately via Apple Mail. Optionally specify from_account as an email address or account name to set the sender."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "reply message registered",
+        "mail reply message registered"
+      ],
+      "argument_summary": [
+        "message_id: string (required)",
+        "body: string (required)",
+        "reply_all: boolean (optional)",
+        "from_account: string (optional)"
+      ],
+      "description": "Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "body": "example_body",
+            "message_id": "example_message_id"
+          },
+          "tool": "mail_reply_message_registered"
+        }
+      ],
+      "name": "mail_reply_message_registered",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "mail_reply_message_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "reply",
+        "message",
+        "registered",
+        "existing",
+        "provide",
+        "body",
+        "text",
+        "set",
+        "all",
+        "true",
+        "recipients",
+        "recipient",
+        "optionally",
+        "specify",
+        "account"
+      ],
+      "title": "Reply to Message",
+      "usage_intent": "Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "forward message registered",
+        "mail forward message registered"
+      ],
+      "argument_summary": [
+        "message_id: string (required)",
+        "to: array (required)",
+        "body: string (optional)",
+        "from_account: string (optional)"
+      ],
+      "description": "Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "message_id": "example_message_id",
+            "to": []
+          },
+          "tool": "mail_forward_message_registered"
+        }
+      ],
+      "name": "mail_forward_message_registered",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "mail_forward_message_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "forward",
+        "message",
+        "registered",
+        "existing",
+        "new",
+        "recipients",
+        "recipient",
+        "provide",
+        "optionally",
+        "prepend",
+        "body",
+        "text",
+        "specify",
+        "account"
+      ],
+      "title": "Forward Message",
+      "usage_intent": "Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "mark message registered",
+        "mail mark message registered"
+      ],
+      "argument_summary": [
+        "message_id: string (required)",
+        "is_read: boolean (required)"
+      ],
+      "description": "Set the read status of an email message. Pass is_read=true to mark as read, is_read=false to mark as unread.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "is_read": false,
+            "message_id": "example_message_id"
+          },
+          "tool": "mail_mark_message_registered"
+        }
+      ],
+      "name": "mail_mark_message_registered",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "mail_mark_message_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "mark",
+        "message",
+        "registered",
+        "unread",
+        "set",
+        "status",
+        "statu",
+        "pass",
+        "pas",
+        "true",
+        "false"
+      ],
+      "title": "Mark Message Read/Unread",
+      "usage_intent": "Set the read status of an email message. Pass is_read=true to mark as read, is_read=false to mark as unread."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "move message registered",
+        "mail move message registered"
+      ],
+      "argument_summary": [
+        "message_id: string (required)",
+        "target_mailbox: string (required)",
+        "target_account: string (optional)"
+      ],
+      "description": "Move an email message to a different mailbox. Optionally specify target_account if the mailbox is in a different account.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "message_id": "example_message_id",
+            "target_mailbox": "example_target_mailbox"
+          },
+          "tool": "mail_move_message_registered"
+        }
+      ],
+      "name": "mail_move_message_registered",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "mail_move_message_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "move",
+        "message",
+        "registered",
+        "different",
+        "mailbox",
+        "optionally",
+        "specify",
+        "target",
+        "account"
+      ],
+      "title": "Move Message",
+      "usage_intent": "Move an email message to a different mailbox. Optionally specify target_account if the mailbox is in a different account."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "delete message registered",
+        "mail delete message registered"
+      ],
+      "argument_summary": [
+        "message_id: string (required)"
+      ],
+      "description": "Delete (trash) an email message by its message_id.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "message_id": "example_message_id"
+          },
+          "tool": "mail_delete_message_registered"
+        }
+      ],
+      "name": "mail_delete_message_registered",
+      "read_only": false,
+      "risk_level": "high",
+      "schema_ref": "mail_delete_message_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "delete",
+        "message",
+        "registered",
+        "trash",
+        "its"
+      ],
+      "title": "Delete Message",
+      "usage_intent": "Delete (trash) an email message by its message_id."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "reply latest in thread registered",
+        "mail reply latest in thread registered"
+      ],
+      "argument_summary": [
+        "message_id: string (required)",
+        "body: string (required)",
+        "reply_all: boolean (optional)",
+        "from_account: string (optional)",
+        "limit: integer (optional)"
+      ],
+      "description": "Find the latest related message in the same mailbox thread and reply to that message.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "body": "example_body",
+            "message_id": "example_message_id"
+          },
+          "tool": "mail_reply_latest_in_thread_registered"
+        }
+      ],
+      "name": "mail_reply_latest_in_thread_registered",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "mail_reply_latest_in_thread_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "reply",
+        "latest",
+        "registered",
+        "find",
+        "related",
+        "message",
+        "same",
+        "mailbox",
+        "that"
+      ],
+      "title": "Reply To Latest In Thread",
+      "usage_intent": "Find the latest related message in the same mailbox thread and reply to that message."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "archive thread registered",
+        "mail archive thread registered"
+      ],
+      "argument_summary": [
+        "message_id: string (required)",
+        "archive_mailbox: string (optional)",
+        "archive_account: string (optional)",
+        "limit: integer (optional)"
+      ],
+      "description": "Move related messages in the same mailbox thread to the target archive mailbox.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "archive_mailbox": "example_archive_mailbox",
+            "message_id": "example_message_id"
+          },
+          "tool": "mail_archive_thread_registered"
+        }
+      ],
+      "name": "mail_archive_thread_registered",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "mail_archive_thread_registered",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "archive",
+        "registered",
+        "move",
+        "related",
+        "messages",
+        "messag",
+        "same",
+        "mailbox",
+        "target"
+      ],
+      "title": "Archive Thread",
+      "usage_intent": "Move related messages in the same mailbox thread to the target archive mailbox."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "list prompts",
+        "mail list prompts"
+      ],
+      "argument_summary": [],
+      "description": "Fallback prompt discovery tool for tool-only MCP clients.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "mail_list_prompts"
+        }
+      ],
+      "name": "mail_list_prompts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "mail_list_prompts",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "prompts",
+        "prompt",
+        "fallback",
+        "discovery",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Mail List Prompts",
+      "usage_intent": "Fallback prompt discovery tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "get prompt prompt",
+        "mail get prompt prompt"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "arguments_json: string (optional)"
+      ],
+      "description": "Fallback prompt rendering tool for tool-only MCP clients.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "arguments_json": "example_arguments_json",
+            "name": "example_name"
+          },
+          "tool": "mail_get_prompt_prompt"
+        }
+      ],
+      "name": "mail_get_prompt_prompt",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "mail_get_prompt_prompt",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "prompt",
+        "fallback",
+        "rendering",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Mail Get Prompt",
+      "usage_intent": "Fallback prompt rendering tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "search tools"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "limit: integer (optional)",
+        "domain_tags: array (optional)",
+        "mode: string (optional)"
+      ],
+      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "query": "find mail"
+          },
+          "tool": "search_tools"
+        }
+      ],
+      "name": "search_tools",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "search_tools",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "search",
+        "tools",
+        "tool",
+        "this",
+        "thi",
+        "server",
+        "catalog",
+        "without",
+        "loading",
+        "every",
+        "full",
+        "schema",
+        "default"
+      ],
+      "title": "Search Tools",
+      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+    },
+    {
+      "aliases": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "get tool info"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "include_schema: boolean (optional)",
+        "include_examples: boolean (optional)"
+      ],
+      "description": "Load the full schema, examples, and metadata for one tool from this server.",
+      "domain": "mail",
+      "example_calls": [
+        {
+          "arguments": {
+            "include_schema": false,
+            "name": "example_name"
+          },
+          "tool": "get_tool_info"
+        }
+      ],
+      "name": "get_tool_info",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "get_tool_info",
+      "tags": [
+        "mail",
+        "email",
+        "emails",
+        "inbox",
+        "thread",
+        "tool",
+        "info",
+        "load",
+        "full",
+        "schema",
+        "examples",
+        "exampl",
+        "metadata",
+        "one",
+        "this",
+        "thi",
+        "server"
+      ],
+      "title": "Get Tool Info",
+      "usage_intent": "Load the full schema, examples, and metadata for one tool from this server."
+    }
+  ]
+}

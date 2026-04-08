@@ -22,6 +22,7 @@ Everything happens on your Mac. Your data stays in Apple's apps where it belongs
 - [CHANGELOG.md](./CHANGELOG.md)
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [SECURITY.md](./SECURITY.md)
+- [Code Mode](./docs/code-mode.md)
 
 ## Launch Docs
 
@@ -58,11 +59,35 @@ Everything happens on your Mac. Your data stays in Apple's apps where it belongs
 
 Some tips for working with these servers:
 
-- All Apple tools are deferred. The first call needs `tool_search` to load schemas.
+- `tools/list` is intentionally minimal. Use `search_tools` to discover tools, then `get_tool_info` to load full schemas and examples only when needed.
 - Always run Contacts first when messaging a person, then choose Messages or Mail.
 - Use Mail thread helpers when the user mentions a conversation.
 - Reminders are for due items, Notes for reference material, Calendar for scheduled time.
+- When Mail must send from a specific identity, pass the exact sender email in `from_account`, for example `jonathanrayreed@gmail.com`.
+- Code-mode clients can use the generated wrapper surface in `generated/tool_wrappers/python` instead of loading every tool schema into model context.
 - See the standalone READMEs for app-specific details.
+
+## Search-First Discovery
+
+The published Apple MCP servers are optimized for search-aware clients:
+
+- `tools/list` exposes only a compact always-on surface, such as health checks, permission guidance, prompt fallbacks, `search_tools`, and `get_tool_info`
+- `search_tools` finds deferred tools by name, description, aliases, and domain tags
+- `get_tool_info` loads the full schema and examples for one deferred tool only when the client needs it
+- direct `call_tool` still works for deferred tools, even if they were not included in the initial `tools/list`
+
+This keeps the default context smaller while preserving the full tool surface.
+
+## Code-Mode Wrappers
+
+The repo also ships generated artifacts for code-execution clients:
+
+- `generated/tool_catalogs`, exported searchable tool metadata per server
+- `generated/tool_wrappers/python`, generated Python wrappers for deferred tool calls
+
+Use these when you want Anthropic-style code-mode discovery and execution without loading the entire MCP surface into the model context window.
+
+See [docs/code-mode.md](./docs/code-mode.md) for the wrapper layout, client interface, result parsing, and recommended workflow.
 
 ## Install On This Mac
 
@@ -74,7 +99,7 @@ cd /path/to/Apple-MCPs/Apple-Tools-MCP
 ./start.sh
 ```
 
-`start.sh` creates a local virtual environment on first run, installs the Python dependencies from `requirements.txt`, and starts the MCP server over `stdio`.
+`start.sh` bootstraps and repairs the local virtual environment as needed, reinstalls when `requirements.txt` changes, and starts the MCP server over `stdio`.
 
 </details>
 
@@ -86,7 +111,7 @@ cd /path/to/Apple-MCPs
 bash scripts/install_all.sh
 ```
 
-This creates a shared virtual environment and installs every standalone package plus `Apple-Tools-MCP` into it. Use this when you want one environment that can run any server without relying on sibling source-path imports.
+This creates a shared virtual environment and installs every standalone package plus `Apple-Tools-MCP` into it. Use this when you want one environment that can run any server without relying on sibling source-path imports. The installed entrypoints land in `.venv/bin`, for example `.venv/bin/apple-tools-mcp`.
 
 </details>
 

@@ -31,6 +31,16 @@ One entrypoint for Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcu
 - Cross-app operations (e.g., Calendar and Reminders together)
 - Simpler setup without wiring each standalone MCP separately
 
+## Search-First Surface
+
+Apple-Tools-MCP is optimized for search-aware clients:
+
+- `tools/list` stays intentionally small
+- `search_tools` discovers deferred tools by name, aliases, and domain tags
+- `get_tool_info` loads the full schema and examples for one deferred tool on demand
+- direct `call_tool` still works for deferred tools that were not listed up front
+- generated code-mode wrappers are exported under `generated/tool_wrappers/python`
+
 ## Install On This Mac
 
 <details>
@@ -41,7 +51,7 @@ cd /path/to/Apple-MCPs/Apple-Tools-MCP
 ./start.sh
 ```
 
-On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the MCP server over `stdio`.
+`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the MCP server over `stdio`.
 
 </details>
 
@@ -53,7 +63,7 @@ cd /path/to/Apple-MCPs
 bash scripts/install_all.sh
 ```
 
-This installs `Apple-Tools-MCP` plus every standalone package into one environment. Use this path when you want the unified server to import installed domain packages directly instead of relying on the monorepo fallback.
+This installs `Apple-Tools-MCP` plus every standalone package into one environment. Use this path when you want the unified server to import installed domain packages directly instead of relying on the monorepo fallback. The installed unified entrypoint is `.venv/bin/apple-tools-mcp`.
 
 </details>
 
@@ -156,6 +166,7 @@ Apple-Tools-MCP also stores recent assistant actions in `~/.apple-tools-mcp/acti
 - Use the dedicated digest folder helpers before saving daily or weekly briefings into Notes.
 - Use Maps when routing or travel time affects scheduling or communication.
 - Use `apple_list_recent_actions` and `apple_undo_action` for reversible operations.
+- When Mail must use a specific sender identity, pass the exact sender email in `from_account`, not just an account nickname.
 
 ## macOS Permissions
 
@@ -175,8 +186,8 @@ Apple-Tools-MCP also stores recent assistant actions in `~/.apple-tools-mcp/acti
 ## Launch Checklist
 
 - Start the server once with `./start.sh`
-- Add `/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh` to your MCP client
-- Reload or reconnect the client so the Apple-Tools-MCP tool surface is loaded into context
+- Add `/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh` or the installed `.venv/bin/apple-tools-mcp` entrypoint to your MCP client
+- Reload or reconnect the client so the Apple-Tools-MCP minimal tool surface is loaded into context
 - Call `apple_health` first to verify every domain
 - If a domain is blocked, call `apple_permission_guide`
 - After changing macOS permissions, call `apple_recheck_permissions`
@@ -214,6 +225,7 @@ Apple-Tools-MCP also enables experimental MCP task support in normal operation. 
 - [Golden Workflows](../docs/launch/golden-workflows.md)
 - [Failure Modes](../docs/launch/failure-modes.md)
 - [Compatibility and Version Pinning](../docs/launch/compatibility.md)
+- [Code Mode](../docs/code-mode.md)
 - [Demo Script](../docs/launch/demo-script.md)
 - [Checklist Template Prompt](../docs/launch/prompts/checklist-template.md)
 
@@ -238,7 +250,7 @@ bash scripts/inspector_smoke.sh
 
 ```xml
 <apple_tools>
-All Apple tools are deferred. Batch tool_search calls on first use.
+`tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` only for the tools you plan to call.
 
 <routing>
   <imessage trigger="text, message, msg, iMessage">
@@ -300,7 +312,7 @@ All Apple tools are deferred. Batch tool_search calls on first use.
   - service_name on iMessage calls causes error (-1728). Omit it.
   - Bare timestamps without timezone offset fail on Reminders.
   - Mail has no "list recent" endpoint. Always pass a search query.
-  - All tool schemas are deferred. First call requires tool_search to load parameters.
+  - `tools/list` is intentionally minimal. Use `search_tools` plus `get_tool_info` to inspect deferred tools.
   - Multiple Notes folders exist across accounts. Pick one default.
   - Files access is limited to APPLE_FILES_MCP_ALLOWED_ROOTS.
   - Some System actions depend on host app automation approval.

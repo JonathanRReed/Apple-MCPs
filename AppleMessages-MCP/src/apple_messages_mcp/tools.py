@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from apple_mcp_common.discovery import install_search_first_discovery
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.types import Annotations, ToolAnnotations
 
@@ -421,6 +422,13 @@ async def _messages_subscribe_resource(uri) -> None:
 @mcp._mcp_server.unsubscribe_resource()
 async def _messages_unsubscribe_resource(uri) -> None:
     del uri
+
+
+TOOL_DISCOVERY = install_search_first_discovery(
+    mcp,
+    server_name="Apple Messages MCP",
+    domain="messages",
+)
 
 
 def main() -> None:

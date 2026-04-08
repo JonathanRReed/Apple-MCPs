@@ -16,6 +16,7 @@ Provides access to mailboxes, message search, reading, and composition. Keep Mai
 - Search and read messages
 - Create drafts and send messages
 - Reply, forward, mark read/unread, move, and delete
+- Search-first discovery through `search_tools` and `get_tool_info`
 - Thread helpers: `mail_get_thread`, `mail_reply_latest_in_thread`, `mail_archive_thread`
 - Mailbox resources and reply-oriented prompts
 - Health and permission checks: `mail_health`, `mail_permission_guide`, `mail_recheck_permissions`
@@ -30,7 +31,7 @@ cd /path/to/Apple-MCPs/AppleMail-MCP
 ./start.sh
 ```
 
-On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the server over `stdio`.
+`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the server over `stdio`.
 
 </details>
 
@@ -89,12 +90,14 @@ claude mcp add --transport stdio --scope project \
 ## Prompting Notes
 
 - Run Contacts before any send or reply when the user identifies a person rather than an email address.
+- `tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` for the exact Mail tool you plan to call.
 - `mail_search_messages` requires a query string. Use a sender, a subject fragment, or `*` as a wildcard.
 - There is no list-all recent-mail endpoint.
 - Use `mail_get_thread` when the user means a conversation, not a single message.
 - Use `mail_reply_latest_in_thread` when the agent should reply to the newest message in the conversation.
 - Use `mail_archive_thread` when the user wants thread-level cleanup and Archive is the intended mailbox.
 - If the user could mean text or email, ask once before choosing Messages or Mail.
+- When Mail must send from a specific identity, pass the exact sender email in `from_account`, for example `jonathanrayreed@gmail.com`.
 
 ## Related
 

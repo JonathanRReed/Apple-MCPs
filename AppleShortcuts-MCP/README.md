@@ -15,6 +15,7 @@ Provides access to shortcuts for discovery, inspection, and execution. Run short
 - List shortcuts and folders
 - Inspect shortcut details
 - Run shortcuts with input/output handling
+- Search-first discovery through `search_tools` and `get_tool_info`
 - Shortcut resources and execution prompts
 - Health and state checks: `shortcuts_health`, `shortcuts_permission_guide`, `shortcuts_refresh_state`
 
@@ -28,7 +29,7 @@ cd /path/to/Apple-MCPs/AppleShortcuts-MCP
 ./start.sh
 ```
 
-On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the server over `stdio`.
+`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the server over `stdio`.
 
 </details>
 
@@ -79,6 +80,7 @@ claude mcp add --transport stdio --scope project \
 
 ## Prompting Notes
 
+- `tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` for the deferred Shortcuts tool you need.
 - If the user asks for a shortcut vaguely, list available shortcuts first.
 - Run a shortcut only after confirming which shortcut to run.
 

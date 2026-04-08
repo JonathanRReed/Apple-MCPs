@@ -1,0 +1,722 @@
+{
+  "domain": "messages",
+  "server": "Apple Messages MCP",
+  "tool_count": 15,
+  "tools": [
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "health",
+        "messages health"
+      ],
+      "argument_summary": [],
+      "description": "Report Messages server configuration and capability status.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "messages_health"
+        }
+      ],
+      "name": "messages_health",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "messages_health",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "health",
+        "report",
+        "server",
+        "configuration",
+        "capability",
+        "status",
+        "statu"
+      ],
+      "title": "Messages Health",
+      "usage_intent": "Report Messages server configuration and capability status."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "permission guide",
+        "messages permission guide"
+      ],
+      "argument_summary": [],
+      "description": "Explain how to grant Apple Messages permissions on macOS.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "messages_permission_guide"
+        }
+      ],
+      "name": "messages_permission_guide",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "messages_permission_guide",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "permission",
+        "guide",
+        "explain",
+        "how",
+        "grant",
+        "permissions",
+        "maco"
+      ],
+      "title": "Messages Permission Guide",
+      "usage_intent": "Explain how to grant Apple Messages permissions on macOS."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "recheck permissions",
+        "messages recheck permissions"
+      ],
+      "argument_summary": [],
+      "description": "Recheck Messages access after the user changes macOS permissions, and notify the client that Messages resources changed.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "messages_recheck_permissions"
+        }
+      ],
+      "name": "messages_recheck_permissions",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "messages_recheck_permissions",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "recheck",
+        "permissions",
+        "permission",
+        "access",
+        "acces",
+        "after",
+        "user",
+        "changes",
+        "chang",
+        "maco",
+        "notify",
+        "client",
+        "that"
+      ],
+      "title": "Messages Recheck Permissions",
+      "usage_intent": "Recheck Messages access after the user changes macOS permissions, and notify the client that Messages resources changed."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "list conversations",
+        "messages list conversations"
+      ],
+      "argument_summary": [
+        "limit: integer (optional)",
+        "offset: integer (optional)",
+        "unread_only: boolean (optional)"
+      ],
+      "description": "List recent Apple Messages conversations.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "offset": 1
+          },
+          "tool": "messages_list_conversations"
+        }
+      ],
+      "name": "messages_list_conversations",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "messages_list_conversations",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "conversations",
+        "recent"
+      ],
+      "title": "List Conversations",
+      "usage_intent": "List recent Apple Messages conversations."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "get conversation",
+        "messages get conversation"
+      ],
+      "argument_summary": [
+        "chat_id: string (required)",
+        "limit: integer (optional)",
+        "offset: integer (optional)"
+      ],
+      "description": "Fetch a single Apple Messages conversation with paginated messages.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {
+            "chat_id": "example_chat_id",
+            "limit": 1
+          },
+          "tool": "messages_get_conversation"
+        }
+      ],
+      "name": "messages_get_conversation",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "messages_get_conversation",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "fetch",
+        "single",
+        "paginated"
+      ],
+      "title": "Get Conversation",
+      "usage_intent": "Fetch a single Apple Messages conversation with paginated messages."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "search messages",
+        "messages search messages"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "chat_id: string (optional)",
+        "sender: string (optional)",
+        "start_iso: string (optional)",
+        "end_iso: string (optional)",
+        "limit: integer (optional)",
+        "offset: integer (optional)"
+      ],
+      "description": "Search Apple Messages text history.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {
+            "chat_id": "example_chat_id",
+            "query": "find messages"
+          },
+          "tool": "messages_search_messages"
+        }
+      ],
+      "name": "messages_search_messages",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "messages_search_messages",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "search",
+        "history"
+      ],
+      "title": "Search Messages",
+      "usage_intent": "Search Apple Messages text history."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "get message",
+        "messages get message"
+      ],
+      "argument_summary": [
+        "message_id: string (required)"
+      ],
+      "description": "Fetch a single Apple Messages message by message_id.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {
+            "message_id": "example_message_id"
+          },
+          "tool": "messages_get_message"
+        }
+      ],
+      "name": "messages_get_message",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "messages_get_message",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "message",
+        "fetch",
+        "single"
+      ],
+      "title": "Get Message",
+      "usage_intent": "Fetch a single Apple Messages message by message_id."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "list attachments",
+        "messages list attachments"
+      ],
+      "argument_summary": [
+        "chat_id: string (optional)",
+        "message_id: string (optional)",
+        "limit: integer (optional)",
+        "offset: integer (optional)"
+      ],
+      "description": "List Apple Messages attachments by chat or message.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {
+            "chat_id": "example_chat_id",
+            "message_id": "example_message_id"
+          },
+          "tool": "messages_list_attachments"
+        }
+      ],
+      "name": "messages_list_attachments",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "messages_list_attachments",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "attachments",
+        "attachment",
+        "message"
+      ],
+      "title": "List Attachments",
+      "usage_intent": "List Apple Messages attachments by chat or message."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "send message",
+        "messages send message"
+      ],
+      "argument_summary": [
+        "recipient: string (required)",
+        "text: string (required)"
+      ],
+      "description": "Send a new iMessage through Messages.app.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {
+            "recipient": "Jonathan Reed",
+            "text": "example_text"
+          },
+          "tool": "messages_send_message"
+        }
+      ],
+      "name": "messages_send_message",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "messages_send_message",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "send",
+        "message",
+        "new"
+      ],
+      "title": "Send Message",
+      "usage_intent": "Send a new iMessage through Messages.app."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "reply in conversation",
+        "messages reply in conversation"
+      ],
+      "argument_summary": [
+        "chat_id: string (required)",
+        "text: string (required)"
+      ],
+      "description": "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {
+            "chat_id": "example_chat_id",
+            "text": "example_text"
+          },
+          "tool": "messages_reply_in_conversation"
+        }
+      ],
+      "name": "messages_reply_in_conversation",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "messages_reply_in_conversation",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "reply",
+        "using",
+        "its",
+        "supports",
+        "support",
+        "both",
+        "one",
+        "group",
+        "chats"
+      ],
+      "title": "Reply In Conversation",
+      "usage_intent": "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "send attachment",
+        "messages send attachment"
+      ],
+      "argument_summary": [
+        "recipient: string (required)",
+        "file_path: string (required)",
+        "text: string (optional)"
+      ],
+      "description": "Send a file attachment via Apple Messages to a recipient. Optionally include a text message.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {
+            "file_path": "/path/to/item",
+            "recipient": "Jonathan Reed"
+          },
+          "tool": "messages_send_attachment"
+        }
+      ],
+      "name": "messages_send_attachment",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "messages_send_attachment",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "send",
+        "attachment",
+        "file",
+        "via",
+        "recipient",
+        "optionally",
+        "include",
+        "message"
+      ],
+      "title": "Send Attachment",
+      "usage_intent": "Send a file attachment via Apple Messages to a recipient. Optionally include a text message."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "list prompts",
+        "messages list prompts"
+      ],
+      "argument_summary": [],
+      "description": "Fallback prompt discovery tool for tool-only MCP clients.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "messages_list_prompts"
+        }
+      ],
+      "name": "messages_list_prompts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "messages_list_prompts",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "prompts",
+        "prompt",
+        "fallback",
+        "discovery",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Messages List Prompts",
+      "usage_intent": "Fallback prompt discovery tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "get prompt prompt",
+        "messages get prompt prompt"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "arguments_json: string (optional)"
+      ],
+      "description": "Fallback prompt rendering tool for tool-only MCP clients.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {
+            "arguments_json": "example_arguments_json",
+            "name": "example_name"
+          },
+          "tool": "messages_get_prompt_prompt"
+        }
+      ],
+      "name": "messages_get_prompt_prompt",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "messages_get_prompt_prompt",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "messag",
+        "prompt",
+        "fallback",
+        "rendering",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Messages Get Prompt",
+      "usage_intent": "Fallback prompt rendering tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "search tools"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "limit: integer (optional)",
+        "domain_tags: array (optional)",
+        "mode: string (optional)"
+      ],
+      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "query": "find messages"
+          },
+          "tool": "search_tools"
+        }
+      ],
+      "name": "search_tools",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "search_tools",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "search",
+        "tools",
+        "tool",
+        "this",
+        "thi",
+        "server",
+        "catalog",
+        "without",
+        "loading",
+        "every",
+        "full",
+        "schema",
+        "default"
+      ],
+      "title": "Search Tools",
+      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+    },
+    {
+      "aliases": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "get tool info"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "include_schema: boolean (optional)",
+        "include_examples: boolean (optional)"
+      ],
+      "description": "Load the full schema, examples, and metadata for one tool from this server.",
+      "domain": "messages",
+      "example_calls": [
+        {
+          "arguments": {
+            "include_schema": false,
+            "name": "example_name"
+          },
+          "tool": "get_tool_info"
+        }
+      ],
+      "name": "get_tool_info",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "get_tool_info",
+      "tags": [
+        "messages",
+        "imessage",
+        "sms",
+        "text",
+        "chat",
+        "conversation",
+        "tool",
+        "info",
+        "load",
+        "full",
+        "schema",
+        "examples",
+        "exampl",
+        "metadata",
+        "one",
+        "this",
+        "thi",
+        "server"
+      ],
+      "title": "Get Tool Info",
+      "usage_intent": "Load the full schema, examples, and metadata for one tool from this server."
+    }
+  ]
+}

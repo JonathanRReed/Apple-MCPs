@@ -575,19 +575,39 @@ class SystemBridge:
         }
 
     def context_snapshot(self) -> dict[str, object]:
-        frontmost_application = self.frontmost_application()
-        running_apps = self.running_apps()
+        notification_notes = [
+            "Notification Center history is not exposed through a reliable unsigned local API on this setup.",
+        ]
+        battery_payload = None
+        frontmost_application = None
+        frontmost_app = None
+        running_apps_count = None
+
+        try:
+            battery_payload = self.battery().model_dump()
+        except SystemBridgeError as exc:
+            notification_notes.append(f"Battery status unavailable: {exc.error_code}.")
+
+        try:
+            frontmost_application = self.frontmost_application()
+            frontmost_app = frontmost_application.name
+        except SystemBridgeError as exc:
+            notification_notes.append(f"Frontmost application unavailable: {exc.error_code}.")
+
+        try:
+            running_apps_count = len(self.running_apps())
+        except SystemBridgeError as exc:
+            notification_notes.append(f"Running application count unavailable: {exc.error_code}.")
+
         return {
             "observed_at": datetime.now().astimezone().isoformat(),
-            "battery": self.battery().model_dump(),
-            "frontmost_app": frontmost_application.name,
-            "frontmost_application": frontmost_application.model_dump(),
-            "running_apps_count": len(running_apps),
+            "battery": battery_payload,
+            "frontmost_app": frontmost_app,
+            "frontmost_application": None if frontmost_application is None else frontmost_application.model_dump(),
+            "running_apps_count": running_apps_count,
             "focus": self.focus_status(),
             "notification_history_supported": False,
-            "notification_history_notes": [
-                "Notification Center history is not exposed through a reliable unsigned local API on this setup.",
-            ],
+            "notification_history_notes": notification_notes,
         }
 
     def read_preference_domain(self, domain: str, current_host: bool = False) -> dict[str, object]:

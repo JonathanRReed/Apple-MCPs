@@ -15,6 +15,8 @@ class CalendarBridgeError(Exception):
 
 
 class CalendarBridge:
+    _JXA_TIMEOUT_SECONDS = 30
+
     def __init__(self, helper_source: Path, helper_binary: Path) -> None:
         self.helper_source = helper_source
         self.helper_binary = helper_binary
@@ -56,15 +58,18 @@ class CalendarBridge:
             "limit": limit,
         }
         if self._helper_read_blocked():
-            payload = self._fallback_list_events(start_iso, end_iso, calendar_id=calendar_id, limit=limit)
+            payload = self._fallback_events_payload(start_iso, end_iso, calendar_id=calendar_id, limit=limit)
         else:
             try:
                 payload = self._run_helper("list-calendar-events", json.dumps(request))
             except CalendarBridgeError as exc:
                 if not self._should_use_read_fallback(exc):
                     raise
-                payload = self._fallback_list_events(start_iso, end_iso, calendar_id=calendar_id, limit=limit)
-        return [self._normalize_summary(item) for item in payload.get("items", []) if isinstance(item, dict)]
+                payload = self._fallback_events_payload(start_iso, end_iso, calendar_id=calendar_id, limit=limit)
+        return [
+            self._normalize_summary(item)
+            for item in self._dedupe_event_items(payload.get("items", []), limit=limit)
+        ]
 
     def get_event(self, event_id: str) -> EventDetail:
         payload = self._run_helper("get-calendar-event", event_id)
@@ -304,15 +309,70 @@ function run(argv) {
   return JSON.stringify({items: items.slice(0, isNaN(limit) ? 100 : limit)});
 }
 """
-        return self._run_jxa(script, start.isoformat(), end.isoformat(), calendar_id or "", str(limit))
+        return self._run_jxa(script, start.isoformat(), end.isoformat(), calendar_id or "", str(limit), timeout=self._JXA_TIMEOUT_SECONDS)
 
-    def _run_jxa(self, script: str, *args: str) -> dict[str, object]:
-        completed = subprocess.run(
-            ["osascript", "-l", "JavaScript", "-e", script, *args],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+    def _fallback_events_payload(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, object]:
+        if calendar_id:
+            return self._fallback_list_events(start_iso, end_iso, calendar_id=calendar_id, limit=limit)
+        return self._fallback_list_events_across_calendars(start_iso, end_iso, limit=limit)
+
+    def _fallback_list_events_across_calendars(self, start_iso: str, end_iso: str, limit: int = 100) -> dict[str, object]:
+        seen_calendar_ids: set[str] = set()
+        items: list[dict[str, object]] = []
+        for calendar in self.list_calendars():
+            calendar_key = calendar.calendar_id or calendar.name
+            if not calendar_key or calendar_key in seen_calendar_ids:
+                continue
+            seen_calendar_ids.add(calendar_key)
+            remaining = limit - len(items)
+            if remaining <= 0:
+                break
+            try:
+                payload = self._fallback_list_events(start_iso, end_iso, calendar_id=calendar_key, limit=remaining)
+            except CalendarBridgeError as exc:
+                if exc.error_code in {"APPLESCRIPT_FALLBACK_FAILED", "APPLESCRIPT_FALLBACK_TIMEOUT"}:
+                    continue
+                raise
+            items.extend(self._dedupe_event_items(payload.get("items", []), limit=remaining))
+        items.sort(key=lambda item: (str(item.get("start", "")), str(item.get("title", ""))))
+        return {"items": self._dedupe_event_items(items, limit=limit)}
+
+    def _dedupe_event_items(self, items: object, *, limit: int | None = None) -> list[dict[str, object]]:
+        dedupe_keys: set[tuple[str, str, str, str, str]] = set()
+        unique_items: list[dict[str, object]] = []
+        for item in items if isinstance(items, list) else []:
+            if not isinstance(item, dict):
+                continue
+            dedupe_key = (
+                str(item.get("event_id", "")),
+                str(item.get("calendar_id", "")),
+                str(item.get("start", "")),
+                str(item.get("end", "")),
+                str(item.get("title", "")),
+            )
+            if dedupe_key in dedupe_keys:
+                continue
+            dedupe_keys.add(dedupe_key)
+            unique_items.append(item)
+            if limit is not None and len(unique_items) >= limit:
+                break
+        return unique_items
+
+    def _run_jxa(self, script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        try:
+            completed = subprocess.run(
+                ["osascript", "-l", "JavaScript", "-e", script, *args],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise CalendarBridgeError(
+                "APPLESCRIPT_FALLBACK_TIMEOUT",
+                "Calendar AppleScript fallback timed out.",
+                "Retry the request with a narrower calendar scope.",
+            ) from exc
         output = completed.stdout.strip()
         if completed.returncode != 0:
             raise CalendarBridgeError(

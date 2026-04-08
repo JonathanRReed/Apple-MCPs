@@ -1,0 +1,1899 @@
+{
+  "domain": "system",
+  "server": "Apple System MCP",
+  "tool_count": 39,
+  "tools": [
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "health",
+        "system health"
+      ],
+      "argument_summary": [],
+      "description": "Report the active Apple System MCP configuration.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_health"
+        }
+      ],
+      "name": "system_health",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_health",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "health",
+        "report",
+        "active",
+        "mcp",
+        "configuration"
+      ],
+      "title": "System Health",
+      "usage_intent": "Report the active Apple System MCP configuration."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "permission guide",
+        "system permission guide"
+      ],
+      "argument_summary": [],
+      "description": "Explain what system access this MCP may need on macOS.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_permission_guide"
+        }
+      ],
+      "name": "system_permission_guide",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_permission_guide",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "permission",
+        "guide",
+        "explain",
+        "what",
+        "access",
+        "acces",
+        "this",
+        "thi",
+        "mcp",
+        "may",
+        "need",
+        "maco"
+      ],
+      "title": "System Permission Guide",
+      "usage_intent": "Explain what system access this MCP may need on macOS."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "status",
+        "system status"
+      ],
+      "argument_summary": [],
+      "description": "Return current battery, frontmost app, and running app count.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_status"
+        }
+      ],
+      "name": "system_status",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_status",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "status",
+        "statu",
+        "current",
+        "frontmost",
+        "running",
+        "count"
+      ],
+      "title": "System Status",
+      "usage_intent": "Return current battery, frontmost app, and running app count."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "get battery",
+        "system get battery"
+      ],
+      "argument_summary": [],
+      "description": "Get the current battery state from macOS.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_get_battery"
+        }
+      ],
+      "name": "system_get_battery",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_get_battery",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "current",
+        "state",
+        "maco"
+      ],
+      "title": "Get Battery",
+      "usage_intent": "Get the current battery state from macOS."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "get frontmost app",
+        "system get frontmost app"
+      ],
+      "argument_summary": [],
+      "description": "Get the name of the current frontmost application.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_get_frontmost_app"
+        }
+      ],
+      "name": "system_get_frontmost_app",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_get_frontmost_app",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "frontmost",
+        "name",
+        "current",
+        "application"
+      ],
+      "title": "Get Frontmost App",
+      "usage_intent": "Get the name of the current frontmost application."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "list running apps",
+        "system list running apps"
+      ],
+      "argument_summary": [],
+      "description": "List currently running foreground applications.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_list_running_apps"
+        }
+      ],
+      "name": "system_list_running_apps",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_list_running_apps",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "running",
+        "apps",
+        "currently",
+        "foreground",
+        "applications",
+        "application"
+      ],
+      "title": "List Running Apps",
+      "usage_intent": "List currently running foreground applications."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "get clipboard",
+        "system get clipboard"
+      ],
+      "argument_summary": [],
+      "description": "Read the current text clipboard contents.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_get_clipboard"
+        }
+      ],
+      "name": "system_get_clipboard",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_get_clipboard",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "current",
+        "text",
+        "contents",
+        "content"
+      ],
+      "title": "Get Clipboard",
+      "usage_intent": "Read the current text clipboard contents."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "list settings domains",
+        "system list settings domains"
+      ],
+      "argument_summary": [],
+      "description": "List the common macOS preference domains exposed by Apple System MCP.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_list_settings_domains"
+        }
+      ],
+      "name": "system_list_settings_domains",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_list_settings_domains",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "setting",
+        "domains",
+        "domain",
+        "common",
+        "maco",
+        "preference",
+        "exposed",
+        "mcp"
+      ],
+      "title": "List Settings Domains",
+      "usage_intent": "List the common macOS preference domains exposed by Apple System MCP."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "get appearance settings",
+        "system get appearance settings"
+      ],
+      "argument_summary": [],
+      "description": "Read current macOS appearance settings such as light or dark mode and accent color.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_get_appearance_settings"
+        }
+      ],
+      "name": "system_get_appearance_settings",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_get_appearance_settings",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "appearance",
+        "setting",
+        "current",
+        "maco",
+        "such",
+        "light",
+        "dark",
+        "mode",
+        "accent",
+        "color"
+      ],
+      "title": "Get Appearance Settings",
+      "usage_intent": "Read current macOS appearance settings such as light or dark mode and accent color."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "get accessibility settings",
+        "system get accessibility settings"
+      ],
+      "argument_summary": [],
+      "description": "Read common macOS accessibility settings such as reduce motion and increase contrast.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_get_accessibility_settings"
+        }
+      ],
+      "name": "system_get_accessibility_settings",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_get_accessibility_settings",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "accessibility",
+        "setting",
+        "common",
+        "maco",
+        "such",
+        "reduce",
+        "motion",
+        "increase",
+        "contrast"
+      ],
+      "title": "Get Accessibility Settings",
+      "usage_intent": "Read common macOS accessibility settings such as reduce motion and increase contrast."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "get dock settings",
+        "system get dock settings"
+      ],
+      "argument_summary": [],
+      "description": "Read common macOS Dock settings such as autohide, magnification, and orientation.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_get_dock_settings"
+        }
+      ],
+      "name": "system_get_dock_settings",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_get_dock_settings",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "dock",
+        "setting",
+        "common",
+        "maco",
+        "such",
+        "autohide",
+        "magnification",
+        "orientation"
+      ],
+      "title": "Get Dock Settings",
+      "usage_intent": "Read common macOS Dock settings such as autohide, magnification, and orientation."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "get finder settings",
+        "system get finder settings"
+      ],
+      "argument_summary": [],
+      "description": "Read common macOS Finder settings such as path bar, status bar, and preferred view style.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_get_finder_settings"
+        }
+      ],
+      "name": "system_get_finder_settings",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_get_finder_settings",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "finder",
+        "setting",
+        "common",
+        "maco",
+        "such",
+        "path",
+        "bar",
+        "status",
+        "statu",
+        "preferred",
+        "view",
+        "style"
+      ],
+      "title": "Get Finder Settings",
+      "usage_intent": "Read common macOS Finder settings such as path bar, status bar, and preferred view style."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "get settings snapshot",
+        "system get settings snapshot"
+      ],
+      "argument_summary": [],
+      "description": "Return a combined read-only snapshot of appearance, accessibility, Dock, and Finder settings.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_get_settings_snapshot"
+        }
+      ],
+      "name": "system_get_settings_snapshot",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_get_settings_snapshot",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "setting",
+        "snapshot",
+        "combined",
+        "only",
+        "appearance",
+        "accessibility",
+        "dock",
+        "finder"
+      ],
+      "title": "Get Settings Snapshot",
+      "usage_intent": "Return a combined read-only snapshot of appearance, accessibility, Dock, and Finder settings."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "get focus status",
+        "system get focus status"
+      ],
+      "argument_summary": [],
+      "description": "Return truthful Focus support metadata and the best available current Focus state.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_get_focus_status"
+        }
+      ],
+      "name": "system_get_focus_status",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_get_focus_status",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "focu",
+        "status",
+        "statu",
+        "truthful",
+        "support",
+        "metadata",
+        "best",
+        "available",
+        "current",
+        "state"
+      ],
+      "title": "Get Focus Status",
+      "usage_intent": "Return truthful Focus support metadata and the best available current Focus state."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "get context snapshot",
+        "system get context snapshot"
+      ],
+      "argument_summary": [],
+      "description": "Return a richer macOS context snapshot, including battery, frontmost app, and Focus metadata.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_get_context_snapshot"
+        }
+      ],
+      "name": "system_get_context_snapshot",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_get_context_snapshot",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "context",
+        "snapshot",
+        "richer",
+        "maco",
+        "including",
+        "frontmost",
+        "focu",
+        "metadata"
+      ],
+      "title": "Get System Context Snapshot",
+      "usage_intent": "Return a richer macOS context snapshot, including battery, frontmost app, and Focus metadata."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "read preference domain",
+        "system read preference domain"
+      ],
+      "argument_summary": [
+        "domain: string (required)",
+        "current_host: boolean (optional)"
+      ],
+      "description": "Read a macOS preference domain through defaults export for a production-safe, structured settings view.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "current_host": false,
+            "domain": "example_domain"
+          },
+          "tool": "system_read_preference_domain"
+        }
+      ],
+      "name": "system_read_preference_domain",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_read_preference_domain",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "preference",
+        "domain",
+        "maco",
+        "defaults",
+        "default",
+        "export",
+        "production",
+        "safe",
+        "structured",
+        "setting",
+        "view"
+      ],
+      "title": "Read Preference Domain",
+      "usage_intent": "Read a macOS preference domain through defaults export for a production-safe, structured settings view."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set appearance mode",
+        "system set appearance mode"
+      ],
+      "argument_summary": [
+        "mode: string (required)"
+      ],
+      "description": "Set macOS appearance mode to light or dark.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "mode": "example_mode"
+          },
+          "tool": "system_set_appearance_mode"
+        }
+      ],
+      "name": "system_set_appearance_mode",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_set_appearance_mode",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set",
+        "appearance",
+        "mode",
+        "maco",
+        "light",
+        "dark"
+      ],
+      "title": "Set Appearance Mode",
+      "usage_intent": "Set macOS appearance mode to light or dark."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set show all extensions",
+        "system set show all extensions"
+      ],
+      "argument_summary": [
+        "enabled: boolean (required)"
+      ],
+      "description": "Show or hide filename extensions in macOS.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "enabled": false
+          },
+          "tool": "system_set_show_all_extensions"
+        }
+      ],
+      "name": "system_set_show_all_extensions",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_set_show_all_extensions",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set",
+        "show",
+        "all",
+        "extensions",
+        "extension",
+        "hide",
+        "filename",
+        "maco"
+      ],
+      "title": "Set Show All Extensions",
+      "usage_intent": "Show or hide filename extensions in macOS."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set show hidden files",
+        "system set show hidden files"
+      ],
+      "argument_summary": [
+        "enabled: boolean (required)"
+      ],
+      "description": "Show or hide hidden files in Finder.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "enabled": false
+          },
+          "tool": "system_set_show_hidden_files"
+        }
+      ],
+      "name": "system_set_show_hidden_files",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_set_show_hidden_files",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set",
+        "show",
+        "hidden",
+        "files",
+        "fil",
+        "hide",
+        "finder"
+      ],
+      "title": "Set Show Hidden Files",
+      "usage_intent": "Show or hide hidden files in Finder."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set finder path bar",
+        "system set finder path bar"
+      ],
+      "argument_summary": [
+        "enabled: boolean (required)"
+      ],
+      "description": "Show or hide the Finder path bar.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "enabled": false
+          },
+          "tool": "system_set_finder_path_bar"
+        }
+      ],
+      "name": "system_set_finder_path_bar",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_set_finder_path_bar",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set",
+        "finder",
+        "path",
+        "bar",
+        "show",
+        "hide"
+      ],
+      "title": "Set Finder Path Bar",
+      "usage_intent": "Show or hide the Finder path bar."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set finder status bar",
+        "system set finder status bar"
+      ],
+      "argument_summary": [
+        "enabled: boolean (required)"
+      ],
+      "description": "Show or hide the Finder status bar.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "enabled": false
+          },
+          "tool": "system_set_finder_status_bar"
+        }
+      ],
+      "name": "system_set_finder_status_bar",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_set_finder_status_bar",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set",
+        "finder",
+        "status",
+        "statu",
+        "bar",
+        "show",
+        "hide"
+      ],
+      "title": "Set Finder Status Bar",
+      "usage_intent": "Show or hide the Finder status bar."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set dock autohide",
+        "system set dock autohide"
+      ],
+      "argument_summary": [
+        "enabled: boolean (required)"
+      ],
+      "description": "Enable or disable Dock autohide.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "enabled": false
+          },
+          "tool": "system_set_dock_autohide"
+        }
+      ],
+      "name": "system_set_dock_autohide",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_set_dock_autohide",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set",
+        "dock",
+        "autohide",
+        "enable",
+        "disable"
+      ],
+      "title": "Set Dock Autohide",
+      "usage_intent": "Enable or disable Dock autohide."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set dock show recents",
+        "system set dock show recents"
+      ],
+      "argument_summary": [
+        "enabled: boolean (required)"
+      ],
+      "description": "Enable or disable recent applications in the Dock.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "enabled": false
+          },
+          "tool": "system_set_dock_show_recents"
+        }
+      ],
+      "name": "system_set_dock_show_recents",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_set_dock_show_recents",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set",
+        "dock",
+        "show",
+        "recents",
+        "recent",
+        "enable",
+        "disable",
+        "applications",
+        "application"
+      ],
+      "title": "Set Dock Show Recents",
+      "usage_intent": "Enable or disable recent applications in the Dock."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set reduce motion",
+        "system set reduce motion"
+      ],
+      "argument_summary": [
+        "enabled: boolean (required)"
+      ],
+      "description": "Enable or disable macOS reduce motion accessibility mode.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "enabled": false
+          },
+          "tool": "system_set_reduce_motion"
+        }
+      ],
+      "name": "system_set_reduce_motion",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_set_reduce_motion",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set",
+        "reduce",
+        "motion",
+        "enable",
+        "disable",
+        "maco",
+        "accessibility",
+        "mode"
+      ],
+      "title": "Set Reduce Motion",
+      "usage_intent": "Enable or disable macOS reduce motion accessibility mode."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set increase contrast",
+        "system set increase contrast"
+      ],
+      "argument_summary": [
+        "enabled: boolean (required)"
+      ],
+      "description": "Enable or disable macOS increase contrast accessibility mode.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "enabled": false
+          },
+          "tool": "system_set_increase_contrast"
+        }
+      ],
+      "name": "system_set_increase_contrast",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_set_increase_contrast",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set",
+        "increase",
+        "contrast",
+        "enable",
+        "disable",
+        "maco",
+        "accessibility",
+        "mode"
+      ],
+      "title": "Set Increase Contrast",
+      "usage_intent": "Enable or disable macOS increase contrast accessibility mode."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set reduce transparency",
+        "system set reduce transparency"
+      ],
+      "argument_summary": [
+        "enabled: boolean (required)"
+      ],
+      "description": "Enable or disable macOS reduce transparency accessibility mode.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "enabled": false
+          },
+          "tool": "system_set_reduce_transparency"
+        }
+      ],
+      "name": "system_set_reduce_transparency",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_set_reduce_transparency",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set",
+        "reduce",
+        "transparency",
+        "enable",
+        "disable",
+        "maco",
+        "accessibility",
+        "mode"
+      ],
+      "title": "Set Reduce Transparency",
+      "usage_intent": "Enable or disable macOS reduce transparency accessibility mode."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "gui list menu bar items",
+        "system gui list menu bar items"
+      ],
+      "argument_summary": [
+        "application: string (optional)",
+        "bundle_id: string (optional)"
+      ],
+      "description": "List the top-level menu bar items for an application. This is a GUI fallback tool.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "application": "example_application",
+            "bundle_id": "example_bundle_id"
+          },
+          "tool": "system_gui_list_menu_bar_items"
+        }
+      ],
+      "name": "system_gui_list_menu_bar_items",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_gui_list_menu_bar_items",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "gui",
+        "menu",
+        "bar",
+        "items",
+        "item",
+        "top",
+        "level",
+        "application",
+        "this",
+        "thi",
+        "fallback",
+        "tool"
+      ],
+      "title": "List Menu Bar Items",
+      "usage_intent": "List the top-level menu bar items for an application. This is a GUI fallback tool."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "gui click menu path",
+        "system gui click menu path"
+      ],
+      "argument_summary": [
+        "menu_path: array (required)",
+        "application: string (optional)",
+        "bundle_id: string (optional)"
+      ],
+      "description": "Click a menu path in an application, for example ['File', 'New Window']. This is a GUI fallback tool.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "application": "example_application",
+            "menu_path": []
+          },
+          "tool": "system_gui_click_menu_path"
+        }
+      ],
+      "name": "system_gui_click_menu_path",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_gui_click_menu_path",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "gui",
+        "click",
+        "menu",
+        "path",
+        "application",
+        "example",
+        "file",
+        "new",
+        "window",
+        "this",
+        "thi",
+        "fallback",
+        "tool"
+      ],
+      "title": "Click Menu Path",
+      "usage_intent": "Click a menu path in an application, for example ['File', 'New Window']. This is a GUI fallback tool."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "gui press keys",
+        "system gui press keys"
+      ],
+      "argument_summary": [
+        "key: string (required)",
+        "modifiers: array (optional)",
+        "application: string (optional)",
+        "bundle_id: string (optional)"
+      ],
+      "description": "Press a key or key chord in the target application. This is a GUI fallback tool.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "key": "example_key",
+            "modifiers": []
+          },
+          "tool": "system_gui_press_keys"
+        }
+      ],
+      "name": "system_gui_press_keys",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_gui_press_keys",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "gui",
+        "press",
+        "pres",
+        "keys",
+        "key",
+        "chord",
+        "target",
+        "application",
+        "this",
+        "thi",
+        "fallback",
+        "tool"
+      ],
+      "title": "Press Keys",
+      "usage_intent": "Press a key or key chord in the target application. This is a GUI fallback tool."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "gui type text",
+        "system gui type text"
+      ],
+      "argument_summary": [
+        "text: string (required)",
+        "application: string (optional)",
+        "bundle_id: string (optional)"
+      ],
+      "description": "Type text into the frontmost focused control. This is a GUI fallback tool.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "application": "example_application",
+            "text": "example_text"
+          },
+          "tool": "system_gui_type_text"
+        }
+      ],
+      "name": "system_gui_type_text",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_gui_type_text",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "gui",
+        "type",
+        "text",
+        "frontmost",
+        "focused",
+        "control",
+        "this",
+        "thi",
+        "fallback",
+        "tool"
+      ],
+      "title": "Type Text",
+      "usage_intent": "Type text into the frontmost focused control. This is a GUI fallback tool."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "gui click button",
+        "system gui click button"
+      ],
+      "argument_summary": [
+        "label: string (optional)",
+        "description: string (optional)",
+        "index: integer (optional)",
+        "application: string (optional)",
+        "bundle_id: string (optional)"
+      ],
+      "description": "Click a named button in the frontmost window. This is a GUI fallback tool.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "description": "example_description",
+            "label": "example_label"
+          },
+          "tool": "system_gui_click_button"
+        }
+      ],
+      "name": "system_gui_click_button",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_gui_click_button",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "gui",
+        "click",
+        "button",
+        "named",
+        "frontmost",
+        "window",
+        "this",
+        "thi",
+        "fallback",
+        "tool"
+      ],
+      "title": "Click Button",
+      "usage_intent": "Click a named button in the frontmost window. This is a GUI fallback tool."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "gui choose popup value",
+        "system gui choose popup value"
+      ],
+      "argument_summary": [
+        "label: string (required)",
+        "value: string (required)",
+        "description: string (optional)",
+        "application: string (optional)",
+        "bundle_id: string (optional)"
+      ],
+      "description": "Choose a value from a named pop-up button in the frontmost window. This is a GUI fallback tool.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "label": "example_label",
+            "value": "example_value"
+          },
+          "tool": "system_gui_choose_popup_value"
+        }
+      ],
+      "name": "system_gui_choose_popup_value",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_gui_choose_popup_value",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "gui",
+        "choose",
+        "popup",
+        "value",
+        "pop",
+        "named",
+        "button",
+        "frontmost",
+        "window",
+        "this",
+        "thi",
+        "fallback",
+        "tool"
+      ],
+      "title": "Choose Pop-Up Value",
+      "usage_intent": "Choose a value from a named pop-up button in the frontmost window. This is a GUI fallback tool."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set clipboard",
+        "system set clipboard"
+      ],
+      "argument_summary": [
+        "text: string (required)"
+      ],
+      "description": "Write text into the macOS clipboard.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "text": "example_text"
+          },
+          "tool": "system_set_clipboard"
+        }
+      ],
+      "name": "system_set_clipboard",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_set_clipboard",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "set",
+        "write",
+        "text",
+        "maco"
+      ],
+      "title": "Set Clipboard",
+      "usage_intent": "Write text into the macOS clipboard."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "show notification",
+        "system show notification"
+      ],
+      "argument_summary": [
+        "title: string (required)",
+        "body: string (required)",
+        "subtitle: string (optional)"
+      ],
+      "description": "Display a local macOS notification.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "body": "example_body",
+            "title": "example_title"
+          },
+          "tool": "system_show_notification"
+        }
+      ],
+      "name": "system_show_notification",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_show_notification",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "show",
+        "notification",
+        "display",
+        "maco"
+      ],
+      "title": "Show Notification",
+      "usage_intent": "Display a local macOS notification."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "open application",
+        "system open application"
+      ],
+      "argument_summary": [
+        "application: string (optional)",
+        "bundle_id: string (optional)"
+      ],
+      "description": "Open an application by name using macOS.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "application": "example_application",
+            "bundle_id": "example_bundle_id"
+          },
+          "tool": "system_open_application"
+        }
+      ],
+      "name": "system_open_application",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "system_open_application",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "open",
+        "application",
+        "name",
+        "using",
+        "maco"
+      ],
+      "title": "Open Application",
+      "usage_intent": "Open an application by name using macOS."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "list prompts",
+        "system list prompts"
+      ],
+      "argument_summary": [],
+      "description": "Fallback prompt discovery tool for tool-only MCP clients.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "system_list_prompts"
+        }
+      ],
+      "name": "system_list_prompts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_list_prompts",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "prompts",
+        "prompt",
+        "fallback",
+        "discovery",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "System List Prompts",
+      "usage_intent": "Fallback prompt discovery tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "get prompt prompt",
+        "system get prompt prompt"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "arguments_json: string (optional)"
+      ],
+      "description": "Fallback prompt rendering tool for tool-only MCP clients.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "arguments_json": "example_arguments_json",
+            "name": "example_name"
+          },
+          "tool": "system_get_prompt_prompt"
+        }
+      ],
+      "name": "system_get_prompt_prompt",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "system_get_prompt_prompt",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "prompt",
+        "fallback",
+        "rendering",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "System Get Prompt",
+      "usage_intent": "Fallback prompt rendering tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "search tools"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "limit: integer (optional)",
+        "domain_tags: array (optional)",
+        "mode: string (optional)"
+      ],
+      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "query": "find system"
+          },
+          "tool": "search_tools"
+        }
+      ],
+      "name": "search_tools",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "search_tools",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "search",
+        "tools",
+        "tool",
+        "this",
+        "thi",
+        "server",
+        "catalog",
+        "without",
+        "loading",
+        "every",
+        "full",
+        "schema",
+        "default"
+      ],
+      "title": "Search Tools",
+      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+    },
+    {
+      "aliases": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "get tool info"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "include_schema: boolean (optional)",
+        "include_examples: boolean (optional)"
+      ],
+      "description": "Load the full schema, examples, and metadata for one tool from this server.",
+      "domain": "system",
+      "example_calls": [
+        {
+          "arguments": {
+            "include_schema": false,
+            "name": "example_name"
+          },
+          "tool": "get_tool_info"
+        }
+      ],
+      "name": "get_tool_info",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "get_tool_info",
+      "tags": [
+        "system",
+        "mac",
+        "desktop",
+        "clipboard",
+        "battery",
+        "focus",
+        "settings",
+        "tool",
+        "info",
+        "load",
+        "full",
+        "schema",
+        "examples",
+        "exampl",
+        "metadata",
+        "one",
+        "this",
+        "thi",
+        "server"
+      ],
+      "title": "Get Tool Info",
+      "usage_intent": "Load the full schema, examples, and metadata for one tool from this server."
+    }
+  ]
+}

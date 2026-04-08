@@ -9,6 +9,7 @@ description = "Local Apple Files MCP server for macOS"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+  "apple-mcp-common>=0.1.0,<0.2",
   "mcp>=1.26.0,<2",
   "pydantic>=2.12.0",
 ]

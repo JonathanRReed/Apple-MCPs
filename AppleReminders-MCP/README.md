@@ -15,6 +15,7 @@ Provides access to reminder lists and tasks through EventKit. Keep Reminders as 
 - Discover reminder lists
 - List, create, update, and delete reminders
 - Complete and uncomplete tasks
+- Search-first discovery through `search_tools` and `get_tool_info`
 - Today and list resources
 - Planning and inbox-triage prompts
 - Health and permission checks: `reminders_health`, `reminders_permission_guide`, `reminders_recheck_permissions`
@@ -29,7 +30,7 @@ cd /path/to/Apple-MCPs/AppleReminders-MCP
 ./start.sh
 ```
 
-On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the server over `stdio`.
+`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the server over `stdio`.
 
 </details>
 
@@ -86,6 +87,7 @@ claude mcp add --transport stdio --scope project \
 
 ## Prompting Notes
 
+- `tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` for the deferred Reminders tool you need.
 - Reminders are organized into lists. Identify available lists on first use and set a default.
 - Use Reminders for due items, tasks, and follow-ups.
 - `due_date` requires a timezone offset: `yyyy-MM-ddTHH:mm:ss-HH:00`

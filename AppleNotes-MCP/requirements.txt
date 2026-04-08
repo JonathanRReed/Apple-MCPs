@@ -1,3 +1,4 @@
+-e ../AppleMCPCommon
 annotated-types==0.7.0
 anyio==4.13.0
 attrs==26.1.0

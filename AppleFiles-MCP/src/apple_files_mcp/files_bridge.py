@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import heapq
 import os
 from pathlib import Path
 import plistlib
@@ -180,20 +181,85 @@ class FilesBridge:
                 raise FilesBridgeError("READ_FAILED", f"Unable to decode file: {file_path}", "Choose a UTF-8 text file.") from exc
 
     def recent_files(self, limit: int = 25) -> list[FileEntry]:
-        entries: list[FileEntry] = []
+        if limit <= 0:
+            return []
+        newest: list[tuple[float, str]] = []
         for root in self.allowed_roots:
-            for current_root, dirnames, filenames in os.walk(root):
-                dirnames[:] = [name for name in dirnames if not name.startswith(".")]
-                for name in filenames:
-                    if name.startswith("."):
-                        continue
-                    path = Path(current_root) / name
-                    try:
-                        entries.append(self._entry(path))
-                    except OSError:
-                        continue
-        entries.sort(key=lambda item: item.modified_at or "", reverse=True)
+            try:
+                candidates = self._recent_files_for_root(root)
+            except FilesBridgeError as exc:
+                if exc.error_code in {"COMMAND_TIMEOUT", "COMMAND_FAILED"}:
+                    continue
+                raise
+            for modified_ts, path_text in candidates:
+                if len(newest) < limit:
+                    heapq.heappush(newest, (modified_ts, path_text))
+                else:
+                    heapq.heappushpop(newest, (modified_ts, path_text))
+        entries: list[FileEntry] = []
+        seen_paths: set[str] = set()
+        for _, path_text in sorted(newest, reverse=True):
+            if path_text in seen_paths:
+                continue
+            seen_paths.add(path_text)
+            try:
+                entries.append(self._entry(Path(path_text)))
+            except OSError:
+                continue
         return entries[:limit]
+
+    def _recent_files_for_root(self, root: Path) -> list[tuple[float, str]]:
+        if not root.exists():
+            return []
+        try:
+            completed = subprocess.run(
+                [
+                    "find",
+                    str(root),
+                    "-type",
+                    "d",
+                    "-name",
+                    ".*",
+                    "-prune",
+                    "-o",
+                    "-type",
+                    "f",
+                    "!",
+                    "-name",
+                    ".*",
+                    "-exec",
+                    "stat",
+                    "-f",
+                    "%m\t%N",
+                    "{}",
+                    "+",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=8,
+            )
+        except FileNotFoundError as exc:
+            raise FilesBridgeError("COMMAND_NOT_FOUND", "Missing find/stat command.", "Run this server on macOS.") from exc
+        except subprocess.CalledProcessError as exc:
+            stderr = exc.stderr.strip() or exc.stdout.strip()
+            raise FilesBridgeError("COMMAND_FAILED", stderr or f"Recent file scan failed for {root}.", "Retry the request.") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise FilesBridgeError("COMMAND_TIMEOUT", f"Recent file scan timed out for {root}.", "Retry the request with fewer allowed roots.") from exc
+        candidates: list[tuple[float, str]] = []
+        for line in completed.stdout.splitlines():
+            if "\t" not in line:
+                continue
+            modified_text, path_text = line.split("\t", 1)
+            cleaned_path = path_text.strip().strip('"')
+            if not cleaned_path:
+                continue
+            try:
+                modified_ts = float(modified_text)
+            except ValueError:
+                continue
+            candidates.append((modified_ts, cleaned_path))
+        return candidates
 
     def open_path(self, path: str) -> str:
         target = self._ensure_allowed(path)

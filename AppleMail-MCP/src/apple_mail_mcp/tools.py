@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 
+from apple_mcp_common.discovery import install_search_first_discovery
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.types import Annotations, ToolAnnotations
 
@@ -998,6 +999,16 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
     @mcp._mcp_server.unsubscribe_resource()
     async def _mail_unsubscribe_resource(uri) -> None:
         del uri
+
+    setattr(
+        mcp,
+        "_tool_discovery",
+        install_search_first_discovery(
+            mcp,
+            server_name="Apple Mail MCP",
+            domain="mail",
+        ),
+    )
 
     return mcp
 

@@ -15,6 +15,7 @@ Provides access to contacts for lookup, search, and recipient resolution. Use be
 - List and search contacts
 - Full contact detail lookup
 - Message recipient resolution
+- Search-first discovery through `search_tools` and `get_tool_info`
 - Create, update, and delete contacts
 - Phone number and email method editing with labels
 - Directory resources and recipient-check prompts
@@ -30,7 +31,7 @@ cd /path/to/Apple-MCPs/AppleContacts-MCP
 ./start.sh
 ```
 
-On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the server over `stdio`.
+`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the server over `stdio`.
 
 </details>
 
@@ -88,6 +89,7 @@ claude mcp add --transport stdio --scope project \
 
 ## Prompting Notes
 
+- `tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` for the deferred Contacts tool you need.
 - Run Contacts before any iMessage or Mail action when the user gives a person name.
 - Resolve by name, phone number, or email before acting.
 - If multiple contacts match, confirm the intended person before sending.

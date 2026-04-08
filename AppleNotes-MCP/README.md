@@ -15,6 +15,7 @@ Provides access to notes and folders for creation, organization, and management.
 - List accounts and folders
 - List, search, and manage notes (CRUD)
 - Create, rename, and delete folders
+- Search-first discovery through `search_tools` and `get_tool_info`
 - Recent-note resources and organization prompts
 - Health and permission checks: `notes_health`, `notes_permission_guide`, `notes_recheck_permissions`
 
@@ -28,7 +29,7 @@ cd /path/to/Apple-MCPs/AppleNotes-MCP
 ./start.sh
 ```
 
-On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the server over `stdio`.
+`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the server over `stdio`.
 
 </details>
 
@@ -85,6 +86,7 @@ claude mcp add --transport stdio --scope project \
 
 ## Prompting Notes
 
+- `tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` for the deferred Notes tool you need.
 - Multiple accounts may each contain a Notes folder. Identify available accounts and folders on first use and set a default.
 - Use Notes for reference material and saved context.
 - Time-sensitive items should go to Reminders or Calendar instead.

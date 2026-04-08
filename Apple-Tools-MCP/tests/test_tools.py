@@ -97,6 +97,30 @@ def test_subscription_handlers_registered() -> None:
     assert types.UnsubscribeRequest in tools.mcp._mcp_server.request_handlers
 
 
+def test_search_first_mcp_surface_exposes_discovery_only() -> None:
+    async def load() -> tuple[set[str], dict[str, object]]:
+        list_result = await tools.mcp._mcp_server.request_handlers[types.ListToolsRequest](None)
+        info_result = await tools.mcp._mcp_server.request_handlers[types.CallToolRequest](
+            types.CallToolRequest(
+                params=types.CallToolRequestParams(
+                    name="get_tool_info",
+                    arguments={"name": "mail_list_mailboxes"},
+                )
+            )
+        )
+        names = {tool.name for tool in list_result.root.tools}
+        return names, info_result.root.structuredContent
+
+    names, info = asyncio.run(load())
+
+    assert "search_tools" in names
+    assert "get_tool_info" in names
+    assert "apple_health" in names
+    assert "mail_list_mailboxes" not in names
+    assert info["ok"] is True
+    assert info["name"] == "mail_list_mailboxes"
+
+
 def test_conformance_mode_registers_expected_surface() -> None:
     server = FastMCP("Conformance Test Server")
 

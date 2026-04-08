@@ -10,6 +10,7 @@ Local MCP server for Apple Maps search and routing on macOS.
 - open directions in Apple Maps
 - resource: `maps://status`
 - prompt: `maps_plan_route`
+- search-first discovery through `search_tools` and `get_tool_info`
 
 ## Install On This Mac
 
@@ -21,7 +22,7 @@ cd /path/to/Apple-MCPs/AppleMaps-MCP
 ./start.sh
 ```
 
-On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the server over `stdio`.
+`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the server over `stdio`.
 
 </details>
 
@@ -41,6 +42,7 @@ On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and start
 
 ## Prompting Notes
 
+- `tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` for the deferred Maps tool you need.
 - Use this server when travel, routing, or place lookup affects a Calendar, Reminders, Messages, or Mail action.
 - Confirm origin, destination, and transport mode before writing a time-sensitive plan.
 - If helper compilation fails, install Xcode command line tools and retry.

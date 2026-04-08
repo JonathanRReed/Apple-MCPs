@@ -15,6 +15,7 @@ Provides access to message history, conversation search, and sending via Message
 - List conversations with pagination
 - Search messages and view attachment metadata
 - Send and reply to messages
+- Search-first discovery through `search_tools` and `get_tool_info`
 - Unread and recent conversation resources
 - Health checks that separate history access from automation failures
 - Permission recovery: `messages_permission_guide`, `messages_recheck_permissions`
@@ -29,7 +30,7 @@ cd /path/to/Apple-MCPs/AppleMessages-MCP
 ./start.sh
 ```
 
-On first run, `start.sh` creates `.venv`, installs `requirements.txt`, and starts the server over `stdio`.
+`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the server over `stdio`.
 
 </details>
 
@@ -82,6 +83,7 @@ claude mcp add --transport stdio --scope project \
 
 ## Prompting Notes
 
+- `tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` for the deferred Messages tool you need.
 - Resolve the recipient via Contacts before any send or reply when the user names a person.
 - Confirm the intended person if Contacts returns multiple matches.
 - Omit `service_name` on iMessage sends. Passing it can trigger AppleScript error `-1728`.

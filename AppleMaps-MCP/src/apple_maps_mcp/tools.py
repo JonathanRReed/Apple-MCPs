@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 
+from apple_mcp_common.discovery import install_search_first_discovery
 from mcp.server.fastmcp import FastMCP
 from mcp.types import Annotations, ToolAnnotations
 
@@ -213,6 +214,13 @@ async def _maps_subscribe_resource(uri) -> None:
 @mcp._mcp_server.unsubscribe_resource()
 async def _maps_unsubscribe_resource(uri) -> None:
     del uri
+
+
+TOOL_DISCOVERY = install_search_first_discovery(
+    mcp,
+    server_name="Apple Maps MCP",
+    domain="maps",
+)
 
 
 def main() -> None:

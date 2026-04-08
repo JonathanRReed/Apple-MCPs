@@ -1,0 +1,611 @@
+{
+  "domain": "calendar",
+  "server": "Apple Calendar",
+  "tool_count": 13,
+  "tools": [
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "health",
+        "calendar health"
+      ],
+      "argument_summary": [],
+      "description": "Report the active Apple Calendar server configuration.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "calendar_health"
+        }
+      ],
+      "name": "calendar_health",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "calendar_health",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "health",
+        "report",
+        "active",
+        "server",
+        "configuration"
+      ],
+      "title": "Calendar Health",
+      "usage_intent": "Report the active Apple Calendar server configuration."
+    },
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "permission guide",
+        "calendar permission guide"
+      ],
+      "argument_summary": [],
+      "description": "Explain how to grant Apple Calendar permission on macOS.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "calendar_permission_guide"
+        }
+      ],
+      "name": "calendar_permission_guide",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "calendar_permission_guide",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "permission",
+        "guide",
+        "explain",
+        "how",
+        "grant",
+        "maco"
+      ],
+      "title": "Calendar Permission Guide",
+      "usage_intent": "Explain how to grant Apple Calendar permission on macOS."
+    },
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "recheck permissions",
+        "calendar recheck permissions"
+      ],
+      "argument_summary": [],
+      "description": "Recheck Calendar access after the user changes macOS permissions, and notify the client that Calendar resources changed.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "calendar_recheck_permissions"
+        }
+      ],
+      "name": "calendar_recheck_permissions",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "calendar_recheck_permissions",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "recheck",
+        "permissions",
+        "permission",
+        "access",
+        "acces",
+        "after",
+        "user",
+        "changes",
+        "chang",
+        "maco",
+        "notify",
+        "client",
+        "that",
+        "resources"
+      ],
+      "title": "Calendar Recheck Permissions",
+      "usage_intent": "Recheck Calendar access after the user changes macOS permissions, and notify the client that Calendar resources changed."
+    },
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "list calendars",
+        "calendar list calendars"
+      ],
+      "argument_summary": [],
+      "description": "List available Apple Calendar calendars.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "calendar_list_calendars"
+        }
+      ],
+      "name": "calendar_list_calendars",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "calendar_list_calendars",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "calendars",
+        "available"
+      ],
+      "title": "List Calendars",
+      "usage_intent": "List available Apple Calendar calendars."
+    },
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "list events",
+        "calendar list events"
+      ],
+      "argument_summary": [
+        "start_iso: string (required)",
+        "end_iso: string (required)",
+        "calendar_id: string (optional)",
+        "limit: integer (optional)"
+      ],
+      "description": "List calendar events in a time window, optionally filtered to one calendar.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {
+            "end_iso": "2026-04-07T18:00:00",
+            "start_iso": "2026-04-07T18:00:00"
+          },
+          "tool": "calendar_list_events"
+        }
+      ],
+      "name": "calendar_list_events",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "calendar_list_events",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "time",
+        "window",
+        "optionally",
+        "filtered",
+        "one"
+      ],
+      "title": "List Events",
+      "usage_intent": "List calendar events in a time window, optionally filtered to one calendar."
+    },
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "get event",
+        "calendar get event"
+      ],
+      "argument_summary": [
+        "event_id: string (required)"
+      ],
+      "description": "Fetch full details for a calendar event by event_id.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {
+            "event_id": "example_event_id"
+          },
+          "tool": "calendar_get_event"
+        }
+      ],
+      "name": "calendar_get_event",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "calendar_get_event",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "fetch",
+        "full",
+        "details",
+        "detail"
+      ],
+      "title": "Get Event",
+      "usage_intent": "Fetch full details for a calendar event by event_id."
+    },
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "create event",
+        "calendar create event"
+      ],
+      "argument_summary": [
+        "title: string (required)",
+        "start_iso: string (required)",
+        "end_iso: string (required)",
+        "calendar_id: string (required)",
+        "notes: string (optional)",
+        "location: string (optional)",
+        "all_day: boolean (optional)",
+        "recurrence: object (optional)"
+      ],
+      "description": "Create a new event in a specific Apple Calendar calendar.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {
+            "calendar_id": "example_calendar_id",
+            "end_iso": "2026-04-07T18:00:00",
+            "start_iso": "2026-04-07T18:00:00",
+            "title": "example_title"
+          },
+          "tool": "calendar_create_event"
+        }
+      ],
+      "name": "calendar_create_event",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "calendar_create_event",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "create",
+        "new",
+        "specific"
+      ],
+      "title": "Create Event",
+      "usage_intent": "Create a new event in a specific Apple Calendar calendar."
+    },
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "update event",
+        "calendar update event"
+      ],
+      "argument_summary": [
+        "event_id: string (required)",
+        "title: string (optional)",
+        "start_iso: string (optional)",
+        "end_iso: string (optional)",
+        "calendar_id: string (optional)",
+        "notes: string (optional)",
+        "location: string (optional)",
+        "all_day: boolean (optional)"
+      ],
+      "description": "Update one or more fields on an existing calendar event.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {
+            "event_id": "example_event_id",
+            "title": "example_title"
+          },
+          "tool": "calendar_update_event"
+        }
+      ],
+      "name": "calendar_update_event",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "calendar_update_event",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "update",
+        "one",
+        "more",
+        "fields",
+        "field",
+        "existing"
+      ],
+      "title": "Update Event",
+      "usage_intent": "Update one or more fields on an existing calendar event."
+    },
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "delete event",
+        "calendar delete event"
+      ],
+      "argument_summary": [
+        "event_id: string (required)"
+      ],
+      "description": "Delete a calendar event by event_id.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {
+            "event_id": "example_event_id"
+          },
+          "tool": "calendar_delete_event"
+        }
+      ],
+      "name": "calendar_delete_event",
+      "read_only": false,
+      "risk_level": "high",
+      "schema_ref": "calendar_delete_event",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "delete"
+      ],
+      "title": "Delete Event",
+      "usage_intent": "Delete a calendar event by event_id."
+    },
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "list prompts",
+        "calendar list prompts"
+      ],
+      "argument_summary": [],
+      "description": "Fallback prompt discovery tool for tool-only MCP clients.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "calendar_list_prompts"
+        }
+      ],
+      "name": "calendar_list_prompts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "calendar_list_prompts",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "prompts",
+        "prompt",
+        "fallback",
+        "discovery",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Calendar List Prompts",
+      "usage_intent": "Fallback prompt discovery tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "get prompt",
+        "calendar get prompt"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "arguments_json: string (optional)"
+      ],
+      "description": "Fallback prompt rendering tool for tool-only MCP clients.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {
+            "arguments_json": "example_arguments_json",
+            "name": "example_name"
+          },
+          "tool": "calendar_get_prompt"
+        }
+      ],
+      "name": "calendar_get_prompt",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "calendar_get_prompt",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "prompt",
+        "fallback",
+        "rendering",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Calendar Get Prompt",
+      "usage_intent": "Fallback prompt rendering tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "search tools"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "limit: integer (optional)",
+        "domain_tags: array (optional)",
+        "mode: string (optional)"
+      ],
+      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "query": "find calendar"
+          },
+          "tool": "search_tools"
+        }
+      ],
+      "name": "search_tools",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "search_tools",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "search",
+        "tools",
+        "tool",
+        "this",
+        "thi",
+        "server",
+        "catalog",
+        "without",
+        "loading",
+        "every",
+        "full",
+        "schema",
+        "default"
+      ],
+      "title": "Search Tools",
+      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+    },
+    {
+      "aliases": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "get tool info"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "include_schema: boolean (optional)",
+        "include_examples: boolean (optional)"
+      ],
+      "description": "Load the full schema, examples, and metadata for one tool from this server.",
+      "domain": "calendar",
+      "example_calls": [
+        {
+          "arguments": {
+            "include_schema": false,
+            "name": "example_name"
+          },
+          "tool": "get_tool_info"
+        }
+      ],
+      "name": "get_tool_info",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "get_tool_info",
+      "tags": [
+        "calendar",
+        "event",
+        "events",
+        "meeting",
+        "meetings",
+        "schedule",
+        "tool",
+        "info",
+        "load",
+        "full",
+        "schema",
+        "examples",
+        "exampl",
+        "metadata",
+        "one",
+        "this",
+        "thi",
+        "server"
+      ],
+      "title": "Get Tool Info",
+      "usage_intent": "Load the full schema, examples, and metadata for one tool from this server."
+    }
+  ]
+}

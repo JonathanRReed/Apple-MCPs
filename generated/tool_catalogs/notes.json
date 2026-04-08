@@ -1,0 +1,857 @@
+{
+  "domain": "notes",
+  "server": "Apple Notes MCP",
+  "tool_count": 21,
+  "tools": [
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "health",
+        "notes health"
+      ],
+      "argument_summary": [],
+      "description": "Report the active Apple Notes MCP configuration.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "notes_health"
+        }
+      ],
+      "name": "notes_health",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "notes_health",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "health",
+        "report",
+        "active",
+        "mcp",
+        "configuration"
+      ],
+      "title": "Notes Health",
+      "usage_intent": "Report the active Apple Notes MCP configuration."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "permission guide",
+        "notes permission guide"
+      ],
+      "argument_summary": [],
+      "description": "Explain how to grant Apple Notes automation permission on macOS.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "notes_permission_guide"
+        }
+      ],
+      "name": "notes_permission_guide",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "notes_permission_guide",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "permission",
+        "guide",
+        "explain",
+        "how",
+        "grant",
+        "automation",
+        "maco"
+      ],
+      "title": "Notes Permission Guide",
+      "usage_intent": "Explain how to grant Apple Notes automation permission on macOS."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "recheck permissions",
+        "notes recheck permissions"
+      ],
+      "argument_summary": [],
+      "description": "Recheck Notes access after the user changes macOS permissions, and notify the client that Notes resources changed.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "notes_recheck_permissions"
+        }
+      ],
+      "name": "notes_recheck_permissions",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "notes_recheck_permissions",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "recheck",
+        "permissions",
+        "permission",
+        "access",
+        "acces",
+        "after",
+        "user",
+        "changes",
+        "chang",
+        "maco",
+        "notify",
+        "client",
+        "that",
+        "resources",
+        "resourc",
+        "changed"
+      ],
+      "title": "Notes Recheck Permissions",
+      "usage_intent": "Recheck Notes access after the user changes macOS permissions, and notify the client that Notes resources changed."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "list accounts",
+        "notes list accounts"
+      ],
+      "argument_summary": [],
+      "description": "List Apple Notes accounts.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "notes_list_accounts"
+        }
+      ],
+      "name": "notes_list_accounts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "notes_list_accounts",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "accounts",
+        "account"
+      ],
+      "title": "List Accounts",
+      "usage_intent": "List Apple Notes accounts."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "list folders",
+        "notes list folders"
+      ],
+      "argument_summary": [
+        "account_name: string (optional)",
+        "limit: integer (optional)",
+        "offset: integer (optional)"
+      ],
+      "description": "List Apple Notes folders.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "account_name": "example_account_name",
+            "limit": 1
+          },
+          "tool": "notes_list_folders"
+        }
+      ],
+      "name": "notes_list_folders",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "notes_list_folders",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "folders",
+        "folder"
+      ],
+      "title": "List Folders",
+      "usage_intent": "List Apple Notes folders."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "list notes",
+        "notes list notes"
+      ],
+      "argument_summary": [
+        "account_name: string (optional)",
+        "folder_id: string (optional)",
+        "limit: integer (optional)",
+        "offset: integer (optional)"
+      ],
+      "description": "List notes, optionally scoped to a folder or account.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "account_name": "example_account_name",
+            "folder_id": "example_folder_id"
+          },
+          "tool": "notes_list_notes"
+        }
+      ],
+      "name": "notes_list_notes",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "notes_list_notes",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "optionally",
+        "scoped",
+        "folder",
+        "account"
+      ],
+      "title": "List Notes",
+      "usage_intent": "List notes, optionally scoped to a folder or account."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "get note",
+        "notes get note"
+      ],
+      "argument_summary": [
+        "note_id: string (required)"
+      ],
+      "description": "Fetch full details for an Apple Notes note by note_id.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "note_id": "example_note_id"
+          },
+          "tool": "notes_get_note"
+        }
+      ],
+      "name": "notes_get_note",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "notes_get_note",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "fetch",
+        "full",
+        "details",
+        "detail"
+      ],
+      "title": "Get Note",
+      "usage_intent": "Fetch full details for an Apple Notes note by note_id."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "search notes",
+        "notes search notes"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "account_name: string (optional)",
+        "folder_id: string (optional)",
+        "limit: integer (optional)",
+        "offset: integer (optional)"
+      ],
+      "description": "Search notes by text, folder, or account.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "account_name": "example_account_name",
+            "query": "find notes"
+          },
+          "tool": "notes_search_notes"
+        }
+      ],
+      "name": "notes_search_notes",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "notes_search_notes",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "search",
+        "text",
+        "folder",
+        "account"
+      ],
+      "title": "Search Notes",
+      "usage_intent": "Search notes by text, folder, or account."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "create note",
+        "notes create note"
+      ],
+      "argument_summary": [
+        "title: string (required)",
+        "folder_id: string (required)",
+        "body_html: string (optional)",
+        "tags: array (optional)"
+      ],
+      "description": "Create a new note in a folder.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "folder_id": "example_folder_id",
+            "title": "example_title"
+          },
+          "tool": "notes_create_note"
+        }
+      ],
+      "name": "notes_create_note",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "notes_create_note",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "create",
+        "new",
+        "folder"
+      ],
+      "title": "Create Note",
+      "usage_intent": "Create a new note in a folder."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "update note",
+        "notes update note"
+      ],
+      "argument_summary": [
+        "note_id: string (required)",
+        "title: string (optional)",
+        "body_html: string (optional)",
+        "folder_id: string (optional)",
+        "tags: array (optional)"
+      ],
+      "description": "Update an existing note.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "note_id": "example_note_id",
+            "title": "example_title"
+          },
+          "tool": "notes_update_note"
+        }
+      ],
+      "name": "notes_update_note",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "notes_update_note",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "update",
+        "existing"
+      ],
+      "title": "Update Note",
+      "usage_intent": "Update an existing note."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "append to note",
+        "notes append to note"
+      ],
+      "argument_summary": [
+        "note_id: string (required)",
+        "body_text: string (optional)",
+        "body_html: string (optional)"
+      ],
+      "description": "Append text to an existing note without replacing its current content. Provide body_text for plain text or body_html for rich content.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "body_text": "example_body_text",
+            "note_id": "example_note_id"
+          },
+          "tool": "notes_append_to_note"
+        }
+      ],
+      "name": "notes_append_to_note",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "notes_append_to_note",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "append",
+        "text",
+        "existing",
+        "without",
+        "replacing",
+        "its",
+        "current",
+        "content",
+        "provide",
+        "body",
+        "plain",
+        "html",
+        "rich"
+      ],
+      "title": "Append to Note",
+      "usage_intent": "Append text to an existing note without replacing its current content. Provide body_text for plain text or body_html for rich content."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "delete note",
+        "notes delete note"
+      ],
+      "argument_summary": [
+        "note_id: string (required)"
+      ],
+      "description": "Delete a note by note_id.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "note_id": "example_note_id"
+          },
+          "tool": "notes_delete_note"
+        }
+      ],
+      "name": "notes_delete_note",
+      "read_only": false,
+      "risk_level": "high",
+      "schema_ref": "notes_delete_note",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "delete"
+      ],
+      "title": "Delete Note",
+      "usage_intent": "Delete a note by note_id."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "move note",
+        "notes move note"
+      ],
+      "argument_summary": [
+        "note_id: string (required)",
+        "folder_id: string (required)"
+      ],
+      "description": "Move a note to a different folder.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "folder_id": "example_folder_id",
+            "note_id": "example_note_id"
+          },
+          "tool": "notes_move_note"
+        }
+      ],
+      "name": "notes_move_note",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "notes_move_note",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "move",
+        "different",
+        "folder"
+      ],
+      "title": "Move Note",
+      "usage_intent": "Move a note to a different folder."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "create folder",
+        "notes create folder"
+      ],
+      "argument_summary": [
+        "folder_name: string (required)",
+        "account_name: string (required)",
+        "parent_folder_id: string (optional)"
+      ],
+      "description": "Create a new folder in an Apple Notes account or nested folder.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "account_name": "example_account_name",
+            "folder_name": "example_folder_name"
+          },
+          "tool": "notes_create_folder"
+        }
+      ],
+      "name": "notes_create_folder",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "notes_create_folder",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "create",
+        "folder",
+        "new",
+        "account",
+        "nested"
+      ],
+      "title": "Create Folder",
+      "usage_intent": "Create a new folder in an Apple Notes account or nested folder."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "rename folder",
+        "notes rename folder"
+      ],
+      "argument_summary": [
+        "folder_id: string (required)",
+        "folder_name: string (required)"
+      ],
+      "description": "Rename an existing folder.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "folder_id": "example_folder_id",
+            "folder_name": "example_folder_name"
+          },
+          "tool": "notes_rename_folder"
+        }
+      ],
+      "name": "notes_rename_folder",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "notes_rename_folder",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "rename",
+        "folder",
+        "existing"
+      ],
+      "title": "Rename Folder",
+      "usage_intent": "Rename an existing folder."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "delete folder",
+        "notes delete folder"
+      ],
+      "argument_summary": [
+        "folder_id: string (required)"
+      ],
+      "description": "Delete an Apple Notes folder.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "folder_id": "example_folder_id"
+          },
+          "tool": "notes_delete_folder"
+        }
+      ],
+      "name": "notes_delete_folder",
+      "read_only": false,
+      "risk_level": "high",
+      "schema_ref": "notes_delete_folder",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "delete",
+        "folder"
+      ],
+      "title": "Delete Folder",
+      "usage_intent": "Delete an Apple Notes folder."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "list attachments",
+        "notes list attachments"
+      ],
+      "argument_summary": [
+        "note_id: string (required)"
+      ],
+      "description": "List attachments for a note.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "note_id": "example_note_id"
+          },
+          "tool": "notes_list_attachments"
+        }
+      ],
+      "name": "notes_list_attachments",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "notes_list_attachments",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "attachments",
+        "attachment"
+      ],
+      "title": "List Attachments",
+      "usage_intent": "List attachments for a note."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "list prompts",
+        "notes list prompts"
+      ],
+      "argument_summary": [],
+      "description": "Fallback prompt discovery tool for tool-only MCP clients.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "notes_list_prompts"
+        }
+      ],
+      "name": "notes_list_prompts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "notes_list_prompts",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "prompts",
+        "prompt",
+        "fallback",
+        "discovery",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Notes List Prompts",
+      "usage_intent": "Fallback prompt discovery tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "get prompt prompt",
+        "notes get prompt prompt"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "arguments_json: string (optional)"
+      ],
+      "description": "Fallback prompt rendering tool for tool-only MCP clients.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "arguments_json": "example_arguments_json",
+            "name": "example_name"
+          },
+          "tool": "notes_get_prompt_prompt"
+        }
+      ],
+      "name": "notes_get_prompt_prompt",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "notes_get_prompt_prompt",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "not",
+        "prompt",
+        "fallback",
+        "rendering",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Notes Get Prompt",
+      "usage_intent": "Fallback prompt rendering tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "search tools"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "limit: integer (optional)",
+        "domain_tags: array (optional)",
+        "mode: string (optional)"
+      ],
+      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "query": "find notes"
+          },
+          "tool": "search_tools"
+        }
+      ],
+      "name": "search_tools",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "search_tools",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "search",
+        "tools",
+        "tool",
+        "this",
+        "thi",
+        "server",
+        "catalog",
+        "without",
+        "loading",
+        "every",
+        "full",
+        "schema",
+        "default"
+      ],
+      "title": "Search Tools",
+      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+    },
+    {
+      "aliases": [
+        "note",
+        "notes",
+        "memo",
+        "get tool info"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "include_schema: boolean (optional)",
+        "include_examples: boolean (optional)"
+      ],
+      "description": "Load the full schema, examples, and metadata for one tool from this server.",
+      "domain": "notes",
+      "example_calls": [
+        {
+          "arguments": {
+            "include_schema": false,
+            "name": "example_name"
+          },
+          "tool": "get_tool_info"
+        }
+      ],
+      "name": "get_tool_info",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "get_tool_info",
+      "tags": [
+        "notes",
+        "note",
+        "memo",
+        "tool",
+        "info",
+        "load",
+        "full",
+        "schema",
+        "examples",
+        "exampl",
+        "metadata",
+        "one",
+        "this",
+        "thi",
+        "server"
+      ],
+      "title": "Get Tool Info",
+      "usage_intent": "Load the full schema, examples, and metadata for one tool from this server."
+    }
+  ]
+}

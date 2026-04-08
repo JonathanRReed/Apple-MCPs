@@ -11,6 +11,7 @@ import re
 from typing import Any, Callable
 from uuid import uuid4
 
+from apple_mcp_common.discovery import install_search_first_discovery
 from mcp import types
 from mcp.server.experimental.task_context import ServerTaskContext
 from mcp.server.fastmcp import Context, FastMCP
@@ -3522,16 +3523,23 @@ async def _apple_unsubscribe_resource(uri: AnyUrl) -> None:
 mcp._mcp_server.experimental.enable_tasks()
 
 
-@mcp._mcp_server.list_tools()
-async def _apple_list_tools_with_extensions(_: types.ListToolsRequest) -> list[types.Tool]:
+async def _apple_list_tools_with_extensions() -> list[types.Tool]:
     return await _list_tools_with_task_support()
 
 
-@mcp._mcp_server.call_tool(validate_input=False)
 async def _apple_call_tool_with_extensions(name: str, arguments: dict[str, Any]) -> Any:
     if name in {tool.name for tool in _task_tool_definitions()}:
         return await _call_task_tool(name, arguments or {}, mcp.get_context())
     return await mcp.call_tool(name, arguments or {})
+
+
+TOOL_DISCOVERY = install_search_first_discovery(
+    mcp,
+    server_name="Apple Tools MCP",
+    domain="apple",
+    list_all_tools=_apple_list_tools_with_extensions,
+    call_tool=_apple_call_tool_with_extensions,
+)
 
 
 def main() -> None:

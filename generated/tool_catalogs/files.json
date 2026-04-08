@@ -1,0 +1,1245 @@
+{
+  "domain": "files",
+  "server": "Apple Files MCP",
+  "tool_count": 23,
+  "tools": [
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "health",
+        "files health"
+      ],
+      "argument_summary": [],
+      "description": "Report the active Apple Files MCP configuration.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "files_health"
+        }
+      ],
+      "name": "files_health",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_health",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "health",
+        "report",
+        "active",
+        "mcp",
+        "configuration"
+      ],
+      "title": "Files Health",
+      "usage_intent": "Report the active Apple Files MCP configuration."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "permission guide",
+        "files permission guide"
+      ],
+      "argument_summary": [],
+      "description": "Explain how Apple Files MCP access is scoped on this machine.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "files_permission_guide"
+        }
+      ],
+      "name": "files_permission_guide",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_permission_guide",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "permission",
+        "guide",
+        "explain",
+        "how",
+        "mcp",
+        "access",
+        "acces",
+        "scoped",
+        "this",
+        "thi"
+      ],
+      "title": "Files Permission Guide",
+      "usage_intent": "Explain how Apple Files MCP access is scoped on this machine."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "list allowed roots",
+        "files list allowed roots"
+      ],
+      "argument_summary": [],
+      "description": "List the file system roots the server may access.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "files_list_allowed_roots"
+        }
+      ],
+      "name": "files_list_allowed_roots",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_list_allowed_roots",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "allowed",
+        "roots",
+        "root",
+        "system",
+        "server",
+        "may",
+        "access",
+        "acces"
+      ],
+      "title": "List Allowed Roots",
+      "usage_intent": "List the file system roots the server may access."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "list directory",
+        "files list directory"
+      ],
+      "argument_summary": [
+        "path: string (required)"
+      ],
+      "description": "List files and folders inside an allowed directory path.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "path": "/path/to/item"
+          },
+          "tool": "files_list_directory"
+        }
+      ],
+      "name": "files_list_directory",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_list_directory",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "directory",
+        "allowed",
+        "path"
+      ],
+      "title": "List Directory",
+      "usage_intent": "List files and folders inside an allowed directory path."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "search files",
+        "files search files"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "base_path: string (optional)",
+        "limit: integer (optional)"
+      ],
+      "description": "Search file and folder names inside the allowed roots.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "base_path": "/path/to/item",
+            "query": "find files"
+          },
+          "tool": "files_search_files"
+        }
+      ],
+      "name": "files_search_files",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_search_files",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "search",
+        "names",
+        "nam",
+        "allowed",
+        "roots",
+        "root"
+      ],
+      "title": "Search Files",
+      "usage_intent": "Search file and folder names inside the allowed roots."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "get file info",
+        "files get file info"
+      ],
+      "argument_summary": [
+        "path: string (required)"
+      ],
+      "description": "Get metadata for a file or folder inside the allowed roots.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "path": "/path/to/item"
+          },
+          "tool": "files_get_file_info"
+        }
+      ],
+      "name": "files_get_file_info",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_get_file_info",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "info",
+        "metadata",
+        "allowed",
+        "roots",
+        "root"
+      ],
+      "title": "Get File Info",
+      "usage_intent": "Get metadata for a file or folder inside the allowed roots."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "read text file",
+        "files read text file"
+      ],
+      "argument_summary": [
+        "path: string (required)",
+        "max_bytes: integer (optional)"
+      ],
+      "description": "Read a UTF-8 text file inside the allowed roots.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "max_bytes": 1,
+            "path": "/path/to/item"
+          },
+          "tool": "files_read_text_file"
+        }
+      ],
+      "name": "files_read_text_file",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_read_text_file",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "text",
+        "utf",
+        "allowed",
+        "roots",
+        "root"
+      ],
+      "title": "Read Text File",
+      "usage_intent": "Read a UTF-8 text file inside the allowed roots."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "recent files",
+        "files recent files"
+      ],
+      "argument_summary": [
+        "limit: integer (optional)"
+      ],
+      "description": "List recently modified files inside the allowed roots.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1
+          },
+          "tool": "files_recent_files"
+        }
+      ],
+      "name": "files_recent_files",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_recent_files",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "recent",
+        "recently",
+        "modified",
+        "allowed",
+        "roots",
+        "root"
+      ],
+      "title": "Recent Files",
+      "usage_intent": "List recently modified files inside the allowed roots."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "open path",
+        "files open path"
+      ],
+      "argument_summary": [
+        "path: string (required)"
+      ],
+      "description": "Open a file or folder in the default app. Requires safe_manage or full_access safety mode.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "path": "/path/to/item"
+          },
+          "tool": "files_open_path"
+        }
+      ],
+      "name": "files_open_path",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "files_open_path",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "open",
+        "path",
+        "default",
+        "requires",
+        "requir",
+        "safe",
+        "manage",
+        "full",
+        "access",
+        "acces"
+      ],
+      "title": "Open Path",
+      "usage_intent": "Open a file or folder in the default app. Requires safe_manage or full_access safety mode."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "reveal in finder",
+        "files reveal in finder"
+      ],
+      "argument_summary": [
+        "path: string (required)"
+      ],
+      "description": "Reveal a file or folder in Finder. Requires safe_manage or full_access safety mode.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "path": "/path/to/item"
+          },
+          "tool": "files_reveal_in_finder"
+        }
+      ],
+      "name": "files_reveal_in_finder",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "files_reveal_in_finder",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "reveal",
+        "requires",
+        "requir",
+        "safe",
+        "manage",
+        "full",
+        "access",
+        "acces",
+        "safety",
+        "mode"
+      ],
+      "title": "Reveal In Finder",
+      "usage_intent": "Reveal a file or folder in Finder. Requires safe_manage or full_access safety mode."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "get tags",
+        "files get tags"
+      ],
+      "argument_summary": [
+        "path: string (required)"
+      ],
+      "description": "Read Finder tags for a file or folder inside the allowed roots.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "path": "/path/to/item"
+          },
+          "tool": "files_get_tags"
+        }
+      ],
+      "name": "files_get_tags",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_get_tags",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "tags",
+        "tag",
+        "allowed",
+        "roots",
+        "root"
+      ],
+      "title": "Get Tags",
+      "usage_intent": "Read Finder tags for a file or folder inside the allowed roots."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "set tags",
+        "files set tags"
+      ],
+      "argument_summary": [
+        "path: string (required)",
+        "tags: array (required)"
+      ],
+      "description": "Replace Finder tags for a file or folder. Requires safe_manage or full_access safety mode.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "path": "/path/to/item",
+            "tags": []
+          },
+          "tool": "files_set_tags"
+        }
+      ],
+      "name": "files_set_tags",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "files_set_tags",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "set",
+        "tags",
+        "tag",
+        "replace",
+        "requires",
+        "requir",
+        "safe",
+        "manage",
+        "full",
+        "access"
+      ],
+      "title": "Set Tags",
+      "usage_intent": "Replace Finder tags for a file or folder. Requires safe_manage or full_access safety mode."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "add tags",
+        "files add tags"
+      ],
+      "argument_summary": [
+        "path: string (required)",
+        "tags: array (required)"
+      ],
+      "description": "Add Finder tags to a file or folder. Requires safe_manage or full_access safety mode.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "path": "/path/to/item",
+            "tags": []
+          },
+          "tool": "files_add_tags"
+        }
+      ],
+      "name": "files_add_tags",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "files_add_tags",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "add",
+        "tags",
+        "tag",
+        "requires",
+        "requir",
+        "safe",
+        "manage",
+        "full",
+        "access",
+        "acces"
+      ],
+      "title": "Add Tags",
+      "usage_intent": "Add Finder tags to a file or folder. Requires safe_manage or full_access safety mode."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "remove tags",
+        "files remove tags"
+      ],
+      "argument_summary": [
+        "path: string (required)",
+        "tags: array (required)"
+      ],
+      "description": "Remove Finder tags from a file or folder. Requires safe_manage or full_access safety mode.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "path": "/path/to/item",
+            "tags": []
+          },
+          "tool": "files_remove_tags"
+        }
+      ],
+      "name": "files_remove_tags",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "files_remove_tags",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "remove",
+        "tags",
+        "tag",
+        "requires",
+        "requir",
+        "safe",
+        "manage",
+        "full",
+        "access",
+        "acces"
+      ],
+      "title": "Remove Tags",
+      "usage_intent": "Remove Finder tags from a file or folder. Requires safe_manage or full_access safety mode."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "list recent locations",
+        "files list recent locations"
+      ],
+      "argument_summary": [
+        "limit: integer (optional)"
+      ],
+      "description": "List recently active parent folders across the allowed roots, including iCloud-aware metadata.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1
+          },
+          "tool": "files_list_recent_locations"
+        }
+      ],
+      "name": "files_list_recent_locations",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_list_recent_locations",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "recent",
+        "locations",
+        "location",
+        "recently",
+        "active",
+        "parent",
+        "across",
+        "acros",
+        "allowed",
+        "roots"
+      ],
+      "title": "List Recent Locations",
+      "usage_intent": "List recently active parent folders across the allowed roots, including iCloud-aware metadata."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "get icloud status",
+        "files get icloud status"
+      ],
+      "argument_summary": [],
+      "description": "Report whether local iCloud Drive is available and whether it is part of the current allowed roots.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "files_get_icloud_status"
+        }
+      ],
+      "name": "files_get_icloud_status",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_get_icloud_status",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "status",
+        "statu",
+        "report",
+        "whether",
+        "drive",
+        "available",
+        "part",
+        "current",
+        "allowed",
+        "roots"
+      ],
+      "title": "Get iCloud Status",
+      "usage_intent": "Report whether local iCloud Drive is available and whether it is part of the current allowed roots."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "create folder",
+        "files create folder"
+      ],
+      "argument_summary": [
+        "path: string (required)"
+      ],
+      "description": "Create a folder inside the allowed roots.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "path": "/path/to/item"
+          },
+          "tool": "files_create_folder"
+        }
+      ],
+      "name": "files_create_folder",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "files_create_folder",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "create",
+        "allowed",
+        "roots",
+        "root"
+      ],
+      "title": "Create Folder",
+      "usage_intent": "Create a folder inside the allowed roots."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "move path",
+        "files move path"
+      ],
+      "argument_summary": [
+        "source: string (required)",
+        "destination: string (required)"
+      ],
+      "description": "Move or rename a file or folder inside the allowed roots.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "destination": "example_destination",
+            "source": "example_source"
+          },
+          "tool": "files_move_path"
+        }
+      ],
+      "name": "files_move_path",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "files_move_path",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "move",
+        "path",
+        "rename",
+        "allowed",
+        "roots",
+        "root"
+      ],
+      "title": "Move Path",
+      "usage_intent": "Move or rename a file or folder inside the allowed roots."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "delete path",
+        "files delete path"
+      ],
+      "argument_summary": [
+        "path: string (required)"
+      ],
+      "description": "Delete a file or empty folder inside the allowed roots. Requires full_access safety mode.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "path": "/path/to/item"
+          },
+          "tool": "files_delete_path"
+        }
+      ],
+      "name": "files_delete_path",
+      "read_only": false,
+      "risk_level": "high",
+      "schema_ref": "files_delete_path",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "delete",
+        "path",
+        "empty",
+        "allowed",
+        "roots",
+        "root",
+        "requires",
+        "requir",
+        "full",
+        "access"
+      ],
+      "title": "Delete Path",
+      "usage_intent": "Delete a file or empty folder inside the allowed roots. Requires full_access safety mode."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "list prompts",
+        "files list prompts"
+      ],
+      "argument_summary": [],
+      "description": "Fallback prompt discovery tool for tool-only MCP clients.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "files_list_prompts"
+        }
+      ],
+      "name": "files_list_prompts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_list_prompts",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "prompts",
+        "prompt",
+        "fallback",
+        "discovery",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Files List Prompts",
+      "usage_intent": "Fallback prompt discovery tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "get prompt prompt",
+        "files get prompt prompt"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "arguments_json: string (optional)"
+      ],
+      "description": "Fallback prompt rendering tool for tool-only MCP clients.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "arguments_json": "example_arguments_json",
+            "name": "example_name"
+          },
+          "tool": "files_get_prompt_prompt"
+        }
+      ],
+      "name": "files_get_prompt_prompt",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "files_get_prompt_prompt",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "fil",
+        "prompt",
+        "fallback",
+        "rendering",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Files Get Prompt",
+      "usage_intent": "Fallback prompt rendering tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "search tools"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "limit: integer (optional)",
+        "domain_tags: array (optional)",
+        "mode: string (optional)"
+      ],
+      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "query": "find files"
+          },
+          "tool": "search_tools"
+        }
+      ],
+      "name": "search_tools",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "search_tools",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "search",
+        "tools",
+        "tool",
+        "this",
+        "thi",
+        "server",
+        "catalog",
+        "without",
+        "loading",
+        "every",
+        "full"
+      ],
+      "title": "Search Tools",
+      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+    },
+    {
+      "aliases": [
+        "file",
+        "files",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "get tool info"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "include_schema: boolean (optional)",
+        "include_examples: boolean (optional)"
+      ],
+      "description": "Load the full schema, examples, and metadata for one tool from this server.",
+      "domain": "files",
+      "example_calls": [
+        {
+          "arguments": {
+            "include_schema": false,
+            "name": "example_name"
+          },
+          "tool": "get_tool_info"
+        }
+      ],
+      "name": "get_tool_info",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "get_tool_info",
+      "tags": [
+        "files",
+        "file",
+        "folder",
+        "folders",
+        "document",
+        "documents",
+        "finder",
+        "icloud",
+        "downloads",
+        "tool",
+        "info",
+        "load",
+        "full",
+        "schema",
+        "examples",
+        "exampl",
+        "metadata",
+        "one",
+        "this",
+        "thi"
+      ],
+      "title": "Get Tool Info",
+      "usage_intent": "Load the full schema, examples, and metadata for one tool from this server."
+    }
+  ]
+}

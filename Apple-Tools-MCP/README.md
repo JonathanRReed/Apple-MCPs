@@ -238,7 +238,7 @@ bash scripts/inspector_smoke.sh
 
 ```xml
 <apple_tools>
-All Apple tools are deferred. Batch tool_search calls on first use.
+`tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` only for the tools you plan to call.
 
 <routing>
   <imessage trigger="text, message, msg, iMessage">
@@ -300,7 +300,7 @@ All Apple tools are deferred. Batch tool_search calls on first use.
   - service_name on iMessage calls causes error (-1728). Omit it.
   - Bare timestamps without timezone offset fail on Reminders.
   - Mail has no "list recent" endpoint. Always pass a search query.
-  - All tool schemas are deferred. First call requires tool_search to load parameters.
+  - `tools/list` is intentionally minimal. Use `search_tools` plus `get_tool_info` to inspect deferred tools.
   - Multiple Notes folders exist across accounts. Pick one default.
   - Files access is limited to APPLE_FILES_MCP_ALLOWED_ROOTS.
   - Some System actions depend on host app automation approval.

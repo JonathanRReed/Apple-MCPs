@@ -1,0 +1,501 @@
+{
+  "domain": "maps",
+  "server": "Apple Maps MCP",
+  "tool_count": 10,
+  "tools": [
+    {
+      "aliases": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "health",
+        "maps health"
+      ],
+      "argument_summary": [],
+      "description": "Report the active Apple Maps MCP configuration.",
+      "domain": "maps",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "maps_health"
+        }
+      ],
+      "name": "maps_health",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "maps_health",
+      "tags": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "map",
+        "health",
+        "report",
+        "active",
+        "mcp",
+        "configuration"
+      ],
+      "title": "Maps Health",
+      "usage_intent": "Report the active Apple Maps MCP configuration."
+    },
+    {
+      "aliases": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "permission guide",
+        "maps permission guide"
+      ],
+      "argument_summary": [],
+      "description": "Explain Apple Maps MCP local helper requirements on macOS.",
+      "domain": "maps",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "maps_permission_guide"
+        }
+      ],
+      "name": "maps_permission_guide",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "maps_permission_guide",
+      "tags": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "map",
+        "permission",
+        "guide",
+        "explain",
+        "mcp",
+        "helper",
+        "requirements",
+        "requirement",
+        "maco"
+      ],
+      "title": "Maps Permission Guide",
+      "usage_intent": "Explain Apple Maps MCP local helper requirements on macOS."
+    },
+    {
+      "aliases": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "search places",
+        "maps search places"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "limit: integer (optional)"
+      ],
+      "description": "Search Apple Maps for matching places.",
+      "domain": "maps",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "query": "find maps"
+          },
+          "tool": "maps_search_places"
+        }
+      ],
+      "name": "maps_search_places",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "maps_search_places",
+      "tags": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "map",
+        "search",
+        "plac",
+        "matching"
+      ],
+      "title": "Search Places",
+      "usage_intent": "Search Apple Maps for matching places."
+    },
+    {
+      "aliases": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "get directions",
+        "maps get directions"
+      ],
+      "argument_summary": [
+        "origin: string (required)",
+        "destination: string (required)",
+        "transport: string (optional)"
+      ],
+      "description": "Get Apple Maps route details between an origin and destination.",
+      "domain": "maps",
+      "example_calls": [
+        {
+          "arguments": {
+            "destination": "example_destination",
+            "origin": "example_origin"
+          },
+          "tool": "maps_get_directions"
+        }
+      ],
+      "name": "maps_get_directions",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "maps_get_directions",
+      "tags": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "map",
+        "direction",
+        "details",
+        "detail",
+        "between",
+        "origin",
+        "destination"
+      ],
+      "title": "Get Directions",
+      "usage_intent": "Get Apple Maps route details between an origin and destination."
+    },
+    {
+      "aliases": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "build maps link",
+        "maps build maps link"
+      ],
+      "argument_summary": [
+        "destination: string (required)",
+        "origin: string (optional)",
+        "transport: string (optional)"
+      ],
+      "description": "Build an Apple Maps URL for a destination or route.",
+      "domain": "maps",
+      "example_calls": [
+        {
+          "arguments": {
+            "destination": "example_destination",
+            "origin": "example_origin"
+          },
+          "tool": "maps_build_maps_link"
+        }
+      ],
+      "name": "maps_build_maps_link",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "maps_build_maps_link",
+      "tags": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "map",
+        "build",
+        "link",
+        "url",
+        "destination"
+      ],
+      "title": "Build Maps Link",
+      "usage_intent": "Build an Apple Maps URL for a destination or route."
+    },
+    {
+      "aliases": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "open directions in maps",
+        "maps open directions in maps"
+      ],
+      "argument_summary": [
+        "destination: string (required)",
+        "origin: string (optional)",
+        "transport: string (optional)"
+      ],
+      "description": "Open directions in the Apple Maps app.",
+      "domain": "maps",
+      "example_calls": [
+        {
+          "arguments": {
+            "destination": "example_destination",
+            "origin": "example_origin"
+          },
+          "tool": "maps_open_directions_in_maps"
+        }
+      ],
+      "name": "maps_open_directions_in_maps",
+      "read_only": false,
+      "risk_level": "medium",
+      "schema_ref": "maps_open_directions_in_maps",
+      "tags": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "map",
+        "open",
+        "direction"
+      ],
+      "title": "Open Directions In Maps",
+      "usage_intent": "Open directions in the Apple Maps app."
+    },
+    {
+      "aliases": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "list prompts",
+        "maps list prompts"
+      ],
+      "argument_summary": [],
+      "description": "Fallback prompt discovery tool for tool-only MCP clients.",
+      "domain": "maps",
+      "example_calls": [
+        {
+          "arguments": {},
+          "tool": "maps_list_prompts"
+        }
+      ],
+      "name": "maps_list_prompts",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "maps_list_prompts",
+      "tags": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "map",
+        "prompts",
+        "prompt",
+        "fallback",
+        "discovery",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Maps List Prompts",
+      "usage_intent": "Fallback prompt discovery tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "get prompt prompt",
+        "maps get prompt prompt"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "arguments_json: string (optional)"
+      ],
+      "description": "Fallback prompt rendering tool for tool-only MCP clients.",
+      "domain": "maps",
+      "example_calls": [
+        {
+          "arguments": {
+            "arguments_json": "example_arguments_json",
+            "name": "example_name"
+          },
+          "tool": "maps_get_prompt_prompt"
+        }
+      ],
+      "name": "maps_get_prompt_prompt",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "maps_get_prompt_prompt",
+      "tags": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "map",
+        "prompt",
+        "fallback",
+        "rendering",
+        "tool",
+        "only",
+        "mcp",
+        "clients",
+        "client"
+      ],
+      "title": "Maps Get Prompt",
+      "usage_intent": "Fallback prompt rendering tool for tool-only MCP clients."
+    },
+    {
+      "aliases": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "search tools"
+      ],
+      "argument_summary": [
+        "query: string (required)",
+        "limit: integer (optional)",
+        "domain_tags: array (optional)",
+        "mode: string (optional)"
+      ],
+      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "domain": "maps",
+      "example_calls": [
+        {
+          "arguments": {
+            "limit": 1,
+            "query": "find maps"
+          },
+          "tool": "search_tools"
+        }
+      ],
+      "name": "search_tools",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "search_tools",
+      "tags": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "search",
+        "tools",
+        "tool",
+        "this",
+        "thi",
+        "server",
+        "catalog",
+        "without",
+        "loading",
+        "every",
+        "full",
+        "schema",
+        "default"
+      ],
+      "title": "Search Tools",
+      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+    },
+    {
+      "aliases": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "get tool info"
+      ],
+      "argument_summary": [
+        "name: string (required)",
+        "include_schema: boolean (optional)",
+        "include_examples: boolean (optional)"
+      ],
+      "description": "Load the full schema, examples, and metadata for one tool from this server.",
+      "domain": "maps",
+      "example_calls": [
+        {
+          "arguments": {
+            "include_schema": false,
+            "name": "example_name"
+          },
+          "tool": "get_tool_info"
+        }
+      ],
+      "name": "get_tool_info",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "get_tool_info",
+      "tags": [
+        "maps",
+        "place",
+        "places",
+        "route",
+        "directions",
+        "restaurant",
+        "restaurants",
+        "tool",
+        "info",
+        "load",
+        "full",
+        "schema",
+        "examples",
+        "exampl",
+        "metadata",
+        "one",
+        "this",
+        "thi",
+        "server"
+      ],
+      "title": "Get Tool Info",
+      "usage_intent": "Load the full schema, examples, and metadata for one tool from this server."
+    }
+  ]
+}

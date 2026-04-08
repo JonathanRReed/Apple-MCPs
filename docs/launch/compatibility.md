@@ -20,7 +20,7 @@ These are the pinned runtime versions used in the repo `requirements.txt` files 
 ## Validated protocol surface
 
 Validated in this repo:
-- all servers: `tools/list` via Inspector CLI
+- all servers: minimal `tools/list`, plus deferred discovery through `search_tools` and `get_tool_info`
 - selected servers with prompts and resources: Inspector prompt and resource checks
 - `Apple-Tools-MCP`: official active MCP conformance suite over `streamable-http`
 

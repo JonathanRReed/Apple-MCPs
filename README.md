@@ -23,6 +23,7 @@ Everything happens on your Mac. Your data stays in Apple's apps where it belongs
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [SECURITY.md](./SECURITY.md)
 - [Code Mode](./docs/code-mode.md)
+- [NOTICE.md](./NOTICE.md)
 
 ## Launch Docs
 

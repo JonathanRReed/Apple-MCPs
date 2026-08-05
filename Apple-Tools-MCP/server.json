@@ -1,0 +1,143 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.jonathanrreed/apple-tools-mcp",
+  "title": "Apple Tools (Unified)",
+  "description": "Unified Apple ecosystem MCP server for macOS: Mail, Calendar, Notes, Files, Messages, and more.",
+  "repository": {
+    "url": "https://github.com/JonathanRReed/Apple-MCPs",
+    "source": "github",
+    "id": "1194217206",
+    "subfolder": "Apple-Tools-MCP"
+  },
+  "version": "1.0.0",
+  "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "apple-tools-mcp",
+      "version": "1.0.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "APPLE_MAIL_MCP_SAFETY_PROFILE",
+          "description": "Safety mode for the Mail domain: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "safe_manage"
+        },
+        {
+          "name": "APPLE_CALENDAR_MCP_SAFETY_MODE",
+          "description": "Safety mode for the Calendar domain: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "safe_manage"
+        },
+        {
+          "name": "APPLE_REMINDERS_MCP_SAFETY_MODE",
+          "description": "Safety mode for the Reminders domain: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "safe_manage"
+        },
+        {
+          "name": "APPLE_FILES_MCP_SAFETY_MODE",
+          "description": "Safety mode for the Files domain: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "safe_manage"
+        },
+        {
+          "name": "APPLE_FILES_MCP_ALLOWED_ROOTS",
+          "description": "Comma-separated directories file tools may access. Defaults to Desktop, Documents, Downloads, and iCloud Drive.",
+          "isRequired": false,
+          "format": "string",
+          "placeholder": "~/Desktop,~/Documents,~/Downloads"
+        },
+        {
+          "name": "APPLE_SYSTEM_MCP_SAFETY_MODE",
+          "description": "Safety mode for the System domain: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "safe_manage"
+        },
+        {
+          "name": "APPLE_CONTACTS_MCP_SAFETY_MODE",
+          "description": "Safety mode for the Contacts domain: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "safe_manage"
+        },
+        {
+          "name": "APPLE_NOTES_MCP_SAFETY_MODE",
+          "description": "Safety mode for the Notes domain: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "full_access"
+        },
+        {
+          "name": "APPLE_MESSAGES_MCP_SAFETY_MODE",
+          "description": "Safety mode for the Messages domain: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "full_access"
+        },
+        {
+          "name": "APPLE_SHORTCUTS_MCP_SAFETY_MODE",
+          "description": "Safety mode for the Shortcuts domain: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "full_access"
+        }
+      ]
+    }
+  ]
+}

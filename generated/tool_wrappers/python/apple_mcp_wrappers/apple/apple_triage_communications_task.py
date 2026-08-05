@@ -13,7 +13,7 @@ async def apple_triage_communications_task(
 ) -> Any:
     """Apple Triage Communications Task
 
-    Generate a cross-app communications triage summary. Supports task-augmented execution.
+    Generate a cross-app communications triage summary from unread Messages and Mail search results.
 
     Example:
         await apple_triage_communications_task(client, mail_query='find apple', mail_limit=1)

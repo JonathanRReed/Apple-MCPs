@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
 import re
 import shutil
 import subprocess
+from dataclasses import dataclass
+from pathlib import Path
 
 from apple_shortcuts_mcp.config import load_settings
 from apple_shortcuts_mcp.models import ShortcutArtifact, ShortcutFolderInfo, ShortcutInfo, ShortcutRunResponse
@@ -178,6 +178,12 @@ class ShortcutsBridge:
                 "CLI_TIMEOUT",
                 f"Command '{self.shortcuts_command} {' '.join(args)}' timed out.",
                 "Increase the timeout or simplify the shortcut.",
+            ) from exc
+        except OSError as exc:
+            raise ShortcutsBridgeError(
+                "SHORTCUTS_CLI_NOT_FOUND",
+                f"Could not run '{self.shortcuts_command}': {exc}.",
+                "This server requires macOS with the shortcuts CLI available.",
             ) from exc
 
         result = ShortcutCLIResult(

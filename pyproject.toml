@@ -1,0 +1,15 @@
+[tool.uv.workspace]
+members = [
+  "AppleMCPCommon",
+  "Apple-Tools-MCP",
+  "Apple-Calendar-MCP",
+  "AppleContacts-MCP",
+  "AppleFiles-MCP",
+  "AppleMail-MCP",
+  "AppleMaps-MCP",
+  "AppleMessages-MCP",
+  "AppleNotes-MCP",
+  "AppleReminders-MCP",
+  "AppleShortcuts-MCP",
+  "AppleSystem-MCP",
+]

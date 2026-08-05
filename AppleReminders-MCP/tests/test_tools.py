@@ -1,6 +1,6 @@
+from apple_reminders_mcp import tools
 from apple_reminders_mcp.config import load_settings
 from apple_reminders_mcp.models import ReminderDetail, ReminderListInfo
-from apple_reminders_mcp import tools
 
 
 class FakeBridge:

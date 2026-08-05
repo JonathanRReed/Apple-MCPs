@@ -342,8 +342,8 @@
         "directions",
         "restaurant",
         "restaurants",
-        "get prompt prompt",
-        "maps get prompt prompt"
+        "get prompt",
+        "maps get prompt"
       ],
       "argument_summary": [
         "name: string (required)",
@@ -357,13 +357,13 @@
             "arguments_json": "example_arguments_json",
             "name": "example_name"
           },
-          "tool": "maps_get_prompt_prompt"
+          "tool": "maps_get_prompt"
         }
       ],
-      "name": "maps_get_prompt_prompt",
+      "name": "maps_get_prompt",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "maps_get_prompt_prompt",
+      "schema_ref": "maps_get_prompt",
       "tags": [
         "maps",
         "place",
@@ -402,7 +402,7 @@
         "domain_tags: array (optional)",
         "mode: string (optional)"
       ],
-      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "description": "Search this server's tool catalog by keyword, alias, or domain tag.",
       "domain": "maps",
       "example_calls": [
         {
@@ -432,15 +432,14 @@
         "thi",
         "server",
         "catalog",
-        "without",
-        "loading",
-        "every",
-        "full",
-        "schema",
-        "default"
+        "keyword",
+        "alias",
+        "alia",
+        "domain",
+        "tag"
       ],
       "title": "Search Tools",
-      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+      "usage_intent": "Search this server's tool catalog by keyword, alias, or domain tag."
     },
     {
       "aliases": [

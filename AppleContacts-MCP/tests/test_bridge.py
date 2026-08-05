@@ -1,5 +1,9 @@
-from pathlib import Path
+import shutil
 import subprocess
+import sys
+from pathlib import Path
+
+import pytest
 
 from apple_contacts_mcp.contacts_bridge import AppleContactsBridge, ContactsBridgeError
 
@@ -174,16 +178,21 @@ def test_update_contact_supports_no_change_sentinel(monkeypatch) -> None:
     assert calls[0][1][5] == "__NOCHANGE__"
 
 
+@pytest.mark.skipif(
+    sys.platform != "darwin" or shutil.which("osacompile") is None,
+    reason="osacompile is only available on macOS",
+)
 def test_contacts_scripts_compile(tmp_path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
+    scripts_dir = repo_root / "src" / "apple_contacts_mcp" / "applescripts"
     scripts = (
-        repo_root / "applescripts" / "permission_check.applescript",
-        repo_root / "applescripts" / "list_contacts.applescript",
-        repo_root / "applescripts" / "search_contacts.applescript",
-        repo_root / "applescripts" / "get_contact.applescript",
-        repo_root / "applescripts" / "create_contact.applescript",
-        repo_root / "applescripts" / "update_contact.applescript",
-        repo_root / "applescripts" / "delete_contact.applescript",
+        scripts_dir / "permission_check.applescript",
+        scripts_dir / "list_contacts.applescript",
+        scripts_dir / "search_contacts.applescript",
+        scripts_dir / "get_contact.applescript",
+        scripts_dir / "create_contact.applescript",
+        scripts_dir / "update_contact.applescript",
+        scripts_dir / "delete_contact.applescript",
     )
 
     for script_path in scripts:
@@ -289,4 +298,4 @@ def test_suggest_merge_candidates_filters_query(monkeypatch) -> None:
     groups = bridge.suggest_merge_candidates("example")
 
     assert len(groups) == 1
-    assert all("Example Person" == contact.name for contact in groups[0].contacts)
+    assert all(contact.name == "Example Person" for contact in groups[0].contacts)

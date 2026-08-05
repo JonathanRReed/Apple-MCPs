@@ -38,7 +38,7 @@ from .system_set_clipboard import system_set_clipboard
 from .system_show_notification import system_show_notification
 from .system_open_application import system_open_application
 from .system_list_prompts import system_list_prompts
-from .system_get_prompt_prompt import system_get_prompt_prompt
+from .system_get_prompt import system_get_prompt
 
 __all__ = [
     "system_health",
@@ -77,5 +77,5 @@ __all__ = [
     "system_show_notification",
     "system_open_application",
     "system_list_prompts",
-    "system_get_prompt_prompt",
+    "system_get_prompt",
 ]

@@ -1,6 +1,6 @@
+from apple_contacts_mcp import tools
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.models import ContactDetail, ContactMethod, DuplicateCandidateGroup, DuplicateEvidence
-from apple_contacts_mcp import tools
 
 
 class FakeBridge:

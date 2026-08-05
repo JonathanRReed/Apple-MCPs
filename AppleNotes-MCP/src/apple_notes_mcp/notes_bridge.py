@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from functools import lru_cache
-from html import escape as html_escape
-from pathlib import Path
 import json
 import re
 import subprocess
 import time
+from functools import lru_cache
+from html import escape as html_escape
+from pathlib import Path
 
 from apple_notes_mcp.config import load_settings
 from apple_notes_mcp.models import AccountInfo, AttachmentInfo, FolderInfo, NoteDetail, NoteSummary
@@ -191,7 +191,10 @@ class AppleNotesBridge:
         if not script_path.exists():
             raise NotesBridgeError("SCRIPT_NOT_FOUND", f"Missing AppleScript file '{script_name}'.", "Restore the AppleScript file and try again.")
 
-        completed = subprocess.run(["osascript", str(script_path), *args], capture_output=True, text=True, check=False)
+        try:
+            completed = subprocess.run(["osascript", str(script_path), *args], capture_output=True, text=True, check=False)
+        except OSError as exc:
+            raise NotesBridgeError("OSASCRIPT_UNAVAILABLE", f"Could not run 'osascript': {exc}.", "This server requires macOS with osascript available.") from exc
         if completed.returncode != 0:
             raise self._map_script_error(completed.stderr.strip() or completed.stdout.strip())
 

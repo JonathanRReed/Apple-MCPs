@@ -3,24 +3,45 @@
   "manifest_version": "0.4",
   "name": "apple-system",
   "display_name": "Apple System",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Read and manage macOS system settings and perform scoped desktop actions.",
   "long_description": "Local MCP server for macOS system context and control. Use it to inspect battery state, application state, system settings, clipboard, and notifications, and to apply bounded settings writes or GUI fallback actions with scoped safety controls.",
   "icon": "icon.png",
   "author": {
-    "name": "Apple MCP Contributors"
+    "name": "Jonathan Reed"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JonathanRReed/Apple-MCPs"
   },
   "license": "MIT",
-  "keywords": ["system", "macos", "clipboard", "notifications", "applications", "desktop"],
+  "keywords": [
+    "system",
+    "macos",
+    "clipboard",
+    "notifications",
+    "applications",
+    "desktop"
+  ],
   "compatibility": {
-    "platforms": ["darwin"],
-    "runtimes": { "python": ">=3.11" }
+    "platforms": [
+      "darwin"
+    ],
+    "runtimes": {
+      "python": ">=3.11"
+    }
   },
   "server": {
-    "type": "python",
+    "type": "uv",
+    "entry_point": "server.py",
     "mcp_config": {
-      "command": "${__dirname}/start.sh",
-      "args": [],
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${__dirname}",
+        "server.py"
+      ],
       "env": {
         "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_manage"
       }

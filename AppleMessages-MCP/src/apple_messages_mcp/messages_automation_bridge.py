@@ -88,7 +88,14 @@ class MessagesAutomationBridge:
         }
 
     def _run_script(self, script: str) -> str:
-        completed = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, check=False)
+        try:
+            completed = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, check=False)
+        except OSError as exc:
+            raise MessagesAutomationBridgeError(
+                "OSASCRIPT_UNAVAILABLE",
+                f"Could not run 'osascript': {exc}.",
+                "This server requires macOS with osascript available.",
+            ) from exc
         if completed.returncode != 0:
             message = completed.stderr.strip() or completed.stdout.strip() or "Messages automation failed."
             lowered = message.lower()

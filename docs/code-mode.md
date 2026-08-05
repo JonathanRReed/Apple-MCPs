@@ -25,16 +25,15 @@ It includes:
 - one wrapper module per tool
 - small per-domain `client.py` helpers that call `client.call_tool(...)` and coerce the result into JSON or text
 
-## How code mode fits with search-first MCP
+## How code mode fits with tool discovery
 
-The runtime model is:
+Since MCP spec 2026-07-28, `tools/list` returns the full tool surface and modern clients defer-load large tool sets themselves. The code-mode runtime model is:
 
-1. `tools/list` stays minimal
-2. `search_tools` finds the tool you need
-3. `get_tool_info` loads the full schema only when needed
-4. code-execution clients can skip repeated schema loading by importing the generated wrapper directly
+1. `search_tools` (or the catalog files) finds the tool you need without loading every schema into context
+2. `get_tool_info` loads the full schema only when needed
+3. code-execution clients skip repeated schema loading by importing the generated wrapper directly
 
-Direct `call_tool` still works for deferred tools. Code mode is a convenience and context-efficiency layer, not a separate protocol.
+Code mode is a convenience and context-efficiency layer, not a separate protocol.
 
 ## The client shape
 
@@ -92,7 +91,7 @@ If you need to discover what exists, use:
 from apple_mcp_wrappers import WRAPPER_INDEX
 ```
 
-`WRAPPER_INDEX` maps tool names to wrapper module paths. Pair that with the catalog files under `generated/tool_catalogs` when you want ranked search metadata, aliases, argument summaries, and example calls.
+`WRAPPER_INDEX` maps namespaced tool keys (`"<domain>/<tool_name>"`, for example `"mail/mail_send_message"` or `"apple/apple_health"`) to wrapper module paths. Keys are namespaced because the same tool name can exist in both a standalone server's namespace and the unified `apple` namespace. Pair the index with the catalog files under `generated/tool_catalogs` when you want ranked search metadata, aliases, argument summaries, and example calls.
 
 ## Choosing unified vs standalone wrappers
 
@@ -133,14 +132,16 @@ When the live tool registry changes, regenerate the catalogs and wrappers:
 
 ```bash
 cd /path/to/Apple-MCPs
-python scripts/generate_tool_search_artifacts.py
+uv run python scripts/generate_tool_search_artifacts.py
 ```
 
 Then validate the generated Python package if needed:
 
 ```bash
-python -m compileall generated/tool_wrappers/python
+uv run python -m compileall generated/tool_wrappers/python
 ```
+
+CI fails when `generated/` is stale, so regenerate in the same change that alters tool names or schemas.
 
 ## Scope and limitations
 

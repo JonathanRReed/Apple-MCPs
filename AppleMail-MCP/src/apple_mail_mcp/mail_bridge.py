@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from importlib.resources import as_file, files
 from pathlib import Path
-from subprocess import run
+from subprocess import CompletedProcess, run
 from urllib.parse import quote, unquote
 
 from apple_mail_mcp.models import AttachmentRecord, DeleteRecord, DraftRecord, ForwardRecord, MailboxRecord, MarkRecord, MessageRecord, MessageSummary, MoveRecord, ReplyRecord, SendRecord
@@ -56,27 +56,28 @@ class AppleMailBridge:
     def __init__(self, scripts_dir: Path | None = None) -> None:
         self.scripts_dir = scripts_dir
 
+    def _run_osascript(self, script_path: Path, args: list[str]) -> CompletedProcess[str]:
+        try:
+            return run(
+                ["osascript", str(script_path), *args],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError as exc:
+            raise MailBridgeError(f"Could not run 'osascript': {exc}. This server requires macOS with osascript available.") from exc
+
     def _run_script(self, script_name: str, args: list[str]) -> str:
         if self.scripts_dir is not None:
             script_path = self.scripts_dir / script_name
             if not script_path.exists():
                 raise MailBridgeError(f"Script '{script_name}' was not found.")
 
-            result = run(
-                ["osascript", str(script_path), *args],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+            result = self._run_osascript(script_path, args)
         else:
             bundled_script = files("apple_mail_mcp").joinpath("applescripts").joinpath(script_name)
             with as_file(bundled_script) as script_path:
-                result = run(
-                    ["osascript", str(script_path), *args],
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
+                result = self._run_osascript(script_path, args)
         if result.returncode != 0:
             message = result.stderr.strip() or result.stdout.strip() or f"AppleScript '{script_name}' failed."
             raise MailBridgeError(message)

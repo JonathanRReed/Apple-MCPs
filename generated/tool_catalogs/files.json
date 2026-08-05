@@ -1079,8 +1079,8 @@
         "finder",
         "icloud",
         "downloads",
-        "get prompt prompt",
-        "files get prompt prompt"
+        "get prompt",
+        "files get prompt"
       ],
       "argument_summary": [
         "name: string (required)",
@@ -1094,13 +1094,13 @@
             "arguments_json": "example_arguments_json",
             "name": "example_name"
           },
-          "tool": "files_get_prompt_prompt"
+          "tool": "files_get_prompt"
         }
       ],
-      "name": "files_get_prompt_prompt",
+      "name": "files_get_prompt",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "files_get_prompt_prompt",
+      "schema_ref": "files_get_prompt",
       "tags": [
         "files",
         "file",
@@ -1143,7 +1143,7 @@
         "domain_tags: array (optional)",
         "mode: string (optional)"
       ],
-      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "description": "Search this server's tool catalog by keyword, alias, or domain tag.",
       "domain": "files",
       "example_calls": [
         {
@@ -1175,13 +1175,13 @@
         "thi",
         "server",
         "catalog",
-        "without",
-        "loading",
-        "every",
-        "full"
+        "keyword",
+        "alias",
+        "alia",
+        "domain"
       ],
       "title": "Search Tools",
-      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+      "usage_intent": "Search this server's tool catalog by keyword, alias, or domain tag."
     },
     {
       "aliases": [

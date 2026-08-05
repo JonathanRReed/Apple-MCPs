@@ -1,15 +1,27 @@
 from __future__ import annotations
 
 import json
+import os
 
-from apple_mcp_common.discovery import install_search_first_discovery
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
+from apple_mcp_common.discovery import install_search_first_discovery
 from apple_messages_mcp.config import load_settings
 from apple_messages_mcp.messages_automation_bridge import MessagesAutomationBridge, MessagesAutomationBridgeError
 from apple_messages_mcp.messages_db_bridge import MessagesDBBridge, MessagesDBBridgeError
-from apple_messages_mcp.models import AttachmentListResponse, ConversationListResponse, ConversationResponse, ErrorResponse, HealthResponse, MessageResponse, MessageSearchResponse, MessagesCapabilities, SendResponse, ToolError
+from apple_messages_mcp.models import (
+    AttachmentListResponse,
+    ConversationListResponse,
+    ConversationResponse,
+    ErrorResponse,
+    HealthResponse,
+    MessageResponse,
+    MessagesCapabilities,
+    MessageSearchResponse,
+    SendResponse,
+    ToolError,
+)
 from apple_messages_mcp.permissions import SafetyError, ensure_action_allowed
 
 SERVER_INSTRUCTIONS = (
@@ -18,7 +30,7 @@ SERVER_INSTRUCTIONS = (
     "History features require Full Disk Access, while send features require Messages automation permission."
 )
 
-mcp = FastMCP("Apple Messages MCP", instructions=SERVER_INSTRUCTIONS, json_response=True)
+mcp = MCPServer("Apple Messages MCP", instructions=SERVER_INSTRUCTIONS)
 
 
 def _db_bridge() -> MessagesDBBridge:
@@ -131,7 +143,7 @@ def messages_draft_reply_prompt() -> str:
 @mcp.tool(
     title="Messages Health",
     description="Report Messages server configuration and capability status.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def messages_health() -> HealthResponse:
@@ -160,7 +172,7 @@ def messages_health() -> HealthResponse:
 @mcp.tool(
     title="Messages Permission Guide",
     description="Explain how to grant Apple Messages permissions on macOS.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def messages_permission_guide() -> dict[str, object]:
@@ -184,7 +196,7 @@ def messages_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="Messages Recheck Permissions",
     description="Recheck Messages access after the user changes macOS permissions, and notify the client that Messages resources changed.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=False),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
     structured_output=True,
 )
 async def messages_recheck_permissions(ctx: Context) -> HealthResponse:
@@ -198,7 +210,7 @@ async def messages_recheck_permissions(ctx: Context) -> HealthResponse:
 @mcp.tool(
     title="List Conversations",
     description="List recent Apple Messages conversations.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def messages_list_conversations(limit: int | str = 25, offset: int | str = 0, unread_only: bool = False) -> ConversationListResponse | ErrorResponse:
@@ -219,7 +231,7 @@ def messages_list_conversations(limit: int | str = 25, offset: int | str = 0, un
 @mcp.tool(
     title="Get Conversation",
     description="Fetch a single Apple Messages conversation with paginated messages.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def messages_get_conversation(chat_id: str, limit: int | str = 50, offset: int | str = 0) -> ConversationResponse | ErrorResponse:
@@ -240,7 +252,7 @@ def messages_get_conversation(chat_id: str, limit: int | str = 50, offset: int |
 @mcp.tool(
     title="Search Messages",
     description="Search Apple Messages text history.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def messages_search_messages(
@@ -279,7 +291,7 @@ def messages_search_messages(
 @mcp.tool(
     title="Get Message",
     description="Fetch a single Apple Messages message by message_id.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def messages_get_message(message_id: str) -> MessageResponse | ErrorResponse:
@@ -296,7 +308,7 @@ def messages_get_message(message_id: str) -> MessageResponse | ErrorResponse:
 @mcp.tool(
     title="List Attachments",
     description="List Apple Messages attachments by chat or message.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def messages_list_attachments(chat_id: str | None = None, message_id: str | None = None, limit: int | str = 50, offset: int | str = 0) -> AttachmentListResponse | ErrorResponse:
@@ -317,7 +329,7 @@ def messages_list_attachments(chat_id: str | None = None, message_id: str | None
 @mcp.tool(
     title="Send Message",
     description="Send a new iMessage through Messages.app.",
-    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def messages_send_message(recipient: str, text: str) -> SendResponse | ErrorResponse:
@@ -334,7 +346,7 @@ def messages_send_message(recipient: str, text: str) -> SendResponse | ErrorResp
 @mcp.tool(
     title="Reply In Conversation",
     description="Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats.",
-    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def messages_reply_in_conversation(chat_id: str, text: str) -> SendResponse | ErrorResponse:
@@ -363,7 +375,7 @@ def messages_reply_in_conversation(chat_id: str, text: str) -> SendResponse | Er
 @mcp.tool(
     title="Send Attachment",
     description="Send a file attachment via Apple Messages to a recipient. Optionally include a text message.",
-    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def messages_send_attachment(recipient: str, file_path: str, text: str | None = None) -> SendResponse | ErrorResponse:
@@ -390,7 +402,7 @@ def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]
 @mcp.tool(
     title="Messages List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 async def messages_list_prompts() -> dict[str, object]:
@@ -403,25 +415,16 @@ async def messages_list_prompts() -> dict[str, object]:
 
 
 @mcp.tool(
+    name="messages_get_prompt",
     title="Messages Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 async def messages_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
     return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
-
-
-@mcp._mcp_server.subscribe_resource()
-async def _messages_subscribe_resource(uri) -> None:
-    del uri
-
-
-@mcp._mcp_server.unsubscribe_resource()
-async def _messages_unsubscribe_resource(uri) -> None:
-    del uri
 
 
 TOOL_DISCOVERY = install_search_first_discovery(
@@ -432,4 +435,13 @@ TOOL_DISCOVERY = install_search_first_discovery(
 
 
 def main() -> None:
+    transport = os.environ.get("APPLE_MESSAGES_MCP_TRANSPORT", "stdio")
+    if transport == "streamable-http":
+        mcp.run(
+            transport="streamable-http",
+            host=os.environ.get("APPLE_MESSAGES_MCP_HOST", "127.0.0.1"),
+            port=int(os.environ.get("APPLE_MESSAGES_MCP_PORT", "8737")),
+            json_response=True,
+        )
+        return
     mcp.run(transport="stdio")

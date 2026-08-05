@@ -9,7 +9,7 @@ from .maps_get_directions import maps_get_directions
 from .maps_build_maps_link import maps_build_maps_link
 from .maps_open_directions_in_maps import maps_open_directions_in_maps
 from .maps_list_prompts import maps_list_prompts
-from .maps_get_prompt_prompt import maps_get_prompt_prompt
+from .maps_get_prompt import maps_get_prompt
 
 __all__ = [
     "maps_health",
@@ -19,5 +19,5 @@ __all__ = [
     "maps_build_maps_link",
     "maps_open_directions_in_maps",
     "maps_list_prompts",
-    "maps_get_prompt_prompt",
+    "maps_get_prompt",
 ]

@@ -628,8 +628,8 @@
         "people",
         "recipient",
         "address-book",
-        "get prompt prompt",
-        "contacts get prompt prompt"
+        "get prompt",
+        "contacts get prompt"
       ],
       "argument_summary": [
         "name: string (required)",
@@ -643,13 +643,13 @@
             "arguments_json": "example_arguments_json",
             "name": "example_name"
           },
-          "tool": "contacts_get_prompt_prompt"
+          "tool": "contacts_get_prompt"
         }
       ],
-      "name": "contacts_get_prompt_prompt",
+      "name": "contacts_get_prompt",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "contacts_get_prompt_prompt",
+      "schema_ref": "contacts_get_prompt",
       "tags": [
         "contacts",
         "contact",
@@ -685,7 +685,7 @@
         "domain_tags: array (optional)",
         "mode: string (optional)"
       ],
-      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "description": "Search this server's tool catalog by keyword, alias, or domain tag.",
       "domain": "contacts",
       "example_calls": [
         {
@@ -714,15 +714,14 @@
         "thi",
         "server",
         "catalog",
-        "without",
-        "loading",
-        "every",
-        "full",
-        "schema",
-        "default"
+        "keyword",
+        "alias",
+        "alia",
+        "domain",
+        "tag"
       ],
       "title": "Search Tools",
-      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+      "usage_intent": "Search this server's tool catalog by keyword, alias, or domain tag."
     },
     {
       "aliases": [

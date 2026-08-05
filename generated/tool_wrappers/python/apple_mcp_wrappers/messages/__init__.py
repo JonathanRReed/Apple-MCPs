@@ -14,7 +14,7 @@ from .messages_send_message import messages_send_message
 from .messages_reply_in_conversation import messages_reply_in_conversation
 from .messages_send_attachment import messages_send_attachment
 from .messages_list_prompts import messages_list_prompts
-from .messages_get_prompt_prompt import messages_get_prompt_prompt
+from .messages_get_prompt import messages_get_prompt
 
 __all__ = [
     "messages_health",
@@ -29,5 +29,5 @@ __all__ = [
     "messages_reply_in_conversation",
     "messages_send_attachment",
     "messages_list_prompts",
-    "messages_get_prompt_prompt",
+    "messages_get_prompt",
 ]

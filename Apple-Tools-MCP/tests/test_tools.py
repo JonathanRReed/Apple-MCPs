@@ -1,12 +1,12 @@
-import json
 import asyncio
+import json
 
 from mcp import types
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
-from apple_agent_mcp.conformance import enable_conformance_mode
 from apple_agent_mcp import tools
 from apple_agent_mcp.config import load_settings
+from apple_agent_mcp.conformance import enable_conformance_mode
 from apple_contacts_mcp.models import ContactDetail, ContactMethod, DuplicateCandidateGroup, DuplicateEvidence, ResolvedRecipientResponse
 
 
@@ -92,37 +92,24 @@ def test_all_prompts_have_descriptions() -> None:
     assert all(prompt.description for prompt in prompts)
 
 
-def test_subscription_handlers_registered() -> None:
-    assert types.SubscribeRequest in tools.mcp._mcp_server.request_handlers
-    assert types.UnsubscribeRequest in tools.mcp._mcp_server.request_handlers
-
-
-def test_search_first_mcp_surface_exposes_discovery_only() -> None:
+def test_full_tool_surface_includes_discovery_and_domain_tools() -> None:
     async def load() -> tuple[set[str], dict[str, object]]:
-        list_result = await tools.mcp._mcp_server.request_handlers[types.ListToolsRequest](None)
-        info_result = await tools.mcp._mcp_server.request_handlers[types.CallToolRequest](
-            types.CallToolRequest(
-                params=types.CallToolRequestParams(
-                    name="get_tool_info",
-                    arguments={"name": "mail_list_mailboxes"},
-                )
-            )
-        )
-        names = {tool.name for tool in list_result.root.tools}
-        return names, info_result.root.structuredContent
+        tool_list = await tools.mcp.list_tools()
+        info_result = await tools.mcp.call_tool("get_tool_info", {"name": "mail_list_mailboxes"})
+        return {tool.name for tool in tool_list}, info_result.structured_content
 
     names, info = asyncio.run(load())
 
     assert "search_tools" in names
     assert "get_tool_info" in names
     assert "apple_health" in names
-    assert "mail_list_mailboxes" not in names
+    assert "mail_list_mailboxes" in names
     assert info["ok"] is True
     assert info["name"] == "mail_list_mailboxes"
 
 
 def test_conformance_mode_registers_expected_surface() -> None:
-    server = FastMCP("Conformance Test Server")
+    server = MCPServer("Conformance Test Server")
 
     enable_conformance_mode(server)
 
@@ -139,26 +126,27 @@ def test_conformance_mode_registers_expected_surface() -> None:
     assert "conformance_static_text" in resource_names
     assert resource_names["conformance_static_text"].description
     assert "test_image_content" in tool_names
-    assert types.SetLevelRequest in server._mcp_server.request_handlers
-    assert types.SubscribeRequest in server._mcp_server.request_handlers
-    assert types.UnsubscribeRequest in server._mcp_server.request_handlers
-    assert types.CompleteRequest in server._mcp_server.request_handlers
+    assert "test_tool_with_progress" in tool_names
 
 
-def test_task_tool_definitions_are_optional() -> None:
-    definitions = tools._task_tool_definitions()
+def test_briefing_tools_registered_as_standard_tools() -> None:
+    async def load() -> dict[str, types.Tool]:
+        return {tool.name: tool for tool in await tools.mcp.list_tools()}
 
-    assert {tool.name for tool in definitions} == {
+    tools_by_name = asyncio.run(load())
+
+    for name in (
         "apple_generate_daily_briefing",
         "apple_generate_weekly_briefing",
         "apple_triage_communications_task",
-    }
-    assert all(tool.execution is not None for tool in definitions)
-    assert all(tool.execution.taskSupport == types.TASK_OPTIONAL for tool in definitions)
+    ):
+        assert name in tools_by_name
+        annotations = tools_by_name[name].annotations
+        assert annotations is not None and annotations.read_only_hint is True
 
 
 def test_conformance_prompts_preserve_non_text_content() -> None:
-    server = FastMCP("Conformance Test Server")
+    server = MCPServer("Conformance Test Server")
 
     enable_conformance_mode(server)
 
@@ -175,7 +163,7 @@ def test_conformance_prompts_preserve_non_text_content() -> None:
     assert resource_messages[0].content.type == "resource"
     assert str(resource_messages[0].content.resource.uri) == "test://example-resource"
     assert image_messages[0].content.type == "image"
-    assert image_messages[0].content.mimeType == "image/png"
+    assert image_messages[0].content.mime_type == "image/png"
 
 
 def test_apple_health_aggregates_domains(monkeypatch) -> None:
@@ -411,7 +399,7 @@ def test_apple_file_wrappers(monkeypatch) -> None:
 def test_aio_messages_get_conversation_schema_uses_integer_limit() -> None:
     async def load_schema():
         tool_list = await tools.mcp.list_tools()
-        return next(tool.inputSchema for tool in tool_list if tool.name == "messages_get_conversation")
+        return next(tool.input_schema for tool in tool_list if tool.name == "messages_get_conversation")
 
     schema = asyncio.run(load_schema())
 
@@ -450,7 +438,7 @@ def test_aio_list_tools_includes_files_system_and_maps() -> None:
 def test_aio_mail_send_message_schema_includes_from_account() -> None:
     async def load_schema():
         tool_list = await tools.mcp.list_tools()
-        return next(tool.inputSchema for tool in tool_list if tool.name == "mail_send_message")
+        return next(tool.input_schema for tool in tool_list if tool.name == "mail_send_message")
 
     schema = asyncio.run(load_schema())
 
@@ -1249,13 +1237,10 @@ def test_main_uses_streamable_http_settings(monkeypatch, tmp_path) -> None:
 
     captured: dict[str, object] = {}
 
-    def fake_run(*, transport: str) -> None:
+    def fake_run(*, transport: str, **kwargs: object) -> None:
         captured["transport"] = transport
-        captured["host"] = tools.mcp.settings.host
-        captured["port"] = tools.mcp.settings.port
+        captured.update(kwargs)
         captured["log_level"] = tools.mcp.settings.log_level
-        captured["stateless_http"] = tools.mcp.settings.stateless_http
-        captured["json_response"] = tools.mcp.settings.json_response
 
     monkeypatch.setattr(tools.mcp, "run", fake_run)
 
@@ -1282,10 +1267,9 @@ def test_main_uses_streaming_http_for_conformance_mode(monkeypatch, tmp_path) ->
 
     captured: dict[str, object] = {}
 
-    def fake_run(*, transport: str) -> None:
+    def fake_run(*, transport: str, **kwargs: object) -> None:
         captured["transport"] = transport
-        captured["stateless_http"] = tools.mcp.settings.stateless_http
-        captured["json_response"] = tools.mcp.settings.json_response
+        captured.update(kwargs)
 
     monkeypatch.setattr(tools.mcp, "run", fake_run)
 
@@ -1293,6 +1277,8 @@ def test_main_uses_streaming_http_for_conformance_mode(monkeypatch, tmp_path) ->
 
     assert captured == {
         "transport": "streamable-http",
+        "host": "0.0.0.0",
+        "port": 8765,
         "stateless_http": False,
         "json_response": False,
     }

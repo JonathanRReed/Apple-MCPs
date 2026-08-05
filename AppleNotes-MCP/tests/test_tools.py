@@ -1,6 +1,6 @@
+from apple_notes_mcp import tools
 from apple_notes_mcp.config import load_settings
 from apple_notes_mcp.models import AccountInfo, FolderInfo, NoteCapabilities, NoteDetail
-from apple_notes_mcp import tools
 
 
 class FakeBridge:

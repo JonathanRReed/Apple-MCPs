@@ -13,7 +13,7 @@ async def apple_generate_weekly_briefing(
 ) -> Any:
     """Apple Generate Weekly Briefing
 
-    Generate a weekly Apple briefing. Supports task-augmented execution for longer runs.
+    Generate a weekly Apple briefing from upcoming events, reminders, and Mail highlights.
 
     Example:
         await apple_generate_weekly_briefing(client, days=1, mail_query='find apple')

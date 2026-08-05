@@ -1,0 +1,53 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.jonathanrreed/apple-mail-mcp",
+  "title": "Apple Mail",
+  "description": "Read, search, compose, and send emails via Apple Mail on macOS.",
+  "repository": {
+    "url": "https://github.com/JonathanRReed/Apple-MCPs",
+    "source": "github",
+    "id": "1194217206",
+    "subfolder": "AppleMail-MCP"
+  },
+  "version": "1.0.0",
+  "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "apple-mail-mcp",
+      "version": "1.0.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "APPLE_MAIL_MCP_SAFETY_PROFILE",
+          "description": "Safety mode for Mail operations: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "safe_manage"
+        },
+        {
+          "name": "APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT",
+          "description": "Directory attachments may be saved to or attached from. Unset disables attachment file access.",
+          "isRequired": false,
+          "format": "filepath"
+        },
+        {
+          "name": "APPLE_MAIL_MCP_VISIBLE_DRAFTS",
+          "description": "Whether compose tools open visible draft windows in Mail.app.",
+          "isRequired": false,
+          "format": "boolean",
+          "default": "true"
+        }
+      ]
+    }
+  ]
+}

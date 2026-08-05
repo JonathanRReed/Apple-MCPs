@@ -3,12 +3,13 @@ from __future__ import annotations
 import json
 import keyword
 import re
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Mapping, Sequence
+from typing import Any
 
 from mcp import types
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
 STOPWORDS = {
@@ -53,15 +54,6 @@ DOMAIN_ALIASES: dict[str, tuple[str, ...]] = {
     "apple": ("apple", "assistant", "unified", "cross-app"),
 }
 
-AUTO_VISIBLE_MARKERS = (
-    "_health",
-    "permission_guide",
-    "recheck_permissions",
-    "list_prompts",
-    "get_prompt",
-)
-
-
 @dataclass(frozen=True)
 class ToolSearchMetadata:
     aliases: tuple[str, ...] = ()
@@ -73,15 +65,20 @@ class ToolSearchMetadata:
 
 @dataclass
 class SearchFirstDiscovery:
+    """Registers catalog-search helper tools and powers generated tool artifacts.
+
+    Since MCP spec 2026-07-28, every tool is exposed through ``tools/list``
+    (modern clients defer-load large tool surfaces themselves). ``search_tools``
+    and ``get_tool_info`` remain as ordinary tools so context-constrained
+    clients can still discover the catalog incrementally.
+    """
+
     WRAPPER_ROOT_PACKAGE = "apple_mcp_wrappers"
-    mcp: FastMCP
+    mcp: MCPServer
     server_name: str
     domain: str
     list_all_tools: Callable[[], Awaitable[list[types.Tool]]]
-    call_tool: Callable[[str, dict[str, Any]], Awaitable[Any]]
     metadata: Mapping[str, ToolSearchMetadata] = field(default_factory=dict)
-    visible_tool_names: set[str] = field(default_factory=set)
-    catalog_json_path: Path | None = None
     wrapper_namespace: str | None = None
     discovery_tool_names: tuple[str, str] = ("search_tools", "get_tool_info")
 
@@ -125,8 +122,8 @@ class SearchFirstDiscovery:
             entry = next(item for item in catalog if item["name"] == name)
             payload = dict(entry)
             if include_schema:
-                payload["input_schema"] = tool.inputSchema
-                payload["output_schema"] = tool.outputSchema
+                payload["input_schema"] = tool.input_schema
+                payload["output_schema"] = tool.output_schema
             else:
                 payload.pop("schema_ref", None)
             if not include_examples:
@@ -138,8 +135,8 @@ class SearchFirstDiscovery:
             search_tools,
             name=self.discovery_tool_names[0],
             title="Search Tools",
-            description="Search this server's tool catalog without loading every full tool schema into the default tool list.",
-            annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+            description="Search this server's tool catalog by keyword, alias, or domain tag.",
+            annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
             structured_output=True,
         )
         self.mcp.add_tool(
@@ -147,31 +144,9 @@ class SearchFirstDiscovery:
             name=self.discovery_tool_names[1],
             title="Get Tool Info",
             description="Load the full schema, examples, and metadata for one tool from this server.",
-            annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+            annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
             structured_output=True,
         )
-
-        @self.mcp._mcp_server.list_tools()
-        async def _search_first_list_tools(_: types.ListToolsRequest) -> list[types.Tool]:
-            tools_by_name = await self.tools_by_name()
-            ordered_tools = await self.list_all_tools()
-            visible = self.visible_tool_name_set(tool.name for tool in ordered_tools)
-            return [tool for tool in ordered_tools if tool.name in visible and tool.name in tools_by_name]
-
-        @self.mcp._mcp_server.call_tool(validate_input=False)
-        async def _search_first_call_tool(name: str, arguments: dict[str, Any]) -> Any:
-            tools_by_name = await self.tools_by_name()
-            if name not in tools_by_name:
-                suggestions = self.search_catalog(
-                    query=name,
-                    catalog=await self.catalog_entries(),
-                    limit=5,
-                    domain_tags=None,
-                    mode="compact",
-                )
-                suggestion_text = ", ".join(item["name"] for item in suggestions) or "no close matches"
-                raise ValueError(f"Unknown tool '{name}'. Closest matches: {suggestion_text}. Use search_tools to discover tools.")
-            return await self.call_tool(name, arguments or {})
 
         return self
 
@@ -181,19 +156,6 @@ class SearchFirstDiscovery:
         for tool in tools:
             tools_by_name.setdefault(tool.name, tool)
         return tools_by_name
-
-    def visible_tool_name_set(self, available_names: Sequence[str] | None = None) -> set[str]:
-        visible = set(self.visible_tool_names)
-        visible.update(self.discovery_tool_names)
-        if available_names is not None:
-            visible.update(name for name in available_names if self._auto_visible(name))
-        for name, metadata in self.metadata.items():
-            if metadata.always_visible:
-                visible.add(name)
-        return visible
-
-    def _auto_visible(self, name: str) -> bool:
-        return any(marker in name for marker in AUTO_VISIBLE_MARKERS)
 
     async def catalog_entries(self) -> list[dict[str, Any]]:
         tools = await self.list_all_tools()
@@ -269,8 +231,8 @@ class SearchFirstDiscovery:
             "tags": tags,
             "aliases": list(dict.fromkeys([*metadata.aliases, *self._aliases_for_tool(tool)])),
             "risk_level": self._risk_level(tool),
-            "read_only": bool(getattr(tool.annotations, "readOnlyHint", False)),
-            "argument_summary": self._argument_summary(tool.inputSchema),
+            "read_only": bool(getattr(tool.annotations, "read_only_hint", False)),
+            "argument_summary": self._argument_summary(tool.input_schema),
             "example_calls": example_calls,
             "schema_ref": tool.name,
         }
@@ -340,9 +302,9 @@ class SearchFirstDiscovery:
 
     def _risk_level(self, tool: types.Tool) -> str:
         annotations = tool.annotations
-        if annotations and getattr(annotations, "destructiveHint", False):
+        if annotations and getattr(annotations, "destructive_hint", False):
             return "high"
-        if annotations and getattr(annotations, "readOnlyHint", False):
+        if annotations and getattr(annotations, "read_only_hint", False):
             return "low"
         return "medium"
 
@@ -357,7 +319,7 @@ class SearchFirstDiscovery:
         return summaries[:8]
 
     def _example_call(self, tool: types.Tool) -> dict[str, Any]:
-        schema = tool.inputSchema or {}
+        schema = tool.input_schema or {}
         properties = schema.get("properties", {}) if isinstance(schema, Mapping) else {}
         required = set(schema.get("required", [])) if isinstance(schema, Mapping) else set()
         arguments: dict[str, Any] = {}
@@ -367,7 +329,7 @@ class SearchFirstDiscovery:
         return {"tool": tool.name, "arguments": arguments}
 
     def _example_value(self, name: str, definition: Mapping[str, Any]) -> Any:
-        if "enum" in definition and definition["enum"]:
+        if definition.get("enum"):
             return definition["enum"][0]
         schema_type = self._schema_type_name(definition)
         if schema_type == "boolean":
@@ -506,7 +468,7 @@ class SearchFirstDiscovery:
             file_name = f"{entry['name']}.py"
             function_name = self._safe_identifier(entry["name"])
             module_path = package_dir / file_name
-            schema = tools_by_name[entry["name"]].inputSchema
+            schema = tools_by_name[entry["name"]].input_schema
             parameters_block, arguments_dict = self._python_wrapper_signature(schema)
             example = entry["example_calls"][0]["arguments"] if entry["example_calls"] else {}
             module_path.write_text(
@@ -523,7 +485,7 @@ class SearchFirstDiscovery:
             )
             created_paths.append(module_path)
             init_lines.append(f"from .{entry['name']} import {function_name}")
-            index_entries.append(f'    "{entry["name"]}": "{self.WRAPPER_ROOT_PACKAGE}/{package_name}/{file_name}",')
+            index_entries.append(f'    "{package_name}/{entry["name"]}": "{self.WRAPPER_ROOT_PACKAGE}/{package_name}/{file_name}",')
             exported_functions.append(function_name)
         init_lines.append("")
         init_lines.append("__all__ = [")
@@ -562,7 +524,7 @@ class SearchFirstDiscovery:
         return ",\n    ".join(parameters), argument_dict
 
     def _python_annotation(self, definition: Mapping[str, Any]) -> str:
-        if "enum" in definition and definition["enum"]:
+        if definition.get("enum"):
             return "str"
         schema_type = self._schema_type_name(definition)
         return {
@@ -617,15 +579,12 @@ class SearchFirstDiscovery:
 
 
 def install_search_first_discovery(
-    mcp: FastMCP,
+    mcp: MCPServer,
     *,
     server_name: str,
     domain: str,
     list_all_tools: Callable[[], Awaitable[list[types.Tool]]] | None = None,
-    call_tool: Callable[[str, dict[str, Any]], Awaitable[Any]] | None = None,
     metadata: Mapping[str, ToolSearchMetadata] | None = None,
-    visible_tool_names: set[str] | None = None,
-    catalog_json_path: Path | None = None,
     wrapper_namespace: str | None = None,
 ) -> SearchFirstDiscovery:
     discovery = SearchFirstDiscovery(
@@ -633,10 +592,7 @@ def install_search_first_discovery(
         server_name=server_name,
         domain=domain,
         list_all_tools=list_all_tools or mcp.list_tools,
-        call_tool=call_tool or mcp.call_tool,
         metadata=metadata or {},
-        visible_tool_names=visible_tool_names or set(),
-        catalog_json_path=catalog_json_path,
         wrapper_namespace=wrapper_namespace,
     )
     return discovery.register()

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, datetime
 import heapq
 import os
-from pathlib import Path
 import plistlib
 import subprocess
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 
 from apple_files_mcp.config import load_settings
 from apple_files_mcp.models import FileEntry
@@ -87,6 +87,8 @@ class FilesBridge:
             )
         except FileNotFoundError as exc:
             raise FilesBridgeError("COMMAND_NOT_FOUND", f"Missing command: {command[0]}", "Run this server on macOS.") from exc
+        except OSError as exc:
+            raise FilesBridgeError("COMMAND_FAILED", f"Could not run {command[0]}: {exc}", "Run this server on macOS.") from exc
         except subprocess.CalledProcessError as exc:
             stderr = exc.stderr.strip() or exc.stdout.strip()
             raise FilesBridgeError("COMMAND_FAILED", stderr or "File system command failed.", "Retry the request.") from exc
@@ -241,6 +243,8 @@ class FilesBridge:
             )
         except FileNotFoundError as exc:
             raise FilesBridgeError("COMMAND_NOT_FOUND", "Missing find/stat command.", "Run this server on macOS.") from exc
+        except OSError as exc:
+            raise FilesBridgeError("COMMAND_FAILED", f"Could not run find/stat: {exc}", "Run this server on macOS.") from exc
         except subprocess.CalledProcessError as exc:
             stderr = exc.stderr.strip() or exc.stdout.strip()
             raise FilesBridgeError("COMMAND_FAILED", stderr or f"Recent file scan failed for {root}.", "Retry the request.") from exc

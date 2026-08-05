@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.jonathanrreed/apple-tools-mcp -->
+
 # Apple-Tools-MCP
 
 Unified MCP server for Apple apps on macOS.
@@ -21,7 +23,7 @@ One entrypoint for Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcu
 - Bounded GUI fallback tools when a native app-domain MCP cannot complete a task directly
 - Finder-aware file workflows, Finder tags, recent locations, and iCloud Drive awareness through Apple Files
 - Travel-aware workflows using Apple Maps for place search and route estimates
-- Long-running briefing and triage tools for clients that support MCP tasks
+- Daily briefing, weekly briefing, and communications-triage tools
 - Prompt fallback via `apple_list_prompts` and `apple_get_prompt`
 - One install target instead of ten separate configurations
 
@@ -31,39 +33,39 @@ One entrypoint for Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcu
 - Cross-app operations (e.g., Calendar and Reminders together)
 - Simpler setup without wiring each standalone MCP separately
 
-## Search-First Surface
+## Tool Discovery
 
-Apple-Tools-MCP is optimized for search-aware clients:
+Apple-Tools-MCP exposes its full tool surface through `tools/list`, with `readOnlyHint`/`destructiveHint` annotations and structured output schemas — modern clients defer-load large tool surfaces themselves. For context-constrained clients:
 
-- `tools/list` stays intentionally small
-- `search_tools` discovers deferred tools by name, aliases, and domain tags
-- `get_tool_info` loads the full schema and examples for one deferred tool on demand
-- direct `call_tool` still works for deferred tools that were not listed up front
+- `search_tools` finds tools by name, aliases, and domain tags
+- `get_tool_info` loads the full schema and examples for one tool on demand
 - generated code-mode wrappers are exported under `generated/tool_wrappers/python`
 
 ## Install On This Mac
 
 <details>
-<summary>Quick start</summary>
+<summary>Quick start (uvx, from PyPI)</summary>
+
+With [uv](https://docs.astral.sh/uv/getting-started/installation/) installed:
 
 ```bash
-cd /path/to/Apple-MCPs/Apple-Tools-MCP
-./start.sh
+uvx apple-tools-mcp
 ```
 
-`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the MCP server over `stdio`.
+No clone, no venv management.
 
 </details>
 
 <details>
-<summary>Install all Apple MCP packages into one shared environment</summary>
+<summary>From a clone</summary>
 
 ```bash
-cd /path/to/Apple-MCPs
-bash scripts/install_all.sh
+git clone https://github.com/JonathanRReed/Apple-MCPs.git
+cd Apple-MCPs
+uv sync --all-packages
 ```
 
-This installs `Apple-Tools-MCP` plus every standalone package into one environment. Use this path when you want the unified server to import installed domain packages directly instead of relying on the monorepo fallback. The installed unified entrypoint is `.venv/bin/apple-tools-mcp`.
+This builds one uv workspace environment with the unified entrypoint at `.venv/bin/apple-tools-mcp` plus every standalone server's console script (`bash scripts/install_all.sh` does the same, with a venv fallback for machines without uv). You can also point an MCP client at `Apple-Tools-MCP/start.sh`, which prefers `uv run` and falls back to a plain venv bootstrap (Python 3.11+ required).
 
 </details>
 
@@ -76,8 +78,8 @@ This installs `Apple-Tools-MCP` plus every standalone package into one environme
 {
   "mcpServers": {
     "apple-tools": {
-      "command": "/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh",
-      "args": [],
+      "command": "uvx",
+      "args": ["apple-tools-mcp"],
       "env": {
         "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
         "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
@@ -95,15 +97,15 @@ This installs `Apple-Tools-MCP` plus every standalone package into one environme
 }
 ```
 
+Running from a clone instead? Use `/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh` as the command with empty `args`.
+
 </details>
 
 <details>
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project \
-  apple-tools \
-  -- /path/to/Apple-MCPs/Apple-Tools-MCP/start.sh
+claude mcp add --transport stdio --scope project apple-tools -- uvx apple-tools-mcp
 ```
 
 </details>
@@ -121,7 +123,7 @@ claude mcp add --transport stdio --scope project \
 - Workflow tools: archive, create reminders and notes with defaults, preview those defaulted writes, capture follow-ups, preview follow-up capture, and summarize event collaboration
 - Launch-hardening tools: strict Maps wrappers, duplicate-contact detection, digest-folder helpers, and Shortcut bridge routing
 - Audit tools: list recent actions and undo
-- Briefing tools: daily, weekly, and communications triage (with task support)
+- Briefing tools: daily, weekly, and communications triage
 - Prompt fallback: `apple_list_prompts` and `apple_get_prompt`
 - Mail thread tools: get, reply, archive
 - Contacts mutation: create, update, delete with labeled methods
@@ -185,16 +187,15 @@ Apple-Tools-MCP also stores recent assistant actions in `~/.apple-tools-mcp/acti
 
 ## Launch Checklist
 
-- Start the server once with `./start.sh`
-- Add `/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh` or the installed `.venv/bin/apple-tools-mcp` entrypoint to your MCP client
-- Reload or reconnect the client so the Apple-Tools-MCP minimal tool surface is loaded into context
+- Add `uvx apple-tools-mcp` (or a clone's `Apple-Tools-MCP/start.sh` / installed `.venv/bin/apple-tools-mcp` entrypoint) to your MCP client
+- Reload or reconnect the client so the Apple-Tools-MCP tool surface is loaded into context
 - Call `apple_health` first to verify every domain
 - If a domain is blocked, call `apple_permission_guide`
 - After changing macOS permissions, call `apple_recheck_permissions`
 
-## Protocol Verification
+## Transports and Protocol Verification
 
-Normal agent setups should use `stdio`. For protocol validation, Apple-Tools-MCP also supports `streamable-http`.
+`stdio` is the default and recommended transport. Set `APPLE_AGENT_MCP_TRANSPORT=streamable-http` (with optional `APPLE_AGENT_MCP_HOST` and `APPLE_AGENT_MCP_PORT`) to serve Streamable HTTP instead — used below for protocol validation.
 
 ### Official MCP conformance
 
@@ -216,9 +217,9 @@ npx -y @modelcontextprotocol/conformance server \
   --suite active
 ```
 
-`APPLE_AGENT_MCP_CONFORMANCE_MODE=1` adds an opt-in MCP conformance surface for tools, prompts, resources, completion, logging, progress, sampling, and elicitation. It is intended for CI and protocol testing, not normal assistant use.
+`APPLE_AGENT_MCP_CONFORMANCE_MODE=1` adds an opt-in MCP conformance surface covering content types, resources, resource templates, prompts, progress, and completion (fixtures for features removed by spec 2026-07-28 are intentionally absent). It is intended for CI and protocol testing, not normal assistant use.
 
-Apple-Tools-MCP also enables experimental MCP task support in normal operation. The task-capable briefing and triage tools advertise `taskSupport=optional`, so task-aware clients can run them asynchronously while direct clients can still call them normally.
+The briefing and triage tools (`apple_generate_daily_briefing`, `apple_generate_weekly_briefing`, `apple_triage_communications_task`) are standard synchronous tools — the experimental MCP tasks API they previously used was removed from the spec (SEP-1686) and SDK, with the same tool names and results.
 
 ## Launch Docs
 
@@ -250,7 +251,7 @@ bash scripts/inspector_smoke.sh
 
 ```xml
 <apple_tools>
-`tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` only for the tools you plan to call.
+`tools/list` returns the full tool surface. If context is constrained, use `search_tools` first, then `get_tool_info` only for the tools you plan to call.
 
 <routing>
   <imessage trigger="text, message, msg, iMessage">
@@ -312,7 +313,7 @@ bash scripts/inspector_smoke.sh
   - service_name on iMessage calls causes error (-1728). Omit it.
   - Bare timestamps without timezone offset fail on Reminders.
   - Mail has no "list recent" endpoint. Always pass a search query.
-  - `tools/list` is intentionally minimal. Use `search_tools` plus `get_tool_info` to inspect deferred tools.
+  - Use `search_tools` plus `get_tool_info` to inspect tools without loading every schema into context.
   - Multiple Notes folders exist across accounts. Pick one default.
   - Files access is limited to APPLE_FILES_MCP_ALLOWED_ROOTS.
   - Some System actions depend on host app automation approval.

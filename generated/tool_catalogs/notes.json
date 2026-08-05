@@ -718,8 +718,8 @@
         "note",
         "notes",
         "memo",
-        "get prompt prompt",
-        "notes get prompt prompt"
+        "get prompt",
+        "notes get prompt"
       ],
       "argument_summary": [
         "name: string (required)",
@@ -733,13 +733,13 @@
             "arguments_json": "example_arguments_json",
             "name": "example_name"
           },
-          "tool": "notes_get_prompt_prompt"
+          "tool": "notes_get_prompt"
         }
       ],
-      "name": "notes_get_prompt_prompt",
+      "name": "notes_get_prompt",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "notes_get_prompt_prompt",
+      "schema_ref": "notes_get_prompt",
       "tags": [
         "notes",
         "note",
@@ -770,7 +770,7 @@
         "domain_tags: array (optional)",
         "mode: string (optional)"
       ],
-      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "description": "Search this server's tool catalog by keyword, alias, or domain tag.",
       "domain": "notes",
       "example_calls": [
         {
@@ -796,15 +796,14 @@
         "thi",
         "server",
         "catalog",
-        "without",
-        "loading",
-        "every",
-        "full",
-        "schema",
-        "default"
+        "keyword",
+        "alias",
+        "alia",
+        "domain",
+        "tag"
       ],
       "title": "Search Tools",
-      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+      "usage_intent": "Search this server's tool catalog by keyword, alias, or domain tag."
     },
     {
       "aliases": [

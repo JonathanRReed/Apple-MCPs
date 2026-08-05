@@ -1,0 +1,17 @@
+# Expected conformance failures for Apple-Tools-MCP.
+#
+# These scenarios exercise features that MCP spec 2026-07-28 deprecated or
+# removed (SEP-2577 deprecations, subscriptions redesign). The suite's
+# conformance fixtures for them were intentionally removed from conformance.py
+# when the repo moved to SDK v2. Once the conformance CLI supports filtering
+# by spec version 2026-07-28, this baseline can be replaced with
+# `--spec-version 2026-07-28`.
+server:
+  - logging-set-level          # logging/setLevel removed in 2026-07-28
+  - tools-call-with-logging    # server logging deprecated; stderr/OTel instead
+  - tools-call-sampling        # sampling deprecated (SEP-2577)
+  - tools-call-elicitation     # server-initiated elicitation replaced by MRTR
+  - elicitation-sep1034-defaults
+  - elicitation-sep1330-enums
+  - resources-subscribe        # replaced by subscriptions/listen
+  - resources-unsubscribe

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
-from pathlib import Path
 import subprocess
-from urllib.parse import urlencode, quote_plus
+from dataclasses import dataclass
+from pathlib import Path
+from urllib.parse import quote_plus, urlencode
 
 from apple_maps_mcp.config import load_settings
 
@@ -49,8 +49,14 @@ class AppleMapsBridge:
                 "Timed out while compiling the Apple Maps helper.",
                 "Confirm Xcode command line tools are installed, then retry.",
             ) from exc
-        except (FileNotFoundError, subprocess.CalledProcessError) as exc:
-            stderr = exc.stderr.strip() if isinstance(exc, subprocess.CalledProcessError) and exc.stderr else ""
+        except OSError as exc:
+            raise MapsBridgeError(
+                "SWIFTC_UNAVAILABLE",
+                f"Could not run 'swiftc': {exc}.",
+                "This server requires macOS with the Swift toolchain (swiftc) available.",
+            ) from exc
+        except subprocess.CalledProcessError as exc:
+            stderr = exc.stderr.strip() if exc.stderr else ""
             raise MapsBridgeError(
                 "HELPER_COMPILE_FAILED",
                 stderr or "Failed to compile the Apple Maps helper.",
@@ -72,6 +78,12 @@ class AppleMapsBridge:
                 "HELPER_TIMEOUT",
                 "Apple Maps helper timed out while waiting for MapKit.",
                 "Retry the request, or confirm Maps and Location Services are available on this Mac.",
+            ) from exc
+        except OSError as exc:
+            raise MapsBridgeError(
+                "HELPER_UNAVAILABLE",
+                f"Could not run the Apple Maps helper '{self.helper_binary}': {exc}.",
+                "This server requires macOS with the compiled Apple Maps helper available.",
             ) from exc
         except subprocess.CalledProcessError as exc:
             stderr = exc.stderr.strip() or exc.stdout.strip()

@@ -1,7 +1,5 @@
 import asyncio
 
-from mcp import types
-
 from apple_files_mcp import tools
 from apple_files_mcp.models import FileEntry
 
@@ -161,38 +159,40 @@ def test_main_uses_streamable_http(monkeypatch):
 
     captured = {}
 
-    def fake_run(*, transport: str):
+    def fake_run(*, transport: str, host: str, port: int, json_response: bool, stateless_http: bool):
         captured["transport"] = transport
-        captured["host"] = tools.mcp.settings.host
-        captured["port"] = tools.mcp.settings.port
+        captured["host"] = host
+        captured["port"] = port
+        captured["json_response"] = json_response
+        captured["stateless_http"] = stateless_http
         captured["log_level"] = tools.mcp.settings.log_level
 
     monkeypatch.setattr(tools.mcp, "run", fake_run)
 
     tools.main()
 
-    assert captured == {"transport": "streamable-http", "host": "0.0.0.0", "port": 8765, "log_level": "DEBUG"}
+    assert captured == {
+        "transport": "streamable-http",
+        "host": "0.0.0.0",
+        "port": 8765,
+        "json_response": True,
+        "stateless_http": True,
+        "log_level": "DEBUG",
+    }
 
 
-def test_search_first_mcp_surface_exposes_discovery_only() -> None:
+def test_search_first_mcp_surface_exposes_discovery_and_full_catalog() -> None:
     async def load() -> tuple[set[str], dict[str, object]]:
-        list_result = await tools.mcp._mcp_server.request_handlers[types.ListToolsRequest](None)
-        info_result = await tools.mcp._mcp_server.request_handlers[types.CallToolRequest](
-            types.CallToolRequest(
-                params=types.CallToolRequestParams(
-                    name="get_tool_info",
-                    arguments={"name": "files_search_files"},
-                )
-            )
-        )
-        names = {tool.name for tool in list_result.root.tools}
-        return names, info_result.root.structuredContent
+        tool_list = await tools.mcp.list_tools()
+        info_result = await tools.mcp.call_tool("get_tool_info", {"name": "files_search_files"})
+        names = {tool.name for tool in tool_list}
+        return names, info_result.structured_content
 
     names, info = asyncio.run(load())
 
     assert "search_tools" in names
     assert "get_tool_info" in names
-    assert "files_search_files" not in names
+    assert "files_search_files" in names
     assert info["ok"] is True
     assert info["name"] == "files_search_files"
 

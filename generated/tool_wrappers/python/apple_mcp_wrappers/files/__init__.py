@@ -22,7 +22,7 @@ from .files_create_folder import files_create_folder
 from .files_move_path import files_move_path
 from .files_delete_path import files_delete_path
 from .files_list_prompts import files_list_prompts
-from .files_get_prompt_prompt import files_get_prompt_prompt
+from .files_get_prompt import files_get_prompt
 
 __all__ = [
     "files_health",
@@ -45,5 +45,5 @@ __all__ = [
     "files_move_path",
     "files_delete_path",
     "files_list_prompts",
-    "files_get_prompt_prompt",
+    "files_get_prompt",
 ]

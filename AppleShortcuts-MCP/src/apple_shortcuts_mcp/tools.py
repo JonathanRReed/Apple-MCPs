@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 import logging
 
-from apple_mcp_common.discovery import install_search_first_discovery
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
+from apple_mcp_common.discovery import install_search_first_discovery
 from apple_shortcuts_mcp.config import Settings, load_settings
 from apple_shortcuts_mcp.models import ErrorResponse, HealthResponse, ShortcutFolderListResponse, ShortcutListResponse, ShortcutPermissionStatus, ShortcutRunResponse, ToolError, ViewShortcutResponse
 from apple_shortcuts_mcp.permissions import SafetyError, ensure_action_allowed
@@ -18,7 +18,7 @@ SERVER_INSTRUCTIONS = (
     "Prefer list and view before run when shortcut identity is uncertain."
 )
 
-mcp = FastMCP("Apple Shortcuts MCP", instructions=SERVER_INSTRUCTIONS, json_response=True)
+mcp = MCPServer("Apple Shortcuts MCP", instructions=SERVER_INSTRUCTIONS)
 
 
 def configure_logging(settings: Settings) -> None:
@@ -145,7 +145,7 @@ def shortcuts_follow_up_prompt() -> str:
 @mcp.tool(
     title="Shortcuts Health",
     description="Report the active Apple Shortcuts MCP configuration.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def shortcuts_health() -> HealthResponse:
@@ -155,7 +155,7 @@ def shortcuts_health() -> HealthResponse:
 @mcp.tool(
     title="Shortcuts Permission Guide",
     description="Explain the runtime requirements for Apple Shortcuts on macOS.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def shortcuts_permission_guide() -> dict[str, object]:
@@ -174,7 +174,7 @@ def shortcuts_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="Shortcuts Refresh State",
     description="Refresh Shortcuts resources and notify the client that the shortcut catalog may have changed.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=False),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
     structured_output=True,
 )
 async def shortcuts_refresh_state(ctx: Context) -> HealthResponse:
@@ -188,7 +188,7 @@ async def shortcuts_refresh_state(ctx: Context) -> HealthResponse:
 @mcp.tool(
     title="List Shortcuts",
     description="List Apple Shortcuts, optionally restricted to one folder.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def shortcuts_list_shortcuts(folder_name: str | None = None) -> ShortcutListResponse | ErrorResponse:
@@ -202,7 +202,7 @@ def shortcuts_list_shortcuts(folder_name: str | None = None) -> ShortcutListResp
 @mcp.tool(
     title="List Shortcut Folders",
     description="List Apple Shortcuts folders.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def shortcuts_list_folders() -> ShortcutFolderListResponse | ErrorResponse:
@@ -216,7 +216,7 @@ def shortcuts_list_folders() -> ShortcutFolderListResponse | ErrorResponse:
 @mcp.tool(
     title="View Shortcut",
     description="Open a shortcut in the Shortcuts app by name or identifier and return its metadata.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def shortcuts_view_shortcut(shortcut_name_or_identifier: str) -> ViewShortcutResponse | ErrorResponse:
@@ -230,7 +230,7 @@ def shortcuts_view_shortcut(shortcut_name_or_identifier: str) -> ViewShortcutRes
 @mcp.tool(
     title="Run Shortcut",
     description="Run a shortcut by name or identifier with optional input and output arguments.",
-    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def shortcuts_run_shortcut(
@@ -266,7 +266,7 @@ def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]
 @mcp.tool(
     title="Shortcuts List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 async def shortcuts_list_prompts() -> dict[str, object]:
@@ -279,25 +279,16 @@ async def shortcuts_list_prompts() -> dict[str, object]:
 
 
 @mcp.tool(
+    name="shortcuts_get_prompt",
     title="Shortcuts Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 async def shortcuts_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
     return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
-
-
-@mcp._mcp_server.subscribe_resource()
-async def _shortcuts_subscribe_resource(uri) -> None:
-    del uri
-
-
-@mcp._mcp_server.unsubscribe_resource()
-async def _shortcuts_unsubscribe_resource(uri) -> None:
-    del uri
 
 
 TOOL_DISCOVERY = install_search_first_discovery(
@@ -313,9 +304,10 @@ def main() -> None:
     if settings.transport == "stdio":
         mcp.run(transport="stdio")
         return
-    mcp.settings.host = settings.host
-    mcp.settings.port = settings.port
-    mcp.settings.log_level = settings.log_level
-    mcp.settings.stateless_http = True
-    mcp.settings.json_response = True
-    mcp.run(transport="streamable-http")
+    mcp.run(
+        transport="streamable-http",
+        host=settings.host,
+        port=settings.port,
+        stateless_http=True,
+        json_response=True,
+    )

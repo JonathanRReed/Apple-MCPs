@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # macOS runner: wheels are pure-Python, but .mcpb bundles target macOS
+    # and scripts/build_mcpb.sh may rely on macOS tooling.
+    name: Build distributions and bundles
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build sdists and wheels for all packages
+        run: uv build --all-packages
+
+      - name: Build .mcpb bundles (if build script exists)
+        run: |
+          if [ -f scripts/build_mcpb.sh ]; then
+            bash scripts/build_mcpb.sh
+          else
+            echo "scripts/build_mcpb.sh not present; skipping bundle build."
+          fi
+
+      - name: Collect release assets and write SHA256SUMS
+        run: |
+          mkdir -p release-assets
+          # Collect any .mcpb bundles the build script produced, wherever it
+          # wrote them.
+          find . -name '*.mcpb' -not -path './release-assets/*' -exec cp {} release-assets/ \;
+          # Checksums cover everything shipped from this tag: PyPI dists and
+          # any bundles attached to the GitHub Release.
+          cp dist/*.tar.gz dist/*.whl release-assets/
+          (cd release-assets && shasum -a 256 -- * > SHA256SUMS.tmp && mv SHA256SUMS.tmp SHA256SUMS)
+          # Only bundles + SHA256SUMS are attached to the Release; dists go to
+          # PyPI, so drop them from the asset directory after checksumming.
+          rm -f release-assets/*.tar.gz release-assets/*.whl
+          ls -la release-assets
+          cat release-assets/SHA256SUMS
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+      - name: Upload release assets artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: release-assets/
+          if-no-files-found: error
+
+  publish-pypi:
+    # One job per package, each in its own GitHub environment
+    # (pypi-<package>). PyPI's pending trusted publishers require a unique
+    # (repo, workflow, environment) tuple per project, so a shared "pypi"
+    # environment cannot cover a 12-package monorepo.
+    name: Publish ${{ matrix.package }} to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - apple-mcp-common
+          - apple-calendar-mcp
+          - apple-contacts-mcp
+          - apple-files-mcp
+          - apple-mail-mcp
+          - apple-maps-mcp
+          - apple-messages-mcp
+          - apple-notes-mcp
+          - apple-reminders-mcp
+          - apple-shortcuts-mcp
+          - apple-system-mcp
+          - apple-tools-mcp
+    environment:
+      name: pypi-${{ matrix.package }}
+      url: https://pypi.org/project/${{ matrix.package }}/
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Stage this package's distributions
+        run: |
+          module_name="$(echo '${{ matrix.package }}' | tr '-' '_')"
+          mkdir -p staged
+          cp "dist/${module_name}-"*.tar.gz "dist/${module_name}-"*.whl staged/
+          ls -la staged
+
+      - name: Publish via trusted publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: staged
+          skip-existing: true
+
+  github-release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release assets artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: release-assets/
+
+      - name: Create release and attach assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true

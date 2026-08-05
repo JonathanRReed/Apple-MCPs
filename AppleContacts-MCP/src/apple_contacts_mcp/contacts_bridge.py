@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
 import hashlib
 import json
 import re
 import subprocess
+from pathlib import Path
 
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSummary, CreateContactResponse, DeleteContactResponse, DuplicateCandidateGroup, DuplicateEvidence, ResolvedRecipientResponse
@@ -284,7 +284,14 @@ class AppleContactsBridge:
                 "Restore the AppleScript file and try again.",
             )
 
-        completed = subprocess.run(["osascript", str(script_path), *args], capture_output=True, text=True, check=False)
+        try:
+            completed = subprocess.run(["osascript", str(script_path), *args], capture_output=True, text=True, check=False)
+        except OSError as exc:
+            raise ContactsBridgeError(
+                "OSASCRIPT_UNAVAILABLE",
+                f"Could not run 'osascript': {exc}.",
+                "This server requires macOS with osascript available.",
+            ) from exc
         if completed.returncode != 0:
             raise self._map_script_error(completed.stderr.strip() or completed.stdout.strip())
 
@@ -315,7 +322,7 @@ class AppleContactsBridge:
 
     def _map_script_error(self, error_text: str) -> ContactsBridgeError:
         lowered = error_text.lower()
-        if "not authorized" in lowered or "contacts" in lowered and "not allowed" in lowered:
+        if "not authorized" in lowered or ("contacts" in lowered and "not allowed" in lowered):
             return ContactsBridgeError(
                 "PERMISSION_DENIED",
                 "macOS denied access to Contacts.",

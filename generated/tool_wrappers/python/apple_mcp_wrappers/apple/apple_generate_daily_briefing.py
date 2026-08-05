@@ -12,7 +12,7 @@ async def apple_generate_daily_briefing(
 ) -> Any:
     """Apple Generate Daily Briefing
 
-    Generate a daily Apple briefing. Supports task-augmented execution for longer runs.
+    Generate a daily Apple briefing from today's context, domain health, and Mail highlights.
 
     Example:
         await apple_generate_daily_briefing(client, mail_query='find apple', mail_limit=1)

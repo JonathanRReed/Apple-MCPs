@@ -1,0 +1,219 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Ruff
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Sync workspace (with dev extras)
+        run: uv sync --all-packages --all-extras
+
+      - name: Run ruff
+        run: uv run --no-sync ruff check .
+
+  test:
+    name: Pytest (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-15
+          - ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Sync workspace (with dev extras)
+        run: uv sync --all-packages --all-extras
+
+      - name: Run per-package test suites
+        run: |
+          set -u
+          failed=""
+          for package in \
+            AppleMCPCommon \
+            Apple-Tools-MCP \
+            Apple-Calendar-MCP \
+            AppleContacts-MCP \
+            AppleFiles-MCP \
+            AppleMail-MCP \
+            AppleMaps-MCP \
+            AppleMessages-MCP \
+            AppleNotes-MCP \
+            AppleReminders-MCP \
+            AppleShortcuts-MCP \
+            AppleSystem-MCP
+          do
+            echo "::group::${package}"
+            if uv run --project "$package" --no-sync python -m pytest "$package/tests" -q; then
+              echo "PASS ${package}"
+            else
+              echo "FAIL ${package}"
+              failed="$failed $package"
+            fi
+            echo "::endgroup::"
+          done
+          if [ -n "$failed" ]; then
+            echo "Failing packages:$failed"
+            exit 1
+          fi
+          echo "All package test suites passed."
+
+  generated-drift:
+    # Regenerates generated/ and fails if the committed artifacts are stale.
+    # Runs on macOS to match the environment the artifacts are authored on.
+    name: Generated artifacts drift
+    runs-on: macos-15
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Sync workspace
+        run: uv sync --all-packages
+
+      - name: Regenerate tool search artifacts
+        run: uv run --no-sync python scripts/generate_tool_search_artifacts.py
+
+      - name: Fail on drift in generated/
+        run: |
+          if [ -n "$(git status --porcelain -- generated)" ]; then
+            echo "generated/ is stale. Regenerate with:"
+            echo "  uv run python scripts/generate_tool_search_artifacts.py"
+            git status --porcelain -- generated
+            git diff -- generated
+            exit 1
+          fi
+          echo "generated/ is up to date."
+
+  apple-tools-conformance:
+    name: Apple-Tools Conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Sync workspace
+        run: uv sync --all-packages
+
+      - name: Start Apple-Tools-MCP in conformance mode
+        working-directory: Apple-Tools-MCP
+        run: |
+          APPLE_AGENT_MCP_TRANSPORT=streamable-http \
+          APPLE_AGENT_MCP_PORT=8765 \
+          APPLE_AGENT_MCP_CONFORMANCE_MODE=1 \
+          ./start.sh >"$RUNNER_TEMP/apple-tools-conformance.log" 2>&1 &
+          echo $! >"$RUNNER_TEMP/apple-tools-conformance.pid"
+
+      - name: Wait for Apple-Tools-MCP
+        run: |
+          python3 - <<'PY'
+          import socket
+          import time
+
+          deadline = time.time() + 180
+          while time.time() < deadline:
+              try:
+                  with socket.create_connection(("127.0.0.1", 8765), timeout=1):
+                      raise SystemExit(0)
+              except OSError:
+                  time.sleep(1)
+
+          raise SystemExit("Apple-Tools-MCP did not start on port 8765 within 180 seconds")
+          PY
+
+      - name: Run official MCP conformance suite
+        # Direct CLI invocation so the expected-failures baseline applies:
+        # conformance-baseline.yaml documents scenarios for features that
+        # spec 2026-07-28 deprecated/removed and this suite intentionally
+        # does not implement.
+        run: |
+          npx -y @modelcontextprotocol/conformance server \
+            --url http://127.0.0.1:8765/mcp \
+            --suite active \
+            --expected-failures conformance-baseline.yaml
+
+      - name: Show Apple-Tools-MCP log on failure
+        if: failure()
+        run: cat "$RUNNER_TEMP/apple-tools-conformance.log"
+
+      - name: Stop Apple-Tools-MCP
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/apple-tools-conformance.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/apple-tools-conformance.pid")" || true
+          fi
+
+  inspector-smoke:
+    name: Inspector Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run Inspector smoke checks
+        run: bash scripts/inspector_smoke.sh

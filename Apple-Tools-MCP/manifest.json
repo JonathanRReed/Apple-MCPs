@@ -2,25 +2,53 @@
   "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
   "manifest_version": "0.4",
   "name": "apple-tools",
-  "display_name": "Apple-Tools-MCP",
-  "version": "0.1.0",
-  "description": "Unified Apple tools MCP server for macOS, including Files, System, Maps, Finder-aware workflows, and truthful system context.",
+  "display_name": "Apple Tools",
+  "version": "1.0.0",
+  "description": "Unified Apple tools MCP server for macOS, covering Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps.",
   "long_description": "Local MCP server for Apple Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps on macOS. Reuses the standalone Apple-native integrations while providing one coherent agent entrypoint, unified health, cross-app prompts, aggregated overview resources, assistant workflows, Finder-aware file handling, and truthful system context.",
   "icon": "icon.png",
   "author": {
-    "name": "Apple MCP Contributors"
+    "name": "Jonathan Reed"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JonathanRReed/Apple-MCPs"
   },
   "license": "MIT",
-  "keywords": ["apple", "assistant", "macos", "mail", "calendar", "reminders", "messages", "contacts", "notes", "shortcuts", "files", "system", "maps"],
+  "keywords": [
+    "apple",
+    "assistant",
+    "macos",
+    "mail",
+    "calendar",
+    "reminders",
+    "messages",
+    "contacts",
+    "notes",
+    "shortcuts",
+    "files",
+    "system",
+    "maps"
+  ],
   "compatibility": {
-    "platforms": ["darwin"],
-    "runtimes": { "python": ">=3.11" }
+    "platforms": [
+      "darwin"
+    ],
+    "runtimes": {
+      "python": ">=3.11"
+    }
   },
   "server": {
-    "type": "python",
+    "type": "uv",
+    "entry_point": "server.py",
     "mcp_config": {
-      "command": "${__dirname}/start.sh",
-      "args": [],
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${__dirname}",
+        "server.py"
+      ],
       "env": {
         "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
         "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",

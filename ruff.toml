@@ -1,0 +1,47 @@
+line-length = 200
+target-version = "py311"
+extend-exclude = [
+  ".build",
+  ".venv",
+  "generated",
+]
+
+[lint]
+select = [
+  "E4",
+  "E7",
+  "E9",
+  "F",
+  "I",
+  "B",
+  "UP",
+  "SIM",
+  "RUF",
+]
+# SIM103/SIM108 ternary rewrites hurt readability at this line length.
+ignore = ["SIM103", "SIM108"]
+
+[lint.per-file-ignores]
+# Domain imports must run after ensure_domain_paths() sets up sys.path.
+"Apple-Tools-MCP/src/apple_agent_mcp/tools.py" = ["E402"]
+# Curly apostrophes here deliberately match AppleScript error strings.
+"AppleContacts-MCP/src/apple_contacts_mcp/contacts_bridge.py" = ["RUF001"]
+"AppleNotes-MCP/src/apple_notes_mcp/notes_bridge.py" = ["RUF001"]
+# SafetyProfile keeps (str, Enum) for stable wire formatting.
+"AppleMail-MCP/src/apple_mail_mcp/models.py" = ["UP042"]
+
+[lint.isort]
+known-first-party = [
+  "apple_mcp_common",
+  "apple_agent_mcp",
+  "apple_calendar_mcp",
+  "apple_contacts_mcp",
+  "apple_files_mcp",
+  "apple_mail_mcp",
+  "apple_maps_mcp",
+  "apple_messages_mcp",
+  "apple_notes_mcp",
+  "apple_reminders_mcp",
+  "apple_shortcuts_mcp",
+  "apple_system_mcp",
+]

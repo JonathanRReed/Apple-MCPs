@@ -15,7 +15,7 @@ from .contacts_create_contact import contacts_create_contact
 from .contacts_update_contact import contacts_update_contact
 from .contacts_delete_contact import contacts_delete_contact
 from .contacts_list_prompts import contacts_list_prompts
-from .contacts_get_prompt_prompt import contacts_get_prompt_prompt
+from .contacts_get_prompt import contacts_get_prompt
 
 __all__ = [
     "contacts_health",
@@ -31,5 +31,5 @@ __all__ = [
     "contacts_update_contact",
     "contacts_delete_contact",
     "contacts_list_prompts",
-    "contacts_get_prompt_prompt",
+    "contacts_get_prompt",
 ]

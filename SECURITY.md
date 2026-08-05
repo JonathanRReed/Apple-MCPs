@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-This project currently supports the latest code on the default branch. Tagged release support can be added once formal releases begin.
+The latest tagged release (1.x) and the default branch are supported with security fixes.
 
 ## Reporting a Vulnerability
 
@@ -28,7 +28,7 @@ The highest-risk areas in this repository include:
 - notes mutation and cross-app digest generation
 - local file access and attachment preparation
 - system actions that touch clipboard, notifications, or app launch
-- task, prompt, and resource surfaces that expose local user data
+- prompt and resource surfaces that expose local user data
 
 ## Expected Response
 

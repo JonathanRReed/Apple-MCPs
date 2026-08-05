@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.jonathanrreed/apple-shortcuts-mcp",
+  "name": "io.github.JonathanRReed/apple-shortcuts-mcp",
   "title": "Apple Shortcuts",
   "description": "List, inspect, and run Apple Shortcuts on macOS.",
   "repository": {
@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleShortcuts-MCP"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-shortcuts-mcp",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -35,6 +35,15 @@
           "default": "full_access"
         }
       ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.1/apple-shortcuts-1.0.1.mcpb",
+      "version": "1.0.2",
+      "fileSha256": "c820418b8dd5407c533b2ccd9d2990288773d191b3f0cd4d6fa32e965a33c914",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }

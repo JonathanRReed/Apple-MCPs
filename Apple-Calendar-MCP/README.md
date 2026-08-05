@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.jonathanrreed/apple-calendar-mcp -->
+<!-- mcp-name: io.github.JonathanRReed/apple-calendar-mcp -->
 
 # Apple Calendar
 

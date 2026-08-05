@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.jonathanrreed/apple-maps-mcp -->
+<!-- mcp-name: io.github.JonathanRReed/apple-maps-mcp -->
 
 # Apple Maps MCP
 

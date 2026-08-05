@@ -34,7 +34,7 @@ def load_settings() -> Settings:
 
     return Settings(
         server_name="Apple Notes MCP",
-        version="1.0.1",
+        version="1.0.2",
         safety_mode=cast(SafetyMode, raw_safety_mode),
         allowed_accounts=_parse_csv(os.environ.get("APPLE_NOTES_MCP_ALLOWED_ACCOUNTS")),
         allowed_folders=_parse_csv(os.environ.get("APPLE_NOTES_MCP_ALLOWED_FOLDERS")),

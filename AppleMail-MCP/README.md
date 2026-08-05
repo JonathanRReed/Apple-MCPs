@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.jonathanrreed/apple-mcp-mail -->
+<!-- mcp-name: io.github.JonathanRReed/apple-mcp-mail -->
 
 # Apple Mail MCP
 

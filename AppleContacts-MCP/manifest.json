@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "apple-contacts",
   "display_name": "Apple Contacts",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Inspect and search Apple Contacts on macOS, and resolve a contact into a message-ready recipient.",
   "long_description": "Local MCP server for Apple Contacts on macOS. Uses AppleScript to inspect contacts, search by name, phone, or email, fetch full contact details, and resolve a contact into a message-ready recipient before handing off to Apple Messages.",
   "icon": "icon.png",

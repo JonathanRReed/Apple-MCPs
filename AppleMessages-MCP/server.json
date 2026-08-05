@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.jonathanrreed/apple-messages-mcp",
+  "name": "io.github.JonathanRReed/apple-messages-mcp",
   "title": "Apple Messages",
   "description": "Read Messages history on macOS and send or reply through Messages.app.",
   "repository": {
@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleMessages-MCP"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-messages-mcp",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -35,6 +35,15 @@
           "default": "full_access"
         }
       ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.1/apple-messages-1.0.1.mcpb",
+      "version": "1.0.2",
+      "fileSha256": "e14486f1255e9f3dd2d9b6d7aecdf7792c4a32f7acc78c8b8a9926f5ffd06a35",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }

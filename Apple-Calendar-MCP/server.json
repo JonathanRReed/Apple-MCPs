@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.jonathanrreed/apple-calendar-mcp",
+  "name": "io.github.JonathanRReed/apple-calendar-mcp",
   "title": "Apple Calendar",
   "description": "List, create, update, and delete events in Apple Calendar on macOS.",
   "repository": {
@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "Apple-Calendar-MCP"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-calendar-mcp",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -42,6 +42,15 @@
           "placeholder": "Work,Personal"
         }
       ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.1/apple-calendar-1.0.1.mcpb",
+      "version": "1.0.2",
+      "fileSha256": "ce2bd62f1ddbc5fd3e45a991b0940ee13870117bd083839b53f9db8a4b5dbea2",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apple-shortcuts-mcp"
-version = "1.0.1"
+version = "1.0.2"
 description = "Local Apple Shortcuts MCP server for macOS"
 readme = "README.md"
 license = "MIT"

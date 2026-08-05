@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.jonathanrreed/apple-contacts-mcp -->
+<!-- mcp-name: io.github.JonathanRReed/apple-contacts-mcp -->
 
 # Apple Contacts MCP
 

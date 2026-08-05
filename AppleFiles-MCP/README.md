@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.jonathanrreed/apple-files-mcp -->
+<!-- mcp-name: io.github.JonathanRReed/apple-files-mcp -->
 
 # Apple Files MCP
 

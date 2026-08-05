@@ -4,6 +4,11 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [1.0.2] - 2026-08-05
+
+### Fixed
+- MCP Registry ownership markers in package READMEs now use the exact GitHub username casing (`io.github.JonathanRReed/...`) that the registry validates against.
+
 ## [1.0.1] - 2026-08-05
 
 ### Changed

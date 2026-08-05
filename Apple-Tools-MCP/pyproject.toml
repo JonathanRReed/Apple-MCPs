@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apple-tools-mcp"
-version = "1.0.1"
+version = "1.0.2"
 description = "Unified Apple ecosystem MCP server for macOS"
 readme = "README.md"
 license = "MIT"

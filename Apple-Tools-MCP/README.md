@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.jonathanrreed/apple-tools-mcp -->
+<!-- mcp-name: io.github.JonathanRReed/apple-tools-mcp -->
 
 # Apple-Tools-MCP
 

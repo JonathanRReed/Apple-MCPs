@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.jonathanrreed/apple-tools-mcp",
+  "name": "io.github.JonathanRReed/apple-tools-mcp",
   "title": "Apple Tools (Unified)",
   "description": "Unified Apple ecosystem MCP server for macOS: Mail, Calendar, Notes, Files, Messages, and more.",
   "repository": {
@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "Apple-Tools-MCP"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-tools-mcp",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -138,6 +138,15 @@
           "default": "full_access"
         }
       ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.1/apple-tools-1.0.1.mcpb",
+      "version": "1.0.2",
+      "fileSha256": "e60d450806c17af643fcbced0cf77297abfb918000907e869aab56794c87b374",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }

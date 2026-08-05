@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.jonathanrreed/apple-system-mcp",
+  "name": "io.github.JonathanRReed/apple-system-mcp",
   "title": "Apple System",
   "description": "Read and manage macOS system settings and perform scoped desktop actions.",
   "repository": {
@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleSystem-MCP"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-system-mcp",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -35,6 +35,15 @@
           "default": "safe_manage"
         }
       ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.1/apple-system-1.0.1.mcpb",
+      "version": "1.0.2",
+      "fileSha256": "f551b36e29db06740bc631ceca238388819e0119fe9c9aedf05e284f079af983",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.jonathanrreed/apple-mcp-reminders",
+  "name": "io.github.JonathanRReed/apple-mcp-reminders",
   "title": "Apple Reminders",
   "description": "List, create, update, complete, and delete reminders in Apple Reminders on macOS.",
   "repository": {
@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleReminders-MCP"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-mcp-reminders",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -42,6 +42,15 @@
           "placeholder": "Reminders,Groceries"
         }
       ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.1/apple-reminders-1.0.1.mcpb",
+      "version": "1.0.2",
+      "fileSha256": "d0e455f64fde9c8487f3d692c578b15bd61aca7b405dec9d200f2a995440bdec",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }

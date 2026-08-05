@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.jonathanrreed/apple-contacts-mcp",
+  "name": "io.github.JonathanRReed/apple-contacts-mcp",
   "title": "Apple Contacts",
   "description": "Inspect and search Apple Contacts on macOS, and resolve a contact into a message-ready recipient.",
   "repository": {
@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleContacts-MCP"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-contacts-mcp",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -35,6 +35,15 @@
           "default": "safe_manage"
         }
       ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.1/apple-contacts-1.0.1.mcpb",
+      "version": "1.0.2",
+      "fileSha256": "a2dc13e2e17e7505253d228dd01dcab7bdebc1f306108cac727e9bf2e09eda84",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }

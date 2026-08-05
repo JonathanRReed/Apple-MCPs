@@ -12,7 +12,7 @@ SUPPORTED_TRANSPORTS = {"stdio", "streamable-http"}
 @dataclass(slots=True)
 class Settings:
     server_name: str = "Apple Mail MCP"
-    version: str = "1.0.1"
+    version: str = "1.0.2"
     safety_profile: SafetyProfile = SafetyProfile.SAFE_MANAGE
     transport: str = "stdio"
     host: str = "127.0.0.1"
@@ -62,7 +62,7 @@ def load_settings() -> Settings:
 
     return Settings(
         server_name="Apple Mail MCP",
-        version="1.0.1",
+        version="1.0.2",
         safety_profile=safety_profile,
         transport=_parse_transport(os.getenv("APPLE_MAIL_MCP_TRANSPORT")),
         host=os.getenv("APPLE_MAIL_MCP_HOST", "127.0.0.1"),

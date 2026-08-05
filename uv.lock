@@ -46,7 +46,7 @@ wheels = [
 
 [[package]]
 name = "apple-calendar-mcp"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "Apple-Calendar-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -72,7 +72,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-contacts-mcp"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "AppleContacts-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -98,7 +98,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-files-mcp"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "AppleFiles-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -124,7 +124,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-maps-mcp"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "AppleMaps-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -150,7 +150,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-mcp-common"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "AppleMCPCommon" }
 dependencies = [
     { name = "mcp" },
@@ -174,7 +174,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-mcp-mail"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "AppleMail-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -200,7 +200,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-mcp-notes"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "AppleNotes-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -226,7 +226,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-mcp-reminders"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "AppleReminders-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -252,7 +252,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-messages-mcp"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "AppleMessages-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -278,7 +278,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-shortcuts-mcp"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "AppleShortcuts-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -304,7 +304,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-system-mcp"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "AppleSystem-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -330,7 +330,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-tools-mcp"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "Apple-Tools-MCP" }
 dependencies = [
     { name = "apple-calendar-mcp" },

@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.jonathanrreed/apple-mcp-reminders -->
+<!-- mcp-name: io.github.JonathanRReed/apple-mcp-reminders -->
 
 # Apple Reminders MCP
 

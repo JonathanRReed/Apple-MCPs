@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.jonathanrreed/apple-files-mcp",
+  "name": "io.github.JonathanRReed/apple-files-mcp",
   "title": "Apple Files",
   "description": "Inspect and manage local files and folders inside allowed roots on macOS.",
   "repository": {
@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleFiles-MCP"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-files-mcp",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -42,6 +42,15 @@
           "placeholder": "~/Desktop,~/Documents,~/Downloads"
         }
       ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.1/apple-files-1.0.1.mcpb",
+      "version": "1.0.2",
+      "fileSha256": "23a1dd1a43f44814fab152a3a24458c1ebe9007c49e0971c0d03fe4eda983891",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }

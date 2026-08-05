@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.jonathanrreed/apple-mcp-notes -->
+<!-- mcp-name: io.github.JonathanRReed/apple-mcp-notes -->
 
 # Apple Notes MCP
 

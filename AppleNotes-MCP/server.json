@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.jonathanrreed/apple-mcp-notes",
+  "name": "io.github.JonathanRReed/apple-mcp-notes",
   "title": "Apple Notes",
   "description": "Inspect, search, create, edit, move, and organize notes in Apple Notes on macOS.",
   "repository": {
@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleNotes-MCP"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-mcp-notes",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -49,6 +49,15 @@
           "placeholder": "Notes,Work"
         }
       ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.1/apple-notes-1.0.1.mcpb",
+      "version": "1.0.2",
+      "fileSha256": "012689afccfb2947f32a418cf8afb75d8e673bb233385f2b658f79e042353f6a",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }

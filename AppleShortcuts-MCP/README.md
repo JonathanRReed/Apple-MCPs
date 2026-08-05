@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.jonathanrreed/apple-shortcuts-mcp -->
+<!-- mcp-name: io.github.JonathanRReed/apple-shortcuts-mcp -->
 
 # Apple Shortcuts MCP
 

@@ -179,6 +179,12 @@ class ShortcutsBridge:
                 f"Command '{self.shortcuts_command} {' '.join(args)}' timed out.",
                 "Increase the timeout or simplify the shortcut.",
             ) from exc
+        except OSError as exc:
+            raise ShortcutsBridgeError(
+                "SHORTCUTS_CLI_NOT_FOUND",
+                f"Could not run '{self.shortcuts_command}': {exc}.",
+                "This server requires macOS with the shortcuts CLI available.",
+            ) from exc
 
         result = ShortcutCLIResult(
             returncode=completed.returncode,

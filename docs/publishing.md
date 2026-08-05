@@ -123,6 +123,15 @@ then publish every `server.json`. Key points:
   `mcp-publisher login github-oidc` — no stored registry secret needed.
 - PyPI publishing can likewise use a trusted publisher (OIDC) or a
   `PYPI_TOKEN` secret with `uv publish`.
+- **Trusted-publisher setup for this monorepo**: PyPI requires a unique
+  (owner, repo, workflow, environment) tuple per pending publisher, so each
+  of the 12 packages has its own GitHub environment named
+  `pypi-<package-name>` (e.g. `pypi-apple-tools-mcp`), and `release.yml`
+  publishes through a per-package matrix job bound to that environment.
+  When registering the pending publishers on
+  https://pypi.org/manage/account/publishing/, set Environment name to
+  `pypi-<package-name>` for each entry — a shared environment name will be
+  rejected with "matching this configuration has already been registered".
 - Optionally rewrite `.version` in each `server.json` from the tag with `jq`
   before publishing.
 - For this monorepo, loop the publish step over the 11 server directories,

@@ -47,6 +47,8 @@ class SystemBridge:
             )
         except FileNotFoundError as exc:
             raise SystemBridgeError("COMMAND_NOT_FOUND", f"Missing command: {command[0]}", "Run this server on macOS.") from exc
+        except OSError as exc:
+            raise SystemBridgeError("COMMAND_FAILED", f"Could not run {command[0]}: {exc}", "Run this server on macOS.") from exc
         except subprocess.CalledProcessError as exc:
             stderr = exc.stderr.strip() or exc.stdout.strip()
             stderr_lower = stderr.lower()
@@ -106,6 +108,8 @@ class SystemBridge:
             )
         except FileNotFoundError as exc:
             raise SystemBridgeError("COMMAND_NOT_FOUND", "Missing killall command.", "Run this server on macOS.") from exc
+        except OSError as exc:
+            raise SystemBridgeError("COMMAND_FAILED", f"Could not run killall: {exc}", "Run this server on macOS.") from exc
         except subprocess.CalledProcessError as exc:
             stderr = exc.stderr.strip() or exc.stdout.strip()
             if "no matching processes" in stderr.lower():
@@ -629,6 +633,8 @@ class SystemBridge:
             )
         except FileNotFoundError as exc:
             raise SystemBridgeError("COMMAND_NOT_FOUND", "Missing defaults command.", "Run this server on macOS.") from exc
+        except OSError as exc:
+            raise SystemBridgeError("COMMAND_FAILED", f"Could not run defaults: {exc}", "Run this server on macOS.") from exc
         except subprocess.CalledProcessError as exc:
             stderr = exc.stderr.decode(errors="replace").strip() if exc.stderr else ""
             stdout = exc.stdout.decode(errors="replace").strip() if exc.stdout else ""

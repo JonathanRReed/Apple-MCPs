@@ -157,12 +157,19 @@ class RemindersBridge:
 
     def _run_helper(self, command: str, *args: str) -> dict[str, object]:
         self._ensure_helper()
-        completed = subprocess.run(
-            [str(self.helper_binary), command, *args],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            completed = subprocess.run(
+                [str(self.helper_binary), command, *args],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError as exc:
+            raise RemindersBridgeError(
+                "HELPER_UNAVAILABLE",
+                f"Could not run the native helper '{self.helper_binary}': {exc}.",
+                "This server requires macOS with the compiled Reminders helper available.",
+            ) from exc
         output = completed.stdout.strip()
         if completed.returncode != 0:
             self._raise_helper_error(output, completed.stderr.strip())
@@ -198,12 +205,19 @@ class RemindersBridge:
             return
 
         self.helper_binary.parent.mkdir(parents=True, exist_ok=True)
-        completed = subprocess.run(
-            ["swiftc", "-parse-as-library", "-O", str(self.helper_source), "-o", str(self.helper_binary)],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            completed = subprocess.run(
+                ["swiftc", "-parse-as-library", "-O", str(self.helper_source), "-o", str(self.helper_binary)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError as exc:
+            raise RemindersBridgeError(
+                "SWIFTC_UNAVAILABLE",
+                f"Could not run 'swiftc': {exc}.",
+                "This server requires macOS with the Swift toolchain (swiftc) available.",
+            ) from exc
         if completed.returncode != 0:
             raise RemindersBridgeError(
                 "HELPER_COMPILE_FAILED",

@@ -163,10 +163,12 @@ def maps_open_directions_in_maps(destination: str, origin: str | None = None, tr
         url = _bridge().maps_url(destination=destination, origin=origin, transport=transport)
         subprocess.run(["open", url], capture_output=True, check=True, text=True)
         return OpenMapsResponse(opened=True, url=url)
-    except (MapsBridgeError, subprocess.CalledProcessError) as exc:
-        if isinstance(exc, MapsBridgeError):
-            return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except MapsBridgeError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except subprocess.CalledProcessError:
         return _error_response("OPEN_FAILED", "Failed to open Apple Maps.", "Retry the request.")
+    except OSError:
+        return _error_response("OPEN_UNAVAILABLE", "Could not run the 'open' command.", "This server requires macOS with the 'open' command available.")
 
 
 def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:

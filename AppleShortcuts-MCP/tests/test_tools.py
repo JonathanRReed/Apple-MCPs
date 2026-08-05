@@ -53,6 +53,7 @@ def test_health_tool_reports_capabilities(monkeypatch) -> None:
     load_settings.cache_clear()
     monkeypatch.setenv("APPLE_SHORTCUTS_MCP_SAFETY_MODE", "full_access")
     monkeypatch.setenv("APPLE_SHORTCUTS_MCP_SHORTCUTS_COMMAND", "shortcuts")
+    monkeypatch.setattr(tools.ShortcutsBridge, "cli_available", lambda self: True)
     load_settings.cache_clear()
 
     result = tools.health_tool(load_settings())

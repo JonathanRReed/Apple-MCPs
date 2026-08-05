@@ -140,12 +140,19 @@ class CalendarBridge:
 
     def _run_helper(self, command: str, *args: str) -> dict[str, object]:
         self._ensure_helper()
-        completed = subprocess.run(
-            [str(self.helper_binary), command, *args],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            completed = subprocess.run(
+                [str(self.helper_binary), command, *args],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError as exc:
+            raise CalendarBridgeError(
+                "HELPER_UNAVAILABLE",
+                f"Could not run the native helper '{self.helper_binary}': {exc}.",
+                "This server requires macOS with the compiled Calendar helper available.",
+            ) from exc
         output = completed.stdout.strip()
         if completed.returncode != 0:
             raise self._map_helper_error(output, completed.stderr.strip())
@@ -180,12 +187,19 @@ class CalendarBridge:
             return
 
         self.helper_binary.parent.mkdir(parents=True, exist_ok=True)
-        completed = subprocess.run(
-            ["swiftc", "-parse-as-library", "-O", str(self.helper_source), "-o", str(self.helper_binary)],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            completed = subprocess.run(
+                ["swiftc", "-parse-as-library", "-O", str(self.helper_source), "-o", str(self.helper_binary)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError as exc:
+            raise CalendarBridgeError(
+                "SWIFTC_UNAVAILABLE",
+                f"Could not run 'swiftc': {exc}.",
+                "This server requires macOS with the Swift toolchain (swiftc) available.",
+            ) from exc
         if completed.returncode != 0:
             raise CalendarBridgeError(
                 "HELPER_COMPILE_FAILED",
@@ -372,6 +386,12 @@ function run(argv) {
                 "APPLESCRIPT_FALLBACK_TIMEOUT",
                 "Calendar AppleScript fallback timed out.",
                 "Retry the request with a narrower calendar scope.",
+            ) from exc
+        except OSError as exc:
+            raise CalendarBridgeError(
+                "OSASCRIPT_UNAVAILABLE",
+                f"Could not run 'osascript': {exc}.",
+                "This server requires macOS with osascript available.",
             ) from exc
         output = completed.stdout.strip()
         if completed.returncode != 0:

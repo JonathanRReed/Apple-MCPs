@@ -284,7 +284,14 @@ class AppleContactsBridge:
                 "Restore the AppleScript file and try again.",
             )
 
-        completed = subprocess.run(["osascript", str(script_path), *args], capture_output=True, text=True, check=False)
+        try:
+            completed = subprocess.run(["osascript", str(script_path), *args], capture_output=True, text=True, check=False)
+        except OSError as exc:
+            raise ContactsBridgeError(
+                "OSASCRIPT_UNAVAILABLE",
+                f"Could not run 'osascript': {exc}.",
+                "This server requires macOS with osascript available.",
+            ) from exc
         if completed.returncode != 0:
             raise self._map_script_error(completed.stderr.strip() or completed.stdout.strip())
 

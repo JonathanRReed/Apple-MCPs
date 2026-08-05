@@ -52,9 +52,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.1/apple-notes-1.0.1.mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-notes-1.0.2.mcpb",
       "version": "1.0.2",
-      "fileSha256": "012689afccfb2947f32a418cf8afb75d8e673bb233385f2b658f79e042353f6a",
+      "fileSha256": "011d38167551864a66e24b05fa9a2dffc3f620ea0bbbd41612787b4c61811d1c",
       "transport": {
         "type": "stdio"
       }

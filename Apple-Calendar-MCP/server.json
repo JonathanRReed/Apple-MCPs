@@ -45,9 +45,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.1/apple-calendar-1.0.1.mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-calendar-1.0.2.mcpb",
       "version": "1.0.2",
-      "fileSha256": "ce2bd62f1ddbc5fd3e45a991b0940ee13870117bd083839b53f9db8a4b5dbea2",
+      "fileSha256": "eeaff3e7c56c76860d38e17dc7a9a805d512a88ff1a01f35217f845e7f563710",
       "transport": {
         "type": "stdio"
       }

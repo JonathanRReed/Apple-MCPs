@@ -38,9 +38,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.1/apple-system-1.0.1.mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-system-1.0.2.mcpb",
       "version": "1.0.2",
-      "fileSha256": "f551b36e29db06740bc631ceca238388819e0119fe9c9aedf05e284f079af983",
+      "fileSha256": "efdbdfb42c5157b6112f87830a1aeaf76c75367aa894def396bd0a4e6d0b792f",
       "transport": {
         "type": "stdio"
       }

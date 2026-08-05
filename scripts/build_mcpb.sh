@@ -48,11 +48,11 @@ dist_name_for_folder() {
     Apple-Calendar-MCP) echo "apple-calendar-mcp" ;;
     AppleContacts-MCP) echo "apple-contacts-mcp" ;;
     AppleFiles-MCP) echo "apple-files-mcp" ;;
-    AppleMail-MCP) echo "apple-mail-mcp" ;;
+    AppleMail-MCP) echo "apple-mcp-mail" ;;
     AppleMaps-MCP) echo "apple-maps-mcp" ;;
     AppleMessages-MCP) echo "apple-messages-mcp" ;;
-    AppleNotes-MCP) echo "apple-notes-mcp" ;;
-    AppleReminders-MCP) echo "apple-reminders-mcp" ;;
+    AppleNotes-MCP) echo "apple-mcp-notes" ;;
+    AppleReminders-MCP) echo "apple-mcp-reminders" ;;
     AppleShortcuts-MCP) echo "apple-shortcuts-mcp" ;;
     AppleSystem-MCP) echo "apple-system-mcp" ;;
     *) return 1 ;;
@@ -61,7 +61,7 @@ dist_name_for_folder() {
 
 # All local workspace packages a staged pyproject may reference, as
 # "distribution:Folder" pairs (bash 3.2 has no associative arrays).
-WORKSPACE_PKGS="apple-mcp-common:AppleMCPCommon apple-tools-mcp:Apple-Tools-MCP apple-calendar-mcp:Apple-Calendar-MCP apple-contacts-mcp:AppleContacts-MCP apple-files-mcp:AppleFiles-MCP apple-mail-mcp:AppleMail-MCP apple-maps-mcp:AppleMaps-MCP apple-messages-mcp:AppleMessages-MCP apple-notes-mcp:AppleNotes-MCP apple-reminders-mcp:AppleReminders-MCP apple-shortcuts-mcp:AppleShortcuts-MCP apple-system-mcp:AppleSystem-MCP"
+WORKSPACE_PKGS="apple-mcp-common:AppleMCPCommon apple-tools-mcp:Apple-Tools-MCP apple-calendar-mcp:Apple-Calendar-MCP apple-contacts-mcp:AppleContacts-MCP apple-files-mcp:AppleFiles-MCP apple-mcp-mail:AppleMail-MCP apple-maps-mcp:AppleMaps-MCP apple-messages-mcp:AppleMessages-MCP apple-mcp-notes:AppleNotes-MCP apple-mcp-reminders:AppleReminders-MCP apple-shortcuts-mcp:AppleShortcuts-MCP apple-system-mcp:AppleSystem-MCP"
 
 # copy_tree <src_dir> <dst_dir>
 # Copy a directory tree, dropping build/runtime junk and repo-only launch glue

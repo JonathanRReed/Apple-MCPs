@@ -3,14 +3,31 @@ from __future__ import annotations
 import json
 import logging
 
-from apple_mcp_common.discovery import install_search_first_discovery
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_mail_mcp.config import Settings, load_settings
 from apple_mail_mcp.mail_bridge import AppleMailBridge, MailBridgeError
-from apple_mail_mcp.models import DeleteRecord, DraftRecord, ErrorResponse, ForwardRecord, HealthResponse, MailboxListResponse, MarkRecord, MessageRecord, MessageSearchResponse, MoveRecord, ReplyRecord, SendRecord, ThreadMutationRecord, ThreadRecord, error_response, normalized_thread_subject
+from apple_mail_mcp.models import (
+    DeleteRecord,
+    DraftRecord,
+    ErrorResponse,
+    ForwardRecord,
+    HealthResponse,
+    MailboxListResponse,
+    MarkRecord,
+    MessageRecord,
+    MessageSearchResponse,
+    MoveRecord,
+    ReplyRecord,
+    SendRecord,
+    ThreadMutationRecord,
+    ThreadRecord,
+    error_response,
+    normalized_thread_subject,
+)
 from apple_mail_mcp.permissions import SafetyPolicyError, ensure_tool_allowed
+from apple_mcp_common.discovery import install_search_first_discovery
 
 LOGGER = logging.getLogger("apple_mail_mcp")
 SERVER_INSTRUCTIONS = (
@@ -659,18 +676,14 @@ def mail_archive_thread(
         return error_response("THREAD_ARCHIVE_FAILED", str(exc))
 
 
-def create_server(settings: Settings | None = None, bridge: AppleMailBridge | None = None) -> FastMCP:
+def create_server(settings: Settings | None = None, bridge: AppleMailBridge | None = None) -> MCPServer:
     server_settings = settings or load_settings()
     configure_logging(server_settings)
     mail_bridge = bridge or AppleMailBridge()
-    mcp = FastMCP(
+    mcp = MCPServer(
         "Apple Mail MCP",
         instructions=SERVER_INSTRUCTIONS,
-        host=server_settings.host,
-        port=server_settings.port,
         log_level=server_settings.log_level,
-        json_response=True,
-        stateless_http=True,
     )
 
     @mcp.resource(
@@ -693,45 +706,50 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         return mail_draft_reply_prompt_text()
 
     @mcp.tool(
+        name="mail_health",
         title="Mail Health",
         description="Report the active Apple Mail MCP configuration.",
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
         structured_output=True,
     )
     def health() -> HealthResponse:
         return mail_health(server_settings)
 
     @mcp.tool(
+        name="mail_permission_guide",
         title="Mail Permission Guide",
         description="Explain how to grant Apple Mail automation permission on macOS.",
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
         structured_output=True,
     )
     def mail_permission_guide_registered() -> dict[str, object]:
         return mail_permission_guide()
 
     @mcp.tool(
+        name="mail_recheck_permissions",
         title="Mail Recheck Permissions",
         description="Recheck Mail access after the user changes macOS permissions, and notify the client that Mail resources changed.",
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=False),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
         structured_output=True,
     )
     async def mail_recheck_permissions_registered(ctx: Context) -> HealthResponse:
         return await mail_recheck_permissions(ctx)
 
     @mcp.tool(
+        name="mail_list_mailboxes",
         title="List Mailboxes",
         description="List Apple Mail mailboxes, optionally filtered by account.",
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
         structured_output=True,
     )
     def mail_list_mailboxes_registered(account: str | None = None) -> MailboxListResponse | ErrorResponse:
         return mail_list_mailboxes(account=account, bridge=mail_bridge)
 
     @mcp.tool(
+        name="mail_search_messages",
         title="Search Messages",
         description="Search Apple Mail messages by query with optional mailbox and unread filters.",
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
         structured_output=True,
     )
     def mail_search_messages_registered(
@@ -750,27 +768,30 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         )
 
     @mcp.tool(
+        name="mail_get_message",
         title="Get Message",
         description="Fetch a single Apple Mail message by message_id.",
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
         structured_output=True,
     )
     def mail_get_message_registered(message_id: str) -> MessageRecord | ErrorResponse:
         return mail_get_message(message_id=message_id, bridge=mail_bridge)
 
     @mcp.tool(
+        name="mail_get_thread",
         title="Get Thread",
         description="Find related messages in the same mailbox thread by normalized subject, anchored on a message_id.",
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
         structured_output=True,
     )
     def mail_get_thread_registered(message_id: str, limit: int | str = 25) -> ThreadRecord | ErrorResponse:
         return mail_get_thread(message_id=message_id, limit=limit, bridge=mail_bridge, settings=server_settings)
 
     @mcp.tool(
+        name="mail_compose_draft",
         title="Compose Draft",
         description="Create a draft message in Apple Mail without sending it. Optionally specify from_account as an email address or account name to set the sender.",
-        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
         structured_output=True,
     )
     def mail_compose_draft_registered(
@@ -795,9 +816,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         )
 
     @mcp.tool(
+        name="mail_send_message",
         title="Send Message",
         description="Send an email immediately via Apple Mail. Optionally specify from_account as an email address or account name to set the sender.",
-        annotations=ToolAnnotations(destructiveHint=True, idempotentHint=False, openWorldHint=True),
+        annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
         structured_output=True,
     )
     def mail_send_message_registered(
@@ -822,9 +844,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         )
 
     @mcp.tool(
+        name="mail_reply_message",
         title="Reply to Message",
         description="Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account.",
-        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
         structured_output=True,
     )
     def mail_reply_message_registered(
@@ -843,9 +866,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         )
 
     @mcp.tool(
+        name="mail_forward_message",
         title="Forward Message",
         description="Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account.",
-        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
         structured_output=True,
     )
     def mail_forward_message_registered(
@@ -864,9 +888,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         )
 
     @mcp.tool(
+        name="mail_mark_message",
         title="Mark Message Read/Unread",
         description="Set the read status of an email message. Pass is_read=true to mark as read, is_read=false to mark as unread.",
-        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     def mail_mark_message_registered(
@@ -881,9 +906,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         )
 
     @mcp.tool(
+        name="mail_move_message",
         title="Move Message",
         description="Move an email message to a different mailbox. Optionally specify target_account if the mailbox is in a different account.",
-        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     def mail_move_message_registered(
@@ -900,9 +926,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         )
 
     @mcp.tool(
+        name="mail_delete_message",
         title="Delete Message",
         description="Delete (trash) an email message by its message_id.",
-        annotations=ToolAnnotations(destructiveHint=True, idempotentHint=True, openWorldHint=False),
+        annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     def mail_delete_message_registered(
@@ -915,9 +942,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         )
 
     @mcp.tool(
+        name="mail_reply_latest_in_thread",
         title="Reply To Latest In Thread",
         description="Find the latest related message in the same mailbox thread and reply to that message.",
-        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
         structured_output=True,
     )
     def mail_reply_latest_in_thread_registered(
@@ -938,9 +966,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         )
 
     @mcp.tool(
+        name="mail_archive_thread",
         title="Archive Thread",
         description="Move related messages in the same mailbox thread to the target archive mailbox.",
-        annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
         structured_output=True,
     )
     def mail_archive_thread_registered(
@@ -968,9 +997,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         ]
 
     @mcp.tool(
+        name="mail_list_prompts",
         title="Mail List Prompts",
         description="Fallback prompt discovery tool for tool-only MCP clients.",
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
         structured_output=True,
     )
     async def mail_list_prompts() -> dict[str, object]:
@@ -982,9 +1012,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         }
 
     @mcp.tool(
+        name="mail_get_prompt",
         title="Mail Get Prompt",
         description="Fallback prompt rendering tool for tool-only MCP clients.",
-        annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
         structured_output=True,
     )
     async def mail_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
@@ -992,23 +1023,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         prompt = await mcp.get_prompt(name, arguments)
         return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
 
-    @mcp._mcp_server.subscribe_resource()
-    async def _mail_subscribe_resource(uri) -> None:
-        del uri
-
-    @mcp._mcp_server.unsubscribe_resource()
-    async def _mail_unsubscribe_resource(uri) -> None:
-        del uri
-
-    setattr(
-        mcp,
-        "_tool_discovery",
-        install_search_first_discovery(
-            mcp,
-            server_name="Apple Mail MCP",
-            domain="mail",
-        ),
-    )
+    mcp._tool_discovery = install_search_first_discovery(mcp, server_name="Apple Mail MCP", domain="mail")
 
     return mcp
 
@@ -1016,7 +1031,13 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
 def main() -> None:
     settings = load_settings()
     server = create_server(settings=settings)
-    if settings.transport == "stdio":
-        server.run(transport="stdio")
+    if settings.transport == "streamable-http":
+        server.run(
+            transport="streamable-http",
+            host=settings.host,
+            port=settings.port,
+            json_response=True,
+            stateless_http=True,
+        )
         return
-    server.run(transport="streamable-http")
+    server.run(transport="stdio")

@@ -3,20 +3,20 @@ from __future__ import annotations
 import json
 import subprocess
 
-from apple_mcp_common.discovery import install_search_first_discovery
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_maps_mcp.config import load_settings
 from apple_maps_mcp.maps_bridge import AppleMapsBridge, MapsBridgeError, build_bridge
 from apple_maps_mcp.models import DirectionsResponse, ErrorResponse, HealthResponse, MapsLinkResponse, OpenMapsResponse, PlaceRecord, PlaceSearchResponse, ToolError
+from apple_mcp_common.discovery import install_search_first_discovery
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Maps and travel context on macOS. "
     "Search here when the user wants to find a place, estimate travel time, build an Apple Maps link, or open directions in Apple Maps."
 )
 
-mcp = FastMCP("Apple Maps MCP", instructions=SERVER_INSTRUCTIONS, json_response=True)
+mcp = MCPServer("Apple Maps MCP", instructions=SERVER_INSTRUCTIONS)
 
 
 def _bridge() -> AppleMapsBridge:
@@ -61,7 +61,7 @@ def maps_plan_route_prompt() -> str:
 @mcp.tool(
     title="Maps Health",
     description="Report the active Apple Maps MCP configuration.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def maps_health() -> HealthResponse:
@@ -88,7 +88,7 @@ def maps_health() -> HealthResponse:
 @mcp.tool(
     title="Maps Permission Guide",
     description="Explain Apple Maps MCP local helper requirements on macOS.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def maps_permission_guide() -> dict[str, object]:
@@ -108,7 +108,7 @@ def maps_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="Search Places",
     description="Search Apple Maps for matching places.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def maps_search_places(query: str, limit: int = 5) -> PlaceSearchResponse | ErrorResponse:
@@ -123,7 +123,7 @@ def maps_search_places(query: str, limit: int = 5) -> PlaceSearchResponse | Erro
 @mcp.tool(
     title="Get Directions",
     description="Get Apple Maps route details between an origin and destination.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def maps_get_directions(origin: str, destination: str, transport: str = "driving") -> DirectionsResponse | ErrorResponse:
@@ -145,7 +145,7 @@ def maps_get_directions(origin: str, destination: str, transport: str = "driving
 @mcp.tool(
     title="Build Maps Link",
     description="Build an Apple Maps URL for a destination or route.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def maps_build_maps_link(destination: str, origin: str | None = None, transport: str = "driving") -> MapsLinkResponse:
@@ -155,7 +155,7 @@ def maps_build_maps_link(destination: str, origin: str | None = None, transport:
 @mcp.tool(
     title="Open Directions In Maps",
     description="Open directions in the Apple Maps app.",
-    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=True),
+    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def maps_open_directions_in_maps(destination: str, origin: str | None = None, transport: str = "driving") -> OpenMapsResponse | ErrorResponse:
@@ -182,7 +182,7 @@ def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]
 @mcp.tool(
     title="Maps List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 async def maps_list_prompts() -> dict[str, object]:
@@ -197,23 +197,13 @@ async def maps_list_prompts() -> dict[str, object]:
 @mcp.tool(
     title="Maps Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 async def maps_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
     return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
-
-
-@mcp._mcp_server.subscribe_resource()
-async def _maps_subscribe_resource(uri) -> None:
-    del uri
-
-
-@mcp._mcp_server.unsubscribe_resource()
-async def _maps_unsubscribe_resource(uri) -> None:
-    del uri
 
 
 TOOL_DISCOVERY = install_search_first_discovery(
@@ -228,9 +218,11 @@ def main() -> None:
     if settings.transport == "stdio":
         mcp.run(transport="stdio")
         return
-    mcp.settings.host = settings.host
-    mcp.settings.port = settings.port
     mcp.settings.log_level = settings.log_level
-    mcp.settings.stateless_http = True
-    mcp.settings.json_response = True
-    mcp.run(transport="streamable-http")
+    mcp.run(
+        transport="streamable-http",
+        host=settings.host,
+        port=settings.port,
+        json_response=True,
+        stateless_http=True,
+    )

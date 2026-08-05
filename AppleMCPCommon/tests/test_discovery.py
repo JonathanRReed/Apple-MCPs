@@ -3,17 +3,16 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from mcp import types
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
 
 
-def test_install_search_first_discovery_minimizes_tool_list() -> None:
-    mcp = FastMCP("Test")
+def test_install_search_first_discovery_exposes_full_tool_list() -> None:
+    mcp = MCPServer("Test")
 
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True), structured_output=True)
+    @mcp.tool(annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True), structured_output=True)
     def test_health() -> dict[str, bool]:
         return {"ok": True}
 
@@ -25,48 +24,33 @@ def test_install_search_first_discovery_minimizes_tool_list() -> None:
         mcp,
         server_name="Test",
         domain="files",
-        visible_tool_names={"test_health"},
     )
 
-    async def load() -> tuple[list[types.Tool], dict[str, object]]:
-        result = await mcp._mcp_server.request_handlers[types.ListToolsRequest](None)
-        info_result = await mcp._mcp_server.request_handlers[types.CallToolRequest](
-            types.CallToolRequest(
-                params=types.CallToolRequestParams(
-                    name="get_tool_info",
-                    arguments={"name": "test_write"},
-                )
-            )
-        )
-        return result.root.tools, info_result.root.structuredContent
+    async def load() -> tuple[set[str], dict[str, object]]:
+        tools = await mcp.list_tools()
+        info_result = await mcp.call_tool("get_tool_info", {"name": "test_write"})
+        return {tool.name for tool in tools}, info_result.structured_content
 
-    visible_tools, info = asyncio.run(load())
+    tool_names, info = asyncio.run(load())
 
-    assert {tool.name for tool in visible_tools} == {"get_tool_info", "search_tools", "test_health"}
+    assert tool_names == {"get_tool_info", "search_tools", "test_health", "test_write"}
     assert info["ok"] is True
     assert info["name"] == "test_write"
     assert discovery.server_name == "Test"
 
 
 def test_search_tools_returns_ranked_results() -> None:
-    mcp = FastMCP("Test")
+    mcp = MCPServer("Test")
 
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True), structured_output=True)
+    @mcp.tool(annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True), structured_output=True)
     def files_search_files(query: str) -> dict[str, str]:
         return {"query": query}
 
     install_search_first_discovery(mcp, server_name="Test", domain="files")
 
     async def run_search() -> dict[str, object]:
-        result = await mcp._mcp_server.request_handlers[types.CallToolRequest](
-            types.CallToolRequest(
-                params=types.CallToolRequestParams(
-                    name="search_tools",
-                    arguments={"query": "document", "limit": 3},
-                )
-            )
-        )
-        return result.root.structuredContent
+        result = await mcp.call_tool("search_tools", {"query": "document", "limit": 3})
+        return result.structured_content
 
     payload = asyncio.run(run_search())
 
@@ -75,13 +59,13 @@ def test_search_tools_returns_ranked_results() -> None:
 
 
 def test_search_tools_prefers_exact_domain_primitive() -> None:
-    mcp = FastMCP("Test")
+    mcp = MCPServer("Test")
 
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True), structured_output=True)
+    @mcp.tool(annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True), structured_output=True)
     def mail_list_mailboxes() -> dict[str, bool]:
         return {"ok": True}
 
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True), structured_output=True)
+    @mcp.tool(annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True), structured_output=True)
     def apple_suggest_mailboxes() -> dict[str, bool]:
         return {"ok": True}
 
@@ -92,15 +76,8 @@ def test_search_tools_prefers_exact_domain_primitive() -> None:
     install_search_first_discovery(mcp, server_name="Test", domain="apple")
 
     async def run_search() -> dict[str, object]:
-        result = await mcp._mcp_server.request_handlers[types.CallToolRequest](
-            types.CallToolRequest(
-                params=types.CallToolRequestParams(
-                    name="search_tools",
-                    arguments={"query": "email mailbox", "limit": 3},
-                )
-            )
-        )
-        return result.root.structuredContent
+        result = await mcp.call_tool("search_tools", {"query": "email mailbox", "limit": 3})
+        return result.structured_content
 
     payload = asyncio.run(run_search())
 
@@ -109,7 +86,7 @@ def test_search_tools_prefers_exact_domain_primitive() -> None:
 
 
 def test_generate_python_wrappers_uses_namespaced_root(tmp_path: Path) -> None:
-    mcp = FastMCP("Test")
+    mcp = MCPServer("Test")
 
     @mcp.tool(structured_output=True)
     def calendar_list_events(start_iso: str, end_iso: str) -> dict[str, object]:

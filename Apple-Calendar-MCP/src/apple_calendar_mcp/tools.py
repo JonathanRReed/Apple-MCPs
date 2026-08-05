@@ -1,7 +1,7 @@
 import json
+import os
 
-from apple_mcp_common.discovery import install_search_first_discovery
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError
@@ -9,6 +9,7 @@ from apple_calendar_mcp.config import load_settings
 from apple_calendar_mcp.models import CalendarListResponse, DeleteEventResponse, ErrorResponse, EventListResponse, EventResponse, HealthResponse, ToolError
 from apple_calendar_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_calendar_mcp.utils import parse_iso_datetime
+from apple_mcp_common.discovery import install_search_first_discovery
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Calendar on macOS. "
@@ -16,7 +17,7 @@ SERVER_INSTRUCTIONS = (
     "Prefer list and get tools before mutations when ids or calendar ids are unknown."
 )
 
-mcp = FastMCP("Apple Calendar", instructions=SERVER_INSTRUCTIONS, json_response=True)
+mcp = MCPServer("Apple Calendar", instructions=SERVER_INSTRUCTIONS)
 
 
 def _bridge() -> CalendarBridge:
@@ -132,7 +133,7 @@ def calendar_prepare_agenda_prompt() -> str:
 @mcp.tool(
     title="Calendar Health",
     description="Report the active Apple Calendar server configuration.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def calendar_health() -> HealthResponse:
@@ -183,7 +184,7 @@ def calendar_health() -> HealthResponse:
 @mcp.tool(
     title="Calendar Permission Guide",
     description="Explain how to grant Apple Calendar permission on macOS.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def calendar_permission_guide() -> dict[str, object]:
@@ -203,7 +204,7 @@ def calendar_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="Calendar Recheck Permissions",
     description="Recheck Calendar access after the user changes macOS permissions, and notify the client that Calendar resources changed.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=False),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
     structured_output=True,
 )
 async def calendar_recheck_permissions(ctx: Context) -> HealthResponse:
@@ -217,7 +218,7 @@ async def calendar_recheck_permissions(ctx: Context) -> HealthResponse:
 @mcp.tool(
     title="List Calendars",
     description="List available Apple Calendar calendars.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def calendar_list_calendars() -> CalendarListResponse | ErrorResponse:
@@ -232,7 +233,7 @@ def calendar_list_calendars() -> CalendarListResponse | ErrorResponse:
 @mcp.tool(
     title="List Events",
     description="List calendar events in a time window, optionally filtered to one calendar.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def calendar_list_events(start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int | str = 100) -> EventListResponse | ErrorResponse:
@@ -253,7 +254,7 @@ def calendar_list_events(start_iso: str, end_iso: str, calendar_id: str | None =
 @mcp.tool(
     title="Get Event",
     description="Fetch full details for a calendar event by event_id.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 def calendar_get_event(event_id: str) -> EventResponse | ErrorResponse:
@@ -270,7 +271,7 @@ def calendar_get_event(event_id: str) -> EventResponse | ErrorResponse:
 @mcp.tool(
     title="Create Event",
     description="Create a new event in a specific Apple Calendar calendar.",
-    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def calendar_create_event(
@@ -310,7 +311,7 @@ def calendar_create_event(
 @mcp.tool(
     title="Update Event",
     description="Update one or more fields on an existing calendar event.",
-    annotations=ToolAnnotations(destructiveHint=False, idempotentHint=False, openWorldHint=False),
+    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def calendar_update_event(
@@ -347,7 +348,7 @@ def calendar_update_event(
 @mcp.tool(
     title="Delete Event",
     description="Delete a calendar event by event_id.",
-    annotations=ToolAnnotations(destructiveHint=True, idempotentHint=False, openWorldHint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def calendar_delete_event(event_id: str) -> DeleteEventResponse | ErrorResponse:
@@ -374,7 +375,7 @@ def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]
 @mcp.tool(
     title="Calendar List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 async def calendar_list_prompts() -> dict[str, object]:
@@ -389,23 +390,13 @@ async def calendar_list_prompts() -> dict[str, object]:
 @mcp.tool(
     title="Calendar Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
 async def calendar_get_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
     return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
-
-
-@mcp._mcp_server.subscribe_resource()
-async def _calendar_subscribe_resource(uri) -> None:
-    del uri
-
-
-@mcp._mcp_server.unsubscribe_resource()
-async def _calendar_unsubscribe_resource(uri) -> None:
-    del uri
 
 
 TOOL_DISCOVERY = install_search_first_discovery(
@@ -416,4 +407,13 @@ TOOL_DISCOVERY = install_search_first_discovery(
 
 
 def main() -> None:
+    transport = os.environ.get("APPLE_CALENDAR_MCP_TRANSPORT", "stdio")
+    if transport == "streamable-http":
+        mcp.run(
+            transport="streamable-http",
+            host=os.environ.get("APPLE_CALENDAR_MCP_HOST", "127.0.0.1"),
+            port=int(os.environ.get("APPLE_CALENDAR_MCP_PORT", "8730")),
+            json_response=True,
+        )
+        return
     mcp.run(transport="stdio")

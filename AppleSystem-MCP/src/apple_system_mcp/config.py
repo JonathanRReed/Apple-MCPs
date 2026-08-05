@@ -1,6 +1,6 @@
+import os
 from dataclasses import dataclass
 from functools import lru_cache
-import os
 
 
 @dataclass(frozen=True)

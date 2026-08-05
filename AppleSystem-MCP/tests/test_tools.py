@@ -264,14 +264,23 @@ def test_main_uses_streamable_http(monkeypatch):
 
     captured = {}
 
-    def fake_run(*, transport: str):
+    def fake_run(*, transport: str, host: str, port: int, json_response: bool, stateless_http: bool):
         captured["transport"] = transport
-        captured["host"] = tools.mcp.settings.host
-        captured["port"] = tools.mcp.settings.port
+        captured["host"] = host
+        captured["port"] = port
+        captured["json_response"] = json_response
+        captured["stateless_http"] = stateless_http
         captured["log_level"] = tools.mcp.settings.log_level
 
     monkeypatch.setattr(tools.mcp, "run", fake_run)
 
     tools.main()
 
-    assert captured == {"transport": "streamable-http", "host": "0.0.0.0", "port": 8765, "log_level": "DEBUG"}
+    assert captured == {
+        "transport": "streamable-http",
+        "host": "0.0.0.0",
+        "port": 8765,
+        "json_response": True,
+        "stateless_http": True,
+        "log_level": "DEBUG",
+    }

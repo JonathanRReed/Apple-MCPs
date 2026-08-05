@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, datetime
 import heapq
 import os
-from pathlib import Path
 import plistlib
 import subprocess
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 
 from apple_files_mcp.config import load_settings
 from apple_files_mcp.models import FileEntry

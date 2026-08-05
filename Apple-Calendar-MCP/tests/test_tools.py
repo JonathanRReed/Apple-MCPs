@@ -1,6 +1,6 @@
+from apple_calendar_mcp import tools
 from apple_calendar_mcp.config import load_settings
 from apple_calendar_mcp.models import AttendeeInfo, EventDetail, RecurrenceInfo
-from apple_calendar_mcp import tools
 from apple_calendar_mcp.permissions import SafetyError
 
 

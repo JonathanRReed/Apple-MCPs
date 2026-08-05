@@ -1,5 +1,5 @@
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 from apple_notes_mcp.notes_bridge import AppleNotesBridge, NotesBridgeError
 
@@ -241,11 +241,12 @@ def test_prepare_body_html_prefixes_title_when_first_line_differs() -> None:
 
 def test_mutation_scripts_compile(tmp_path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
+    scripts_dir = repo_root / "src" / "apple_notes_mcp" / "applescripts"
     scripts = (
-        repo_root / "applescripts" / "create_note.applescript",
-        repo_root / "applescripts" / "delete_note.applescript",
-        repo_root / "applescripts" / "update_note.applescript",
-        repo_root / "applescripts" / "move_note.applescript",
+        scripts_dir / "create_note.applescript",
+        scripts_dir / "delete_note.applescript",
+        scripts_dir / "update_note.applescript",
+        scripts_dir / "move_note.applescript",
     )
 
     for script_path in scripts:
@@ -261,11 +262,12 @@ def test_mutation_scripts_compile(tmp_path) -> None:
 
 def test_mutation_helpers_use_explicit_notes_account_scope() -> None:
     repo_root = Path(__file__).resolve().parents[1]
+    scripts_dir = repo_root / "src" / "apple_notes_mcp" / "applescripts"
     scripts = (
-        repo_root / "applescripts" / "create_note.applescript",
-        repo_root / "applescripts" / "delete_note.applescript",
-        repo_root / "applescripts" / "update_note.applescript",
-        repo_root / "applescripts" / "move_note.applescript",
+        scripts_dir / "create_note.applescript",
+        scripts_dir / "delete_note.applescript",
+        scripts_dir / "update_note.applescript",
+        scripts_dir / "move_note.applescript",
     )
 
     for script_path in scripts:
@@ -275,7 +277,7 @@ def test_mutation_helpers_use_explicit_notes_account_scope() -> None:
 
 def test_create_note_sets_body_after_creation() -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    source = (repo_root / "applescripts" / "create_note.applescript").read_text()
+    source = (repo_root / "src" / "apple_notes_mcp" / "applescripts" / "create_note.applescript").read_text()
 
     assert 'set newNote to make new note at targetFolder with properties {name:titleText}' in source
     assert "set body of newNote to noteBody" in source
@@ -283,6 +285,6 @@ def test_create_note_sets_body_after_creation() -> None:
 
 def test_update_note_sets_title_after_body_update() -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    source = (repo_root / "applescripts" / "update_note.applescript").read_text()
+    source = (repo_root / "src" / "apple_notes_mcp" / "applescripts" / "update_note.applescript").read_text()
 
     assert source.index("set body of noteRef to my compose_note_body(noteBody, tagsCsv)") < source.index('if titleText is not "" then set name of noteRef to titleText')

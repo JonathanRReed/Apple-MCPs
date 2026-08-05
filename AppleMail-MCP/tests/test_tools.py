@@ -1,6 +1,38 @@
+import asyncio
+
 from apple_mail_mcp.config import Settings
-from apple_mail_mcp.models import AttachmentRecord, DeleteRecord, DraftRecord, ForwardRecord, MailboxRecord, MarkRecord, MessageRecord, MessageSummary, MoveRecord, ReplyRecord, SafetyProfile, SendRecord
-from apple_mail_mcp.tools import create_server, health_tool, mail_archive_thread_tool, mail_compose_draft_tool, mail_delete_message_tool, mail_forward_message_tool, mail_get_message_tool, mail_get_thread_tool, mail_list_mailboxes_tool, mail_mark_message_tool, mail_move_message_tool, mail_reply_latest_in_thread_tool, mail_reply_message_tool, mail_search_messages, mail_search_messages_tool, mail_send_message_tool
+from apple_mail_mcp.models import (
+    AttachmentRecord,
+    DeleteRecord,
+    DraftRecord,
+    ForwardRecord,
+    MailboxRecord,
+    MarkRecord,
+    MessageRecord,
+    MessageSummary,
+    MoveRecord,
+    ReplyRecord,
+    SafetyProfile,
+    SendRecord,
+)
+from apple_mail_mcp.tools import (
+    create_server,
+    health_tool,
+    mail_archive_thread_tool,
+    mail_compose_draft_tool,
+    mail_delete_message_tool,
+    mail_forward_message_tool,
+    mail_get_message_tool,
+    mail_get_thread_tool,
+    mail_list_mailboxes_tool,
+    mail_mark_message_tool,
+    mail_move_message_tool,
+    mail_reply_latest_in_thread_tool,
+    mail_reply_message_tool,
+    mail_search_messages,
+    mail_search_messages_tool,
+    mail_send_message_tool,
+)
 
 
 class FakeBridge:
@@ -297,13 +329,33 @@ def test_reply_latest_in_thread_and_archive_thread() -> None:
     assert archived.affected_message_ids == ["id-1"]
 
 
-def test_create_server_applies_http_settings() -> None:
+def test_create_server_registers_clean_tool_names() -> None:
     settings = Settings(transport="streamable-http", host="0.0.0.0", port=8765, log_level="DEBUG")
 
     server = create_server(settings=settings, bridge=FakeBridge())
 
-    assert server.settings.host == "0.0.0.0"
-    assert server.settings.port == 8765
     assert server.settings.log_level == "DEBUG"
-    assert server.settings.stateless_http is True
-    assert server.settings.json_response is True
+
+    tool_names = {tool.name for tool in asyncio.run(server.list_tools())}
+    assert tool_names == {
+        "mail_health",
+        "mail_permission_guide",
+        "mail_recheck_permissions",
+        "mail_list_mailboxes",
+        "mail_search_messages",
+        "mail_get_message",
+        "mail_get_thread",
+        "mail_compose_draft",
+        "mail_send_message",
+        "mail_reply_message",
+        "mail_forward_message",
+        "mail_mark_message",
+        "mail_move_message",
+        "mail_delete_message",
+        "mail_reply_latest_in_thread",
+        "mail_archive_thread",
+        "mail_list_prompts",
+        "mail_get_prompt",
+        "search_tools",
+        "get_tool_info",
+    }

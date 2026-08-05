@@ -1,7 +1,7 @@
-from pathlib import Path
-from datetime import datetime
 import json
 import subprocess
+from datetime import datetime
+from pathlib import Path
 
 from apple_calendar_mcp.models import CalendarInfo, EventDetail, EventSummary
 

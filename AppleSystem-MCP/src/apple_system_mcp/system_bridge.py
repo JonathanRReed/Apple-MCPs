@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
 import plistlib
 import re
 import subprocess
+from dataclasses import dataclass
+from datetime import datetime
+from typing import ClassVar
 
 from apple_system_mcp.models import AppRecord, BatteryStatus
 
@@ -19,7 +20,7 @@ class SystemBridgeError(Exception):
 class SystemBridge:
     _RECORD_SEPARATOR = "\x1e"
     _FIELD_SEPARATOR = "\x1f"
-    _SPECIAL_KEY_CODES = {
+    _SPECIAL_KEY_CODES: ClassVar[dict[str, int]] = {
         "return": 36,
         "enter": 76,
         "tab": 48,

@@ -10,7 +10,8 @@
         "emails",
         "inbox",
         "thread",
-        "health"
+        "health",
+        "mail health"
       ],
       "argument_summary": [],
       "description": "Report the active Apple Mail MCP configuration.",
@@ -18,13 +19,13 @@
       "example_calls": [
         {
           "arguments": {},
-          "tool": "health"
+          "tool": "mail_health"
         }
       ],
-      "name": "health",
+      "name": "mail_health",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "health",
+      "schema_ref": "mail_health",
       "tags": [
         "mail",
         "email",
@@ -47,8 +48,8 @@
         "emails",
         "inbox",
         "thread",
-        "permission guide registered",
-        "mail permission guide registered"
+        "permission guide",
+        "mail permission guide"
       ],
       "argument_summary": [],
       "description": "Explain how to grant Apple Mail automation permission on macOS.",
@@ -56,13 +57,13 @@
       "example_calls": [
         {
           "arguments": {},
-          "tool": "mail_permission_guide_registered"
+          "tool": "mail_permission_guide"
         }
       ],
-      "name": "mail_permission_guide_registered",
+      "name": "mail_permission_guide",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "mail_permission_guide_registered",
+      "schema_ref": "mail_permission_guide",
       "tags": [
         "mail",
         "email",
@@ -71,7 +72,6 @@
         "thread",
         "permission",
         "guide",
-        "registered",
         "explain",
         "how",
         "grant",
@@ -88,8 +88,8 @@
         "emails",
         "inbox",
         "thread",
-        "recheck permissions registered",
-        "mail recheck permissions registered"
+        "recheck permissions",
+        "mail recheck permissions"
       ],
       "argument_summary": [],
       "description": "Recheck Mail access after the user changes macOS permissions, and notify the client that Mail resources changed.",
@@ -97,13 +97,13 @@
       "example_calls": [
         {
           "arguments": {},
-          "tool": "mail_recheck_permissions_registered"
+          "tool": "mail_recheck_permissions"
         }
       ],
-      "name": "mail_recheck_permissions_registered",
+      "name": "mail_recheck_permissions",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "mail_recheck_permissions_registered",
+      "schema_ref": "mail_recheck_permissions",
       "tags": [
         "mail",
         "email",
@@ -113,7 +113,6 @@
         "recheck",
         "permissions",
         "permission",
-        "registered",
         "access",
         "acces",
         "after",
@@ -124,7 +123,8 @@
         "notify",
         "client",
         "that",
-        "resources"
+        "resources",
+        "resourc"
       ],
       "title": "Mail Recheck Permissions",
       "usage_intent": "Recheck Mail access after the user changes macOS permissions, and notify the client that Mail resources changed."
@@ -136,8 +136,8 @@
         "emails",
         "inbox",
         "thread",
-        "list mailboxes registered",
-        "mail list mailboxes registered"
+        "list mailboxes",
+        "mail list mailboxes"
       ],
       "argument_summary": [
         "account: string (optional)"
@@ -149,13 +149,13 @@
           "arguments": {
             "account": "example_account"
           },
-          "tool": "mail_list_mailboxes_registered"
+          "tool": "mail_list_mailboxes"
         }
       ],
-      "name": "mail_list_mailboxes_registered",
+      "name": "mail_list_mailboxes",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "mail_list_mailboxes_registered",
+      "schema_ref": "mail_list_mailboxes",
       "tags": [
         "mail",
         "email",
@@ -164,7 +164,6 @@
         "thread",
         "mailboxes",
         "mailbox",
-        "registered",
         "optionally",
         "filtered",
         "account"
@@ -179,8 +178,8 @@
         "emails",
         "inbox",
         "thread",
-        "search messages registered",
-        "mail search messages registered"
+        "search messages",
+        "mail search messages"
       ],
       "argument_summary": [
         "query: string (required)",
@@ -196,13 +195,13 @@
             "mailbox": "example_mailbox",
             "query": "find mail"
           },
-          "tool": "mail_search_messages_registered"
+          "tool": "mail_search_messages"
         }
       ],
-      "name": "mail_search_messages_registered",
+      "name": "mail_search_messages",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "mail_search_messages_registered",
+      "schema_ref": "mail_search_messages",
       "tags": [
         "mail",
         "email",
@@ -212,7 +211,6 @@
         "search",
         "messages",
         "messag",
-        "registered",
         "query",
         "optional",
         "mailbox",
@@ -230,8 +228,8 @@
         "emails",
         "inbox",
         "thread",
-        "get message registered",
-        "mail get message registered"
+        "get message",
+        "mail get message"
       ],
       "argument_summary": [
         "message_id: string (required)"
@@ -243,13 +241,13 @@
           "arguments": {
             "message_id": "example_message_id"
           },
-          "tool": "mail_get_message_registered"
+          "tool": "mail_get_message"
         }
       ],
-      "name": "mail_get_message_registered",
+      "name": "mail_get_message",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "mail_get_message_registered",
+      "schema_ref": "mail_get_message",
       "tags": [
         "mail",
         "email",
@@ -257,7 +255,6 @@
         "inbox",
         "thread",
         "message",
-        "registered",
         "fetch",
         "single"
       ],
@@ -271,8 +268,8 @@
         "emails",
         "inbox",
         "thread",
-        "get thread registered",
-        "mail get thread registered"
+        "get thread",
+        "mail get thread"
       ],
       "argument_summary": [
         "message_id: string (required)",
@@ -286,20 +283,19 @@
             "limit": 1,
             "message_id": "example_message_id"
           },
-          "tool": "mail_get_thread_registered"
+          "tool": "mail_get_thread"
         }
       ],
-      "name": "mail_get_thread_registered",
+      "name": "mail_get_thread",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "mail_get_thread_registered",
+      "schema_ref": "mail_get_thread",
       "tags": [
         "mail",
         "email",
         "emails",
         "inbox",
         "thread",
-        "registered",
         "find",
         "related",
         "messages",
@@ -321,8 +317,8 @@
         "emails",
         "inbox",
         "thread",
-        "compose draft registered",
-        "mail compose draft registered"
+        "compose draft",
+        "mail compose draft"
       ],
       "argument_summary": [
         "to: array (required)",
@@ -341,13 +337,13 @@
             "cc": [],
             "to": []
           },
-          "tool": "mail_compose_draft_registered"
+          "tool": "mail_compose_draft"
         }
       ],
-      "name": "mail_compose_draft_registered",
+      "name": "mail_compose_draft",
       "read_only": false,
       "risk_level": "medium",
-      "schema_ref": "mail_compose_draft_registered",
+      "schema_ref": "mail_compose_draft",
       "tags": [
         "mail",
         "email",
@@ -356,7 +352,6 @@
         "thread",
         "compose",
         "draft",
-        "registered",
         "create",
         "message",
         "without",
@@ -380,8 +375,8 @@
         "emails",
         "inbox",
         "thread",
-        "send message registered",
-        "mail send message registered"
+        "send message",
+        "mail send message"
       ],
       "argument_summary": [
         "to: array (required)",
@@ -400,13 +395,13 @@
             "cc": [],
             "to": []
           },
-          "tool": "mail_send_message_registered"
+          "tool": "mail_send_message"
         }
       ],
-      "name": "mail_send_message_registered",
+      "name": "mail_send_message",
       "read_only": false,
       "risk_level": "high",
-      "schema_ref": "mail_send_message_registered",
+      "schema_ref": "mail_send_message",
       "tags": [
         "mail",
         "email",
@@ -415,7 +410,6 @@
         "thread",
         "send",
         "message",
-        "registered",
         "immediately",
         "via",
         "optionally",
@@ -437,8 +431,8 @@
         "emails",
         "inbox",
         "thread",
-        "reply message registered",
-        "mail reply message registered"
+        "reply message",
+        "mail reply message"
       ],
       "argument_summary": [
         "message_id: string (required)",
@@ -454,13 +448,13 @@
             "body": "example_body",
             "message_id": "example_message_id"
           },
-          "tool": "mail_reply_message_registered"
+          "tool": "mail_reply_message"
         }
       ],
-      "name": "mail_reply_message_registered",
+      "name": "mail_reply_message",
       "read_only": false,
       "risk_level": "medium",
-      "schema_ref": "mail_reply_message_registered",
+      "schema_ref": "mail_reply_message",
       "tags": [
         "mail",
         "email",
@@ -469,7 +463,6 @@
         "thread",
         "reply",
         "message",
-        "registered",
         "existing",
         "provide",
         "body",
@@ -493,8 +486,8 @@
         "emails",
         "inbox",
         "thread",
-        "forward message registered",
-        "mail forward message registered"
+        "forward message",
+        "mail forward message"
       ],
       "argument_summary": [
         "message_id: string (required)",
@@ -510,13 +503,13 @@
             "message_id": "example_message_id",
             "to": []
           },
-          "tool": "mail_forward_message_registered"
+          "tool": "mail_forward_message"
         }
       ],
-      "name": "mail_forward_message_registered",
+      "name": "mail_forward_message",
       "read_only": false,
       "risk_level": "medium",
-      "schema_ref": "mail_forward_message_registered",
+      "schema_ref": "mail_forward_message",
       "tags": [
         "mail",
         "email",
@@ -525,7 +518,6 @@
         "thread",
         "forward",
         "message",
-        "registered",
         "existing",
         "new",
         "recipients",
@@ -548,8 +540,8 @@
         "emails",
         "inbox",
         "thread",
-        "mark message registered",
-        "mail mark message registered"
+        "mark message",
+        "mail mark message"
       ],
       "argument_summary": [
         "message_id: string (required)",
@@ -563,13 +555,13 @@
             "is_read": false,
             "message_id": "example_message_id"
           },
-          "tool": "mail_mark_message_registered"
+          "tool": "mail_mark_message"
         }
       ],
-      "name": "mail_mark_message_registered",
+      "name": "mail_mark_message",
       "read_only": false,
       "risk_level": "medium",
-      "schema_ref": "mail_mark_message_registered",
+      "schema_ref": "mail_mark_message",
       "tags": [
         "mail",
         "email",
@@ -578,7 +570,6 @@
         "thread",
         "mark",
         "message",
-        "registered",
         "unread",
         "set",
         "status",
@@ -598,8 +589,8 @@
         "emails",
         "inbox",
         "thread",
-        "move message registered",
-        "mail move message registered"
+        "move message",
+        "mail move message"
       ],
       "argument_summary": [
         "message_id: string (required)",
@@ -614,13 +605,13 @@
             "message_id": "example_message_id",
             "target_mailbox": "example_target_mailbox"
           },
-          "tool": "mail_move_message_registered"
+          "tool": "mail_move_message"
         }
       ],
-      "name": "mail_move_message_registered",
+      "name": "mail_move_message",
       "read_only": false,
       "risk_level": "medium",
-      "schema_ref": "mail_move_message_registered",
+      "schema_ref": "mail_move_message",
       "tags": [
         "mail",
         "email",
@@ -629,7 +620,6 @@
         "thread",
         "move",
         "message",
-        "registered",
         "different",
         "mailbox",
         "optionally",
@@ -647,8 +637,8 @@
         "emails",
         "inbox",
         "thread",
-        "delete message registered",
-        "mail delete message registered"
+        "delete message",
+        "mail delete message"
       ],
       "argument_summary": [
         "message_id: string (required)"
@@ -660,13 +650,13 @@
           "arguments": {
             "message_id": "example_message_id"
           },
-          "tool": "mail_delete_message_registered"
+          "tool": "mail_delete_message"
         }
       ],
-      "name": "mail_delete_message_registered",
+      "name": "mail_delete_message",
       "read_only": false,
       "risk_level": "high",
-      "schema_ref": "mail_delete_message_registered",
+      "schema_ref": "mail_delete_message",
       "tags": [
         "mail",
         "email",
@@ -675,7 +665,6 @@
         "thread",
         "delete",
         "message",
-        "registered",
         "trash",
         "its"
       ],
@@ -689,8 +678,8 @@
         "emails",
         "inbox",
         "thread",
-        "reply latest in thread registered",
-        "mail reply latest in thread registered"
+        "reply latest in thread",
+        "mail reply latest in thread"
       ],
       "argument_summary": [
         "message_id: string (required)",
@@ -707,13 +696,13 @@
             "body": "example_body",
             "message_id": "example_message_id"
           },
-          "tool": "mail_reply_latest_in_thread_registered"
+          "tool": "mail_reply_latest_in_thread"
         }
       ],
-      "name": "mail_reply_latest_in_thread_registered",
+      "name": "mail_reply_latest_in_thread",
       "read_only": false,
       "risk_level": "medium",
-      "schema_ref": "mail_reply_latest_in_thread_registered",
+      "schema_ref": "mail_reply_latest_in_thread",
       "tags": [
         "mail",
         "email",
@@ -722,7 +711,6 @@
         "thread",
         "reply",
         "latest",
-        "registered",
         "find",
         "related",
         "message",
@@ -740,8 +728,8 @@
         "emails",
         "inbox",
         "thread",
-        "archive thread registered",
-        "mail archive thread registered"
+        "archive thread",
+        "mail archive thread"
       ],
       "argument_summary": [
         "message_id: string (required)",
@@ -757,13 +745,13 @@
             "archive_mailbox": "example_archive_mailbox",
             "message_id": "example_message_id"
           },
-          "tool": "mail_archive_thread_registered"
+          "tool": "mail_archive_thread"
         }
       ],
-      "name": "mail_archive_thread_registered",
+      "name": "mail_archive_thread",
       "read_only": false,
       "risk_level": "medium",
-      "schema_ref": "mail_archive_thread_registered",
+      "schema_ref": "mail_archive_thread",
       "tags": [
         "mail",
         "email",
@@ -771,7 +759,6 @@
         "inbox",
         "thread",
         "archive",
-        "registered",
         "move",
         "related",
         "messages",
@@ -832,8 +819,8 @@
         "emails",
         "inbox",
         "thread",
-        "get prompt prompt",
-        "mail get prompt prompt"
+        "get prompt",
+        "mail get prompt"
       ],
       "argument_summary": [
         "name: string (required)",
@@ -847,13 +834,13 @@
             "arguments_json": "example_arguments_json",
             "name": "example_name"
           },
-          "tool": "mail_get_prompt_prompt"
+          "tool": "mail_get_prompt"
         }
       ],
-      "name": "mail_get_prompt_prompt",
+      "name": "mail_get_prompt",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "mail_get_prompt_prompt",
+      "schema_ref": "mail_get_prompt",
       "tags": [
         "mail",
         "email",
@@ -887,7 +874,7 @@
         "domain_tags: array (optional)",
         "mode: string (optional)"
       ],
-      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "description": "Search this server's tool catalog by keyword, alias, or domain tag.",
       "domain": "mail",
       "example_calls": [
         {
@@ -915,15 +902,14 @@
         "thi",
         "server",
         "catalog",
-        "without",
-        "loading",
-        "every",
-        "full",
-        "schema",
-        "default"
+        "keyword",
+        "alias",
+        "alia",
+        "domain",
+        "tag"
       ],
       "title": "Search Tools",
-      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+      "usage_intent": "Search this server's tool catalog by keyword, alias, or domain tag."
     },
     {
       "aliases": [

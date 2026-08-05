@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 import json
 import subprocess
+from pathlib import Path
 
 from apple_reminders_mcp.config import load_settings
 from apple_reminders_mcp.models import (

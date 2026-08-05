@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import json
+from pathlib import Path
 
 from apple_agent_mcp.models import AssistantActionRecord, AssistantPreferences
 

@@ -1,7 +1,8 @@
+import asyncio
+
+from apple_messages_mcp import tools
 from apple_messages_mcp.config import load_settings
 from apple_messages_mcp.models import AttachmentRecord, ConversationRecord, ConversationSummary, MessageRecord, MessagesCapabilities, ParticipantRecord
-from apple_messages_mcp import tools
-import asyncio
 
 
 class FakeDBBridge:
@@ -169,7 +170,7 @@ def test_messages_main_exists() -> None:
 def test_messages_get_conversation_schema_uses_integer_limit() -> None:
     async def load_schema():
         tool_list = await tools.mcp.list_tools()
-        return next(tool.inputSchema for tool in tool_list if tool.name == "messages_get_conversation")
+        return next(tool.input_schema for tool in tool_list if tool.name == "messages_get_conversation")
 
     schema = asyncio.run(load_schema())
 

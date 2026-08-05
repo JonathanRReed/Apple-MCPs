@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError
 
 

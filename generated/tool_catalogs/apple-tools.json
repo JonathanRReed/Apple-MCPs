@@ -2499,6 +2499,152 @@
         "assistant",
         "unified",
         "cross-app",
+        "generate daily briefing",
+        "apple generate daily briefing"
+      ],
+      "argument_summary": [
+        "mail_query: string (optional)",
+        "mail_limit: integer (optional)"
+      ],
+      "description": "Generate a daily Apple briefing from today's context, domain health, and Mail highlights.",
+      "domain": "apple",
+      "example_calls": [
+        {
+          "arguments": {
+            "mail_limit": 1,
+            "mail_query": "find apple"
+          },
+          "tool": "apple_generate_daily_briefing"
+        }
+      ],
+      "name": "apple_generate_daily_briefing",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "apple_generate_daily_briefing",
+      "tags": [
+        "assistant",
+        "unified",
+        "cross-app",
+        "generate",
+        "daily",
+        "briefing",
+        "today",
+        "context",
+        "domain",
+        "health",
+        "mail",
+        "highlights",
+        "highlight"
+      ],
+      "title": "Apple Generate Daily Briefing",
+      "usage_intent": "Generate a daily Apple briefing from today's context, domain health, and Mail highlights."
+    },
+    {
+      "aliases": [
+        "apple",
+        "assistant",
+        "unified",
+        "cross-app",
+        "generate weekly briefing",
+        "apple generate weekly briefing"
+      ],
+      "argument_summary": [
+        "days: integer (optional)",
+        "mail_query: string (optional)",
+        "mail_limit: integer (optional)"
+      ],
+      "description": "Generate a weekly Apple briefing from upcoming events, reminders, and Mail highlights.",
+      "domain": "apple",
+      "example_calls": [
+        {
+          "arguments": {
+            "days": 1,
+            "mail_query": "find apple"
+          },
+          "tool": "apple_generate_weekly_briefing"
+        }
+      ],
+      "name": "apple_generate_weekly_briefing",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "apple_generate_weekly_briefing",
+      "tags": [
+        "assistant",
+        "unified",
+        "cross-app",
+        "generate",
+        "weekly",
+        "briefing",
+        "upcoming",
+        "events",
+        "event",
+        "reminders",
+        "reminder",
+        "mail",
+        "highlights",
+        "highlight"
+      ],
+      "title": "Apple Generate Weekly Briefing",
+      "usage_intent": "Generate a weekly Apple briefing from upcoming events, reminders, and Mail highlights."
+    },
+    {
+      "aliases": [
+        "apple",
+        "assistant",
+        "unified",
+        "cross-app",
+        "triage communications task",
+        "apple triage communications task"
+      ],
+      "argument_summary": [
+        "mail_query: string (optional)",
+        "mail_limit: integer (optional)",
+        "conversation_limit: integer (optional)"
+      ],
+      "description": "Generate a cross-app communications triage summary from unread Messages and Mail search results.",
+      "domain": "apple",
+      "example_calls": [
+        {
+          "arguments": {
+            "mail_limit": 1,
+            "mail_query": "find apple"
+          },
+          "tool": "apple_triage_communications_task"
+        }
+      ],
+      "name": "apple_triage_communications_task",
+      "read_only": true,
+      "risk_level": "low",
+      "schema_ref": "apple_triage_communications_task",
+      "tags": [
+        "assistant",
+        "unified",
+        "cross-app",
+        "triage",
+        "communications",
+        "communication",
+        "task",
+        "generate",
+        "cross",
+        "cros",
+        "summary",
+        "unread",
+        "messages",
+        "messag",
+        "mail",
+        "search",
+        "results",
+        "result"
+      ],
+      "title": "Apple Triage Communications Task",
+      "usage_intent": "Generate a cross-app communications triage summary from unread Messages and Mail search results."
+    },
+    {
+      "aliases": [
+        "apple",
+        "assistant",
+        "unified",
+        "cross-app",
         "mail health"
       ],
       "argument_summary": [],
@@ -8056,7 +8202,7 @@
         "domain_tags: array (optional)",
         "mode: string (optional)"
       ],
-      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "description": "Search this server's tool catalog by keyword, alias, or domain tag.",
       "domain": "apple",
       "example_calls": [
         {
@@ -8082,15 +8228,14 @@
         "thi",
         "server",
         "catalog",
-        "without",
-        "loading",
-        "every",
-        "full",
-        "schema",
-        "default"
+        "keyword",
+        "alias",
+        "alia",
+        "domain",
+        "tag"
       ],
       "title": "Search Tools",
-      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+      "usage_intent": "Search this server's tool catalog by keyword, alias, or domain tag."
     },
     {
       "aliases": [
@@ -8139,150 +8284,6 @@
       ],
       "title": "Get Tool Info",
       "usage_intent": "Load the full schema, examples, and metadata for one tool from this server."
-    },
-    {
-      "aliases": [
-        "apple",
-        "assistant",
-        "unified",
-        "cross-app",
-        "generate daily briefing",
-        "apple generate daily briefing"
-      ],
-      "argument_summary": [
-        "mail_query: string (optional)",
-        "mail_limit: integer (optional)"
-      ],
-      "description": "Generate a daily Apple briefing. Supports task-augmented execution for longer runs.",
-      "domain": "apple",
-      "example_calls": [
-        {
-          "arguments": {
-            "mail_limit": 1,
-            "mail_query": "find apple"
-          },
-          "tool": "apple_generate_daily_briefing"
-        }
-      ],
-      "name": "apple_generate_daily_briefing",
-      "read_only": true,
-      "risk_level": "low",
-      "schema_ref": "apple_generate_daily_briefing",
-      "tags": [
-        "assistant",
-        "unified",
-        "cross-app",
-        "generate",
-        "daily",
-        "briefing",
-        "supports",
-        "support",
-        "task",
-        "augmented",
-        "execution",
-        "longer",
-        "runs",
-        "run"
-      ],
-      "title": "Apple Generate Daily Briefing",
-      "usage_intent": "Generate a daily Apple briefing. Supports task-augmented execution for longer runs."
-    },
-    {
-      "aliases": [
-        "apple",
-        "assistant",
-        "unified",
-        "cross-app",
-        "generate weekly briefing",
-        "apple generate weekly briefing"
-      ],
-      "argument_summary": [
-        "days: integer (optional)",
-        "mail_query: string (optional)",
-        "mail_limit: integer (optional)"
-      ],
-      "description": "Generate a weekly Apple briefing. Supports task-augmented execution for longer runs.",
-      "domain": "apple",
-      "example_calls": [
-        {
-          "arguments": {
-            "days": 1,
-            "mail_query": "find apple"
-          },
-          "tool": "apple_generate_weekly_briefing"
-        }
-      ],
-      "name": "apple_generate_weekly_briefing",
-      "read_only": true,
-      "risk_level": "low",
-      "schema_ref": "apple_generate_weekly_briefing",
-      "tags": [
-        "assistant",
-        "unified",
-        "cross-app",
-        "generate",
-        "weekly",
-        "briefing",
-        "supports",
-        "support",
-        "task",
-        "augmented",
-        "execution",
-        "longer",
-        "runs",
-        "run"
-      ],
-      "title": "Apple Generate Weekly Briefing",
-      "usage_intent": "Generate a weekly Apple briefing. Supports task-augmented execution for longer runs."
-    },
-    {
-      "aliases": [
-        "apple",
-        "assistant",
-        "unified",
-        "cross-app",
-        "triage communications task",
-        "apple triage communications task"
-      ],
-      "argument_summary": [
-        "mail_query: string (optional)",
-        "mail_limit: integer (optional)",
-        "conversation_limit: integer (optional)"
-      ],
-      "description": "Generate a cross-app communications triage summary. Supports task-augmented execution.",
-      "domain": "apple",
-      "example_calls": [
-        {
-          "arguments": {
-            "mail_limit": 1,
-            "mail_query": "find apple"
-          },
-          "tool": "apple_triage_communications_task"
-        }
-      ],
-      "name": "apple_triage_communications_task",
-      "read_only": true,
-      "risk_level": "low",
-      "schema_ref": "apple_triage_communications_task",
-      "tags": [
-        "assistant",
-        "unified",
-        "cross-app",
-        "triage",
-        "communications",
-        "communication",
-        "task",
-        "generate",
-        "cross",
-        "cros",
-        "summary",
-        "supports",
-        "support",
-        "augmented",
-        "execution"
-      ],
-      "title": "Apple Triage Communications Task",
-      "usage_intent": "Generate a cross-app communications triage summary. Supports task-augmented execution."
     }
   ]
 }

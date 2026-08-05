@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
-from pathlib import Path
 import subprocess
-from urllib.parse import urlencode, quote_plus
+from dataclasses import dataclass
+from pathlib import Path
+from urllib.parse import quote_plus, urlencode
 
 from apple_maps_mcp.config import load_settings
 

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from functools import lru_cache
-from html import escape as html_escape
-from pathlib import Path
 import json
 import re
 import subprocess
 import time
+from functools import lru_cache
+from html import escape as html_escape
+from pathlib import Path
 
 from apple_notes_mcp.config import load_settings
 from apple_notes_mcp.models import AccountInfo, AttachmentInfo, FolderInfo, NoteDetail, NoteSummary

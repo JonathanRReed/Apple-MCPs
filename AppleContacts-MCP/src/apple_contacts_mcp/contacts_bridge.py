@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
 import hashlib
 import json
 import re
 import subprocess
+from pathlib import Path
 
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSummary, CreateContactResponse, DeleteContactResponse, DuplicateCandidateGroup, DuplicateEvidence, ResolvedRecipientResponse
@@ -315,7 +315,7 @@ class AppleContactsBridge:
 
     def _map_script_error(self, error_text: str) -> ContactsBridgeError:
         lowered = error_text.lower()
-        if "not authorized" in lowered or "contacts" in lowered and "not allowed" in lowered:
+        if "not authorized" in lowered or ("contacts" in lowered and "not allowed" in lowered):
             return ContactsBridgeError(
                 "PERMISSION_DENIED",
                 "macOS denied access to Contacts.",

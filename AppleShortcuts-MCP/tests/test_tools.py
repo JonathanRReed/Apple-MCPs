@@ -1,6 +1,6 @@
+from apple_shortcuts_mcp import tools
 from apple_shortcuts_mcp.config import load_settings
 from apple_shortcuts_mcp.models import ShortcutFolderInfo, ShortcutInfo, ShortcutRunResponse
-from apple_shortcuts_mcp import tools
 
 
 class FakeBridge:
@@ -109,13 +109,9 @@ def test_main_uses_streamable_http_settings(monkeypatch) -> None:
 
     captured: dict[str, object] = {}
 
-    def fake_run(*, transport: str) -> None:
+    def fake_run(*, transport: str, **kwargs: object) -> None:
         captured["transport"] = transport
-        captured["host"] = tools.mcp.settings.host
-        captured["port"] = tools.mcp.settings.port
-        captured["log_level"] = tools.mcp.settings.log_level
-        captured["stateless_http"] = tools.mcp.settings.stateless_http
-        captured["json_response"] = tools.mcp.settings.json_response
+        captured.update(kwargs)
 
     monkeypatch.setattr(tools.mcp, "run", fake_run)
 
@@ -125,7 +121,6 @@ def test_main_uses_streamable_http_settings(monkeypatch) -> None:
         "transport": "streamable-http",
         "host": "0.0.0.0",
         "port": 8766,
-        "log_level": "DEBUG",
         "stateless_http": True,
         "json_response": True,
     }

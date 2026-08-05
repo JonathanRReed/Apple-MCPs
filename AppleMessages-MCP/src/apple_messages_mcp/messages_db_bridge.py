@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-import sqlite3
 
 from apple_messages_mcp.models import AttachmentRecord, ConversationRecord, ConversationSummary, MessageRecord, ParticipantRecord
 

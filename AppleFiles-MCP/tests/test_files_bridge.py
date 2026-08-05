@@ -1,5 +1,5 @@
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 from apple_files_mcp.files_bridge import FilesBridge
 

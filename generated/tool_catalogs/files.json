@@ -1143,7 +1143,7 @@
         "domain_tags: array (optional)",
         "mode: string (optional)"
       ],
-      "description": "Search this server's tool catalog without loading every full tool schema into the default tool list.",
+      "description": "Search this server's tool catalog by keyword, alias, or domain tag.",
       "domain": "files",
       "example_calls": [
         {
@@ -1175,13 +1175,13 @@
         "thi",
         "server",
         "catalog",
-        "without",
-        "loading",
-        "every",
-        "full"
+        "keyword",
+        "alias",
+        "alia",
+        "domain"
       ],
       "title": "Search Tools",
-      "usage_intent": "Search this server's tool catalog without loading every full tool schema into the default tool list."
+      "usage_intent": "Search this server's tool catalog by keyword, alias, or domain tag."
     },
     {
       "aliases": [

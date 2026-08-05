@@ -16,27 +16,29 @@ This repository contains local MCP servers for Apple apps and adjacent macOS con
 
 ## Local Setup
 
-Each server is self-contained and bootstraps from its own `start.sh`.
-
-Example:
+The repository is a [uv](https://docs.astral.sh/uv/) workspace. One command builds an environment with every server installed:
 
 ```bash
-cd /path/to/Apple-MCPs/Apple-Tools-MCP
-./start.sh
+cd /path/to/Apple-MCPs
+uv sync --all-packages
 ```
 
-Most development work uses:
+Run any server from the workspace venv (`.venv/bin/apple-tools-mcp`, `.venv/bin/apple-mail-mcp`, ...) or via its `start.sh`, which prefers uv and falls back to a plain venv bootstrap.
+
+Most development work uses (config lives in the root `ruff.toml`):
 
 ```bash
-ruff check .
+uv run ruff check .
 ```
 
 and server-local tests:
 
 ```bash
 cd /path/to/Apple-MCPs/<server>
-pytest tests
+uv run --project . python -m pytest
 ```
+
+The Swift bridge sources are vendored per package (`Apple-Calendar-MCP` and `AppleReminders-MCP` share `apple_pim_bridge.swift`); if you change one copy, run `bash scripts/check_bridge_sync.sh` to confirm the copies still match.
 
 ## Required Checks
 

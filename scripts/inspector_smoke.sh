@@ -1,42 +1,73 @@
 #!/usr/bin/env bash
+# Smoke-checks every MCP server in this repo through the official MCP
+# Inspector CLI: tools/list against all 11 servers, plus prompts/list and
+# resources/list on the servers that expose them.
+#
+# Requirements: uv (https://docs.astral.sh/uv/) and Node.js (npx).
+# Portable to macOS's stock bash 3.2 (no associative arrays, no bash 4isms).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SHARED_VENV="$ROOT/.venv"
 
-if [ ! -x "$SHARED_VENV/bin/python3" ]; then
-  bash "$ROOT/scripts/install_all.sh" "$SHARED_VENV"
+# The inspector CLI is spawned with cwd inherited from this script, and
+# `uv run` discovers the workspace from cwd, so run everything from the root.
+cd "$ROOT"
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "error: uv is required (https://docs.astral.sh/uv/). Install it and re-run." >&2
+  exit 1
 fi
 
-declare -A BINARIES=(
-  ["AppleFiles-MCP"]="apple-files-mcp"
-  ["AppleSystem-MCP"]="apple-system-mcp"
-  ["AppleMaps-MCP"]="apple-maps-mcp"
-  ["AppleMail-MCP"]="apple-mail-mcp"
-  ["Apple-Calendar-MCP"]="apple-calendar-mcp"
-  ["AppleReminders-MCP"]="apple-reminders-mcp"
-  ["AppleMessages-MCP"]="apple-messages-mcp"
-  ["AppleContacts-MCP"]="apple-contacts-mcp"
-  ["AppleNotes-MCP"]="apple-notes-mcp"
-  ["AppleShortcuts-MCP"]="apple-shortcuts-mcp"
-  ["Apple-Tools-MCP"]="apple-tools-mcp"
-)
+if ! command -v npx >/dev/null 2>&1; then
+  echo "error: npx (Node.js) is required to run @modelcontextprotocol/inspector." >&2
+  exit 1
+fi
+
+# Ensure the shared workspace venv has every server's console script
+# installed. --inexact adds anything missing without uninstalling extras a
+# developer may have synced (e.g. pytest/ruff from the dev extra).
+uv sync --all-packages --inexact
+
+# Map a package directory to its console-script name (bash 3.2 has no
+# associative arrays, so use a case statement).
+binary_for() {
+  case "$1" in
+    AppleFiles-MCP) echo "apple-files-mcp" ;;
+    AppleSystem-MCP) echo "apple-system-mcp" ;;
+    AppleMaps-MCP) echo "apple-maps-mcp" ;;
+    AppleMail-MCP) echo "apple-mail-mcp" ;;
+    Apple-Calendar-MCP) echo "apple-calendar-mcp" ;;
+    AppleReminders-MCP) echo "apple-reminders-mcp" ;;
+    AppleMessages-MCP) echo "apple-messages-mcp" ;;
+    AppleContacts-MCP) echo "apple-contacts-mcp" ;;
+    AppleNotes-MCP) echo "apple-notes-mcp" ;;
+    AppleShortcuts-MCP) echo "apple-shortcuts-mcp" ;;
+    Apple-Tools-MCP) echo "apple-tools-mcp" ;;
+    *)
+      echo "error: unknown package '$1'" >&2
+      return 1
+      ;;
+  esac
+}
+
+CHECK_OUTPUT="$(mktemp)"
+trap 'rm -f "$CHECK_OUTPUT"' EXIT
 
 run_inspector_check() {
   local package="$1"
   local method="$2"
   local expected_key="$3"
   local require_nonempty="${4:-1}"
-  local binary="${BINARIES[$package]}"
-  local output_file
-
-  output_file="$(mktemp)"
-  trap 'rm -f "$output_file"' RETURN
+  local binary
+  binary="$(binary_for "$package")"
 
   echo "==> ${package}: ${method}"
-  npx -y @modelcontextprotocol/inspector --cli "$SHARED_VENV/bin/$binary" --method "$method" >"$output_file"
+  # Launch the server through `uv run` so it uses the shared workspace venv.
+  # Note: the inspector CLI mis-parses extra dash-flags in the server command,
+  # so the command must stay flag-free; uv finds the workspace via cwd.
+  npx -y @modelcontextprotocol/inspector --cli uv run "$binary" --method "$method" >"$CHECK_OUTPUT"
 
-  python3 - "$output_file" "$expected_key" "$package" "$method" "$require_nonempty" <<'PY'
+  uv run --no-sync python - "$CHECK_OUTPUT" "$expected_key" "$package" "$method" "$require_nonempty" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -60,26 +91,23 @@ if require_nonempty and not items:
 
 print(f"OK {package} {method}: {len(items)} {expected_key}")
 PY
-
-  rm -f "$output_file"
-  trap - RETURN
 }
 
-packages=(
-  "AppleFiles-MCP"
-  "AppleSystem-MCP"
-  "AppleMaps-MCP"
-  "AppleMail-MCP"
-  "Apple-Calendar-MCP"
-  "AppleReminders-MCP"
-  "AppleMessages-MCP"
-  "AppleContacts-MCP"
-  "AppleNotes-MCP"
-  "AppleShortcuts-MCP"
-  "Apple-Tools-MCP"
-)
+packages="
+AppleFiles-MCP
+AppleSystem-MCP
+AppleMaps-MCP
+AppleMail-MCP
+Apple-Calendar-MCP
+AppleReminders-MCP
+AppleMessages-MCP
+AppleContacts-MCP
+AppleNotes-MCP
+AppleShortcuts-MCP
+Apple-Tools-MCP
+"
 
-for package in "${packages[@]}"; do
+for package in $packages; do
   run_inspector_check "$package" "tools/list" "tools"
 done
 

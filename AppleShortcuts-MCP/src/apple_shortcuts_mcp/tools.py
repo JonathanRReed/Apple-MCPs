@@ -279,6 +279,7 @@ async def shortcuts_list_prompts() -> dict[str, object]:
 
 
 @mcp.tool(
+    name="shortcuts_get_prompt",
     title="Shortcuts Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),

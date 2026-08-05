@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.jonathanrreed/apple-maps-mcp",
+  "title": "Apple Maps",
+  "description": "Search places, estimate routes, and build Apple Maps links on macOS.",
+  "repository": {
+    "url": "https://github.com/JonathanRReed/Apple-MCPs",
+    "source": "github",
+    "id": "1194217206",
+    "subfolder": "AppleMaps-MCP"
+  },
+  "version": "1.0.0",
+  "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "apple-maps-mcp",
+      "version": "1.0.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

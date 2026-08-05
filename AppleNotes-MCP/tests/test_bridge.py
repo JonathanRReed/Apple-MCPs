@@ -1,5 +1,9 @@
+import shutil
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 from apple_notes_mcp.notes_bridge import AppleNotesBridge, NotesBridgeError
 
@@ -239,6 +243,10 @@ def test_prepare_body_html_prefixes_title_when_first_line_differs() -> None:
     assert body_html == "<div>Dallas trip</div><div><br></div><div>Places to visit</div>"
 
 
+@pytest.mark.skipif(
+    sys.platform != "darwin" or shutil.which("osacompile") is None,
+    reason="osacompile is only available on macOS",
+)
 def test_mutation_scripts_compile(tmp_path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     scripts_dir = repo_root / "src" / "apple_notes_mcp" / "applescripts"

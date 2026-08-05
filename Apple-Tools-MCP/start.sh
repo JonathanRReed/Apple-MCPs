@@ -1,41 +1,41 @@
 #!/bin/bash
 set -euo pipefail
+
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_DIR="$DIR/.venv"
-PYTHON_BIN="$VENV_DIR/bin/python3"
-REQUIREMENTS_FILE="$DIR/requirements.txt"
-STAMP_FILE="$VENV_DIR/.requirements.sha256"
 
-need_bootstrap=0
-
-if [ ! -x "$PYTHON_BIN" ]; then
-    python3 -m venv "$VENV_DIR"
-    need_bootstrap=1
+# Preferred path: let uv manage the environment (workspace-aware, resolves the
+# right Python and dependencies automatically).
+if command -v uv >/dev/null 2>&1; then
+  exec uv run --project "$DIR" python "$DIR/server.py" "$@"
 fi
 
-expected_hash="$(shasum -a 256 "$REQUIREMENTS_FILE" | awk '{print $1}')"
-current_hash="$(cat "$STAMP_FILE" 2>/dev/null || true)"
-
-if [ "$current_hash" != "$expected_hash" ]; then
-    need_bootstrap=1
+# Legacy fallback: plain venv bootstrap.
+PYTHON_BIN="${APPLE_MCP_PYTHON:-python3}"
+if ! "$PYTHON_BIN" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; then
+  echo "error: Python 3.11+ is required (found: $("$PYTHON_BIN" --version 2>&1)). Install uv (https://docs.astral.sh/uv/) or set APPLE_MCP_PYTHON to a newer interpreter." >&2
+  exit 1
 fi
 
-if ! "$PYTHON_BIN" - <<'PY' >/dev/null 2>&1
-import importlib.util
-import sys
+VENV="$DIR/.venv"
+STAMP="$VENV/.requirements.sha256"
+WANT_HASH="$(shasum -a 256 "$DIR/requirements.txt" | awk '{print $1}')"
 
-required = ("mcp", "pydantic")
-missing = [name for name in required if importlib.util.find_spec(name) is None]
-raise SystemExit(0 if not missing else 1)
-PY
-then
-    need_bootstrap=1
+needs_bootstrap=0
+if [ ! -x "$VENV/bin/python" ]; then
+  needs_bootstrap=1
+elif ! "$VENV/bin/python" -c 'import mcp, pydantic, apple_mcp_common' >/dev/null 2>&1; then
+  needs_bootstrap=1
+elif [ ! -f "$STAMP" ] || [ "$(cat "$STAMP")" != "$WANT_HASH" ]; then
+  needs_bootstrap=1
 fi
 
-if [ "$need_bootstrap" -eq 1 ]; then
-    "$PYTHON_BIN" -m pip install -q --upgrade pip setuptools wheel
-    "$PYTHON_BIN" -m pip install -q -r "$REQUIREMENTS_FILE"
-    printf '%s\n' "$expected_hash" > "$STAMP_FILE"
+if [ "$needs_bootstrap" = "1" ]; then
+  "$PYTHON_BIN" -m venv "$VENV"
+  # Run pip from the server directory so relative editable paths in
+  # requirements.txt (e.g. ../AppleMCPCommon) resolve regardless of the
+  # caller's working directory.
+  (cd "$DIR" && "$VENV/bin/python" -m pip install --quiet --upgrade pip && "$VENV/bin/python" -m pip install --quiet -r requirements.txt)
+  printf '%s' "$WANT_HASH" > "$STAMP"
 fi
 
-exec "$PYTHON_BIN" "$DIR/server.py"
+exec "$VENV/bin/python" "$DIR/server.py" "$@"

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.jonathanrreed/apple-calendar-mcp",
+  "title": "Apple Calendar",
+  "description": "List, create, update, and delete events in Apple Calendar on macOS.",
+  "repository": {
+    "url": "https://github.com/JonathanRReed/Apple-MCPs",
+    "source": "github",
+    "id": "1194217206",
+    "subfolder": "Apple-Calendar-MCP"
+  },
+  "version": "1.0.0",
+  "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "apple-calendar-mcp",
+      "version": "1.0.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "APPLE_CALENDAR_MCP_SAFETY_MODE",
+          "description": "Safety mode for Calendar operations: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "safe_manage"
+        },
+        {
+          "name": "APPLE_CALENDAR_MCP_ALLOWED_CALENDARS",
+          "description": "Comma-separated allow-list of calendar names. Empty allows all calendars.",
+          "isRequired": false,
+          "format": "string",
+          "placeholder": "Work,Personal"
+        }
+      ]
+    }
+  ]
+}

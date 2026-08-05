@@ -326,8 +326,8 @@
         "shortcuts",
         "automation",
         "workflow",
-        "get prompt prompt",
-        "shortcuts get prompt prompt"
+        "get prompt",
+        "shortcuts get prompt"
       ],
       "argument_summary": [
         "name: string (required)",
@@ -341,13 +341,13 @@
             "arguments_json": "example_arguments_json",
             "name": "example_name"
           },
-          "tool": "shortcuts_get_prompt_prompt"
+          "tool": "shortcuts_get_prompt"
         }
       ],
-      "name": "shortcuts_get_prompt_prompt",
+      "name": "shortcuts_get_prompt",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "shortcuts_get_prompt_prompt",
+      "schema_ref": "shortcuts_get_prompt",
       "tags": [
         "shortcuts",
         "shortcut",

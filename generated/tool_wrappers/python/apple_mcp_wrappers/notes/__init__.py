@@ -20,7 +20,7 @@ from .notes_rename_folder import notes_rename_folder
 from .notes_delete_folder import notes_delete_folder
 from .notes_list_attachments import notes_list_attachments
 from .notes_list_prompts import notes_list_prompts
-from .notes_get_prompt_prompt import notes_get_prompt_prompt
+from .notes_get_prompt import notes_get_prompt
 
 __all__ = [
     "notes_health",
@@ -41,5 +41,5 @@ __all__ = [
     "notes_delete_folder",
     "notes_list_attachments",
     "notes_list_prompts",
-    "notes_get_prompt_prompt",
+    "notes_get_prompt",
 ]

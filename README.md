@@ -1,157 +1,60 @@
 # Apple-MCPs
 
+![CI](https://github.com/JonathanRReed/Apple-MCPs/actions/workflows/ci.yml/badge.svg)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
-![MCP](https://img.shields.io/badge/MCP-v0.4-8A2BE2)
+![MCP spec 2026-07-28](https://img.shields.io/badge/MCP%20spec-2026--07--28-8A2BE2)
 
 Apple-native MCP servers for macOS — turn any AI agent into what Siri should have been.
 
 This repository provides direct, local access to core Apple apps through the [Model Context Protocol](https://modelcontextprotocol.io) (MCP). Your AI assistant can use structured tools to work with your data — create reminders, send messages, check calendars, search mail, manage files, get directions — while everything stays in the native apps you already use.
 
-MCP provides three primitives for working with Apple apps:
+Everything happens on your Mac over local `stdio`. Your data stays in Apple's apps where it belongs. Free and open source under the [MIT License](./LICENSE).
 
-- **Tools** — actions like creating a reminder or sending a message
-- **Resources** — read-only snapshots like recent notes or today's reminders
-- **Prompts** — reusable workflows for common tasks like planning your day
-
-Everything happens on your Mac. Your data stays in Apple's apps where it belongs.
-
-## Project Docs
-
-- [CHANGELOG.md](./CHANGELOG.md)
-- [CONTRIBUTING.md](./CONTRIBUTING.md)
-- [SECURITY.md](./SECURITY.md)
-- [Code Mode](./docs/code-mode.md)
-- [NOTICE.md](./NOTICE.md)
-
-## Launch Docs
-
-- [Golden Workflows](./docs/launch/golden-workflows.md)
-- [Failure Modes](./docs/launch/failure-modes.md)
-- [Compatibility and Version Pinning](./docs/launch/compatibility.md)
-- [Demo Script](./docs/launch/demo-script.md)
-- [Checklist Template Prompt](./docs/launch/prompts/checklist-template.md)
-- [Per-Server E2E Checklist](./docs/launch/prompts/per-server-e2e-checklist.md)
+Built on MCP specification **2026-07-28** (Python SDK 2.x) with backward compatibility for clients speaking older protocol revisions.
 
 ## Servers
 
-- [Apple-Tools-MCP](./Apple-Tools-MCP/README.md), recommended. One unified server for Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps.
-- [Apple Files MCP](./AppleFiles-MCP/README.md), for safe file, Finder-adjacent, and iCloud Drive workflows inside allowed roots.
-- [Apple System MCP](./AppleSystem-MCP/README.md), for frontmost app, battery, clipboard, truthful Focus support metadata, app-launch context, assistant-relevant macOS settings reads and writes, and bounded GUI fallback automation.
-- [Apple Maps MCP](./AppleMaps-MCP/README.md), for place search, travel estimates, and Apple Maps links.
-- [Apple Mail MCP](./AppleMail-MCP/README.md), for Mail-only workflows.
-- [Apple Calendar](./Apple-Calendar-MCP/README.md), for Calendar-only workflows.
-- [Apple Reminders MCP](./AppleReminders-MCP/README.md), for task and reminder workflows.
-- [Apple Messages MCP](./AppleMessages-MCP/README.md), for iMessage and Messages workflows.
-- [Apple Contacts MCP](./AppleContacts-MCP/README.md), for contacts and recipient-resolution workflows.
-- [Apple Notes MCP](./AppleNotes-MCP/README.md), for notes and knowledge workflows.
-- [Apple Shortcuts MCP](./AppleShortcuts-MCP/README.md), for running Apple Shortcuts from agents.
+- [Apple-Tools-MCP](./Apple-Tools-MCP/README.md), recommended. One unified server for Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps — plus saved defaults, per-contact routing preferences, thread-aware Mail helpers, undo support, briefing tools, and cross-app workflows.
+- Standalone servers when you want tighter boundaries or simpler permissions:
+  [Mail](./AppleMail-MCP/README.md) ·
+  [Calendar](./Apple-Calendar-MCP/README.md) ·
+  [Reminders](./AppleReminders-MCP/README.md) ·
+  [Messages](./AppleMessages-MCP/README.md) ·
+  [Contacts](./AppleContacts-MCP/README.md) ·
+  [Notes](./AppleNotes-MCP/README.md) ·
+  [Shortcuts](./AppleShortcuts-MCP/README.md) ·
+  [Files](./AppleFiles-MCP/README.md) ·
+  [System](./AppleSystem-MCP/README.md) ·
+  [Maps](./AppleMaps-MCP/README.md)
 
-## Which One To Use
+## Install
 
-**Apple-Tools-MCP** (recommended) — One server that covers everything: Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps. Includes extras like saved defaults, per-contact routing preferences, thread-aware Mail helpers, undo support, truthful Focus context, Finder-aware file workflows, and iCloud Drive awareness.
+### Run from PyPI (uvx)
 
-**Standalone servers** — Pick one if you want tighter boundaries or simpler permissions:
-- [Apple Files MCP](./AppleFiles-MCP/README.md), [Apple System MCP](./AppleSystem-MCP/README.md), [Apple Maps MCP](./AppleMaps-MCP/README.md) for focused workflows
-- [Apple Mail MCP](./AppleMail-MCP/README.md), [Apple Calendar](./Apple-Calendar-MCP/README.md), [Apple Reminders MCP](./AppleReminders-MCP/README.md), [Apple Messages MCP](./AppleMessages-MCP/README.md), [Apple Contacts MCP](./AppleContacts-MCP/README.md), [Apple Notes MCP](./AppleNotes-MCP/README.md), [Apple Shortcuts MCP](./AppleShortcuts-MCP/README.md) for single-app access
-
-## Agent Routing
-
-Some tips for working with these servers:
-
-- `tools/list` is intentionally minimal. Use `search_tools` to discover tools, then `get_tool_info` to load full schemas and examples only when needed.
-- Always run Contacts first when messaging a person, then choose Messages or Mail.
-- Use Mail thread helpers when the user mentions a conversation.
-- Reminders are for due items, Notes for reference material, Calendar for scheduled time.
-- When Mail must send from a specific identity, pass the exact sender email in `from_account`.
-- Code-mode clients can use the generated wrapper surface in `generated/tool_wrappers/python` instead of loading every tool schema into model context.
-- See the standalone READMEs for app-specific details.
-
-## Search-First Discovery
-
-The published Apple MCP servers are optimized for search-aware clients:
-
-- `tools/list` exposes only a compact always-on surface, such as health checks, permission guidance, prompt fallbacks, `search_tools`, and `get_tool_info`
-- `search_tools` finds deferred tools by name, description, aliases, and domain tags
-- `get_tool_info` loads the full schema and examples for one deferred tool only when the client needs it
-- direct `call_tool` still works for deferred tools, even if they were not included in the initial `tools/list`
-
-This keeps the default context smaller while preserving the full tool surface.
-
-## Code-Mode Wrappers
-
-The repo also ships generated artifacts for code-execution clients:
-
-- `generated/tool_catalogs`, exported searchable tool metadata per server
-- `generated/tool_wrappers/python`, generated Python wrappers for deferred tool calls
-
-Use these when you want Anthropic-style code-mode discovery and execution without loading the entire MCP surface into the model context window.
-
-See [docs/code-mode.md](./docs/code-mode.md) for the wrapper layout, client interface, result parsing, and recommended workflow.
-
-## Install On This Mac
-
-<details>
-<summary>Recommended, install the all-in-one server</summary>
+Once you have [uv](https://docs.astral.sh/uv/getting-started/installation/) installed, every server runs with a one-liner — no clone, no venv management:
 
 ```bash
-cd /path/to/Apple-MCPs/Apple-Tools-MCP
-./start.sh
+uvx apple-tools-mcp
 ```
 
-`start.sh` bootstraps and repairs the local virtual environment as needed, reinstalls when `requirements.txt` changes, and starts the MCP server over `stdio`.
+Standalone servers work the same way (`uvx apple-mail-mcp`, `uvx apple-calendar-mcp`, ...).
 
-</details>
-
-<details>
-<summary>Install every package into one shared environment</summary>
+### Claude Code
 
 ```bash
-cd /path/to/Apple-MCPs
-bash scripts/install_all.sh
+claude mcp add --transport stdio --scope project apple-tools -- uvx apple-tools-mcp
 ```
 
-This creates a shared virtual environment and installs every standalone package plus `Apple-Tools-MCP` into it. Use this when you want one environment that can run any server without relying on sibling source-path imports. The installed entrypoints land in `.venv/bin`, for example `.venv/bin/apple-tools-mcp`.
-
-</details>
-
-<details>
-<summary>Install one standalone server instead</summary>
-
-Example:
-
-```bash
-cd /path/to/Apple-MCPs/AppleMessages-MCP
-./start.sh
-```
-
-Every server folder follows the same pattern:
-
-- `manifest.json`
-- `start.sh`
-- `server.py`
-- `README.md`
-- `src/`
-- `tests/`
-
-</details>
-
-## Install In AI Agents
-
-<details>
-<summary>Generic MCP client, stdio config</summary>
-
-Most MCP clients that support local `stdio` servers can point directly at a server `start.sh`.
-
-Example for the all-in-one server:
+### Generic MCP client (stdio JSON config)
 
 ```json
 {
   "mcpServers": {
     "apple-tools": {
-      "command": "/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh",
-      "args": [],
+      "command": "uvx",
+      "args": ["apple-tools-mcp"],
       "env": {
         "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
         "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
@@ -169,157 +72,121 @@ Example for the all-in-one server:
 }
 ```
 
-For launch-quality assistant behavior, use the assistant-grade safety settings shown in [Apple-Tools-MCP/README.md](./Apple-Tools-MCP/README.md) instead of an empty `env` block.
+See [Apple-Tools-MCP/README.md](./Apple-Tools-MCP/README.md) for the assistant-grade safety settings recommended for daily use.
 
-Example for a standalone server:
+### Claude Desktop (one-click bundle)
 
-```json
-{
-  "mcpServers": {
-    "apple-reminders": {
-      "command": "/path/to/Apple-MCPs/AppleReminders-MCP/start.sh",
-      "args": [],
-      "env": {
-        "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage"
-      }
-    }
-  }
-}
-```
+Download the `.mcpb` bundle for a server from [Releases](https://github.com/JonathanRReed/Apple-MCPs/releases) and double-click it — Claude Desktop installs and manages it, including configuration.
 
-</details>
-
-<details>
-<summary>Claude Code example</summary>
-
-Add the all-in-one server:
+### From a clone
 
 ```bash
-claude mcp add --transport stdio --scope project \
-  apple-tools \
-  -- /path/to/Apple-MCPs/Apple-Tools-MCP/start.sh
+git clone https://github.com/JonathanRReed/Apple-MCPs.git
+cd Apple-MCPs
+uv sync --all-packages
 ```
 
-Add a standalone server:
-
-```bash
-claude mcp add --transport stdio --scope project \
-  apple-notes \
-  -- /path/to/Apple-MCPs/AppleNotes-MCP/start.sh
-```
-
-</details>
-
-## Launch Checklist
-
-- Start the server: `./start.sh`
-- Add the `start.sh` path to your MCP client
-- Reconnect the client so the server loads
-- Call the health tool to verify it's working
-- If permissions fail, call the permission guide tool
-- After fixing permissions, call the recheck tool (or `shortcuts_refresh_state` for Shortcuts)
-- Do not treat shell, `curl`, UI scraping, or external APIs as a passing result when the suite claims native MCP support for that capability
-- For Maps, a pass requires native Apple Maps MCP success
-- For Focus and notifications, a pass requires truthful MCP output. Do not invent active Focus state or Notification Center history that the suite does not actually expose.
-
-## Protocol Verification
-
-Use `stdio` for normal local agent setups. Apple-Tools-MCP also supports `streamable-http` for protocol validation and hosted clients.
-
-Run the full official active server conformance suite against Apple-Tools-MCP:
-
-```bash
-cd /path/to/Apple-MCPs/Apple-Tools-MCP
-APPLE_AGENT_MCP_TRANSPORT=streamable-http \
-APPLE_AGENT_MCP_PORT=8765 \
-APPLE_AGENT_MCP_CONFORMANCE_MODE=1 \
-./start.sh
-```
-
-In another shell:
-
-```bash
-npx -y @modelcontextprotocol/conformance server \
-  --url http://127.0.0.1:8765/mcp \
-  --suite active
-```
-
-Run lightweight Inspector smoke checks across all published servers:
-
-```bash
-cd /path/to/Apple-MCPs
-bash scripts/inspector_smoke.sh
-```
-
-The repository also includes GitHub Actions for both checks in [protocol-ci.yml](./.github/workflows/protocol-ci.yml).
-
-## Health And Recovery Tools
-
-| Server | Health tool | Permission or recovery tools |
-| --- | --- | --- |
-| Apple-Tools-MCP | `apple_health` | `apple_permission_guide`, `apple_recheck_permissions` |
-| Apple Mail MCP | `mail_health` | `mail_permission_guide`, `mail_recheck_permissions` |
-| Apple Calendar | `calendar_health` | `calendar_permission_guide`, `calendar_recheck_permissions` |
-| Apple Reminders MCP | `reminders_health` | `reminders_permission_guide`, `reminders_recheck_permissions` |
-| Apple Messages MCP | `messages_health` | `messages_permission_guide`, `messages_recheck_permissions` |
-| Apple Contacts MCP | `contacts_health` | `contacts_permission_guide`, `contacts_recheck_permissions` |
-| Apple Notes MCP | `notes_health` | `notes_permission_guide`, `notes_recheck_permissions` |
-| Apple Shortcuts MCP | `shortcuts_health` | `shortcuts_permission_guide`, `shortcuts_refresh_state` |
-| Apple Files MCP | `files_health` | `files_permission_guide` |
-| Apple System MCP | `system_health` | `system_permission_guide` |
-| Apple Maps MCP | `maps_health` | `maps_permission_guide` |
+That builds one workspace environment with every server's entry point in `.venv/bin` (for example `.venv/bin/apple-tools-mcp`). Each server folder also has a `start.sh` that MCP clients can point at directly — it prefers uv and falls back to a plain venv bootstrap.
 
 ## macOS Permissions
 
-Different Apple apps require different permissions:
+Different Apple apps require different permissions. Each server ships a health tool, a permission guide tool, and a recheck tool, so your agent can diagnose and fix permission problems by itself.
 
-| Server | What macOS may ask for |
-| --- | --- |
-| Apple Mail | Automation access to Mail |
-| Apple Calendar | Calendar access |
-| Apple Reminders | Reminders access |
-| Apple Messages | Automation access to Messages, plus Full Disk Access for history |
-| Apple Contacts | Contacts access |
-| Apple Notes | Automation access to Notes |
-| Apple Shortcuts | Usually no separate privacy prompt |
-| Apple Files | No privacy prompt, access is limited by the configured allowed roots |
-| Apple System | Some actions may trigger System Events, Accessibility, or automation prompts |
-| Apple Maps | No privacy prompt, but local Swift helper compilation needs Xcode command line tools |
+| Server | What macOS may ask for | Health tool | Recovery tools |
+| --- | --- | --- | --- |
+| Apple-Tools-MCP | Everything below, as used | `apple_health` | `apple_permission_guide`, `apple_recheck_permissions` |
+| Mail | Automation access to Mail | `mail_health` | `mail_permission_guide`, `mail_recheck_permissions` |
+| Calendar | Calendar access | `calendar_health` | `calendar_permission_guide`, `calendar_recheck_permissions` |
+| Reminders | Reminders access | `reminders_health` | `reminders_permission_guide`, `reminders_recheck_permissions` |
+| Messages | Automation access to Messages, plus Full Disk Access for history | `messages_health` | `messages_permission_guide`, `messages_recheck_permissions` |
+| Contacts | Contacts access | `contacts_health` | `contacts_permission_guide`, `contacts_recheck_permissions` |
+| Notes | Automation access to Notes | `notes_health` | `notes_permission_guide`, `notes_recheck_permissions` |
+| Shortcuts | Usually no separate privacy prompt | `shortcuts_health` | `shortcuts_permission_guide`, `shortcuts_refresh_state` |
+| Files | No privacy prompt; access limited to configured allowed roots | `files_health` | `files_permission_guide` |
+| System | System Events, Accessibility, or automation prompts for some actions | `system_health` | `system_permission_guide` |
+| Maps | No privacy prompt; local Swift helper needs Xcode command line tools | `maps_health` | `maps_permission_guide` |
+
+## Tool Discovery
+
+Servers expose their full tool surface through `tools/list` (with `readOnlyHint`/`destructiveHint` annotations and structured output schemas), which is what modern deferred-loading clients expect. For context-constrained clients, every server also ships two helper tools:
+
+- `search_tools` — ranked keyword/alias search over the server's tool catalog
+- `get_tool_info` — full schema, metadata, and example calls for one tool
+
+## Agent Routing
+
+Some tips for working with these servers:
+
+- Always run Contacts first when messaging a person, then choose Messages or Mail.
+- Use Mail thread helpers (`mail_get_thread`, `mail_reply_latest_in_thread`, `mail_archive_thread`) when the user mentions a conversation.
+- Reminders are for due items, Notes for reference material, Calendar for scheduled time.
+- When Mail must send from a specific identity, pass the exact sender email in `from_account`.
+- Mail search requires a query string: a sender, a subject fragment, or `*` as a wildcard.
+- Reminders `due_date` requires a timezone offset like `yyyy-MM-ddTHH:mm:ss-08:00`.
+- Omit `service_name` on iMessage sends.
+- Apple-Tools-MCP includes briefing tools: `apple_generate_daily_briefing`, `apple_generate_weekly_briefing`, and `apple_triage_communications_task`.
+- Prompt-fallback tools (`apple_list_prompts`, `apple_get_prompt`, and per-server equivalents) cover clients that only support tools.
+
+## Code-Mode Wrappers
+
+For code-execution clients, the repo ships generated artifacts so agents can call tools as Python functions without loading every schema into context:
+
+- `generated/tool_catalogs/` — searchable tool metadata per server
+- `generated/tool_wrappers/python/` — generated Python wrappers for every tool
+
+See [docs/code-mode.md](./docs/code-mode.md) for the wrapper layout, client interface, and recommended workflow.
+
+## Transports and Protocol Verification
+
+`stdio` is the default and recommended transport for local use. Every server also supports `streamable-http` via env vars (`APPLE_<DOMAIN>_MCP_TRANSPORT=streamable-http`, plus `_HOST`/`_PORT`).
+
+Run the official MCP conformance suite against Apple-Tools-MCP:
+
+```bash
+APPLE_AGENT_MCP_TRANSPORT=streamable-http \
+APPLE_AGENT_MCP_PORT=8765 \
+APPLE_AGENT_MCP_CONFORMANCE_MODE=1 \
+./Apple-Tools-MCP/start.sh
+```
+
+```bash
+npx -y @modelcontextprotocol/conformance server --url http://127.0.0.1:8765/mcp --suite active
+```
+
+Lightweight Inspector smoke checks across all servers:
+
+```bash
+bash scripts/inspector_smoke.sh
+```
+
+CI runs lint, the full test suite (macOS and Linux), generated-artifact drift checks, Inspector smoke checks, and the conformance suite — see [.github/workflows](./.github/workflows).
 
 ## Repo Layout
 
-- `Apple-Tools-MCP/`, unified server
-- `AppleFiles-MCP/`, Files
-- `AppleSystem-MCP/`, System
-- `AppleMaps-MCP/`, Maps
-- `AppleContacts-MCP/`, Contacts
-- `AppleMail-MCP/`, Mail
-- `Apple-Calendar-MCP/`, Calendar
-- `AppleReminders-MCP/`, Reminders
-- `AppleMessages-MCP/`, Messages
-- `AppleNotes-MCP/`, Notes
-- `AppleShortcuts-MCP/`, Shortcuts
-- `SharedAppleBridge/`, shared native bridge code used by EventKit-backed servers
-- `.build/`, local helper build output
+- `Apple-Tools-MCP/` — unified server (module `apple_agent_mcp`, env prefix `APPLE_AGENT_MCP_*`)
+- `Apple<Domain>-MCP/` — standalone servers (`Apple-Calendar-MCP` is the calendar server)
+- `AppleMCPCommon/` — shared discovery/search helpers (`apple-mcp-common` on PyPI)
+- `generated/` — code-mode catalogs and wrappers (regenerated by CI checks)
+- `scripts/` — install, smoke-check, artifact-generation, and bundle-build helpers
+- `docs/` — project and launch docs
+
+The repository is a uv workspace: `pyproject.toml` at the root defines members, and `uv.lock` pins the whole dependency graph.
+
+## Project Docs
+
+- [CHANGELOG.md](./CHANGELOG.md)
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [SECURITY.md](./SECURITY.md)
+- [Code Mode](./docs/code-mode.md)
+- [Publishing](./docs/publishing.md)
+- [NOTICE.md](./NOTICE.md) — trademark notice
+- [Launch docs](./docs/launch/) — golden workflows, failure modes, compatibility, demo script
 
 ## Notes
 
-- This suite is for macOS.
-- Apple Messages history access still needs Full Disk Access.
-- The unified server folder is `Apple-Tools-MCP`.
-- The calendar server folder is `Apple-Calendar-MCP`.
+- This suite is for macOS. Apple Messages history access needs Full Disk Access.
 - Apple Files access is limited to the roots in `APPLE_FILES_MCP_ALLOWED_ROOTS`.
 - Apple System write actions can be scoped down with `APPLE_SYSTEM_MCP_SAFETY_MODE`.
-- Apple Maps depends on a local Swift helper and Xcode command line tools for search and directions.
-- Apple-Tools-MCP can persist assistant defaults in `~/.apple-tools-mcp/preferences.json`, or the path from `APPLE_AGENT_MCP_STATE_FILE`.
-- Apple-Tools-MCP also stores recent assistant actions in `~/.apple-tools-mcp/actions.json` for audit and undo workflows.
-- Apple-Tools-MCP now aggregates Files, System, and Maps alongside the app-specific Apple servers.
-- `APPLE_AGENT_MCP_CONFORMANCE_MODE=1` is for protocol validation only. It adds the official MCP conformance fixtures on Apple-Tools-MCP and switches HTTP mode to full streaming behavior.
-- Apple-Tools-MCP now includes task-capable briefing tools, `apple_generate_daily_briefing`, `apple_generate_weekly_briefing`, and `apple_triage_communications_task`.
-- Apple-Tools-MCP also includes prompt fallback tools, `apple_list_prompts` and `apple_get_prompt`, for tool-only MCP clients.
-- The standalone servers now expose prompt fallback tools and explicit resource subscribe or unsubscribe handlers, so prompt-heavy workflows degrade more cleanly in thinner MCP clients.
-- Apple Mail now includes thread helpers, `mail_get_thread`, `mail_reply_latest_in_thread`, and `mail_archive_thread`.
-- Apple Contacts can now create, update, and delete contacts with labeled phone numbers and email addresses.
-- Mail search requires a query string. Use a sender, a subject fragment, or `*` as a wildcard.
-- Reminders `due_date` requires a timezone offset like `yyyy-MM-ddTHH:mm:ss-HH:00`.
-- `service_name` should be omitted on iMessage sends.
+- Apple Maps depends on a local Swift helper compiled with Xcode command line tools.
+- Apple-Tools-MCP persists assistant defaults in `~/.apple-tools-mcp/preferences.json` (or `APPLE_AGENT_MCP_STATE_FILE`) and recent assistant actions in `~/.apple-tools-mcp/actions.json` for audit and undo workflows.
+- `APPLE_AGENT_MCP_CONFORMANCE_MODE=1` is for protocol validation only; it registers the official conformance fixtures.

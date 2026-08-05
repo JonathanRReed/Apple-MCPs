@@ -56,20 +56,17 @@ Notes:
 - this is especially important for person-based message routing
 - `Apple-Tools-MCP` should always resolve through Contacts before it sends
 
-## MCP task mode is unsupported by the client
+## Briefing tools seem slow in constrained clients
 
 Symptoms:
-- the client ignores task execution metadata
-- task handles are not surfaced to the user
+- `apple_generate_daily_briefing`, `apple_generate_weekly_briefing`, or `apple_triage_communications_task` take several seconds
 
 What to do:
-1. Call the task-capable Apple-Tools tool normally
-2. Accept the direct synchronous result
-3. Do not block the workflow on task support
+1. Call the tool normally and wait for the synchronous result
+2. Narrow the inputs (`mail_limit`, `days`, `conversation_limit`) if responses are large
 
 Notes:
-- task support in `Apple-Tools-MCP` is optional and experimental
-- daily briefing, weekly briefing, and communications triage should still work without task-aware clients
+- as of 1.0.0 these are standard synchronous tools; the experimental MCP task mode they previously advertised was removed from the MCP specification
 
 ## Accessibility is missing for System GUI fallback
 

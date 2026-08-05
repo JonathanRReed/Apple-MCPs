@@ -1,0 +1,40 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.jonathanrreed/apple-shortcuts-mcp",
+  "title": "Apple Shortcuts",
+  "description": "List, inspect, and run Apple Shortcuts on macOS.",
+  "repository": {
+    "url": "https://github.com/JonathanRReed/Apple-MCPs",
+    "source": "github",
+    "id": "1194217206",
+    "subfolder": "AppleShortcuts-MCP"
+  },
+  "version": "1.0.0",
+  "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "apple-shortcuts-mcp",
+      "version": "1.0.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "APPLE_SHORTCUTS_MCP_SAFETY_MODE",
+          "description": "Safety mode for Shortcuts operations: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "full_access"
+        }
+      ]
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.jonathanrreed/apple-system-mcp -->
+
 # Apple System MCP
 
 Local MCP server for macOS system context, truthful Focus support metadata, assistant-relevant settings reads, explicit settings writes, and bounded GUI fallback automation.
@@ -24,19 +26,33 @@ Local MCP server for macOS system context, truthful Focus support metadata, assi
 - preference-domain inspection via `defaults export`
 - resources: `system://status`, `system://applications`, `system://settings`, `system://context`
 - prompt: `system_capture_context`
-- search-first discovery through `search_tools` and `get_tool_info`
+- tool discovery helpers `search_tools` and `get_tool_info` for context-constrained clients
 
 ## Install On This Mac
 
 <details>
-<summary>Quick start</summary>
+<summary>Quick start (uvx, from PyPI)</summary>
+
+With [uv](https://docs.astral.sh/uv/getting-started/installation/) installed:
 
 ```bash
-cd /path/to/Apple-MCPs/AppleSystem-MCP
-./start.sh
+uvx apple-system-mcp
 ```
 
-`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the server over `stdio`.
+No clone, no venv management.
+
+</details>
+
+<details>
+<summary>From a clone</summary>
+
+```bash
+git clone https://github.com/JonathanRReed/Apple-MCPs.git
+cd Apple-MCPs
+uv sync --all-packages
+```
+
+This builds one workspace environment with every server's entry point in `.venv/bin` (for example `.venv/bin/apple-system-mcp`). You can also point an MCP client at `AppleSystem-MCP/start.sh`, which prefers `uv run` and falls back to a plain venv bootstrap (Python 3.11+ required).
 
 </details>
 
@@ -46,8 +62,8 @@ cd /path/to/Apple-MCPs/AppleSystem-MCP
 {
   "mcpServers": {
     "apple-system": {
-      "command": "/path/to/Apple-MCPs/AppleSystem-MCP/start.sh",
-      "args": [],
+      "command": "uvx",
+      "args": ["apple-system-mcp"],
       "env": {
         "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_manage"
       }
@@ -56,9 +72,21 @@ cd /path/to/Apple-MCPs/AppleSystem-MCP
 }
 ```
 
+Running from a clone instead? Use `/path/to/Apple-MCPs/AppleSystem-MCP/start.sh` as the command with empty `args`.
+
+Claude Code:
+
+```bash
+claude mcp add --transport stdio --scope project apple-system -- uvx apple-system-mcp
+```
+
+## Transport
+
+`stdio` is the default and recommended transport. Set `APPLE_SYSTEM_MCP_TRANSPORT=streamable-http` (with optional `APPLE_SYSTEM_MCP_HOST` and `APPLE_SYSTEM_MCP_PORT`) to serve Streamable HTTP instead.
+
 ## Prompting Notes
 
-- `tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` for the deferred System tool you need.
+- `tools/list` returns the full System tool surface. Context-constrained clients can use `search_tools` first, then `get_tool_info` for the System tool they need.
 - Use this server when the user’s current desktop context matters.
 - Read battery state and the frontmost app before interruptive actions.
 - Use the settings tools before falling back to raw `defaults read` in prompts or E2E checks.
@@ -102,8 +130,7 @@ The bounded GUI fallback surface is:
 
 ## Launch Checklist
 
-- Start the server once with `./start.sh`
-- Add `/path/to/Apple-MCPs/AppleSystem-MCP/start.sh` to your MCP client
+- Add `uvx apple-system-mcp` (or a clone's `AppleSystem-MCP/start.sh`) to your MCP client
 - Reload or reconnect the client so the System tool surface is loaded into context
 - Call `system_health` first
 - If a scoped system action is blocked, call `system_permission_guide`

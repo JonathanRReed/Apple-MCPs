@@ -415,6 +415,7 @@ async def messages_list_prompts() -> dict[str, object]:
 
 
 @mcp.tool(
+    name="messages_get_prompt",
     title="Messages Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),

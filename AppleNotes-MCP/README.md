@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.jonathanrreed/apple-notes-mcp -->
+
 # Apple Notes MCP
 
 MCP server for Apple Notes on macOS.
@@ -15,21 +17,36 @@ Provides access to notes and folders for creation, organization, and management.
 - List accounts and folders
 - List, search, and manage notes (CRUD)
 - Create, rename, and delete folders
-- Search-first discovery through `search_tools` and `get_tool_info`
+- List note attachments
+- Tool discovery helpers `search_tools` and `get_tool_info` for context-constrained clients
 - Recent-note resources and organization prompts
 - Health and permission checks: `notes_health`, `notes_permission_guide`, `notes_recheck_permissions`
 
 ## Install On This Mac
 
 <details>
-<summary>Quick start</summary>
+<summary>Quick start (uvx, from PyPI)</summary>
+
+With [uv](https://docs.astral.sh/uv/getting-started/installation/) installed:
 
 ```bash
-cd /path/to/Apple-MCPs/AppleNotes-MCP
-./start.sh
+uvx apple-notes-mcp
 ```
 
-`start.sh` bootstraps and repairs `.venv` as needed, reinstalls when `requirements.txt` changes, and starts the server over `stdio`.
+No clone, no venv management.
+
+</details>
+
+<details>
+<summary>From a clone</summary>
+
+```bash
+git clone https://github.com/JonathanRReed/Apple-MCPs.git
+cd Apple-MCPs
+uv sync --all-packages
+```
+
+This builds one workspace environment with every server's entry point in `.venv/bin` (for example `.venv/bin/apple-notes-mcp`). You can also point an MCP client at `AppleNotes-MCP/start.sh`, which prefers `uv run` and falls back to a plain venv bootstrap (Python 3.11+ required).
 
 </details>
 
@@ -42,8 +59,8 @@ cd /path/to/Apple-MCPs/AppleNotes-MCP
 {
   "mcpServers": {
     "apple-notes": {
-      "command": "/path/to/Apple-MCPs/AppleNotes-MCP/start.sh",
-      "args": [],
+      "command": "uvx",
+      "args": ["apple-notes-mcp"],
       "env": {
         "APPLE_NOTES_MCP_SAFETY_MODE": "full_access"
       }
@@ -52,15 +69,15 @@ cd /path/to/Apple-MCPs/AppleNotes-MCP
 }
 ```
 
+Running from a clone instead? Use `/path/to/Apple-MCPs/AppleNotes-MCP/start.sh` as the command with empty `args`.
+
 </details>
 
 <details>
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project \
-  apple-notes \
-  -- /path/to/Apple-MCPs/AppleNotes-MCP/start.sh
+claude mcp add --transport stdio --scope project apple-notes -- uvx apple-notes-mcp
 ```
 
 </details>
@@ -71,14 +88,17 @@ claude mcp add --transport stdio --scope project \
 - `safe_manage`
 - `full_access`
 
+## Transport
+
+`stdio` is the default and recommended transport. Set `APPLE_NOTES_MCP_TRANSPORT=streamable-http` (with optional `APPLE_NOTES_MCP_HOST` and `APPLE_NOTES_MCP_PORT`) to serve Streamable HTTP instead.
+
 ## macOS Permissions
 
 - Automation access to Notes is required
 
 ## Launch Checklist
 
-- Start the server once with `./start.sh`
-- Add `/path/to/Apple-MCPs/AppleNotes-MCP/start.sh` to your MCP client
+- Add `uvx apple-notes-mcp` (or a clone's `AppleNotes-MCP/start.sh`) to your MCP client
 - Reload or reconnect the client so the Notes tool surface is loaded into context
 - Call `notes_health` first
 - If Notes automation is blocked, call `notes_permission_guide`
@@ -86,7 +106,7 @@ claude mcp add --transport stdio --scope project \
 
 ## Prompting Notes
 
-- `tools/list` is intentionally minimal. Use `search_tools` first, then `get_tool_info` for the deferred Notes tool you need.
+- `tools/list` returns the full Notes tool surface. Context-constrained clients can use `search_tools` first, then `get_tool_info` for the Notes tool they need.
 - Multiple accounts may each contain a Notes folder. Identify available accounts and folders on first use and set a default.
 - Use Notes for reference material and saved context.
 - Time-sensitive items should go to Reminders or Calendar instead.

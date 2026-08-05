@@ -454,6 +454,7 @@ async def files_list_prompts() -> dict[str, object]:
 
 
 @mcp.tool(
+    name="files_get_prompt",
     title="Files Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),

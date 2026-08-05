@@ -568,8 +568,8 @@
         "text",
         "chat",
         "conversation",
-        "get prompt prompt",
-        "messages get prompt prompt"
+        "get prompt",
+        "messages get prompt"
       ],
       "argument_summary": [
         "name: string (required)",
@@ -583,13 +583,13 @@
             "arguments_json": "example_arguments_json",
             "name": "example_name"
           },
-          "tool": "messages_get_prompt_prompt"
+          "tool": "messages_get_prompt"
         }
       ],
-      "name": "messages_get_prompt_prompt",
+      "name": "messages_get_prompt",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "messages_get_prompt_prompt",
+      "schema_ref": "messages_get_prompt",
       "tags": [
         "messages",
         "imessage",

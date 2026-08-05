@@ -3,24 +3,45 @@
   "manifest_version": "0.4",
   "name": "apple-contacts",
   "display_name": "Apple Contacts",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Inspect and search Apple Contacts on macOS, and resolve a contact into a message-ready recipient.",
   "long_description": "Local MCP server for Apple Contacts on macOS. Uses AppleScript to inspect contacts, search by name, phone, or email, fetch full contact details, and resolve a contact into a message-ready recipient before handing off to Apple Messages.",
   "icon": "icon.png",
   "author": {
-    "name": "Apple MCP Contributors"
+    "name": "Jonathan Reed"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JonathanRReed/Apple-MCPs"
   },
   "license": "MIT",
-  "keywords": ["contacts", "apple", "macos", "address-book", "messages", "directory"],
+  "keywords": [
+    "contacts",
+    "apple",
+    "macos",
+    "address-book",
+    "messages",
+    "directory"
+  ],
   "compatibility": {
-    "platforms": ["darwin"],
-    "runtimes": { "python": ">=3.11" }
+    "platforms": [
+      "darwin"
+    ],
+    "runtimes": {
+      "python": ">=3.11"
+    }
   },
   "server": {
-    "type": "python",
+    "type": "uv",
+    "entry_point": "server.py",
     "mcp_config": {
-      "command": "${__dirname}/start.sh",
-      "args": [],
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${__dirname}",
+        "server.py"
+      ],
       "env": {
         "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_manage"
       }

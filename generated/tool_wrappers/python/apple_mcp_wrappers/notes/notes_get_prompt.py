@@ -5,7 +5,7 @@ from typing import Any
 from .client import MCPToolCaller, call_tool_json
 
 
-async def notes_get_prompt_prompt(
+async def notes_get_prompt(
     client: MCPToolCaller,
     name: str,
     arguments_json: str | None = None
@@ -15,11 +15,11 @@ async def notes_get_prompt_prompt(
     Fallback prompt rendering tool for tool-only MCP clients.
 
     Example:
-        await notes_get_prompt_prompt(client, name='example_name', arguments_json='example_arguments_json')
+        await notes_get_prompt(client, name='example_name', arguments_json='example_arguments_json')
     """
     arguments = {
         "name": name,
         "arguments_json": arguments_json,
     }
     payload = {key: value for key, value in arguments.items() if value is not None}
-    return await call_tool_json(client, "notes_get_prompt_prompt", payload)
+    return await call_tool_json(client, "notes_get_prompt", payload)

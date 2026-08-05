@@ -59,8 +59,7 @@ Expected flow:
 2. Generate a concise daily or weekly summary.
 3. Ensure the dedicated digest folder exists before storing a persistent digest.
 4. Store the result in the dedicated digest folder when the user asks for a persistent digest.
-5. If the client supports MCP tasks, task-capable tools may run asynchronously.
-6. If the client does not support tasks, the same tools should still return a direct result.
+5. The briefing tools return a direct synchronous result in every client.
 
 Core tools:
 - `apple_generate_daily_briefing`

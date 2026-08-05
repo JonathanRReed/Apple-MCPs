@@ -1,5 +1,9 @@
+import shutil
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 from apple_contacts_mcp.contacts_bridge import AppleContactsBridge, ContactsBridgeError
 
@@ -174,6 +178,10 @@ def test_update_contact_supports_no_change_sentinel(monkeypatch) -> None:
     assert calls[0][1][5] == "__NOCHANGE__"
 
 
+@pytest.mark.skipif(
+    sys.platform != "darwin" or shutil.which("osacompile") is None,
+    reason="osacompile is only available on macOS",
+)
 def test_contacts_scripts_compile(tmp_path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     scripts_dir = repo_root / "src" / "apple_contacts_mcp" / "applescripts"

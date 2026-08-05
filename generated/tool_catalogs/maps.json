@@ -342,8 +342,8 @@
         "directions",
         "restaurant",
         "restaurants",
-        "get prompt prompt",
-        "maps get prompt prompt"
+        "get prompt",
+        "maps get prompt"
       ],
       "argument_summary": [
         "name: string (required)",
@@ -357,13 +357,13 @@
             "arguments_json": "example_arguments_json",
             "name": "example_name"
           },
-          "tool": "maps_get_prompt_prompt"
+          "tool": "maps_get_prompt"
         }
       ],
-      "name": "maps_get_prompt_prompt",
+      "name": "maps_get_prompt",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "maps_get_prompt_prompt",
+      "schema_ref": "maps_get_prompt",
       "tags": [
         "maps",
         "place",

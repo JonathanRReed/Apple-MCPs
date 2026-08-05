@@ -718,8 +718,8 @@
         "note",
         "notes",
         "memo",
-        "get prompt prompt",
-        "notes get prompt prompt"
+        "get prompt",
+        "notes get prompt"
       ],
       "argument_summary": [
         "name: string (required)",
@@ -733,13 +733,13 @@
             "arguments_json": "example_arguments_json",
             "name": "example_name"
           },
-          "tool": "notes_get_prompt_prompt"
+          "tool": "notes_get_prompt"
         }
       ],
-      "name": "notes_get_prompt_prompt",
+      "name": "notes_get_prompt",
       "read_only": true,
       "risk_level": "low",
-      "schema_ref": "notes_get_prompt_prompt",
+      "schema_ref": "notes_get_prompt",
       "tags": [
         "notes",
         "note",

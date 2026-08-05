@@ -1,0 +1,54 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.jonathanrreed/apple-notes-mcp",
+  "title": "Apple Notes",
+  "description": "Inspect, search, create, edit, move, and organize notes in Apple Notes on macOS.",
+  "repository": {
+    "url": "https://github.com/JonathanRReed/Apple-MCPs",
+    "source": "github",
+    "id": "1194217206",
+    "subfolder": "AppleNotes-MCP"
+  },
+  "version": "1.0.0",
+  "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "apple-notes-mcp",
+      "version": "1.0.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "APPLE_NOTES_MCP_SAFETY_MODE",
+          "description": "Safety mode for Notes operations: safe_readonly, safe_manage, or full_access.",
+          "isRequired": false,
+          "format": "string",
+          "choices": [
+            "safe_readonly",
+            "safe_manage",
+            "full_access"
+          ],
+          "default": "full_access"
+        },
+        {
+          "name": "APPLE_NOTES_MCP_ALLOWED_ACCOUNTS",
+          "description": "Comma-separated allow-list of Notes account names. Empty allows all accounts.",
+          "isRequired": false,
+          "format": "string",
+          "placeholder": "iCloud"
+        },
+        {
+          "name": "APPLE_NOTES_MCP_ALLOWED_FOLDERS",
+          "description": "Comma-separated allow-list of Notes folder names. Empty allows all folders.",
+          "isRequired": false,
+          "format": "string",
+          "placeholder": "Notes,Work"
+        }
+      ]
+    }
+  ]
+}

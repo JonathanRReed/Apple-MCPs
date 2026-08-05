@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apple-system-mcp"
-version = "1.0.0"
+version = "1.0.1"
 description = "Local Apple System MCP server for macOS"
 readme = "README.md"
 license = "MIT"

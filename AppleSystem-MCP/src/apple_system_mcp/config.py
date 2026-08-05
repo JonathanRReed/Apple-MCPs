@@ -27,7 +27,7 @@ def _parse_int(value: str | None, default: int) -> int:
 def load_settings() -> Settings:
     return Settings(
         server_name="Apple System MCP",
-        version="0.1.0",
+        version="1.0.1",
         safety_mode=os.environ.get("APPLE_SYSTEM_MCP_SAFETY_MODE", "safe_manage").strip().lower() or "safe_manage",
         transport=os.environ.get("APPLE_SYSTEM_MCP_TRANSPORT", "stdio").strip().lower() or "stdio",
         host=os.environ.get("APPLE_SYSTEM_MCP_HOST", "127.0.0.1"),

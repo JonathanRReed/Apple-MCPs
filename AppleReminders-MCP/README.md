@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.jonathanrreed/apple-reminders-mcp -->
+<!-- mcp-name: io.github.jonathanrreed/apple-mcp-reminders -->
 
 # Apple Reminders MCP
 
@@ -30,7 +30,7 @@ Provides access to reminder lists and tasks through EventKit. Keep Reminders as 
 With [uv](https://docs.astral.sh/uv/getting-started/installation/) installed:
 
 ```bash
-uvx apple-reminders-mcp
+uvx apple-mcp-reminders
 ```
 
 No clone, no venv management.
@@ -60,7 +60,7 @@ This builds one workspace environment with every server's entry point in `.venv/
   "mcpServers": {
     "apple-reminders": {
       "command": "uvx",
-      "args": ["apple-reminders-mcp"],
+      "args": ["apple-mcp-reminders"],
       "env": {
         "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage"
       }
@@ -77,7 +77,7 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/AppleReminders-MCP/start.
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-reminders -- uvx apple-reminders-mcp
+claude mcp add --transport stdio --scope project apple-reminders -- uvx apple-mcp-reminders
 ```
 
 </details>
@@ -98,7 +98,7 @@ claude mcp add --transport stdio --scope project apple-reminders -- uvx apple-re
 
 ## Launch Checklist
 
-- Add `uvx apple-reminders-mcp` (or a clone's `AppleReminders-MCP/start.sh`) to your MCP client
+- Add `uvx apple-mcp-reminders` (or a clone's `AppleReminders-MCP/start.sh`) to your MCP client
 - Reload or reconnect the client so the Reminders tool surface is loaded into context
 - Call `reminders_health` first
 - If Reminders access is blocked, call `reminders_permission_guide`

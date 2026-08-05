@@ -3,8 +3,8 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "apple-reminders-mcp"
-version = "1.0.0"
+name = "apple-mcp-reminders"
+version = "1.0.1"
 description = "Local Apple Reminders MCP server for macOS"
 readme = "README.md"
 license = "MIT"
@@ -36,6 +36,7 @@ Issues = "https://github.com/JonathanRReed/Apple-MCPs/issues"
 
 [project.scripts]
 apple-reminders-mcp = "apple_reminders_mcp.tools:main"
+apple-mcp-reminders = "apple_reminders_mcp.tools:main"
 
 [project.optional-dependencies]
 dev = [

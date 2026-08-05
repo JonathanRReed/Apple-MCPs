@@ -88,11 +88,11 @@ jobs:
           - apple-calendar-mcp
           - apple-contacts-mcp
           - apple-files-mcp
-          - apple-mail-mcp
+          - apple-mcp-mail
           - apple-maps-mcp
           - apple-messages-mcp
-          - apple-notes-mcp
-          - apple-reminders-mcp
+          - apple-mcp-notes
+          - apple-mcp-reminders
           - apple-shortcuts-mcp
           - apple-system-mcp
           - apple-tools-mcp

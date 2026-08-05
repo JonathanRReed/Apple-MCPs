@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.jonathanrreed/apple-mail-mcp",
+  "name": "io.github.jonathanrreed/apple-mcp-mail",
   "title": "Apple Mail",
   "description": "Read, search, compose, and send emails via Apple Mail on macOS.",
   "repository": {
@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleMail-MCP"
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
-      "identifier": "apple-mail-mcp",
-      "version": "1.0.0",
+      "identifier": "apple-mcp-mail",
+      "version": "1.0.1",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apple-mcp-common"
-version = "1.0.0"
+version = "1.0.1"
 description = "Shared discovery and generation helpers for the Apple MCP suite"
 readme = "README.md"
 license = "MIT"

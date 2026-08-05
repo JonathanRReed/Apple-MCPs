@@ -39,7 +39,7 @@ Once you have [uv](https://docs.astral.sh/uv/getting-started/installation/) inst
 uvx apple-tools-mcp
 ```
 
-Standalone servers work the same way (`uvx apple-mail-mcp`, `uvx apple-calendar-mcp`, ...).
+Standalone servers work the same way (`uvx apple-mcp-mail`, `uvx apple-calendar-mcp`, ...).
 
 ### Claude Code
 

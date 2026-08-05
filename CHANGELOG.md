@@ -4,6 +4,12 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [1.0.1] - 2026-08-05
+
+### Changed
+- **Three packages renamed on PyPI** because their names were already taken by unrelated projects: the Mail server publishes as `apple-mcp-mail`, Notes as `apple-mcp-notes`, and Reminders as `apple-mcp-reminders` (matching the `apple-mcp-common` naming pattern). Module names, tool names, folders, and the original console scripts are unchanged; each package also installs a console script matching its new dist name, so `uvx apple-mcp-mail` works directly.
+- Health tools now report the real package version (previously hardcoded to 0.1.0).
+
 ## [1.0.0] - 2026-08-05
 
 Modernization release: the whole suite moves to the current MCP specification (2026-07-28, the first Linux Foundation-era spec release) and Python SDK 2.x, with a modern packaging and distribution story.

@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.jonathanrreed/apple-notes-mcp -->
+<!-- mcp-name: io.github.jonathanrreed/apple-mcp-notes -->
 
 # Apple Notes MCP
 
@@ -30,7 +30,7 @@ Provides access to notes and folders for creation, organization, and management.
 With [uv](https://docs.astral.sh/uv/getting-started/installation/) installed:
 
 ```bash
-uvx apple-notes-mcp
+uvx apple-mcp-notes
 ```
 
 No clone, no venv management.
@@ -60,7 +60,7 @@ This builds one workspace environment with every server's entry point in `.venv/
   "mcpServers": {
     "apple-notes": {
       "command": "uvx",
-      "args": ["apple-notes-mcp"],
+      "args": ["apple-mcp-notes"],
       "env": {
         "APPLE_NOTES_MCP_SAFETY_MODE": "full_access"
       }
@@ -77,7 +77,7 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/AppleNotes-MCP/start.sh` 
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-notes -- uvx apple-notes-mcp
+claude mcp add --transport stdio --scope project apple-notes -- uvx apple-mcp-notes
 ```
 
 </details>
@@ -98,7 +98,7 @@ claude mcp add --transport stdio --scope project apple-notes -- uvx apple-notes-
 
 ## Launch Checklist
 
-- Add `uvx apple-notes-mcp` (or a clone's `AppleNotes-MCP/start.sh`) to your MCP client
+- Add `uvx apple-mcp-notes` (or a clone's `AppleNotes-MCP/start.sh`) to your MCP client
 - Reload or reconnect the client so the Notes tool surface is loaded into context
 - Call `notes_health` first
 - If Notes automation is blocked, call `notes_permission_guide`

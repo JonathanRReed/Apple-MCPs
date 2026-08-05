@@ -42,7 +42,7 @@ done
 
 Sanity checks after publishing:
 
-- `uvx apple-mail-mcp` (etc.) starts the server via the console script.
+- `uvx apple-mcp-mail` (etc.) starts the server via the console script.
 - The PyPI project page description contains the `mcp-name:` marker.
 
 ## 2. Install mcp-publisher

@@ -1,4 +1,4 @@
-<!-- mcp-name: io.github.jonathanrreed/apple-mail-mcp -->
+<!-- mcp-name: io.github.jonathanrreed/apple-mcp-mail -->
 
 # Apple Mail MCP
 
@@ -35,7 +35,7 @@ Provides access to mailboxes, message search, reading, and composition. Keep Mai
 With [uv](https://docs.astral.sh/uv/getting-started/installation/) installed:
 
 ```bash
-uvx apple-mail-mcp
+uvx apple-mcp-mail
 ```
 
 No clone, no venv management.
@@ -65,7 +65,7 @@ This builds one workspace environment with every server's entry point in `.venv/
   "mcpServers": {
     "apple-mail": {
       "command": "uvx",
-      "args": ["apple-mail-mcp"],
+      "args": ["apple-mcp-mail"],
       "env": {
         "APPLE_MAIL_MCP_SAFETY_PROFILE": "safe_manage",
         "APPLE_MAIL_MCP_VISIBLE_DRAFTS": "true"
@@ -83,7 +83,7 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/AppleMail-MCP/start.sh` a
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-mail -- uvx apple-mail-mcp
+claude mcp add --transport stdio --scope project apple-mail -- uvx apple-mcp-mail
 ```
 
 </details>
@@ -104,7 +104,7 @@ claude mcp add --transport stdio --scope project apple-mail -- uvx apple-mail-mc
 
 ## Launch Checklist
 
-- Add `uvx apple-mail-mcp` (or a clone's `AppleMail-MCP/start.sh`) to your MCP client
+- Add `uvx apple-mcp-mail` (or a clone's `AppleMail-MCP/start.sh`) to your MCP client
 - Reload or reconnect the client so the Mail tool surface is loaded into context
 - Call `mail_health` first to confirm the server is reachable
 - If Mail automation is blocked, call `mail_permission_guide`

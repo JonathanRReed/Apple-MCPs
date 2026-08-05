@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apple-tools-mcp"
-version = "1.0.0"
+version = "1.0.1"
 description = "Unified Apple ecosystem MCP server for macOS"
 readme = "README.md"
 license = "MIT"
@@ -27,11 +27,11 @@ dependencies = [
   "apple-calendar-mcp>=1.0.0,<2",
   "apple-contacts-mcp>=1.0.0,<2",
   "apple-files-mcp>=1.0.0,<2",
-  "apple-mail-mcp>=1.0.0,<2",
+  "apple-mcp-mail>=1.0.0,<2",
   "apple-maps-mcp>=1.0.0,<2",
   "apple-messages-mcp>=1.0.0,<2",
-  "apple-notes-mcp>=1.0.0,<2",
-  "apple-reminders-mcp>=1.0.0,<2",
+  "apple-mcp-notes>=1.0.0,<2",
+  "apple-mcp-reminders>=1.0.0,<2",
   "apple-shortcuts-mcp>=1.0.0,<2",
   "apple-system-mcp>=1.0.0,<2",
   "mcp>=2.0.0,<3",
@@ -68,10 +68,10 @@ apple-mcp-common = { workspace = true }
 apple-calendar-mcp = { workspace = true }
 apple-contacts-mcp = { workspace = true }
 apple-files-mcp = { workspace = true }
-apple-mail-mcp = { workspace = true }
+apple-mcp-mail = { workspace = true }
 apple-maps-mcp = { workspace = true }
 apple-messages-mcp = { workspace = true }
-apple-notes-mcp = { workspace = true }
-apple-reminders-mcp = { workspace = true }
+apple-mcp-notes = { workspace = true }
+apple-mcp-reminders = { workspace = true }
 apple-shortcuts-mcp = { workspace = true }
 apple-system-mcp = { workspace = true }

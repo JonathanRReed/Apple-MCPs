@@ -10,6 +10,9 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
+authors = [
+  { name = "Jonathan R. Reed" },
+]
 keywords = ["mcp", "model-context-protocol", "macos", "apple", "ai-agent", "automation"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -40,6 +43,9 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/JonathanRReed/Apple-MCPs"
+Documentation = "https://github.com/JonathanRReed/Apple-MCPs/tree/main/docs"
+Portfolio = "https://jonathanrreed.com/projects/apple-mcps/"
+Author = "https://jonathanrreed.com/about/"
 Repository = "https://github.com/JonathanRReed/Apple-MCPs"
 Changelog = "https://github.com/JonathanRReed/Apple-MCPs/blob/main/CHANGELOG.md"
 Issues = "https://github.com/JonathanRReed/Apple-MCPs/issues"

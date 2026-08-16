@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "Cite the exact Apple MCPs release or Git commit used."
+title: "Apple MCPs: Local Apple App Tools for AI Agents"
+type: software
+authors:
+  - family-names: Reed
+    given-names: "Jonathan R."
+repository-code: "https://github.com/JonathanRReed/Apple-MCPs"
+url: "https://jonathanrreed.com/projects/apple-mcps/"
+license: MIT
+abstract: >-
+  Apple MCPs is a local macOS workspace of Model Context Protocol servers for
+  Apple Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files,
+  System, and Maps. The servers use structured tools, explicit safety modes,
+  local stdio by default, and native Apple application data stores.
+keywords:
+  - Model Context Protocol
+  - macOS
+  - local-first
+  - AI agents
+  - Apple automation

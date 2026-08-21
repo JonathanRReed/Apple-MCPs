@@ -7,7 +7,14 @@ from mcp.server.mcpserver import MCPServer
 from apple_agent_mcp import tools
 from apple_agent_mcp.config import load_settings
 from apple_agent_mcp.conformance import enable_conformance_mode
-from apple_contacts_mcp.models import ContactDetail, ContactMethod, DuplicateCandidateGroup, DuplicateEvidence, ResolvedRecipientResponse
+from apple_contacts_mcp.models import (
+    ContactDetail,
+    ContactMethod,
+    DuplicateCandidateGroup,
+    DuplicateContactListResponse,
+    DuplicateEvidence,
+    ResolvedRecipientResponse,
+)
 
 
 def test_registered_tool_names_cover_core_domains() -> None:
@@ -234,11 +241,13 @@ def test_apple_get_prompt_fallback(monkeypatch) -> None:
 def test_apple_today_resource_combines_domain_payloads(monkeypatch) -> None:
     monkeypatch.setattr(tools, "system_status_resource", lambda: json.dumps({"frontmost_app": "Mail"}))
     monkeypatch.setattr(tools, "system_context_resource", lambda: json.dumps({"focus": {"focus_supported": False}}))
+    monkeypatch.setattr(tools, "system_settings_resource", lambda: json.dumps({"appearance": {"mode": "dark"}}))
     monkeypatch.setattr(tools, "calendar_events_today_resource", lambda: json.dumps({"events": [{"title": "Standup"}]}))
     monkeypatch.setattr(tools, "reminders_today_resource", lambda: json.dumps({"reminders": [{"title": "Ship"}]}))
     monkeypatch.setattr(tools, "messages_unread_resource", lambda: json.dumps({"conversations": [{"chat_id": "1"}]}))
     monkeypatch.setattr(tools, "notes_recent_resource", lambda: json.dumps({"notes": [{"title": "Prep"}]}))
     monkeypatch.setattr(tools, "files_recent_resource", lambda: json.dumps({"files": [{"path": "/tmp/a.txt"}]}))
+    monkeypatch.setattr(tools, "files_recent_locations_resource", lambda: json.dumps({"locations": [{"path": "/tmp"}]}))
 
     payload = json.loads(tools.apple_today_resource())
 
@@ -247,6 +256,7 @@ def test_apple_today_resource_combines_domain_payloads(monkeypatch) -> None:
     assert payload["calendar_today"]["events"][0]["title"] == "Standup"
     assert payload["reminders_today"]["reminders"][0]["title"] == "Ship"
     assert payload["files_recent"]["files"][0]["path"] == "/tmp/a.txt"
+    assert payload["files_recent_locations"]["locations"][0]["path"] == "/tmp"
 
 
 def test_apple_overview_resource_includes_files_system_and_maps(monkeypatch) -> None:
@@ -856,6 +866,11 @@ def test_apple_prepare_communication_uses_contact_and_preferences(monkeypatch, t
             },
         )(),
     )
+    monkeypatch.setattr(
+        tools,
+        "contacts_find_duplicates",
+        lambda: DuplicateContactListResponse(groups=[], count=0),
+    )
 
     result = tools.apple_prepare_communication("Alice Doe")
 
@@ -916,6 +931,11 @@ def test_apple_prepare_communication_uses_contact_specific_preferences(monkeypat
                 )
             },
         )(),
+    )
+    monkeypatch.setattr(
+        tools,
+        "contacts_find_duplicates",
+        lambda: DuplicateContactListResponse(groups=[], count=0),
     )
 
     result = tools.apple_prepare_communication("Alice Doe")
@@ -1063,6 +1083,11 @@ def test_apple_archive_message_uses_detected_archive(monkeypatch, tmp_path) -> N
             {"message_id": message_id, "moved": True, "target_mailbox": target_mailbox},
         )(),
     )
+
+    def fail_unrelated_default_detection():
+        raise AssertionError("archive detection must not inspect unrelated Apple apps")
+
+    monkeypatch.setattr(tools, "_pick_default_calendar", fail_unrelated_default_detection)
 
     result = tools.apple_archive_message("msg-1")
 

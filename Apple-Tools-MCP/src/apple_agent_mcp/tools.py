@@ -681,10 +681,18 @@ def _resolve_archive_target(
     target_account = archive_account or preferences.default_archive_account
     updated_preferences = preferences
     if not target_mailbox:
-        detected_preferences, detected = _detect_preferences(preferences)
-        updated_preferences = _save_preferences(detected_preferences) if detected else preferences
-        target_mailbox = updated_preferences.default_archive_mailbox
-        target_account = target_account or updated_preferences.default_archive_account
+        detected_mailbox, detected_account = _pick_archive_mailbox()
+        if detected_mailbox:
+            updated_preferences = _save_preferences(
+                preferences.model_copy(
+                    update={
+                        "default_archive_mailbox": detected_mailbox,
+                        "default_archive_account": detected_account,
+                    }
+                )
+            )
+            target_mailbox = detected_mailbox
+            target_account = target_account or detected_account
     if not target_mailbox:
         return (
             ("", target_account, updated_preferences),

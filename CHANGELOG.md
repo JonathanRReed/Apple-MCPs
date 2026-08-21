@@ -4,6 +4,15 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [Unreleased]
+
+### Changed
+- Refreshed compatible transitive dependencies in the workspace lockfile.
+
+### Fixed
+- Archive mailbox auto-detection now inspects Mail only instead of probing unrelated Calendar, Reminders, and Notes defaults.
+- Unified-server tests no longer call live Contacts or filesystem resource bridges when their test data is mocked.
+
 ## [1.0.2] - 2026-08-05
 
 ### Fixed

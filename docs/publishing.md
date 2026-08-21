@@ -2,20 +2,20 @@
 
 Runbook for publishing the 11 Apple MCP servers to PyPI and the official
 [MCP Registry](https://registry.modelcontextprotocol.io) under the
-`io.github.jonathanrreed` namespace.
+`io.github.JonathanRReed` namespace.
 
 ## What ships where
 
 | Component | PyPI | MCP Registry |
 | --- | --- | --- |
-| `apple-mcp-common` (AppleMCPCommon) | Yes | No — it is a shared library, not an MCP server; the registry only lists servers |
-| The 11 servers (`apple-tools-mcp`, `apple-calendar-mcp`, `apple-contacts-mcp`, `apple-files-mcp`, `apple-mail-mcp`, `apple-maps-mcp`, `apple-messages-mcp`, `apple-notes-mcp`, `apple-reminders-mcp`, `apple-shortcuts-mcp`, `apple-system-mcp`) | Yes | Yes — each server directory has a `server.json` |
+| `apple-mcp-common` (AppleMCPCommon) | Yes | No, it is a shared library rather than an MCP server |
+| The 11 servers (`apple-tools-mcp`, `apple-calendar-mcp`, `apple-contacts-mcp`, `apple-files-mcp`, `apple-mcp-mail`, `apple-maps-mcp`, `apple-messages-mcp`, `apple-mcp-notes`, `apple-mcp-reminders`, `apple-shortcuts-mcp`, `apple-system-mcp`) | Yes | Yes, each server directory has a `server.json` |
 
 The registry hosts metadata only, never artifacts, so PyPI publishing must
 happen **before** registry publishing.
 
 Each server's `README.md` starts with an HTML comment like
-`<!-- mcp-name: io.github.jonathanrreed/apple-mail-mcp -->`. The registry
+`<!-- mcp-name: io.github.JonathanRReed/apple-mcp-mail -->`. The registry
 verifies PyPI package ownership by finding that exact string in the package's
 PyPI description (the README). Do not remove these markers, and make sure the
 README is included in the sdist/wheel metadata (it is, via `readme = "README.md"`
@@ -60,7 +60,7 @@ sudo mv mcp-publisher /usr/local/bin/
 
 ## 3. Authenticate and publish to the MCP Registry
 
-GitHub auth grants the `io.github.jonathanrreed/*` namespace (must match the
+GitHub auth grants the `io.github.JonathanRReed/*` namespace (must match the
 GitHub account that owns the repo):
 
 ```bash
@@ -80,28 +80,27 @@ done
 Verify:
 
 ```bash
-curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.jonathanrreed"
+curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.JonathanRReed"
 ```
 
 If publishing fails with "Registry validation failed for package", the PyPI
 README marker is missing or does not match the `name` in `server.json`. If it
 fails with a permissions error, the logged-in GitHub account does not own the
-`jonathanrreed` namespace.
+`JonathanRReed` namespace.
 
-## 4. Adding MCPB packages later (at release time)
+## 4. Updating MCPB packages at release time
 
-The `server.json` files intentionally ship with only a `pypi` package entry.
-MCPB entries require a `fileSha256` of a real release asset, which does not
-exist until a GitHub release is cut. Once `.mcpb` bundles are attached to a
-release:
+Each `server.json` includes both its PyPI package and the `.mcpb` asset from the
+latest release. MCPB entries require the SHA-256 of the exact release asset, so
+update them only after the new bundles have been built:
 
 1. Compute the hash: `openssl dgst -sha256 apple-mail.mcpb`
-2. Append to that server's `packages` array:
+2. Replace that server's existing `mcpb` entry in the `packages` array:
 
    ```json
    {
      "registryType": "mcpb",
-     "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.0/apple-mail.mcpb",
+     "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/vX.Y.Z/apple-mail-X.Y.Z.mcpb",
      "fileSha256": "<sha256 hex>",
      "transport": { "type": "stdio" }
    }
@@ -130,7 +129,7 @@ then publish every `server.json`. Key points:
   publishes through a per-package matrix job bound to that environment.
   When registering the pending publishers on
   https://pypi.org/manage/account/publishing/, set Environment name to
-  `pypi-<package-name>` for each entry — a shared environment name will be
+  `pypi-<package-name>` for each entry. A shared environment name will be
   rejected with "matching this configuration has already been registered".
 - Optionally rewrite `.version` in each `server.json` from the tag with `jq`
   before publishing.
@@ -142,5 +141,5 @@ then publish every `server.json`. Key points:
 - The MCP Registry is in preview; breaking changes or data resets may occur.
 - `server.json` files validate against the official schema
   `https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json`.
-- Registry `version` and the PyPI package version are kept in lockstep at
-  `1.0.0`; bump both together.
+- Registry, PyPI, and MCPB versions are kept in lockstep. Bump all three
+  together.

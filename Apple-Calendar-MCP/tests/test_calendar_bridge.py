@@ -34,12 +34,22 @@ def test_list_events_normalizes_event_ids(monkeypatch) -> None:
 
 
 def test_get_event_raises_when_missing(monkeypatch) -> None:
+    # EVENT_NOT_FOUND from the native helper now also retries through the JXA
+    # fallback (see test_get_event_falls_back_on_event_not_found below): under
+    # write-only Calendar access, EVERY id the caller ever saw came from that
+    # same fallback, so the native helper can never resolve one by identifier
+    # and would otherwise always raise a misleading EVENT_NOT_FOUND. A genuine
+    # miss must still surface as EVENT_NOT_FOUND once the fallback also fails.
     bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
 
     def fake_run_helper(command: str, *args: str) -> dict[str, object]:
         raise CalendarBridgeError("EVENT_NOT_FOUND", "missing")
 
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        return {"__error__": "EVENT_NOT_FOUND"}
+
     monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
 
     try:
         bridge.get_event("event-123")
@@ -47,6 +57,90 @@ def test_get_event_raises_when_missing(monkeypatch) -> None:
         assert exc.error_code == "EVENT_NOT_FOUND"
     else:
         raise AssertionError("Expected CalendarBridgeError")
+
+
+def test_get_event_falls_back_on_event_not_found(monkeypatch) -> None:
+    # The concrete bug this closes: under write-only Calendar access, ids
+    # only ever come from the JXA read fallback (a calendar NAME plus the
+    # AppleScript event uid), so store.event(withIdentifier:) in the native
+    # Swift helper can never resolve them and always raises EVENT_NOT_FOUND,
+    # even for an id that is perfectly valid in the fallback's own world.
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        raise CalendarBridgeError("EVENT_NOT_FOUND", "missing")
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        return {
+            "event_id": "applescript-uid-1",
+            "title": "Fallback event",
+            "calendar_id": "Home",
+            "calendar_name": "Home",
+            "start": "2026-03-27T15:00:00+00:00",
+            "end": "2026-03-27T15:30:00+00:00",
+            "all_day": False,
+            "location": None,
+            "notes": None,
+        }
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    event = bridge.get_event("applescript-uid-1")
+
+    assert event.event_id == "applescript-uid-1"
+    assert event.calendar_name == "Home"
+
+
+def test_create_event_falls_back_when_calendar_id_is_a_name(monkeypatch) -> None:
+    # The exact repro Robin hit: create_event("Privat", ...) fails natively
+    # with CALENDAR_NOT_FOUND because "Privat" is a calendar NAME from the
+    # JXA list fallback, not a real EKCalendar.calendarIdentifier.
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        raise CalendarBridgeError("CALENDAR_NOT_FOUND", "No calendar matched 'Privat'.")
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        return {
+            "event_id": "new-uid-1",
+            "title": args[1],
+            "calendar_id": args[0],
+            "calendar_name": args[0],
+            "start": "2028-06-01T09:00:00+00:00",
+            "end": "2028-06-01T09:30:00+00:00",
+            "all_day": False,
+            "location": None,
+            "notes": None,
+        }
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    event = bridge.create_event(
+        title="Telekom pruefen",
+        calendar_id="Privat",
+        start_iso="2028-06-01T09:00:00Z",
+        end_iso="2028-06-01T09:30:00Z",
+    )
+
+    assert event.event_id == "new-uid-1"
+    assert event.calendar_id == "Privat"
+
+
+def test_delete_event_falls_back_on_event_not_found(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        raise CalendarBridgeError("EVENT_NOT_FOUND", "missing")
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        return {"deleted": True}
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    assert bridge.delete_event("applescript-uid-1") is True
 
 
 def test_calendar_access_status_reads_helper_payload(monkeypatch) -> None:

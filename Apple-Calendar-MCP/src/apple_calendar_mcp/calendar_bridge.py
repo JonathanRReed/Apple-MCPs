@@ -72,7 +72,12 @@ class CalendarBridge:
         ]
 
     def get_event(self, event_id: str) -> EventDetail:
-        payload = self._run_helper("get-calendar-event", event_id)
+        try:
+            payload = self._run_helper("get-calendar-event", event_id)
+        except CalendarBridgeError as exc:
+            if not self._should_use_fallback(exc):
+                raise
+            payload = self._fallback_get_event(event_id)
         return self._normalize_detail(payload)
 
     def create_event(
@@ -98,7 +103,23 @@ class CalendarBridge:
         }
         if recurrence is not None:
             request["recurrence"] = recurrence
-        payload = self._run_helper("create-calendar-event", json.dumps(request))
+        try:
+            payload = self._run_helper("create-calendar-event", json.dumps(request))
+        except CalendarBridgeError as exc:
+            if not self._should_use_fallback(exc):
+                raise
+            # The identifier came from the JXA read fallback (a calendar NAME,
+            # not a real EKCalendar.calendarIdentifier), so the native helper
+            # can never resolve it. Create the event by name instead.
+            payload = self._fallback_create_event(
+                title=title,
+                calendar_id=calendar_id,
+                start_iso=start_iso,
+                end_iso=end_iso,
+                notes=notes,
+                location=location,
+                all_day=all_day,
+            )
         return self._normalize_detail(payload)
 
     def update_event(
@@ -131,11 +152,30 @@ class CalendarBridge:
             request["all_day"] = all_day
         if recurrence is not None:
             request["recurrence"] = recurrence
-        payload = self._run_helper("update-calendar-event", event_id, json.dumps(request))
+        try:
+            payload = self._run_helper("update-calendar-event", event_id, json.dumps(request))
+        except CalendarBridgeError as exc:
+            if not self._should_use_fallback(exc):
+                raise
+            payload = self._fallback_update_event(
+                event_id,
+                title=title,
+                calendar_id=calendar_id,
+                start_iso=start_iso,
+                end_iso=end_iso,
+                notes=notes,
+                location=location,
+                all_day=all_day,
+            )
         return self._normalize_detail(payload)
 
     def delete_event(self, event_id: str) -> bool:
-        payload = self._run_helper("delete-calendar-event", event_id)
+        try:
+            payload = self._run_helper("delete-calendar-event", event_id)
+        except CalendarBridgeError as exc:
+            if not self._should_use_fallback(exc):
+                raise
+            payload = self._fallback_delete_event(event_id)
         return bool(payload.get("deleted", False))
 
     def _run_helper(self, command: str, *args: str) -> dict[str, object]:
@@ -236,6 +276,20 @@ class CalendarBridge:
             "HELPER_EXECUTION_FAILED",
         }
 
+    def _should_use_fallback(self, error: CalendarBridgeError) -> bool:
+        # CALENDAR_NOT_FOUND / EVENT_NOT_FOUND on top of the read-fallback
+        # codes: when the native EventKit helper only has write-only access
+        # (no can_read_events), every id the caller ever saw came from the
+        # JXA read fallback below, i.e. a calendar NAME or a synthetic
+        # "applescript::..." event id, never a real EKCalendar/EKEvent
+        # identifier. The native helper can then never resolve it, no matter
+        # how valid the id is, so the same request has to be retried through
+        # the JXA fallback instead of surfacing a confusing "not found".
+        return self._should_use_read_fallback(error) or error.error_code in {
+            "CALENDAR_NOT_FOUND",
+            "EVENT_NOT_FOUND",
+        }
+
     def _helper_read_blocked(self) -> bool:
         try:
             payload = self.calendar_access_status()
@@ -324,6 +378,203 @@ function run(argv) {
 }
 """
         return self._run_jxa(script, start.isoformat(), end.isoformat(), calendar_id or "", str(limit), timeout=self._JXA_TIMEOUT_SECONDS)
+
+    # Shared by every fallback below: locate an event by the uid the JXA read
+    # fallback handed out (or, for delete/update called with a helper-issued
+    # "applescript::calendar::start::title" synthetic id, fall back to that
+    # composite match too), searching one named calendar first when known,
+    # otherwise every calendar.
+    _JXA_FIND_EVENT = """
+function findEventByUid(app, uid, calendarNameHint) {
+  const calendars = calendarNameHint
+    ? app.calendars.byName(calendarNameHint) ? [app.calendars.byName(calendarNameHint)] : []
+    : app.calendars();
+  for (const cal of calendars) {
+    const matches = cal.events.whose({uid: uid})();
+    if (matches.length > 0) {
+      return {calendar: cal, event: matches[0]};
+    }
+  }
+  if (uid.indexOf("applescript::") === 0) {
+    const parts = uid.split("::");
+    const calName = parts[1];
+    const startIso = parts[2];
+    const title = parts.slice(3).join("::");
+    const targets = calName ? [app.calendars.byName(calName)] : app.calendars();
+    for (const cal of targets) {
+      const matches = cal.events.whose({summary: title, startDate: new Date(startIso)})();
+      if (matches.length > 0) {
+        return {calendar: cal, event: matches[0]};
+      }
+    }
+  }
+  return null;
+}
+
+function eventRecord(cal, evt) {
+  const startDate = evt.startDate();
+  const endDate = evt.endDate();
+  return {
+    event_id: evt.uid(),
+    title: evt.summary() || "",
+    calendar_id: cal.name(),
+    calendar_name: cal.name(),
+    start: startDate.toISOString(),
+    end: endDate.toISOString(),
+    all_day: startDate.getHours() === 0 && startDate.getMinutes() === 0 &&
+      endDate.getHours() === 23 && endDate.getMinutes() === 59,
+    location: evt.location ? (evt.location() || null) : null,
+    notes: evt.description ? (evt.description() || null) : null
+  };
+}
+"""
+
+    def _fallback_get_event(self, event_id: str) -> dict[str, object]:
+        script = self._JXA_FIND_EVENT + """
+function run(argv) {
+  const app = Application("Calendar");
+  const found = findEventByUid(app, argv[0], "");
+  if (!found) {
+    return JSON.stringify({__error__: "EVENT_NOT_FOUND"});
+  }
+  return JSON.stringify(eventRecord(found.calendar, found.event));
+}
+"""
+        return self._run_jxa_event(script, event_id)
+
+    def _fallback_create_event(
+        self,
+        *,
+        title: str,
+        calendar_id: str,
+        start_iso: str,
+        end_iso: str,
+        notes: str | None,
+        location: str | None,
+        all_day: bool,
+    ) -> dict[str, object]:
+        script = self._JXA_FIND_EVENT + """
+function run(argv) {
+  const app = Application("Calendar");
+  const calName = argv[0];
+  const cal = app.calendars.byName(calName);
+  if (!cal || !cal.exists()) {
+    return JSON.stringify({__error__: "CALENDAR_NOT_FOUND"});
+  }
+  const newEvent = app.Event({
+    summary: argv[1],
+    startDate: new Date(argv[2]),
+    endDate: new Date(argv[3]),
+    location: argv[4],
+    description: argv[5]
+  });
+  cal.events.push(newEvent);
+  if (argv[6] === "true") {
+    newEvent.alldayEvent = true;
+  }
+  return JSON.stringify(eventRecord(cal, newEvent));
+}
+"""
+        return self._run_jxa_event(
+            script,
+            calendar_id,
+            title,
+            start_iso,
+            end_iso,
+            location or "",
+            notes or "",
+            "true" if all_day else "false",
+        )
+
+    def _fallback_update_event(
+        self,
+        event_id: str,
+        *,
+        title: str | None,
+        calendar_id: str | None,
+        start_iso: str | None,
+        end_iso: str | None,
+        notes: str | None,
+        location: str | None,
+        all_day: bool | None,
+    ) -> dict[str, object]:
+        fields = {
+            "title": title,
+            "calendar_id": calendar_id,
+            "start": start_iso,
+            "end": end_iso,
+            "notes": notes,
+            "location": location,
+            "all_day": all_day,
+        }
+        script = self._JXA_FIND_EVENT + """
+function run(argv) {
+  const app = Application("Calendar");
+  const eventId = argv[0];
+  const fields = JSON.parse(argv[1]);
+  const found = findEventByUid(app, eventId, "");
+  if (!found) {
+    return JSON.stringify({__error__: "EVENT_NOT_FOUND"});
+  }
+  let cal = found.calendar;
+  let evt = found.event;
+
+  const wantsMove = fields.calendar_id && fields.calendar_id !== cal.name();
+  if (wantsMove) {
+    const targetCal = app.calendars.byName(fields.calendar_id);
+    if (!targetCal || !targetCal.exists()) {
+      return JSON.stringify({__error__: "CALENDAR_NOT_FOUND"});
+    }
+    const moved = app.Event({
+      summary: fields.title !== null ? fields.title : (evt.summary() || ""),
+      startDate: fields.start !== null ? new Date(fields.start) : evt.startDate(),
+      endDate: fields.end !== null ? new Date(fields.end) : evt.endDate(),
+      location: fields.location !== null ? fields.location : (evt.location ? (evt.location() || "") : ""),
+      description: fields.notes !== null ? fields.notes : (evt.description ? (evt.description() || "") : "")
+    });
+    targetCal.events.push(moved);
+    if (fields.all_day !== null) {
+      moved.alldayEvent = fields.all_day;
+    }
+    cal.events.whose({uid: eventId})[0].delete();
+    return JSON.stringify(eventRecord(targetCal, moved));
+  }
+
+  if (fields.title !== null) { evt.summary = fields.title; }
+  if (fields.start !== null) { evt.startDate = new Date(fields.start); }
+  if (fields.end !== null) { evt.endDate = new Date(fields.end); }
+  if (fields.location !== null) { evt.location = fields.location; }
+  if (fields.notes !== null) { evt.description = fields.notes; }
+  if (fields.all_day !== null) { evt.alldayEvent = fields.all_day; }
+  return JSON.stringify(eventRecord(cal, evt));
+}
+"""
+        return self._run_jxa_event(script, event_id, json.dumps(fields))
+
+    def _fallback_delete_event(self, event_id: str) -> dict[str, object]:
+        script = self._JXA_FIND_EVENT + """
+function run(argv) {
+  const app = Application("Calendar");
+  const found = findEventByUid(app, argv[0], "");
+  if (!found) {
+    return JSON.stringify({__error__: "EVENT_NOT_FOUND"});
+  }
+  found.event.delete();
+  return JSON.stringify({deleted: true});
+}
+"""
+        return self._run_jxa_event(script, event_id)
+
+    def _run_jxa_event(self, script: str, *args: str) -> dict[str, object]:
+        payload = self._run_jxa(script, *args, timeout=self._JXA_TIMEOUT_SECONDS)
+        error_code = payload.get("__error__")
+        if error_code:
+            raise CalendarBridgeError(
+                str(error_code),
+                f"No matching calendar item found via the AppleScript fallback (id/name '{args[0] if args else ''}').",
+                "List calendars or events first to discover a valid current id.",
+            )
+        return payload
 
     def _fallback_events_payload(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, object]:
         if calendar_id:

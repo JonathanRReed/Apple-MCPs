@@ -92,6 +92,10 @@ claude mcp add --transport stdio --scope project apple-notes -- uvx apple-mcp-no
 
 `stdio` is the default and recommended transport. Set `APPLE_NOTES_MCP_TRANSPORT=streamable-http` (with optional `APPLE_NOTES_MCP_HOST` and `APPLE_NOTES_MCP_PORT`) to serve Streamable HTTP instead.
 
+## Script Timeout
+
+Every AppleScript call is bounded by `APPLE_NOTES_MCP_SCRIPT_TIMEOUT_SECONDS` (default `60`, minimum `5`) so a stalled Notes.app can never hang an MCP request indefinitely. If a create-note call times out after the note was already committed, the server looks the note up by title in the target folder and returns it; when the outcome cannot be verified it returns a structured `NOTE_CREATE_STATUS_UNKNOWN` error instead of leaving the client guessing.
+
 ## macOS Permissions
 
 - Automation access to Notes is required

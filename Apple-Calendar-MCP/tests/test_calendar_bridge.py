@@ -1,4 +1,10 @@
+import json
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
+
+import pytest
 
 from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError
 
@@ -348,3 +354,177 @@ def test_list_events_aggregates_broad_fallback_by_calendar(monkeypatch) -> None:
     assert len(events) == 1
     assert events[0].event_id == "work-1"
     assert events[0].calendar_name == "Work"
+
+
+# The JXA update fallback assigns startDate and endDate one at a time, and
+# Calendar.app validates after every single assignment. Moving an event later
+# in the day used to write the new start while the old end was still in place,
+# which is start > end, and Calendar rejected the whole update with -10025
+# ("Das Anfangsdatum muss vor dem Enddatum liegen"). The two tests below run
+# the JavaScript the bridge really generates against a Calendar.app stub that
+# reproduces that validation, so a regression fails here instead of on a live
+# calendar.
+_JXA_CALENDAR_STUB = """
+function makeEvent(uid, title, start, end) {
+  const evt = {
+    _uid: uid, _summary: title, _start: start, _end: end,
+    _location: "", _description: "", _allday: false,
+    uid: function () { return evt._uid; },
+    delete: function () { throw new Error("unexpected delete"); }
+  };
+  const validate = function (start, end) {
+    if (start >= end) {
+      throw new Error("Failed to save event, with error [start date must be before end date] (-10025)");
+    }
+  };
+  Object.defineProperty(evt, "startDate", {
+    get: function () { return function () { return evt._start; }; },
+    set: function (value) { validate(value, evt._end); evt._start = value; }
+  });
+  Object.defineProperty(evt, "endDate", {
+    get: function () { return function () { return evt._end; }; },
+    set: function (value) { validate(evt._start, value); evt._end = value; }
+  });
+  Object.defineProperty(evt, "summary", {
+    get: function () { return function () { return evt._summary; }; },
+    set: function (value) { evt._summary = value; }
+  });
+  Object.defineProperty(evt, "location", {
+    get: function () { return function () { return evt._location; }; },
+    set: function (value) { evt._location = value; }
+  });
+  Object.defineProperty(evt, "description", {
+    get: function () { return function () { return evt._description; }; },
+    set: function (value) { evt._description = value; }
+  });
+  Object.defineProperty(evt, "alldayEvent", {
+    get: function () { return function () { return evt._allday; }; },
+    set: function (value) { evt._allday = value; }
+  });
+  return evt;
+}
+
+const STUB_EVENT = makeEvent(
+  "event-1", "Standup", new Date("2026-03-27T13:30:00Z"), new Date("2026-03-27T14:30:00Z")
+);
+
+const STUB_CALENDAR = {
+  name: function () { return "Work"; },
+  events: {
+    whose: function (query) {
+      return function () {
+        return STUB_EVENT.uid() === query.uid ? [STUB_EVENT] : [];
+      };
+    },
+    push: function () { throw new Error("unexpected push"); }
+  }
+};
+
+function Application() {
+  const calendars = function () { return [STUB_CALENDAR]; };
+  calendars.byName = function (name) { return name === "Work" ? STUB_CALENDAR : null; };
+  return {calendars: calendars, Event: function () { throw new Error("unexpected Event()"); }};
+}
+"""
+
+
+def _run_jxa_update_in_node(script: str, event_id: str, fields_json: str) -> dict[str, object]:
+    node = shutil.which("node")
+    if node is None:  # pragma: no cover - depends on the developer machine
+        pytest.skip("node is required to execute the generated JXA update script")
+
+    harness = _JXA_CALENDAR_STUB + script + "\nconsole.log(run(process.argv.slice(2)));\n"
+    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as handle:
+        handle.write(harness)
+        harness_path = handle.name
+    completed = subprocess.run(
+        [node, harness_path, event_id, fields_json],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    return json.loads(completed.stdout.strip())
+
+
+def test_update_event_fallback_moves_event_later_without_invalid_intermediate_state(monkeypatch) -> None:
+    # The reproduced bug: the new start (17:00) is after the OLD end (14:30).
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    captured: dict[str, str] = {}
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        captured["script"] = script
+        return _run_jxa_update_in_node(script, args[0], args[1])
+
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    payload = bridge._fallback_update_event(
+        "event-1",
+        title=None,
+        calendar_id=None,
+        start_iso="2026-03-27T17:00:00Z",
+        end_iso="2026-03-27T18:00:00Z",
+        notes=None,
+        location=None,
+        all_day=None,
+    )
+
+    assert payload["start"] == "2026-03-27T17:00:00.000Z"
+    assert payload["end"] == "2026-03-27T18:00:00.000Z"
+
+
+def test_update_event_fallback_moves_event_earlier_without_invalid_intermediate_state(monkeypatch) -> None:
+    # The mirrored case: the new end (12:30) is before the OLD start (13:30).
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        return _run_jxa_update_in_node(script, args[0], args[1])
+
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    payload = bridge._fallback_update_event(
+        "event-1",
+        title=None,
+        calendar_id=None,
+        start_iso="2026-03-27T11:30:00Z",
+        end_iso="2026-03-27T12:30:00Z",
+        notes=None,
+        location=None,
+        all_day=None,
+    )
+
+    assert payload["start"] == "2026-03-27T11:30:00.000Z"
+    assert payload["end"] == "2026-03-27T12:30:00.000Z"
+
+
+def test_update_event_fallback_keeps_working_for_overlapping_and_single_bound_moves(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        return _run_jxa_update_in_node(script, args[0], args[1])
+
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    def update(start_iso: str | None, end_iso: str | None) -> dict[str, object]:
+        return bridge._fallback_update_event(
+            "event-1",
+            title=None,
+            calendar_id=None,
+            start_iso=start_iso,
+            end_iso=end_iso,
+            notes=None,
+            location=None,
+            all_day=None,
+        )
+
+    overlapping = update("2026-03-27T14:00:00Z", "2026-03-27T15:00:00Z")
+    assert overlapping["start"] == "2026-03-27T14:00:00.000Z"
+    assert overlapping["end"] == "2026-03-27T15:00:00.000Z"
+
+    start_only = update("2026-03-27T14:00:00Z", None)
+    assert start_only["start"] == "2026-03-27T14:00:00.000Z"
+    assert start_only["end"] == "2026-03-27T14:30:00.000Z"
+
+    end_only = update(None, "2026-03-27T16:00:00Z")
+    assert end_only["start"] == "2026-03-27T13:30:00.000Z"
+    assert end_only["end"] == "2026-03-27T16:00:00.000Z"

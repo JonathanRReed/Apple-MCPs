@@ -541,8 +541,25 @@ function run(argv) {
   }
 
   if (fields.title !== null) { evt.summary = fields.title; }
-  if (fields.start !== null) { evt.startDate = new Date(fields.start); }
-  if (fields.end !== null) { evt.endDate = new Date(fields.end); }
+
+  // Calendar.app validates every single assignment, so the write order matters
+  // whenever both boundaries move. Writing the new start first while the old
+  // end is still in place yields start > end when the event is pushed later in
+  // the day, and Calendar rejects it with -10025 ("start date must be before
+  // end date"). Assign whichever boundary keeps the intermediate state valid.
+  const newStart = fields.start !== null ? new Date(fields.start) : null;
+  const newEnd = fields.end !== null ? new Date(fields.end) : null;
+  if (newStart !== null && newEnd !== null && newStart >= evt.endDate()) {
+    // Moving later: widen the end first, then pull the start up behind it.
+    evt.endDate = newEnd;
+    evt.startDate = newStart;
+  } else {
+    // Moving earlier or overlapping: start first is always valid here, because
+    // the new start stays before the old end.
+    if (newStart !== null) { evt.startDate = newStart; }
+    if (newEnd !== null) { evt.endDate = newEnd; }
+  }
+
   if (fields.location !== null) { evt.location = fields.location; }
   if (fields.notes !== null) { evt.description = fields.notes; }
   if (fields.all_day !== null) { evt.alldayEvent = fields.all_day; }

@@ -4,6 +4,11 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [Unreleased]
+
+### Fixed
+- Calendar `update_event` no longer fails with `-10025` ("start date must be before end date") when an event is moved so that its new start lies after its old end: the AppleScript fallback now assigns the two boundaries in whichever order keeps the intermediate state valid. (#15)
+
 ## [1.0.3] - 2026-09-01
 
 ### Added

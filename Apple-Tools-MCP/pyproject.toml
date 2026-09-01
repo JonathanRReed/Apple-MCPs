@@ -37,7 +37,7 @@ dependencies = [
   "apple-mcp-reminders>=1.0.0,<2",
   "apple-shortcuts-mcp>=1.0.0,<2",
   "apple-system-mcp>=1.0.0,<2",
-  "mcp>=2.0.0,<3",
+  "mcp>=2.1.1,<3",
   "pydantic>=2.12.0",
 ]
 

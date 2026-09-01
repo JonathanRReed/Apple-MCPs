@@ -62,7 +62,7 @@ def load_settings() -> Settings:
 
     return Settings(
         server_name="Apple Mail MCP",
-        version="1.0.2",
+        version="1.0.3",
         safety_profile=safety_profile,
         transport=_parse_transport(os.getenv("APPLE_MAIL_MCP_TRANSPORT")),
         host=os.getenv("APPLE_MAIL_MCP_HOST", "127.0.0.1"),

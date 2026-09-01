@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleFiles-MCP"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-files-mcp",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -46,7 +46,7 @@
     {
       "registryType": "mcpb",
       "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-files-1.0.2.mcpb",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "fileSha256": "52f05687fdbeafd64f44d4ef8d3f6e16c30cbd28a7b6f810a61d4df9b4686176",
       "transport": {
         "type": "stdio"

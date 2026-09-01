@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleMessages-MCP"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-messages-mcp",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -39,7 +39,7 @@
     {
       "registryType": "mcpb",
       "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-messages-1.0.2.mcpb",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "fileSha256": "3fe1d6c58bba103e85b33877c00a71c6d458fb27c6e03bc775d76330ca1d962c",
       "transport": {
         "type": "stdio"

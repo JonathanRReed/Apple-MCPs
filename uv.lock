@@ -47,7 +47,7 @@ wheels = [
 
 [[package]]
 name = "apple-calendar-mcp"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "Apple-Calendar-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -73,7 +73,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-contacts-mcp"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "AppleContacts-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -99,7 +99,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-files-mcp"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "AppleFiles-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -125,7 +125,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-maps-mcp"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "AppleMaps-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -151,7 +151,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-mcp-common"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "AppleMCPCommon" }
 dependencies = [
     { name = "mcp" },
@@ -175,7 +175,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-mcp-mail"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "AppleMail-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -201,7 +201,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-mcp-notes"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "AppleNotes-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -227,7 +227,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-mcp-reminders"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "AppleReminders-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -253,7 +253,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-messages-mcp"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "AppleMessages-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -279,7 +279,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-shortcuts-mcp"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "AppleShortcuts-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -305,7 +305,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-system-mcp"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "AppleSystem-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -331,7 +331,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-tools-mcp"
-version = "1.0.2"
+version = "1.0.3"
 source = { editable = "Apple-Tools-MCP" }
 dependencies = [
     { name = "apple-calendar-mcp" },
@@ -573,8 +573,8 @@ name = "httpcore2"
 version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "python_full_version < '3.12' or python_full_version >= '3.14' or sys_platform != 'emscripten'" },
+    { name = "truststore", marker = "python_full_version < '3.12' or python_full_version >= '3.14' or sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/be/ad/f4f0e57345f1870f3e8cb624e058d7eca6e5a27d33bcc3311d9b618734cd/httpcore2-2.12.0.tar.gz", hash = "sha256:9293522bba0aa7c4c8e9e3f040c16575bd8868e155a77fa30c7a9085a5eae648", size = 67548, upload-time = "2026-08-18T13:22:08.211Z" }
 wheels = [
@@ -1139,8 +1139,8 @@ name = "uvicorn"
 version = "0.52.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
-    { name = "h11" },
+    { name = "click", marker = "python_full_version < '3.12' or python_full_version >= '3.14' or sys_platform != 'emscripten'" },
+    { name = "h11", marker = "python_full_version < '3.12' or python_full_version >= '3.14' or sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f2/0f/3f86e61397dd33bf2ccf28188c40db6a740658aeebbbf6e7dbc101a1f487/uvicorn-0.52.4.tar.gz", hash = "sha256:73acfee47a0b133c5de13d219492d62d8a31e935f4fe6e41a232451a15379f86", size = 100627, upload-time = "2026-08-19T06:27:41.821Z" }
 wheels = [

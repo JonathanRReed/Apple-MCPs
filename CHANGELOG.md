@@ -6,7 +6,14 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Added
+- CI now enforces the vendored Swift bridge sync (`scripts/check_bridge_sync.sh`) and type-checks every Swift source with `swiftc -typecheck` on macOS.
+- Dependabot keeps the uv lockfile and GitHub Actions current with weekly grouped update PRs.
+- `scripts/bump_version.py` bumps the suite version across every package's `pyproject.toml`, `config.py`, `manifest.json`, and `server.json` in one step.
+- `docs/troubleshooting.md` covers macOS Automation prompts, Calendar "Add Only" access, Notes timeouts, and common error codes.
+
 ### Changed
+- CI runs on every pull request, including docs-only changes, so required status checks can never leave a merge waiting on a skipped workflow.
 - Refreshed compatible transitive dependencies in the workspace lockfile.
 
 ### Fixed

@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleContacts-MCP"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-contacts-mcp",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -38,9 +38,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-contacts-1.0.2.mcpb",
-      "version": "1.0.2",
-      "fileSha256": "a7e3e5e75a413c5893f5f64fb7564dfce22c4162ca6bda26b429a9e3173ca0db",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-contacts-1.0.3.mcpb",
+      "version": "1.0.3",
+      "fileSha256": "6ca799482cd4a3425bc2da97b773553cf0e9929ae6d2c059959d0651fa32d1a1",
       "transport": {
         "type": "stdio"
       }

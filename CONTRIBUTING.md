@@ -38,7 +38,7 @@ cd /path/to/Apple-MCPs/<server>
 uv run --project . python -m pytest
 ```
 
-The Swift bridge sources are vendored per package (`Apple-Calendar-MCP` and `AppleReminders-MCP` share `apple_pim_bridge.swift`); if you change one copy, run `bash scripts/check_bridge_sync.sh` to confirm the copies still match.
+The Swift bridge sources are vendored per package (`Apple-Calendar-MCP` and `AppleReminders-MCP` share `apple_pim_bridge.swift`); if you change one copy, run `bash scripts/check_bridge_sync.sh` to confirm the copies still match (CI enforces this).
 
 ## Required Checks
 

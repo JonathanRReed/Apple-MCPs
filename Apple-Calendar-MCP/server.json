@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "Apple-Calendar-MCP"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-calendar-mcp",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -45,9 +45,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-calendar-1.0.2.mcpb",
-      "version": "1.0.2",
-      "fileSha256": "eeaff3e7c56c76860d38e17dc7a9a805d512a88ff1a01f35217f845e7f563710",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-calendar-1.0.3.mcpb",
+      "version": "1.0.3",
+      "fileSha256": "e1388cf0e843804b27ba49a3d211a626f928206bd04b25cbccc965983747ab8a",
       "transport": {
         "type": "stdio"
       }

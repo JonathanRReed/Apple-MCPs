@@ -1,18 +1,15 @@
 name: CI
 
+# No paths-ignore filters: branch protection requires these checks, and a PR
+# that never triggers the workflow would wait on them forever. Docs-only runs
+# are cheap; skipped required checks are a stuck merge button.
 on:
   push:
     branches:
       - main
-    paths-ignore:
-      - "**.md"
-      - "docs/**"
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - "**.md"
-      - "docs/**"
 
 permissions:
   contents: read
@@ -22,6 +19,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  bridge-sync:
+    # The EventKit Swift bridge is vendored into Apple-Calendar-MCP and
+    # AppleReminders-MCP; the copies must stay byte-identical.
+    name: Bridge sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v7
+
+      - name: Check vendored bridge copies match
+        run: bash scripts/check_bridge_sync.sh
+
+  swift-typecheck:
+    # The Swift helpers are compiled on user machines at first run, so a
+    # type error would only surface after install. Catch it here instead.
+    name: Swift typecheck
+    runs-on: macos-15
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v7
+
+      - name: Typecheck vendored Swift sources
+        # -parse-as-library matches how the bridges compile these helpers at
+        # runtime (they use @main, which single-file script mode rejects).
+        run: |
+          set -euo pipefail
+          find . -name '*.swift' -not -path './.venv/*' -print0 | while IFS= read -r -d '' src; do
+            echo "::group::${src}"
+            swiftc -parse-as-library -typecheck "$src"
+            echo "::endgroup::"
+          done
+
   lint:
     name: Ruff
     runs-on: ubuntu-latest
@@ -29,7 +62,7 @@ jobs:
 
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -55,7 +88,7 @@ jobs:
 
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -107,7 +140,7 @@ jobs:
 
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -138,7 +171,7 @@ jobs:
 
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -203,7 +236,7 @@ jobs:
 
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
@@ -211,7 +244,7 @@ jobs:
           enable-cache: true
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
 

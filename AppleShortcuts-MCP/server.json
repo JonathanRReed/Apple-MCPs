@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleShortcuts-MCP"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-shortcuts-mcp",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -38,9 +38,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-shortcuts-1.0.2.mcpb",
-      "version": "1.0.2",
-      "fileSha256": "6c6ccebd86b29bada7203afbf722e427cb5dbb5d17b1277a7c440674f0ff48f5",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-shortcuts-1.0.3.mcpb",
+      "version": "1.0.3",
+      "fileSha256": "17863c03bb0ea9289d4b5a6649a52b75c89d0f29c3b0e57197cea307f56ab1bb",
       "transport": {
         "type": "stdio"
       }

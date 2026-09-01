@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleMaps-MCP"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-maps-mcp",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -24,9 +24,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-maps-1.0.2.mcpb",
-      "version": "1.0.2",
-      "fileSha256": "337809eb0970848261469553343f8c63f208553138b4cde12602b751e5e498ca",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-maps-1.0.3.mcpb",
+      "version": "1.0.3",
+      "fileSha256": "39f547c64b01d8da63e3c0ed21965db268a12db1ace8b50e48528d1b35f29fe0",
       "transport": {
         "type": "stdio"
       }

@@ -36,7 +36,7 @@ def load_settings() -> Settings:
     ).expanduser()
     return Settings(
         server_name="Apple Maps MCP",
-        version="1.0.2",
+        version="1.0.3",
         helper_source=package_dir / "apple_maps_bridge.swift",
         helper_binary=build_dir / "apple-maps-bridge",
         transport=os.environ.get("APPLE_MAPS_MCP_TRANSPORT", "stdio").strip().lower() or "stdio",

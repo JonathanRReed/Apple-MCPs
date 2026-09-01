@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleMail-MCP"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-mcp-mail",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -51,9 +51,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-mail-1.0.2.mcpb",
-      "version": "1.0.2",
-      "fileSha256": "fa5b69357b99d3a26b266d19468db4da259fbd8a8ba0a2bacf75b4eb16e9ad0a",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-mail-1.0.3.mcpb",
+      "version": "1.0.3",
+      "fileSha256": "ce9f9f5b982ca4498b003492d9bde8b4992424f52ce807305dc97046076a6661",
       "transport": {
         "type": "stdio"
       }

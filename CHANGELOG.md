@@ -6,12 +6,24 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Fixed
+- Calendar `update_event` no longer fails with `-10025` ("start date must be before end date") when an event is moved so that its new start lies after its old end: the AppleScript fallback now assigns the two boundaries in whichever order keeps the intermediate state valid. (#15)
+
+## [1.0.3] - 2026-09-01
+
+### Added
+- CI now enforces the vendored Swift bridge sync (`scripts/check_bridge_sync.sh`) and type-checks every Swift source with `swiftc -typecheck` on macOS.
+- Dependabot keeps the uv lockfile and GitHub Actions current with weekly grouped update PRs.
+- `scripts/bump_version.py` bumps the suite version across every package's `pyproject.toml`, `config.py`, `manifest.json`, and `server.json` in one step.
+- `docs/troubleshooting.md` covers macOS Automation prompts, Calendar "Add Only" access, Notes timeouts, and common error codes.
+
 ### Changed
-- Refreshed compatible transitive dependencies in the workspace lockfile.
+- CI runs on every pull request, including docs-only changes, so required status checks can never leave a merge waiting on a skipped workflow.
+- Minimum dependency floors raised to `mcp>=2.1.1` and `pydantic>=2.13.5`; refreshed compatible transitive dependencies in the workspace lockfile.
 
 ### Fixed
 - Calendar `create_event`, `get_event`, `update_event`, and `delete_event` now retry through the AppleScript fallback under write-only ("Add Only") Calendar access, matching the existing read-path fallback; the native bridge's `deleteEvent` now reports a missing event as `EVENT_NOT_FOUND` instead of a silent `deleted: false`. (#7)
-- Calendar `update_event` no longer fails with `-10025` ("start date must be before end date") when an event is moved so that its new start lies after its old end: the AppleScript fallback now assigns the two boundaries in whichever order keeps the intermediate state valid.
+- Notes AppleScript calls are now bounded by a configurable timeout (`APPLE_NOTES_MCP_SCRIPT_TIMEOUT_SECONDS`, default 60s) instead of hanging indefinitely, and `notes_create_note` resolves the ambiguous case where Notes commits the note but stalls afterwards: the created note is recovered by a deterministic folder/title lookup, or a structured `NOTE_CREATE_STATUS_UNKNOWN` error warns the client not to retry blindly. Post-create readbacks inside the AppleScript are also capped so the note id still comes back when Notes stalls on body/plaintext. (#6)
 - Archive mailbox auto-detection now inspects Mail only instead of probing unrelated Calendar, Reminders, and Notes defaults.
 - Unified-server tests no longer call live Contacts or filesystem resource bridges when their test data is mocked.
 

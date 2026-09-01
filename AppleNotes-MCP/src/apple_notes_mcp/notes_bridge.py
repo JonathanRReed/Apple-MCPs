@@ -21,8 +21,13 @@ class NotesBridgeError(Exception):
 
 
 class AppleNotesBridge:
-    def __init__(self, scripts_dir: Path) -> None:
+    # After a create-script timeout, a same-title note only counts as the one
+    # we just made when its creation date is at most this old (or unknown).
+    _CREATE_RECOVERY_FRESHNESS_SECONDS = 600
+
+    def __init__(self, scripts_dir: Path, script_timeout_seconds: int = 60) -> None:
         self.scripts_dir = scripts_dir
+        self.script_timeout_seconds = script_timeout_seconds
         self._body_html_cache: dict[str, str] = {}
 
     def list_accounts(self) -> list[AccountInfo]:
@@ -63,17 +68,32 @@ class AppleNotesBridge:
         tags: list[str] | None = None,
     ) -> NoteDetail:
         prepared_body_html = self._prepare_body_html(title, body_html) if body_html is not None else None
-        payload = self._run_script(
-            "create_note.applescript",
-            title,
-            folder_id,
-            "",
-            "",
-        )
-        raw_note = payload.get("note")
-        if not isinstance(raw_note, dict):
-            raise NotesBridgeError("INVALID_SCRIPT_OUTPUT", "The create_note AppleScript did not return a note object.", "Inspect the AppleScript output and try again.")
-        detail = self._normalize_detail(raw_note)
+        try:
+            payload = self._run_script(
+                "create_note.applescript",
+                title,
+                folder_id,
+                "",
+                "",
+            )
+        except NotesBridgeError as exc:
+            if exc.error_code != "APPLESCRIPT_TIMEOUT":
+                raise
+            # Notes can commit `make new note` and then stall in the readback,
+            # so a timeout leaves the create ambiguous. Creation is not
+            # idempotent: resolve the outcome instead of making callers guess.
+            detail = self._recover_created_note(title, folder_id)
+            if detail is None:
+                raise NotesBridgeError(
+                    "NOTE_CREATE_STATUS_UNKNOWN",
+                    f"The create-note AppleScript timed out after {self.script_timeout_seconds} seconds and the outcome could not be verified: a note titled '{title}' may or may not exist in folder '{folder_id}'.",
+                    "Do not retry blindly. List notes in the target folder and check for the title before creating again.",
+                ) from exc
+        else:
+            raw_note = payload.get("note")
+            if not isinstance(raw_note, dict):
+                raise NotesBridgeError("INVALID_SCRIPT_OUTPUT", "The create_note AppleScript did not return a note object.", "Inspect the AppleScript output and try again.")
+            detail = self._normalize_detail(raw_note)
         if body_html or tags:
             last_error: NotesBridgeError | None = None
             for _ in range(3):
@@ -86,7 +106,11 @@ class AppleNotesBridge:
                 except NotesBridgeError as exc:
                     last_error = exc
             if last_error is not None:
-                raise last_error
+                raise NotesBridgeError(
+                    last_error.error_code,
+                    f"The note was created (note_id '{detail.note_id}') but applying its body/tags failed: {last_error.message}",
+                    f"Retry with an update on note_id '{detail.note_id}' instead of creating again; a repeated create would duplicate the note.",
+                ) from last_error
         if detail.body_html:
             self._body_html_cache[detail.note_id] = detail.body_html
         return detail
@@ -186,13 +210,44 @@ class AppleNotesBridge:
         matched.sort(key=lambda item: item.modified_epoch or 0, reverse=True)
         return matched[: max(1, min(limit, 100))]
 
+    def _recover_created_note(self, title: str, folder_id: str) -> NoteDetail | None:
+        # Only claim recovery when exactly one note in the target folder has
+        # the exact title and is fresh enough (or has no creation date) to be
+        # the one just created — a lone stale match is a pre-existing note.
+        try:
+            candidates = [note for note in self.list_notes(folder_id=folder_id) if note.title == title]
+        except NotesBridgeError:
+            return None
+        if len(candidates) != 1:
+            return None
+        candidate = candidates[0]
+        created_epoch = candidate.created_epoch or 0
+        if created_epoch and created_epoch < time.time() - self._CREATE_RECOVERY_FRESHNESS_SECONDS:
+            return None
+        try:
+            return self.get_note(candidate.note_id)
+        except NotesBridgeError:
+            return None
+
     def _run_script(self, script_name: str, *args: str) -> dict[str, object]:
         script_path = self.scripts_dir / script_name
         if not script_path.exists():
             raise NotesBridgeError("SCRIPT_NOT_FOUND", f"Missing AppleScript file '{script_name}'.", "Restore the AppleScript file and try again.")
 
         try:
-            completed = subprocess.run(["osascript", str(script_path), *args], capture_output=True, text=True, check=False)
+            completed = subprocess.run(
+                ["osascript", str(script_path), *args],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=self.script_timeout_seconds,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise NotesBridgeError(
+                "APPLESCRIPT_TIMEOUT",
+                f"AppleScript '{script_name}' timed out after {self.script_timeout_seconds} seconds.",
+                "Notes.app may be busy or syncing; a mutation may already have been applied. Verify state before retrying non-idempotent operations.",
+            ) from exc
         except OSError as exc:
             raise NotesBridgeError("OSASCRIPT_UNAVAILABLE", f"Could not run 'osascript': {exc}.", "This server requires macOS with osascript available.") from exc
         if completed.returncode != 0:
@@ -337,4 +392,5 @@ class AppleNotesBridge:
 
 @lru_cache(maxsize=1)
 def build_bridge() -> AppleNotesBridge:
-    return AppleNotesBridge(load_settings().scripts_dir)
+    settings = load_settings()
+    return AppleNotesBridge(settings.scripts_dir, script_timeout_seconds=settings.script_timeout_seconds)

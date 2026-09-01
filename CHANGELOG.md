@@ -11,6 +11,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Fixed
 - Calendar `create_event`, `get_event`, `update_event`, and `delete_event` now retry through the AppleScript fallback under write-only ("Add Only") Calendar access, matching the existing read-path fallback; the native bridge's `deleteEvent` now reports a missing event as `EVENT_NOT_FOUND` instead of a silent `deleted: false`. (#7)
+- Calendar `update_event` no longer fails with `-10025` ("start date must be before end date") when an event is moved so that its new start lies after its old end: the AppleScript fallback now assigns the two boundaries in whichever order keeps the intermediate state valid.
 - Archive mailbox auto-detection now inspects Mail only instead of probing unrelated Calendar, Reminders, and Notes defaults.
 - Unified-server tests no longer call live Contacts or filesystem resource bridges when their test data is mocked.
 

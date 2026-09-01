@@ -45,9 +45,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-reminders-1.0.2.mcpb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-reminders-1.0.3.mcpb",
       "version": "1.0.3",
-      "fileSha256": "b5d0169018d03c371b78f0025d9a64835b325b637d2e344d502d6ce3e9c2794a",
+      "fileSha256": "c36be03d9c87a3ceefb720c1b2fcc1fcd6e5b4136c1147750737d6ffe903a279",
       "transport": {
         "type": "stdio"
       }

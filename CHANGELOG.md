@@ -10,6 +10,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Refreshed compatible transitive dependencies in the workspace lockfile.
 
 ### Fixed
+- Calendar `create_event`, `get_event`, `update_event`, and `delete_event` now retry through the AppleScript fallback under write-only ("Add Only") Calendar access, matching the existing read-path fallback; the native bridge's `deleteEvent` now reports a missing event as `EVENT_NOT_FOUND` instead of a silent `deleted: false`. (#7)
 - Archive mailbox auto-detection now inspects Mail only instead of probing unrelated Calendar, Reminders, and Notes defaults.
 - Unified-server tests no longer call live Contacts or filesystem resource bridges when their test data is mocked.
 

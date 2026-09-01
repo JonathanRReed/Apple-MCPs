@@ -446,7 +446,11 @@ struct ApplePIMBridge {
 
     static func deleteEvent(store: EKEventStore, eventID: String) throws -> BooleanMutationPayload {
         guard let event = store.event(withIdentifier: eventID) else {
-            return BooleanMutationPayload(deleted: false, object_id: eventID)
+            throw BridgeFailure(
+                errorCode: "EVENT_NOT_FOUND",
+                message: "No event matched '\(eventID)'.",
+                suggestion: "List calendar events first to discover valid ids."
+            )
         }
         try store.remove(event, span: .thisEvent, commit: true)
         return BooleanMutationPayload(deleted: true, object_id: eventID)

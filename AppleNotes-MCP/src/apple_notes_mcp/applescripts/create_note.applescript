@@ -62,17 +62,28 @@ on note_json(accountId, accountName, folderId, folderName, n)
 	set bodyHtml to ""
 	set plainText to ""
 	set attachmentCount to 0
+	-- The note already exists at this point; a stalled readback (Notes can
+	-- block on body/plaintext while syncing) must degrade to empty fields
+	-- instead of hanging the whole script past the caller's deadline.
 	try
-		set titleText to my safe_text(name of n)
+		with timeout of 10 seconds
+			set titleText to my safe_text(name of n)
+		end timeout
 	end try
 	try
-		set bodyHtml to my safe_text(body of n)
+		with timeout of 10 seconds
+			set bodyHtml to my safe_text(body of n)
+		end timeout
 	end try
 	try
-		set plainText to my safe_text(plaintext of n)
+		with timeout of 10 seconds
+			set plainText to my safe_text(plaintext of n)
+		end timeout
 	end try
 	try
-		set attachmentCount to count of attachments of n
+		with timeout of 10 seconds
+			set attachmentCount to count of attachments of n
+		end timeout
 	end try
 	return "{" & ¬
 		quote & "note_id" & quote & ":" & my json_string(noteId) & "," & ¬

@@ -11,6 +11,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Fixed
 - Calendar `create_event`, `get_event`, `update_event`, and `delete_event` now retry through the AppleScript fallback under write-only ("Add Only") Calendar access, matching the existing read-path fallback; the native bridge's `deleteEvent` now reports a missing event as `EVENT_NOT_FOUND` instead of a silent `deleted: false`. (#7)
+- Notes AppleScript calls are now bounded by a configurable timeout (`APPLE_NOTES_MCP_SCRIPT_TIMEOUT_SECONDS`, default 60s) instead of hanging indefinitely, and `notes_create_note` resolves the ambiguous case where Notes commits the note but stalls afterwards: the created note is recovered by a deterministic folder/title lookup, or a structured `NOTE_CREATE_STATUS_UNKNOWN` error warns the client not to retry blindly. Post-create readbacks inside the AppleScript are also capped so the note id still comes back when Notes stalls on body/plaintext. (#6)
 - Archive mailbox auto-detection now inspects Mail only instead of probing unrelated Calendar, Reminders, and Notes defaults.
 - Unified-server tests no longer call live Contacts or filesystem resource bridges when their test data is mocked.
 

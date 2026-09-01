@@ -1,11 +1,31 @@
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
 
 from apple_notes_mcp.notes_bridge import AppleNotesBridge, NotesBridgeError
+
+
+def _note_payload(note_id: str, title: str, created_epoch: int = 0) -> dict[str, object]:
+    return {
+        "note_id": note_id,
+        "title": title,
+        "account_id": "acc-1",
+        "account_name": "iCloud",
+        "folder_id": "folder-1",
+        "folder_name": "Personal",
+        "created_epoch": created_epoch,
+        "modified_epoch": created_epoch,
+        "password_protected": False,
+        "shared": False,
+        "attachment_count": 0,
+        "plaintext": "",
+        "body_html": "",
+        "attachments": [],
+    }
 
 
 def test_list_accounts_normalizes_payload(monkeypatch) -> None:
@@ -206,6 +226,119 @@ def test_create_note_uses_update_path_when_body_or_tags_present(monkeypatch) -> 
 
     assert detail.title == "Dallas trip"
     assert detail.body_html == "<div>Places to visit</div>"
+
+
+def test_run_script_times_out_with_structured_error(monkeypatch, tmp_path) -> None:
+    # Regression for issue #6: subprocess.run had no timeout, so a stalled
+    # osascript blocked the MCP response forever.
+    (tmp_path / "list_accounts.applescript").write_text("on run argv\nend run\n")
+    bridge = AppleNotesBridge(tmp_path, script_timeout_seconds=5)
+
+    def fake_run(*args, **kwargs):
+        assert kwargs["timeout"] == 5
+        raise subprocess.TimeoutExpired(cmd=args[0], timeout=5)
+
+    monkeypatch.setattr("apple_notes_mcp.notes_bridge.subprocess.run", fake_run)
+
+    try:
+        bridge._run_script("list_accounts.applescript")
+    except NotesBridgeError as exc:
+        assert exc.error_code == "APPLESCRIPT_TIMEOUT"
+    else:
+        raise AssertionError("Expected NotesBridgeError")
+
+
+def test_create_note_recovers_note_after_create_timeout(monkeypatch) -> None:
+    # Issue #6's ambiguous-commit case: Notes committed `make new note` but the
+    # script stalled afterwards. The deterministic post-timeout lookup must
+    # return the created note instead of surfacing an ambiguous failure.
+    bridge = AppleNotesBridge(Path("/tmp/scripts"))
+    bridge._folder_by_id = lambda folder_id: None  # type: ignore[method-assign]
+    monkeypatch.setattr(bridge, "list_attachments", lambda note_id: [])
+
+    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+        if script_name == "create_note.applescript":
+            raise NotesBridgeError("APPLESCRIPT_TIMEOUT", "timed out")
+        if script_name == "list_notes.applescript":
+            return {"items": [_note_payload("note-9", "Disposable title", created_epoch=int(time.time()))]}
+        if script_name == "get_note.applescript":
+            return {"found": True, "note": _note_payload("note-9", "Disposable title", created_epoch=int(time.time()))}
+        raise AssertionError(f"Unexpected script: {script_name}")
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+
+    detail = bridge.create_note(title="Disposable title", folder_id="folder-1")
+
+    assert detail.note_id == "note-9"
+
+
+def test_create_note_raises_status_unknown_when_recovery_finds_nothing(monkeypatch) -> None:
+    bridge = AppleNotesBridge(Path("/tmp/scripts"))
+    bridge._folder_by_id = lambda folder_id: None  # type: ignore[method-assign]
+
+    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+        if script_name == "create_note.applescript":
+            raise NotesBridgeError("APPLESCRIPT_TIMEOUT", "timed out")
+        if script_name == "list_notes.applescript":
+            return {"items": []}
+        raise AssertionError(f"Unexpected script: {script_name}")
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+
+    try:
+        bridge.create_note(title="Disposable title", folder_id="folder-1")
+    except NotesBridgeError as exc:
+        assert exc.error_code == "NOTE_CREATE_STATUS_UNKNOWN"
+        assert "Do not retry blindly" in (exc.suggestion or "")
+    else:
+        raise AssertionError("Expected NotesBridgeError")
+
+
+def test_create_note_recovery_ignores_stale_same_title_note(monkeypatch) -> None:
+    # A lone match created long ago is a pre-existing note, not the one this
+    # call tried to create — recovery must not claim it as a fresh create.
+    bridge = AppleNotesBridge(Path("/tmp/scripts"))
+    bridge._folder_by_id = lambda folder_id: None  # type: ignore[method-assign]
+
+    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+        if script_name == "create_note.applescript":
+            raise NotesBridgeError("APPLESCRIPT_TIMEOUT", "timed out")
+        if script_name == "list_notes.applescript":
+            return {"items": [_note_payload("note-old", "Disposable title", created_epoch=int(time.time()) - 86_400)]}
+        raise AssertionError(f"Unexpected script: {script_name}")
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+
+    try:
+        bridge.create_note(title="Disposable title", folder_id="folder-1")
+    except NotesBridgeError as exc:
+        assert exc.error_code == "NOTE_CREATE_STATUS_UNKNOWN"
+    else:
+        raise AssertionError("Expected NotesBridgeError")
+
+
+def test_create_note_reports_note_id_when_post_create_update_fails(monkeypatch) -> None:
+    bridge = AppleNotesBridge(Path("/tmp/scripts"))
+    bridge._folder_by_id = lambda folder_id: None  # type: ignore[method-assign]
+
+    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+        assert script_name == "create_note.applescript"
+        return {"note": _note_payload("note-1", "Dallas trip")}
+
+    def fake_update_note(note_id: str, **kwargs):
+        raise NotesBridgeError("APPLESCRIPT_TIMEOUT", "timed out")
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+    monkeypatch.setattr(bridge, "update_note", fake_update_note)
+    monkeypatch.setattr("apple_notes_mcp.notes_bridge.time.sleep", lambda _seconds: None)
+
+    try:
+        bridge.create_note(title="Dallas trip", folder_id="folder-1", body_html="<div>Places to visit</div>")
+    except NotesBridgeError as exc:
+        assert "note-1" in exc.message
+        assert "note-1" in (exc.suggestion or "")
+    else:
+        raise AssertionError("Expected NotesBridgeError")
 
 
 def test_normalize_detail_uses_override_when_notes_readback_is_empty() -> None:

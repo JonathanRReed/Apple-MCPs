@@ -8,6 +8,10 @@ SafetyMode = Literal["safe_readonly", "safe_manage", "full_access"]
 VALID_SAFETY_MODES = frozenset({"safe_readonly", "safe_manage", "full_access"})
 
 
+DEFAULT_SCRIPT_TIMEOUT_SECONDS = 60
+MIN_SCRIPT_TIMEOUT_SECONDS = 5
+
+
 @dataclass(frozen=True)
 class Settings:
     server_name: str
@@ -17,12 +21,25 @@ class Settings:
     allowed_folders: tuple[str, ...]
     log_level: str
     scripts_dir: Path
+    script_timeout_seconds: int
 
 
 def _parse_csv(value: str | None) -> tuple[str, ...]:
     if value is None:
         return ()
     return tuple(item.strip() for item in value.split(",") if item.strip())
+
+
+def _parse_script_timeout(value: str | None) -> int:
+    if value is None:
+        return DEFAULT_SCRIPT_TIMEOUT_SECONDS
+    try:
+        parsed = int(value.strip())
+    except ValueError:
+        return DEFAULT_SCRIPT_TIMEOUT_SECONDS
+    if parsed < MIN_SCRIPT_TIMEOUT_SECONDS:
+        return DEFAULT_SCRIPT_TIMEOUT_SECONDS
+    return parsed
 
 
 @lru_cache(maxsize=1)
@@ -40,4 +57,5 @@ def load_settings() -> Settings:
         allowed_folders=_parse_csv(os.environ.get("APPLE_NOTES_MCP_ALLOWED_FOLDERS")),
         log_level=os.environ.get("APPLE_NOTES_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",
         scripts_dir=package_dir / "applescripts",
+        script_timeout_seconds=_parse_script_timeout(os.environ.get("APPLE_NOTES_MCP_SCRIPT_TIMEOUT_SECONDS")),
     )

@@ -21,6 +21,19 @@ PyPI description (the README). Do not remove these markers, and make sure the
 README is included in the sdist/wheel metadata (it is, via `readme = "README.md"`
 in each `pyproject.toml`).
 
+## 0. Bump versions
+
+The suite version lives in ~4 files per package. Bump every copy in one step,
+then update `CHANGELOG.md` (move `[Unreleased]` entries under the new
+heading), refresh the lockfile, and run the test suites:
+
+```bash
+python3 scripts/bump_version.py 1.0.3
+uv sync --all-packages
+```
+
+Tagging `vX.Y.Z` after committing triggers the release workflow.
+
 ## 1. Publish packages to PyPI with uv
 
 Order matters: every server depends on `apple-mcp-common>=1.0.0,<2`, so publish

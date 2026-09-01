@@ -178,6 +178,7 @@ The repository is a uv workspace: `pyproject.toml` at the root defines members, 
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [SECURITY.md](./SECURITY.md)
 - [Code Mode](./docs/code-mode.md)
+- [Troubleshooting](./docs/troubleshooting.md) — macOS permissions, timeouts, common error codes
 - [Publishing](./docs/publishing.md)
 - [NOTICE.md](./NOTICE.md) — trademark notice
 - [Launch docs](./docs/launch/) — golden workflows, failure modes, compatibility, demo script

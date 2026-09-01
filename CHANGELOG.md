@@ -4,7 +4,7 @@ All notable changes to this repository will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
-## [Unreleased]
+## [1.0.3] - 2026-09-01
 
 ### Added
 - CI now enforces the vendored Swift bridge sync (`scripts/check_bridge_sync.sh`) and type-checks every Swift source with `swiftc -typecheck` on macOS.
@@ -14,7 +14,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Changed
 - CI runs on every pull request, including docs-only changes, so required status checks can never leave a merge waiting on a skipped workflow.
-- Refreshed compatible transitive dependencies in the workspace lockfile.
+- Minimum dependency floors raised to `mcp>=2.1.1` and `pydantic>=2.13.5`; refreshed compatible transitive dependencies in the workspace lockfile.
 
 ### Fixed
 - Calendar `create_event`, `get_event`, `update_event`, and `delete_event` now retry through the AppleScript fallback under write-only ("Add Only") Calendar access, matching the existing read-path fallback; the native bridge's `deleteEvent` now reports a missing event as `EVENT_NOT_FOUND` instead of a silent `deleted: false`. (#7)

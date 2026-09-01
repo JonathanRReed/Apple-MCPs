@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "Apple-Tools-MCP"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-tools-mcp",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -142,7 +142,7 @@
     {
       "registryType": "mcpb",
       "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-tools-1.0.2.mcpb",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "fileSha256": "39d703186a680278dc0900ede56da02643bdab969f3796cfe273a32021288c32",
       "transport": {
         "type": "stdio"

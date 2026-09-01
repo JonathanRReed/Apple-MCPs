@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleNotes-MCP"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-mcp-notes",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -53,7 +53,7 @@
     {
       "registryType": "mcpb",
       "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.2/apple-notes-1.0.2.mcpb",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "fileSha256": "011d38167551864a66e24b05fa9a2dffc3f620ea0bbbd41612787b4c61811d1c",
       "transport": {
         "type": "stdio"

@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "apple-shortcuts",
   "display_name": "Apple Shortcuts",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "List, inspect, and run Apple Shortcuts on macOS.",
   "long_description": "Local MCP server for Apple Shortcuts on macOS. Uses the official shortcuts CLI to list shortcuts, inspect shortcut metadata, browse folders, and run shortcuts with structured inputs and outputs. Designed for agentic use with concise resources, prompts, and typed results.",
   "icon": "icon.png",

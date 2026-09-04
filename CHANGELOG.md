@@ -24,7 +24,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ### Changed
 - Test the frozen MCP 2026-07-28 requirements with a pinned conformance runner. Keep legacy conformance and its optional-feature baseline separate.
 - Check discovery, schemas, structured tool calls, errors, and current/legacy negotiation across every server. Validate isolated bundle launches through their manifest commands.
-- Validate source versions and artifact counts before publishing. Publish the GitHub release only after all PyPI packages succeed, and attach distributions plus exact registry metadata alongside bundles and checksums.
+- Validate source versions and artifact counts before publishing. Publish PyPI packages in dependency order, create the GitHub release after all uploads succeed, and publish registry records through GitHub OIDC. Attach distributions plus exact registry metadata alongside bundles and checksums.
 - Pin MCPB and Inspector tooling, declare generated bundle capabilities, and document Codex setup and attachment restrictions.
 
 ## [1.0.3] - 2026-09-01

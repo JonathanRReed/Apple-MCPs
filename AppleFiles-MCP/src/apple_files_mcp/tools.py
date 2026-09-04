@@ -23,7 +23,7 @@ from apple_files_mcp.models import (
 )
 from apple_files_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
-from apple_mcp_common.runtime import require_loopback_host
+from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
 
 SERVER_INSTRUCTIONS = (
     "Use this server for file and folder access on macOS. "
@@ -391,7 +391,7 @@ async def files_create_folder(path: str, ctx: Context) -> FileMutationResponse |
     try:
         ensure_action_allowed("files_create_folder")
         created = _bridge().create_folder(path)
-        await ctx.notify_resources_changed()
+        await notify_resources_changed(ctx)
         return FileMutationResponse(path=created, action="created")
     except (SafetyError, FilesBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))
@@ -407,7 +407,7 @@ async def files_move_path(source: str, destination: str, ctx: Context) -> FileMu
     try:
         ensure_action_allowed("files_move_path")
         original, moved = _bridge().move_path(source=source, destination=destination)
-        await ctx.notify_resources_changed()
+        await notify_resources_changed(ctx)
         return FileMutationResponse(path=original, destination=moved, action="moved")
     except (SafetyError, FilesBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))
@@ -423,7 +423,7 @@ async def files_delete_path(path: str, ctx: Context) -> FileMutationResponse | E
     try:
         ensure_action_allowed("files_delete_path")
         deleted = _bridge().delete_path(path)
-        await ctx.notify_resources_changed()
+        await notify_resources_changed(ctx)
         return FileMutationResponse(path=deleted, action="deleted")
     except (SafetyError, FilesBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))

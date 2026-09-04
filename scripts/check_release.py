@@ -16,6 +16,7 @@ from bump_version import (
     ROOT,
     SERVER_DIRS,
     VersionError,
+    dependency_spec,
     read_current_version,
 )
 
@@ -40,18 +41,18 @@ def validate_source(tag: str | None, root: Path = ROOT) -> str:
         if found != version:
             raise VersionError(f"{pyproject}: version {found}, expected {version}")
         dependency_versions = {
-            dependency: floor
-            for dependency, floor in re.findall(
-                r'^  "(apple-[a-z-]+)>=([0-9]+\.[0-9]+\.[0-9]+),<2",$',
+            dependency: spec
+            for dependency, spec in re.findall(
+                r'^  "(apple-[a-z-]+)(>=[0-9]+\.[0-9]+\.[0-9]+,<[0-9]+)",$',
                 pyproject.read_text(),
                 re.MULTILINE,
             )
         }
         required = REQUIRED_INTERNAL_DEPENDENCIES[directory]
-        if set(dependency_versions) != required or any(floor != version for floor in dependency_versions.values()):
+        if set(dependency_versions) != required or any(spec != dependency_spec(version) for spec in dependency_versions.values()):
             raise VersionError(
                 f"{pyproject}: internal dependencies {dependency_versions!r}, "
-                f"expected {sorted(required)!r} at >= {version},<2"
+                f"expected {sorted(required)!r} at {dependency_spec(version)}"
             )
         if directory == "AppleMCPCommon":
             continue

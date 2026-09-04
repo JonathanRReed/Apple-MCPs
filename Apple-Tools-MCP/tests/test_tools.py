@@ -1290,6 +1290,12 @@ def test_main_uses_streamable_http_settings(monkeypatch, tmp_path) -> None:
 def test_resource_updates_use_current_subscription_api() -> None:
     class StubContext:
         def __init__(self) -> None:
+            self.protocol_version = "2026-07-28"
+
+            class StubSession:
+                protocol_version = "2026-07-28"
+
+            self.request_context = type("RequestContext", (), {"session": StubSession()})()
             self.updated: list[str] = []
             self.list_changed = False
 

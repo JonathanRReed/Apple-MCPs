@@ -52,12 +52,15 @@ cd AppleMCPCommon
 uv build
 uv publish        # needs a PyPI token: UV_PUBLISH_TOKEN or --token
 
-# then each server, in any order:
-for dir in Apple-Tools-MCP Apple-Calendar-MCP AppleContacts-MCP AppleFiles-MCP \
+# then the ten domain servers, in any order:
+for dir in Apple-Calendar-MCP AppleContacts-MCP AppleFiles-MCP \
            AppleMail-MCP AppleMaps-MCP AppleMessages-MCP AppleNotes-MCP \
            AppleReminders-MCP AppleShortcuts-MCP AppleSystem-MCP; do
   (cd "$dir" && uv build && uv publish)
 done
+
+# publish the unified server only after all ten domain packages exist:
+(cd Apple-Tools-MCP && uv build && uv publish)
 ```
 
 Sanity checks after publishing:
@@ -67,9 +70,11 @@ Sanity checks after publishing:
 
 ## 2. Automated registry publication
 
-The tag-triggered release workflow is the default publication path. It waits
-for all 12 PyPI uploads, creates the GitHub release, then publishes all 11
-generated metadata records to the MCP Registry in sequence.
+The tag-triggered release workflow is the default publication path. It
+publishes Common first, the ten domain packages second, and the unified package
+last. It creates the GitHub release only after all 12 PyPI uploads succeed,
+then publishes all 11 generated metadata records to the MCP Registry in
+sequence.
 
 The registry job downloads the same `release-assets` artifact used for the
 GitHub release. It requires exactly 11 `*.server.json` files and validates all

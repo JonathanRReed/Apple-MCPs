@@ -22,7 +22,7 @@ from apple_contacts_mcp.models import (
 )
 from apple_contacts_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
-from apple_mcp_common.runtime import require_loopback_host
+from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Contacts on macOS. "
@@ -142,7 +142,7 @@ def contacts_permission_guide() -> dict[str, object]:
 async def contacts_recheck_permissions(ctx: Context) -> HealthResponse:
     await ctx.report_progress(25, 100, "Rechecking Contacts access")
     response = contacts_health()
-    await ctx.notify_resources_changed()
+    await notify_resources_changed(ctx)
     await ctx.report_progress(100, 100, "Done")
     return response
 

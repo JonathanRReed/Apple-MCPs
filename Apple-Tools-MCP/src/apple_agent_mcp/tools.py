@@ -44,7 +44,7 @@ from apple_agent_mcp.models import (
 )
 from apple_agent_mcp.state import StateStoreError, load_action_history, load_preferences, save_action_history, save_preferences
 from apple_mcp_common.discovery import install_search_first_discovery
-from apple_mcp_common.runtime import require_loopback_host
+from apple_mcp_common.runtime import notify_resource_updated, notify_resources_changed, require_loopback_host
 
 ensure_domain_paths()
 
@@ -848,9 +848,9 @@ async def _notify_apple_resource_updates(ctx: Context | None, *uris: str, list_c
     if ctx is None:
         return
     for uri in uris:
-        await ctx.notify_resource_updated(uri)
+        await notify_resource_updated(ctx, uri)
     if list_changed:
-        await ctx.notify_resources_changed()
+        await notify_resources_changed(ctx)
 
 
 def _domain_health() -> dict[str, dict[str, Any]]:

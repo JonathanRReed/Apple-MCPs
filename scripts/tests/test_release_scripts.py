@@ -51,6 +51,22 @@ def make_repo(root: Path, *, drift: bool = False) -> None:
 
 
 class BumpVersionTests(unittest.TestCase):
+    def test_major_bump_updates_dependency_ceilings_and_supports_next_patch(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            make_repo(root)
+            _, edits = bump_version.plan_edits("2.0.0", root)
+            for edit in edits:
+                edit.path.write_text(edit.after)
+            self.assertEqual(check_release.validate_source("v2.0.0", root), "2.0.0")
+            tools_project = (root / "Apple-Tools-MCP" / "pyproject.toml").read_text()
+            for dependency in bump_version.REQUIRED_INTERNAL_DEPENDENCIES["Apple-Tools-MCP"]:
+                self.assertIn(f'"{dependency}>=2.0.0,<3"', tools_project)
+            _, next_edits = bump_version.plan_edits("2.0.1", root)
+            for edit in next_edits:
+                edit.path.write_text(edit.after)
+            self.assertEqual(check_release.validate_source("v2.0.1", root), "2.0.1")
+
     def test_plans_all_edits_before_any_write_and_preserves_mcpb_record(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -80,6 +96,20 @@ class BumpVersionTests(unittest.TestCase):
 
 
 class ReleaseCheckTests(unittest.TestCase):
+    def test_rejects_dependency_ceiling_below_the_release(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            make_repo(root)
+            _, edits = bump_version.plan_edits("2.0.0", root)
+            for edit in edits:
+                edit.path.write_text(edit.after)
+            project = root / "Apple-Calendar-MCP" / "pyproject.toml"
+            project.write_text(project.read_text().replace(">=2.0.0,<3", ">=2.0.0,<2"))
+            with self.assertRaisesRegex(bump_version.VersionError, "internal dependencies"):
+                check_release.validate_source("v2.0.0", root)
+            with self.assertRaisesRegex(bump_version.VersionError, "internal dependencies"):
+                bump_version.plan_edits("2.0.1", root)
+
     def test_checks_tag_counts_artifacts_and_generates_exact_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

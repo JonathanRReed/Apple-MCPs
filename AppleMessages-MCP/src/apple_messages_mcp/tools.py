@@ -7,7 +7,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
-from apple_mcp_common.runtime import require_loopback_host
+from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
 from apple_messages_mcp.config import load_settings
 from apple_messages_mcp.messages_automation_bridge import MessagesAutomationBridge, MessagesAutomationBridgeError
 from apple_messages_mcp.messages_db_bridge import MessagesDBBridge, MessagesDBBridgeError
@@ -203,7 +203,7 @@ def messages_permission_guide() -> dict[str, object]:
 async def messages_recheck_permissions(ctx: Context) -> HealthResponse:
     await ctx.report_progress(25, 100, "Rechecking Messages access")
     response = messages_health()
-    await ctx.notify_resources_changed()
+    await notify_resources_changed(ctx)
     await ctx.report_progress(100, 100, "Done")
     return response
 

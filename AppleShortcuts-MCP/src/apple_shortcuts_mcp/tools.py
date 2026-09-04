@@ -7,7 +7,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
-from apple_mcp_common.runtime import require_loopback_host
+from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
 from apple_shortcuts_mcp.config import Settings, load_settings
 from apple_shortcuts_mcp.models import ErrorResponse, HealthResponse, ShortcutFolderListResponse, ShortcutListResponse, ShortcutPermissionStatus, ShortcutRunResponse, ToolError, ViewShortcutResponse
 from apple_shortcuts_mcp.permissions import SafetyError, ensure_action_allowed
@@ -181,7 +181,7 @@ def shortcuts_permission_guide() -> dict[str, object]:
 async def shortcuts_refresh_state(ctx: Context) -> HealthResponse:
     await ctx.report_progress(25, 100, "Refreshing Shortcuts state")
     response = shortcuts_health()
-    await ctx.notify_resources_changed()
+    await notify_resources_changed(ctx)
     await ctx.report_progress(100, 100, "Done")
     return response
 

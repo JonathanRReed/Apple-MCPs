@@ -57,6 +57,10 @@ def read_current_version(root: Path = ROOT) -> str:
     return _one(r'^version = "([0-9]+\.[0-9]+\.[0-9]+)"$', path.read_text(), path, "project version")
 
 
+def dependency_spec(version: str) -> str:
+    return f">={version},<{int(version.split('.')[0]) + 1}"
+
+
 def plan_edits(new_version: str, root: Path = ROOT) -> tuple[str, list[Edit]]:
     if SEMVER.fullmatch(new_version) is None:
         raise VersionError(f"'{new_version}' is not a plain X.Y.Z version")
@@ -84,21 +88,21 @@ def plan_edits(new_version: str, root: Path = ROOT) -> tuple[str, list[Edit]]:
                 if found != current:
                     raise VersionError(f"{path}: project version is {found}, expected {current}")
                 dependency_versions = {
-                    dependency: version
-                    for dependency, version in re.findall(
-                        r'^  "(apple-[a-z-]+)>=([0-9]+\.[0-9]+\.[0-9]+),<2",$', before, re.MULTILINE
+                    dependency: spec
+                    for dependency, spec in re.findall(
+                        r'^  "(apple-[a-z-]+)(>=[0-9]+\.[0-9]+\.[0-9]+,<[0-9]+)",$', before, re.MULTILINE
                     )
                 }
                 required = REQUIRED_INTERNAL_DEPENDENCIES[name]
-                if set(dependency_versions) != required or any(version != current for version in dependency_versions.values()):
+                if set(dependency_versions) != required or any(spec != dependency_spec(current) for spec in dependency_versions.values()):
                     raise VersionError(
                         f"{path}: internal dependencies {dependency_versions!r}, "
-                        f"expected {sorted(required)!r} at >= {current},<2"
+                        f"expected {sorted(required)!r} at {dependency_spec(current)}"
                     )
                 after, version_count = re.subn(r'^(version = ")' + re.escape(current) + r'("$)', rf"\g<1>{new_version}\2", before, flags=re.MULTILINE)
                 after, dependency_count = re.subn(
-                    r'(^  "apple-[a-z-]+>=)' + re.escape(current) + r'(,<2",$)',
-                    rf"\g<1>{new_version}\2",
+                    r'(^  "apple-[a-z-]+)' + re.escape(dependency_spec(current)) + r'(",$)',
+                    rf"\g<1>{dependency_spec(new_version)}\2",
                     after,
                     flags=re.MULTILINE,
                 )

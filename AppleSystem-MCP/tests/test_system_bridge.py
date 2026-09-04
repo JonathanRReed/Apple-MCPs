@@ -34,3 +34,28 @@ def test_context_snapshot_degrades_when_frontmost_lookup_times_out(monkeypatch) 
     assert snapshot["battery"]["percentage"] == 88
     assert snapshot["frontmost_app"] is None
     assert any("Frontmost application unavailable" in note for note in snapshot["notification_history_notes"])
+
+
+def test_show_notification_passes_untrusted_fields_as_osascript_arguments(monkeypatch) -> None:
+    bridge = SystemBridge()
+    captured: list[tuple[str, ...]] = []
+    payload = '\\\"\ndo shell script "unexpected"\n--'
+    monkeypatch.setattr(bridge, "_run", lambda *command: captured.append(command) or "")
+
+    bridge.show_notification(title=payload, body=payload, subtitle=payload)
+
+    command = captured[0]
+    separator = command.index("--")
+    script = command[:separator]
+    assert payload not in script
+    assert command[separator + 1 :] == (payload, payload, payload)
+
+
+def test_show_notification_preserves_optional_subtitle(monkeypatch) -> None:
+    bridge = SystemBridge()
+    captured: list[tuple[str, ...]] = []
+    monkeypatch.setattr(bridge, "_run", lambda *command: captured.append(command) or "")
+
+    bridge.show_notification(title="Title", body="Body")
+
+    assert captured[0][-4:] == ("--", "Body", "Title", "")

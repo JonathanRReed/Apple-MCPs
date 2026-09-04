@@ -53,7 +53,7 @@ def _resource_json(value: object) -> str:
     annotations=Annotations(audience=["assistant"], priority=0.8),
 )
 def contacts_directory_resource() -> str:
-    contacts = _bridge().list_contacts()[:100]
+    contacts = _bridge().list_contacts(limit=100)
     return _resource_json({"contacts": [item.model_dump() for item in contacts], "count": len(contacts)})
 
 
@@ -156,12 +156,13 @@ def contacts_list_contacts(limit: int = 100, offset: int = 0) -> ContactListResp
     try:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
+        if limit > 100:
+            raise ValueError("limit must not exceed 100")
         if offset < 0:
             raise ValueError("offset must not be negative")
         ensure_action_allowed("contacts_list_contacts")
-        contacts = _bridge().list_contacts()
-        page = contacts[offset : offset + limit]
-        return ContactListResponse(contacts=page, count=len(page))
+        contacts = _bridge().list_contacts(limit=limit, offset=offset)
+        return ContactListResponse(contacts=contacts, count=len(contacts))
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except ContactsBridgeError as exc:

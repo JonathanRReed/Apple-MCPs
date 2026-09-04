@@ -440,3 +440,43 @@ def test_create_server_registers_clean_tool_names() -> None:
         "search_tools",
         "get_tool_info",
     }
+
+
+@pytest.mark.parametrize("operation_name", ["mail_compose_draft", "mail_send_message"])
+def test_attachment_rejection_returns_structured_error(operation_name, tmp_path):
+    from apple_mail_mcp import tools
+
+    result = getattr(tools, operation_name)(
+        to=["test@example.com"], attachments=[str(tmp_path / "document.txt")],
+        bridge=FakeBridge(), settings=Settings(safety_profile=SafetyProfile.FULL_ACCESS),
+    )
+    assert result.ok is False
+    assert result.error_code == "INVALID_INPUT"
+
+
+@pytest.mark.parametrize("through_symlink", [False, True])
+@pytest.mark.parametrize("operation", [mail_compose_draft_tool, mail_send_message_tool])
+def test_attachment_separator_cannot_inject_another_path(operation, through_symlink, tmp_path):
+    allowed = tmp_path / "allowed"
+    allowed.mkdir()
+    crafted = allowed / "document\x1d" / "etc" / "passwd"
+    crafted.parent.mkdir(parents=True)
+    crafted.write_text("test fixture")
+    candidate = crafted
+    if through_symlink:
+        candidate = allowed / "innocent.txt"
+        candidate.symlink_to(crafted)
+
+    class NoSendBridge(FakeBridge):
+        def compose_draft(self, *args, **kwargs):
+            raise AssertionError("Rejected attachment reached Mail")
+
+        def send_message(self, *args, **kwargs):
+            raise AssertionError("Rejected attachment reached Mail")
+
+    with pytest.raises(ValueError, match="control separators"):
+        operation(
+            NoSendBridge(), Settings(safety_profile=SafetyProfile.FULL_ACCESS, allowed_attachment_root=allowed),
+            to=["test@example.com"], cc=None, bcc=None, subject="Test", body="Body",
+            attachments=[str(candidate)],
+        )

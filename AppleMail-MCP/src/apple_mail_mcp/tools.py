@@ -173,6 +173,8 @@ def _validate_attachments(attachments: list[str] | None, allowed_root: Path | No
 
     validated: list[str] = []
     for attachment in attachments:
+        if "\x1d" in attachment or "\x00" in attachment:
+            raise ValueError("Attachment paths must not contain control separators")
         try:
             resolved_attachment = Path(attachment).expanduser().resolve(strict=True)
             resolved_attachment.relative_to(resolved_root)
@@ -180,6 +182,8 @@ def _validate_attachments(attachments: list[str] | None, allowed_root: Path | No
             raise ValueError(f"Attachment is not a file beneath the allowed attachment root: {attachment}") from exc
         if not resolved_attachment.is_file():
             raise ValueError(f"Attachment is not a regular file: {attachment}")
+        if "\x1d" in str(resolved_attachment) or "\x00" in str(resolved_attachment):
+            raise ValueError("Attachment paths must not contain control separators")
         validated.append(str(resolved_attachment))
     return validated
 
@@ -480,6 +484,8 @@ def mail_compose_draft(
         )
     except SafetyPolicyError as exc:
         return error_response("SAFETY_POLICY_BLOCK", str(exc))
+    except ValueError as exc:
+        return error_response("INVALID_INPUT", str(exc))
     except MailBridgeError as exc:
         return error_response("DRAFT_CREATE_FAILED", str(exc))
 
@@ -511,6 +517,8 @@ def mail_send_message(
         )
     except SafetyPolicyError as exc:
         return error_response("SAFETY_POLICY_BLOCK", str(exc))
+    except ValueError as exc:
+        return error_response("INVALID_INPUT", str(exc))
     except MailBridgeError as exc:
         return error_response("SEND_FAILED", str(exc))
 

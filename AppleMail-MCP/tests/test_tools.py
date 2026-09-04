@@ -1,4 +1,7 @@
 import asyncio
+from pathlib import Path
+
+import pytest
 
 from apple_mail_mcp.config import Settings
 from apple_mail_mcp.models import (
@@ -282,6 +285,84 @@ def test_send_message_from_account_defaults_to_none() -> None:
 
     assert result.sent is True
     assert result.from_account is None
+
+
+@pytest.mark.parametrize("operation", [mail_compose_draft_tool, mail_send_message_tool])
+def test_attachment_operations_reject_attachments_when_disabled(operation, tmp_path: Path) -> None:
+    attachment = tmp_path / "document.txt"
+    attachment.write_text("private")
+    settings = Settings(safety_profile=SafetyProfile.FULL_ACCESS)
+
+    with pytest.raises(ValueError, match="Attachments are disabled"):
+        operation(
+            FakeBridge(), settings, to=["test@example.com"], cc=None, bcc=None,
+            subject="Test", body="Body", attachments=[str(attachment)],
+        )
+
+
+@pytest.mark.parametrize("operation", [mail_compose_draft_tool, mail_send_message_tool])
+def test_attachment_operations_enforce_allowed_root(operation, tmp_path: Path) -> None:
+    allowed_root = tmp_path / "allowed"
+    allowed_root.mkdir()
+    outside = tmp_path / "private.txt"
+    outside.write_text("private")
+    settings = Settings(
+        safety_profile=SafetyProfile.FULL_ACCESS,
+        allowed_attachment_root=allowed_root,
+    )
+
+    with pytest.raises(ValueError, match="beneath the allowed attachment root"):
+        operation(
+            FakeBridge(), settings, to=["test@example.com"], cc=None, bcc=None,
+            subject="Test", body="Body", attachments=[str(outside)],
+        )
+
+
+def test_attachment_validation_resolves_allowed_regular_file(tmp_path: Path) -> None:
+    allowed_root = tmp_path / "allowed"
+    allowed_root.mkdir()
+    attachment = allowed_root / "document.txt"
+    attachment.write_text("content")
+
+    class CapturingBridge(FakeBridge):
+        received_attachments: list[str] | None = None
+
+        def send_message(self, *args, attachments=None, **kwargs) -> SendRecord:
+            self.received_attachments = attachments
+            return super().send_message(*args, attachments=attachments, **kwargs)
+
+    bridge = CapturingBridge()
+    mail_send_message_tool(
+        bridge,
+        Settings(safety_profile=SafetyProfile.FULL_ACCESS, allowed_attachment_root=allowed_root),
+        to=["test@example.com"], cc=None, bcc=None, subject="Test", body="Body",
+        attachments=[str(allowed_root / "." / "document.txt")],
+    )
+
+    assert bridge.received_attachments == [str(attachment.resolve())]
+
+
+@pytest.mark.parametrize("invalid_name", ["directory", "outside-link"])
+def test_attachment_validation_rejects_non_files_and_escaping_symlinks(tmp_path: Path, invalid_name: str) -> None:
+    allowed_root = tmp_path / "allowed"
+    allowed_root.mkdir()
+    invalid_attachment = allowed_root / invalid_name
+    if invalid_name == "directory":
+        invalid_attachment.mkdir()
+        expected_error = "not a regular file"
+    else:
+        outside = tmp_path / "private.txt"
+        outside.write_text("private")
+        invalid_attachment.symlink_to(outside)
+        expected_error = "beneath the allowed attachment root"
+
+    with pytest.raises(ValueError, match=expected_error):
+        mail_send_message_tool(
+            FakeBridge(),
+            Settings(safety_profile=SafetyProfile.FULL_ACCESS, allowed_attachment_root=allowed_root),
+            to=["test@example.com"], cc=None, bcc=None, subject="Test", body="Body",
+            attachments=[str(invalid_attachment)],
+        )
 
 
 def test_reply_forward_mark_move_and_delete_tools() -> None:

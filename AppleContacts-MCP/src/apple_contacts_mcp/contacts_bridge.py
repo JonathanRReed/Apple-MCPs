@@ -4,6 +4,10 @@ import hashlib
 import json
 import re
 import subprocess
+import tempfile
+import time
+from collections.abc import Iterator
+from contextlib import suppress
 from pathlib import Path
 
 from apple_contacts_mcp.config import load_settings
@@ -12,6 +16,10 @@ from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSumma
 METHOD_FIELD_SEPARATOR = "\x1f"
 METHOD_RECORD_SEPARATOR = "\x1e"
 NO_CHANGE_SENTINEL = "__NOCHANGE__"
+SCRIPT_TIMEOUT_SECONDS = 30
+MAX_SCRIPT_OUTPUT_BYTES = 8 * 1024 * 1024
+MAX_CONTACTS_PER_REQUEST = 1000
+MAX_DIRECTORY_CONTACTS = 100_000
 
 
 class ContactsBridgeError(Exception):
@@ -33,8 +41,9 @@ class AppleContactsBridge:
         except ContactsBridgeError as exc:
             return False, exc
 
-    def list_contacts(self) -> list[ContactSummary]:
-        payload = self._run_script("list_contacts.applescript")
+    def list_contacts(self, limit: int = MAX_CONTACTS_PER_REQUEST, offset: int = 0) -> list[ContactSummary]:
+        bounded_limit = max(1, min(limit, MAX_CONTACTS_PER_REQUEST))
+        payload = self._run_script("list_contacts.applescript", str(bounded_limit), str(max(0, offset)))
         return [self._normalize_summary(item) for item in payload.get("items", []) if isinstance(item, dict)]
 
     def get_contact(self, contact_id: str) -> ContactDetail:
@@ -58,20 +67,21 @@ class AppleContactsBridge:
         query_text = query.strip().lower()
         if not query_text:
             raise ContactsBridgeError("INVALID_INPUT", "query must not be empty", "Provide a non-empty name, phone number, or email address.")
-        direct_matches = self._search_contacts_by_name(query)
+        bounded_limit = max(1, min(limit, 100))
+        direct_matches = self._search_contacts_by_name(query, bounded_limit)
         if direct_matches:
-            return direct_matches[: max(1, min(limit, 100))]
+            return direct_matches
         normalized_query = self._normalize_lookup_value(query)
         exact_matches: list[ContactSummary] = []
         partial_matches: list[ContactSummary] = []
-        for contact in self.list_contacts():
+        for contact in self._iter_all_contacts():
             if self._is_exact_match(contact, query_text, normalized_query):
                 exact_matches.append(contact)
                 continue
             if self._is_partial_match(contact, query_text, normalized_query):
                 partial_matches.append(contact)
         ordered = self._dedupe_contacts([*exact_matches, *partial_matches])
-        return ordered[: max(1, min(limit, 100))]
+        return ordered[:bounded_limit]
 
     def resolve_message_recipient(self, query: str, channel: str = "phone") -> ResolvedRecipientResponse:
         if channel not in {"phone", "email", "any"}:
@@ -171,7 +181,7 @@ class AppleContactsBridge:
         )
 
     def find_duplicates(self) -> list[DuplicateCandidateGroup]:
-        contacts = self.list_contacts()
+        contacts = list(self._iter_all_contacts())
         if len(contacts) < 2:
             return []
 
@@ -275,6 +285,56 @@ class AppleContactsBridge:
             "Use a different contact.",
         )
 
+    def _iter_all_contacts(self) -> Iterator[ContactSummary]:
+        offset = 0
+        expected_total: int | None = None
+        while expected_total is None or offset < expected_total:
+            payload = self._run_script(
+                "list_contacts.applescript",
+                str(MAX_CONTACTS_PER_REQUEST),
+                str(offset),
+            )
+            raw_total = payload.get("total")
+            if not isinstance(raw_total, int) or isinstance(raw_total, bool) or raw_total < 0:
+                raise ContactsBridgeError(
+                    "INVALID_SCRIPT_OUTPUT",
+                    "The list_contacts AppleScript did not return a valid directory total.",
+                    "Inspect the AppleScript output and try again.",
+                )
+            if raw_total > MAX_DIRECTORY_CONTACTS:
+                raise ContactsBridgeError(
+                    "CONTACT_DIRECTORY_TOO_LARGE",
+                    f"The contact directory contains {raw_total} contacts, above the {MAX_DIRECTORY_CONTACTS}-contact scan limit.",
+                    "Narrow the search by name or reduce the directory size before retrying.",
+                )
+            if expected_total is None:
+                expected_total = raw_total
+            elif raw_total != expected_total:
+                raise ContactsBridgeError(
+                    "CONTACT_DIRECTORY_CHANGED",
+                    "The contact directory changed while it was being scanned.",
+                    "Retry the request after Contacts finishes updating.",
+                )
+
+            raw_items = payload.get("items")
+            if not isinstance(raw_items, list):
+                raise ContactsBridgeError(
+                    "INVALID_SCRIPT_OUTPUT",
+                    "The list_contacts AppleScript did not return an items array.",
+                    "Inspect the AppleScript output and try again.",
+                )
+            items = [self._normalize_summary(item) for item in raw_items if isinstance(item, dict)]
+            remaining = expected_total - offset
+            expected_page_size = min(MAX_CONTACTS_PER_REQUEST, remaining)
+            if len(items) != expected_page_size:
+                raise ContactsBridgeError(
+                    "INCOMPLETE_CONTACT_DIRECTORY",
+                    f"The contact scan returned {len(items)} of {expected_page_size} expected contacts at offset {offset}.",
+                    "Retry the request after Contacts finishes updating.",
+                )
+            yield from items
+            offset += len(items)
+
     def _run_script(self, script_name: str, *args: str) -> dict[str, object]:
         script_path = self.scripts_dir / script_name
         if not script_path.exists():
@@ -285,17 +345,55 @@ class AppleContactsBridge:
             )
 
         try:
-            completed = subprocess.run(["osascript", str(script_path), *args], capture_output=True, text=True, check=False)
+            with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
+                process = subprocess.Popen(
+                    ["osascript", str(script_path), *args],
+                    stdout=stdout_file,
+                    stderr=stderr_file,
+                )
+                deadline = time.monotonic() + SCRIPT_TIMEOUT_SECONDS
+                while process.poll() is None:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        self._stop_process(process)
+                        raise ContactsBridgeError(
+                            "APPLESCRIPT_TIMEOUT",
+                            f"AppleScript exceeded the {SCRIPT_TIMEOUT_SECONDS}-second timeout.",
+                            "Ensure Contacts.app is responsive and try again.",
+                        )
+                    if stdout_file.tell() > MAX_SCRIPT_OUTPUT_BYTES or stderr_file.tell() > MAX_SCRIPT_OUTPUT_BYTES:
+                        self._stop_process(process)
+                        raise ContactsBridgeError(
+                            "APPLESCRIPT_OUTPUT_TOO_LARGE",
+                            "AppleScript output exceeded the allowed size.",
+                            "Request fewer contacts and try again.",
+                        )
+                    with suppress(subprocess.TimeoutExpired):
+                        process.wait(timeout=min(0.05, remaining))
+
+                stdout_file.seek(0)
+                stderr_file.seek(0)
+                stdout = stdout_file.read(MAX_SCRIPT_OUTPUT_BYTES + 1)
+                stderr = stderr_file.read(MAX_SCRIPT_OUTPUT_BYTES + 1)
+                if len(stdout) > MAX_SCRIPT_OUTPUT_BYTES or len(stderr) > MAX_SCRIPT_OUTPUT_BYTES:
+                    raise ContactsBridgeError(
+                        "APPLESCRIPT_OUTPUT_TOO_LARGE",
+                        "AppleScript output exceeded the allowed size.",
+                        "Request fewer contacts and try again.",
+                    )
+                returncode = process.returncode
         except OSError as exc:
             raise ContactsBridgeError(
                 "OSASCRIPT_UNAVAILABLE",
                 f"Could not run 'osascript': {exc}.",
                 "This server requires macOS with osascript available.",
             ) from exc
-        if completed.returncode != 0:
-            raise self._map_script_error(completed.stderr.strip() or completed.stdout.strip())
+        stdout_text = stdout.decode("utf-8", errors="replace")
+        stderr_text = stderr.decode("utf-8", errors="replace")
+        if returncode != 0:
+            raise self._map_script_error(stderr_text.strip() or stdout_text.strip())
 
-        output = completed.stdout.strip()
+        output = stdout_text.strip()
         if not output:
             return {}
         try:
@@ -314,10 +412,20 @@ class AppleContactsBridge:
             )
         return payload
 
-    def _search_contacts_by_name(self, query: str) -> list[ContactSummary]:
+    def _stop_process(self, process: subprocess.Popen[bytes]) -> None:
+        with suppress(ProcessLookupError):
+            process.terminate()
+        try:
+            process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            with suppress(ProcessLookupError):
+                process.kill()
+            process.wait()
+
+    def _search_contacts_by_name(self, query: str, limit: int) -> list[ContactSummary]:
         if not any(character.isalpha() for character in query):
             return []
-        payload = self._run_script("search_contacts.applescript", query.strip())
+        payload = self._run_script("search_contacts.applescript", query.strip(), str(limit))
         return [self._normalize_summary(item) for item in payload.get("items", []) if isinstance(item, dict)]
 
     def _map_script_error(self, error_text: str) -> ContactsBridgeError:

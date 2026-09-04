@@ -7,7 +7,7 @@ class FakeBridge:
     def permission_diagnostic(self):
         return True, None
 
-    def list_contacts(self):
+    def list_contacts(self, limit: int = 1000, offset: int = 0):
         return [
             ContactDetail(
                 contact_id="contact-1",
@@ -92,6 +92,27 @@ def test_contacts_resolve_message_recipient_returns_value(monkeypatch) -> None:
 
     assert result.ok is True
     assert result.recipient_value == "+15551234567"
+
+
+def test_contacts_list_enforces_limit_and_passes_pagination_to_bridge(monkeypatch) -> None:
+    calls: list[tuple[int, int]] = []
+
+    class RecordingBridge(FakeBridge):
+        def list_contacts(self, limit: int = 1000, offset: int = 0):
+            calls.append((limit, offset))
+            return super().list_contacts(limit=limit, offset=offset)
+
+    monkeypatch.setenv("APPLE_CONTACTS_MCP_SAFETY_MODE", "safe_readonly")
+    load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: RecordingBridge())
+
+    result = tools.contacts_list_contacts(limit=10, offset=20)
+    rejected = tools.contacts_list_contacts(limit=101)
+
+    assert result.ok is True
+    assert calls == [(10, 20)]
+    assert rejected.ok is False
+    assert rejected.error.error_code == "INVALID_INPUT"
 
 
 def test_contacts_create_update_and_delete(monkeypatch) -> None:

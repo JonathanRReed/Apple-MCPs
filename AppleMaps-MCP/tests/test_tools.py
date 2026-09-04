@@ -46,7 +46,7 @@ def test_maps_status_resource(monkeypatch):
 
 def test_main_uses_streamable_http(monkeypatch):
     monkeypatch.setenv("APPLE_MAPS_MCP_TRANSPORT", "streamable-http")
-    monkeypatch.setenv("APPLE_MAPS_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("APPLE_MAPS_MCP_HOST", "127.0.0.1")
     monkeypatch.setenv("APPLE_MAPS_MCP_PORT", "8765")
     monkeypatch.setenv("APPLE_MAPS_MCP_LOG_LEVEL", "DEBUG")
     tools.load_settings.cache_clear()
@@ -67,7 +67,7 @@ def test_main_uses_streamable_http(monkeypatch):
 
     assert captured == {
         "transport": "streamable-http",
-        "host": "0.0.0.0",
+        "host": "127.0.0.1",
         "port": 8765,
         "json_response": True,
         "stateless_http": True,

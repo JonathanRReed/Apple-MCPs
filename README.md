@@ -47,6 +47,17 @@ Standalone servers work the same way (`uvx apple-mcp-mail`, `uvx apple-calendar-
 claude mcp add --transport stdio --scope project apple-tools -- uvx apple-tools-mcp
 ```
 
+### Codex
+
+Register the unified server with the Codex CLI:
+
+```bash
+codex mcp add apple-tools -- uvx apple-tools-mcp
+```
+
+Restart the client after installation or upgrades, then call `search_tools`
+with a query such as `calendar health` to check discovery without reading app data.
+
 ### Generic MCP client (stdio JSON config)
 
 ```json
@@ -138,7 +149,7 @@ See [docs/code-mode.md](./docs/code-mode.md) for the wrapper layout, client inte
 
 ## Transports and Protocol Verification
 
-`stdio` is the default and recommended transport for local use. Every server also supports `streamable-http` via env vars (`APPLE_<DOMAIN>_MCP_TRANSPORT=streamable-http`, plus `_HOST`/`_PORT`).
+`stdio` is the default and recommended transport for local use. Every server also supports `streamable-http` via env vars (`APPLE_<DOMAIN>_MCP_TRANSPORT=streamable-http`, plus `_HOST`/`_PORT`). HTTP binds must be loopback addresses, such as `127.0.0.1`, `::1`, or `localhost`. These servers do not provide remote authentication, so network and wildcard binds are rejected. Do not expose them through a tunnel or public proxy.
 
 Run the official MCP conformance suite against Apple-Tools-MCP:
 
@@ -150,13 +161,14 @@ APPLE_AGENT_MCP_CONFORMANCE_MODE=1 \
 ```
 
 ```bash
-npx -y @modelcontextprotocol/conformance server --url http://127.0.0.1:8765/mcp --suite active
+npx -y @modelcontextprotocol/conformance@0.2.0-alpha.11 server --url http://127.0.0.1:8765/mcp --requirements 2026-07-28
 ```
 
 Lightweight Inspector smoke checks across all servers:
 
 ```bash
 bash scripts/inspector_smoke.sh
+uv run python scripts/protocol_smoke.py
 ```
 
 CI runs lint, the full test suite (macOS and Linux), generated-artifact drift checks, Inspector smoke checks, and the conformance suite — see [.github/workflows](./.github/workflows).

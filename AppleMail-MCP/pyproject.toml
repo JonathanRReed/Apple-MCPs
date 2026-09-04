@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apple-mcp-mail"
-version = "1.0.3"
+version = "1.0.4"
 description = "Local MCP server for Apple Mail on macOS"
 readme = "README.md"
 license = "MIT"

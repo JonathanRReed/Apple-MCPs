@@ -103,7 +103,7 @@ def test_resource_rendering(monkeypatch) -> None:
 
 def test_main_uses_streamable_http_settings(monkeypatch) -> None:
     monkeypatch.setenv("APPLE_SHORTCUTS_MCP_TRANSPORT", "streamable-http")
-    monkeypatch.setenv("APPLE_SHORTCUTS_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("APPLE_SHORTCUTS_MCP_HOST", "127.0.0.1")
     monkeypatch.setenv("APPLE_SHORTCUTS_MCP_PORT", "8766")
     monkeypatch.setenv("APPLE_SHORTCUTS_MCP_LOG_LEVEL", "DEBUG")
     load_settings.cache_clear()
@@ -120,7 +120,7 @@ def test_main_uses_streamable_http_settings(monkeypatch) -> None:
 
     assert captured == {
         "transport": "streamable-http",
-        "host": "0.0.0.0",
+        "host": "127.0.0.1",
         "port": 8766,
         "stateless_http": True,
         "json_response": True,

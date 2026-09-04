@@ -65,7 +65,7 @@ run_inspector_check() {
   # Launch the server through `uv run` so it uses the shared workspace venv.
   # Note: the inspector CLI mis-parses extra dash-flags in the server command,
   # so the command must stay flag-free; uv finds the workspace via cwd.
-  npx -y @modelcontextprotocol/inspector --cli uv run "$binary" --method "$method" >"$CHECK_OUTPUT"
+  npx -y @modelcontextprotocol/inspector@2.5.0 --cli uv run "$binary" --method "$method" >"$CHECK_OUTPUT"
 
   uv run --no-sync python - "$CHECK_OUTPUT" "$expected_key" "$package" "$method" "$require_nonempty" <<'PY'
 import json

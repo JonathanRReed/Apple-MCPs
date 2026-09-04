@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "apple-files",
   "display_name": "Apple Files",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Inspect and manage local files and folders inside allowed roots on macOS.",
   "long_description": "Local MCP server for scoped file, Finder-adjacent, and iCloud Drive workflows on macOS. Use it to inspect directories, search files, read text files, prepare attachments, reveal paths in Finder, manage Finder tags, and perform bounded file mutations inside explicit allowed roots.",
   "icon": "icon.png",
@@ -47,5 +47,17 @@
         "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage"
       }
     }
-  }
+  },
+  "tools": [
+    {
+      "name": "search_tools",
+      "description": "Search available tools by keyword."
+    },
+    {
+      "name": "get_tool_info",
+      "description": "Read the schema and usage of an available tool."
+    }
+  ],
+  "tools_generated": true,
+  "prompts_generated": true
 }

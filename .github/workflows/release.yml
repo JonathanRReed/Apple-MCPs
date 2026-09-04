@@ -30,30 +30,25 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Verify tag and source versions
+        run: python3 scripts/check_release.py --tag "$GITHUB_REF_NAME"
+
       - name: Build sdists and wheels for all packages
         run: uv build --all-packages
 
-      - name: Build .mcpb bundles (if build script exists)
-        run: |
-          if [ -f scripts/build_mcpb.sh ]; then
-            bash scripts/build_mcpb.sh
-          else
-            echo "scripts/build_mcpb.sh not present; skipping bundle build."
-          fi
+      - name: Build .mcpb bundles
+        run: bash scripts/build_mcpb.sh
+
+      - name: Verify built assets and generate release metadata
+        run: python3 scripts/check_release.py --tag "$GITHUB_REF_NAME" --artifacts
 
       - name: Collect release assets and write SHA256SUMS
         run: |
           mkdir -p release-assets
-          # Collect any .mcpb bundles the build script produced, wherever it
-          # wrote them.
-          find . -name '*.mcpb' -not -path './release-assets/*' -exec cp {} release-assets/ \;
-          # Checksums cover everything shipped from this tag: PyPI dists and
-          # any bundles attached to the GitHub Release.
+          cp dist/mcpb/*.mcpb release-assets/
           cp dist/*.tar.gz dist/*.whl release-assets/
+          cp release-metadata/*.server.json release-assets/
           (cd release-assets && shasum -a 256 -- * > SHA256SUMS.tmp && mv SHA256SUMS.tmp SHA256SUMS)
-          # Only bundles + SHA256SUMS are attached to the Release; dists go to
-          # PyPI, so drop them from the asset directory after checksumming.
-          rm -f release-assets/*.tar.gz release-assets/*.whl
           ls -la release-assets
           cat release-assets/SHA256SUMS
 
@@ -124,7 +119,7 @@ jobs:
 
   github-release:
     name: Create GitHub Release
-    needs: build
+    needs: [build, publish-pypi]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

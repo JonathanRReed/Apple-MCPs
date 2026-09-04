@@ -125,3 +125,12 @@ claude mcp add --transport stdio --scope project apple-mail -- uvx apple-mcp-mai
 ## Related
 
 - [Apple-Tools-MCP](../Apple-Tools-MCP/README.md)
+
+## Attachment access
+
+File attachments are disabled until you set `APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT`
+to a directory you choose, such as `~/Documents/Mail Attachments`. This applies to
+both drafts and sends, including calls through Apple Tools. The server resolves
+symlinks and accepts only regular files inside that directory. Files outside it,
+directories, and paths containing the attachment transport separator are rejected.
+Mail operations without attachments continue to work with the existing safety profile.

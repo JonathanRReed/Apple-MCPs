@@ -334,3 +334,10 @@ bash scripts/inspector_smoke.sh
 - [Apple Contacts MCP](../AppleContacts-MCP/README.md)
 - [Apple Notes MCP](../AppleNotes-MCP/README.md)
 - [Apple Shortcuts MCP](../AppleShortcuts-MCP/README.md)
+
+## Mail attachments
+
+Set `APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT` to a dedicated directory before
+attaching local files to a draft or outgoing message. Attachments are disabled
+when this variable is unset. The same directory restriction applies to the
+standalone Mail server and the unified Apple Tools server.

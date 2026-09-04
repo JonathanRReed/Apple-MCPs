@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "apple-reminders",
   "display_name": "Apple Reminders",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "List, create, update, complete, and delete reminders in Apple Reminders on macOS.",
   "long_description": "Local MCP server for Apple Reminders on macOS. Uses Apple's EventKit framework through a small native helper to list reminder lists, read reminder state, create reminders, update details, complete tasks, and delete reminders while keeping Reminders as the system of record.",
   "icon": "icon.png",
@@ -46,5 +46,17 @@
         "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage"
       }
     }
-  }
+  },
+  "tools": [
+    {
+      "name": "search_tools",
+      "description": "Search available tools by keyword."
+    },
+    {
+      "name": "get_tool_info",
+      "description": "Read the schema and usage of an available tool."
+    }
+  ],
+  "tools_generated": true,
+  "prompts_generated": true
 }

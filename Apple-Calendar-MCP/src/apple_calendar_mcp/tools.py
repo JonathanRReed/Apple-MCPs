@@ -10,6 +10,7 @@ from apple_calendar_mcp.models import CalendarListResponse, DeleteEventResponse,
 from apple_calendar_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_calendar_mcp.utils import parse_iso_datetime
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.runtime import require_loopback_host
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Calendar on macOS. "
@@ -17,7 +18,7 @@ SERVER_INSTRUCTIONS = (
     "Prefer list and get tools before mutations when ids or calendar ids are unknown."
 )
 
-mcp = MCPServer("Apple Calendar", instructions=SERVER_INSTRUCTIONS)
+mcp = MCPServer("Apple Calendar", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def _bridge() -> CalendarBridge:
@@ -210,7 +211,7 @@ def calendar_permission_guide() -> dict[str, object]:
 async def calendar_recheck_permissions(ctx: Context) -> HealthResponse:
     await ctx.report_progress(25, 100, "Rechecking Calendar access")
     response = calendar_health()
-    await ctx.session.send_resource_list_changed()
+    await ctx.notify_resources_changed()
     await ctx.report_progress(100, 100, "Done")
     return response
 
@@ -411,9 +412,10 @@ def main() -> None:
     if transport == "streamable-http":
         mcp.run(
             transport="streamable-http",
-            host=os.environ.get("APPLE_CALENDAR_MCP_HOST", "127.0.0.1"),
+            host=require_loopback_host(os.environ.get("APPLE_CALENDAR_MCP_HOST", "127.0.0.1")),
             port=int(os.environ.get("APPLE_CALENDAR_MCP_PORT", "8730")),
             json_response=True,
+            stateless_http=True,
         )
         return
     mcp.run(transport="stdio")

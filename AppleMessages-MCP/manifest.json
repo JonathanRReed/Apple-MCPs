@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "apple-messages",
   "display_name": "Apple Messages",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Read Messages history on macOS and send or reply through Messages.app.",
   "long_description": "Local MCP server for Apple Messages on macOS. Uses the local Messages SQLite database for history, search, and attachment metadata when Full Disk Access is available, and uses Messages.app automation for send and reply actions.",
   "icon": "icon.png",
@@ -46,5 +46,17 @@
         "APPLE_MESSAGES_MCP_SAFETY_MODE": "full_access"
       }
     }
-  }
+  },
+  "tools": [
+    {
+      "name": "search_tools",
+      "description": "Search available tools by keyword."
+    },
+    {
+      "name": "get_tool_info",
+      "description": "Read the schema and usage of an available tool."
+    }
+  ],
+  "tools_generated": true,
+  "prompts_generated": true
 }

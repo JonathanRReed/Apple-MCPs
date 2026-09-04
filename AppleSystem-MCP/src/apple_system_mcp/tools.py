@@ -6,6 +6,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.runtime import require_loopback_host
 from apple_system_mcp.config import load_settings
 from apple_system_mcp.models import (
     ClipboardResponse,
@@ -34,7 +35,7 @@ SERVER_INSTRUCTIONS = (
     "Search here when the user wants battery state, the frontmost app, running applications, clipboard access, local notifications, truthful Focus support metadata, application launch, assistant-relevant macOS settings reads or writes, or bounded GUI fallback automation for the frontmost app."
 )
 
-mcp = MCPServer("Apple System MCP", instructions=SERVER_INSTRUCTIONS)
+mcp = MCPServer("Apple System MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def _bridge():
@@ -784,7 +785,7 @@ async def system_open_application(application: str | None = None, bundle_id: str
         ensure_action_allowed("system_open_application")
         opened_application = _bridge().open_application(application=application, bundle_id=bundle_id)
         if ctx is not None:
-            await ctx.session.send_resource_list_changed()
+            await ctx.notify_resources_changed()
         return OpenAppResponse(opened=True, application=opened_application.name, bundle_id=opened_application.bundle_id)
     except (SafetyError, SystemBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
@@ -843,7 +844,7 @@ def main() -> None:
     mcp.settings.log_level = settings.log_level
     mcp.run(
         transport="streamable-http",
-        host=settings.host,
+        host=require_loopback_host(settings.host),
         port=settings.port,
         json_response=True,
         stateless_http=True,

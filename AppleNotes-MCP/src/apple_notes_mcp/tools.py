@@ -7,6 +7,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.runtime import require_loopback_host
 from apple_notes_mcp.config import load_settings
 from apple_notes_mcp.models import (
     AccountListResponse,
@@ -32,7 +33,7 @@ SERVER_INSTRUCTIONS = (
     "Prefer list and get tools before mutations when ids are unknown."
 )
 
-mcp = MCPServer("Apple Notes MCP", instructions=SERVER_INSTRUCTIONS)
+mcp = MCPServer("Apple Notes MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def _bridge() -> AppleNotesBridge:
@@ -196,7 +197,7 @@ def notes_permission_guide() -> dict[str, object]:
 async def notes_recheck_permissions(ctx: Context) -> HealthResponse:
     await ctx.report_progress(25, 100, "Rechecking Notes access")
     response = notes_health()
-    await ctx.session.send_resource_list_changed()
+    await ctx.notify_resources_changed()
     await ctx.report_progress(100, 100, "Done")
     return response
 
@@ -534,9 +535,10 @@ def main() -> None:
     if transport == "streamable-http":
         mcp.run(
             transport="streamable-http",
-            host=os.environ.get("APPLE_NOTES_MCP_HOST", "127.0.0.1"),
+            host=require_loopback_host(os.environ.get("APPLE_NOTES_MCP_HOST", "127.0.0.1")),
             port=int(os.environ.get("APPLE_NOTES_MCP_PORT", "8734")),
             json_response=True,
+            stateless_http=True,
         )
         return
     mcp.run(transport="stdio")

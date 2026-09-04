@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apple-mcp-reminders"
-version = "1.0.3"
+version = "1.0.4"
 description = "Local Apple Reminders MCP server for macOS"
 readme = "README.md"
 license = "MIT"

@@ -26,7 +26,7 @@ def load_settings() -> Settings:
 
     return Settings(
         server_name="Apple Messages MCP",
-        version="1.0.3",
+        version="1.0.4",
         safety_mode=cast(SafetyMode, raw_safety_mode),
         db_path=Path(os.environ.get("APPLE_MESSAGES_MCP_DB_PATH", str(Path.home() / "Library" / "Messages" / "chat.db"))).expanduser(),
         log_level=os.environ.get("APPLE_MESSAGES_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",

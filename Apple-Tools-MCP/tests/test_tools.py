@@ -1254,7 +1254,7 @@ def test_messages_send_attachment_wrapper_passes_text(monkeypatch) -> None:
 
 def test_main_uses_streamable_http_settings(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("APPLE_AGENT_MCP_TRANSPORT", "streamable-http")
-    monkeypatch.setenv("APPLE_AGENT_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("APPLE_AGENT_MCP_HOST", "127.0.0.1")
     monkeypatch.setenv("APPLE_AGENT_MCP_PORT", "8765")
     monkeypatch.setenv("APPLE_AGENT_MCP_LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(tmp_path / "prefs.json"))
@@ -1273,7 +1273,7 @@ def test_main_uses_streamable_http_settings(monkeypatch, tmp_path) -> None:
 
     assert captured == {
         "transport": "streamable-http",
-        "host": "0.0.0.0",
+        "host": "127.0.0.1",
         "port": 8765,
         "log_level": "DEBUG",
         "stateless_http": True,
@@ -1281,9 +1281,29 @@ def test_main_uses_streamable_http_settings(monkeypatch, tmp_path) -> None:
     }
 
 
+def test_resource_updates_use_current_subscription_api() -> None:
+    class StubContext:
+        def __init__(self) -> None:
+            self.updated: list[str] = []
+            self.list_changed = False
+
+        async def notify_resource_updated(self, uri: str) -> None:
+            self.updated.append(uri)
+
+        async def notify_resources_changed(self) -> None:
+            self.list_changed = True
+
+    context = StubContext()
+
+    asyncio.run(tools._notify_apple_resource_updates(context, "apple://health", list_changed=True))
+
+    assert context.updated == ["apple://health"]
+    assert context.list_changed is True
+
+
 def test_main_uses_streaming_http_for_conformance_mode(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("APPLE_AGENT_MCP_TRANSPORT", "streamable-http")
-    monkeypatch.setenv("APPLE_AGENT_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("APPLE_AGENT_MCP_HOST", "127.0.0.1")
     monkeypatch.setenv("APPLE_AGENT_MCP_PORT", "8765")
     monkeypatch.setenv("APPLE_AGENT_MCP_LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("APPLE_AGENT_MCP_CONFORMANCE_MODE", "true")
@@ -1302,7 +1322,7 @@ def test_main_uses_streaming_http_for_conformance_mode(monkeypatch, tmp_path) ->
 
     assert captured == {
         "transport": "streamable-http",
-        "host": "0.0.0.0",
+        "host": "127.0.0.1",
         "port": 8765,
         "stateless_http": False,
         "json_response": False,

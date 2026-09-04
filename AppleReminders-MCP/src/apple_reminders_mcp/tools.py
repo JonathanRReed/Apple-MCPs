@@ -7,6 +7,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.runtime import require_loopback_host
 from apple_reminders_mcp.config import load_settings
 from apple_reminders_mcp.models import (
     DeleteReminderListResponse,
@@ -28,7 +29,7 @@ SERVER_INSTRUCTIONS = (
     "Prefer list and get tools before mutation tools when ids are unknown."
 )
 
-mcp = MCPServer("Apple Reminders MCP", instructions=SERVER_INSTRUCTIONS)
+mcp = MCPServer("Apple Reminders MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def _bridge() -> RemindersBridge:
@@ -171,7 +172,7 @@ def reminders_permission_guide() -> dict[str, object]:
 async def reminders_recheck_permissions(ctx: Context) -> HealthResponse:
     await ctx.report_progress(25, 100, "Rechecking Reminders access")
     response = reminders_health()
-    await ctx.session.send_resource_list_changed()
+    await ctx.notify_resources_changed()
     await ctx.report_progress(100, 100, "Done")
     return response
 
@@ -481,9 +482,10 @@ def main() -> None:
     if transport == "streamable-http":
         mcp.run(
             transport="streamable-http",
-            host=os.environ.get("APPLE_REMINDERS_MCP_HOST", "127.0.0.1"),
+            host=require_loopback_host(os.environ.get("APPLE_REMINDERS_MCP_HOST", "127.0.0.1")),
             port=int(os.environ.get("APPLE_REMINDERS_MCP_PORT", "8738")),
             json_response=True,
+            stateless_http=True,
         )
         return
     mcp.run(transport="stdio")

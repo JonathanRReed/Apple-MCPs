@@ -30,9 +30,14 @@ heading), refresh the lockfile, and run the test suites:
 ```bash
 python3 scripts/bump_version.py 1.0.3
 uv sync --all-packages
+python3 scripts/check_release.py --tag v1.0.3
 ```
 
-Tagging `vX.Y.Z` after committing triggers the release workflow.
+The bump command validates every package before writing any file. It updates
+the project, config, manifest, top-level server, and PyPI package versions. It
+leaves each checked-in MCPB URL, version, and hash together because those fields
+describe an existing release asset. Tagging `vX.Y.Z` after committing triggers
+the release workflow.
 
 ## 1. Publish packages to PyPI with uv
 
@@ -103,12 +108,33 @@ fails with a permissions error, the logged-in GitHub account does not own the
 
 ## 4. Updating MCPB packages at release time
 
-Each `server.json` includes both its PyPI package and the `.mcpb` asset from the
-latest release. MCPB entries require the SHA-256 of the exact release asset, so
-update them only after the new bundles have been built:
+Each checked-in `server.json` includes both its PyPI package and a `.mcpb` asset
+from an existing release. MCPB entries require the SHA-256 of the exact asset.
+Do not change an MCPB package version until the matching bundle exists.
 
-1. Compute the hash: `openssl dgst -sha256 apple-mail.mcpb`
-2. Replace that server's existing `mcpb` entry in the `packages` array:
+The release workflow builds all 11 bundles, checks that all 12 wheels and
+sdists and all 11 bundles are present, and generates one
+`<server-directory>.server.json` file per server. Each generated file contains
+the exact release URL and SHA-256 for its built bundle. The workflow attaches
+those files, the bundles, the wheels, the sdists, and `SHA256SUMS` to the GitHub
+release after every PyPI publish succeeds. This makes each checksum directly
+verifiable against an attached file.
+
+For a manual release, generate the same metadata only after building every
+artifact:
+
+```bash
+uv build --all-packages
+bash scripts/build_mcpb.sh
+python3 scripts/check_release.py --tag vX.Y.Z --artifacts
+```
+
+To update and publish registry metadata manually:
+
+1. Open the generated file in `release-metadata/` and verify its MCPB entry
+   against the matching bundle and tag.
+2. Use that generated metadata as the server's registry document. Its MCPB
+   entry has this form:
 
    ```json
    {
@@ -122,8 +148,8 @@ update them only after the new bundles have been built:
    The download URL must contain the string "mcp" (the `.mcpb` extension
    satisfies this). The registry does not verify the hash, but MCP clients do
    before installing.
-3. Bump `version` in `server.json` (and the package versions to match the
-   release) and run `mcp-publisher publish` again.
+3. Run `mcp-publisher publish` from a directory containing that generated file
+   as `server.json`. Registry publishing remains a manual step.
 
 ## 5. Optional: automate with GitHub Actions
 
@@ -144,8 +170,6 @@ then publish every `server.json`. Key points:
   https://pypi.org/manage/account/publishing/, set Environment name to
   `pypi-<package-name>` for each entry. A shared environment name will be
   rejected with "matching this configuration has already been registered".
-- Optionally rewrite `.version` in each `server.json` from the tag with `jq`
-  before publishing.
 - For this monorepo, loop the publish step over the 11 server directories,
   mirroring the loop in section 3.
 
@@ -154,5 +178,6 @@ then publish every `server.json`. Key points:
 - The MCP Registry is in preview; breaking changes or data resets may occur.
 - `server.json` files validate against the official schema
   `https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json`.
-- Registry, PyPI, and MCPB versions are kept in lockstep. Bump all three
-  together.
+- A published registry record should use matching server, PyPI, and MCPB
+  versions. Checked-in source metadata may retain the prior MCPB record until
+  the next bundle has been built and hashed.

@@ -3532,7 +3532,6 @@ def main() -> None:
     logging.basicConfig(level=getattr(logging, settings.log_level, logging.INFO))
     conformance_value = os.environ.get("APPLE_AGENT_MCP_CONFORMANCE_MODE", "").strip().lower()
     conformance_mode = conformance_value in {"1", "true", "yes", "on", "legacy"}
-    legacy_conformance = conformance_value == "legacy"
     if conformance_mode:
         enable_conformance_mode(mcp)
     if settings.transport == "stdio":
@@ -3544,5 +3543,5 @@ def main() -> None:
         host=require_loopback_host(settings.host),
         port=settings.port,
         json_response=not conformance_mode,
-        stateless_http=not legacy_conformance,
+        stateless_http=False,
     )

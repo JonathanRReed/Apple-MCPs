@@ -443,7 +443,7 @@ def main() -> None:
             host=require_loopback_host(os.environ.get("APPLE_MESSAGES_MCP_HOST", "127.0.0.1")),
             port=int(os.environ.get("APPLE_MESSAGES_MCP_PORT", "8737")),
             json_response=True,
-            stateless_http=True,
+            stateless_http=False,
         )
         return
     mcp.run(transport="stdio")

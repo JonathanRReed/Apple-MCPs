@@ -122,7 +122,7 @@ def test_main_uses_streamable_http_settings(monkeypatch) -> None:
         "transport": "streamable-http",
         "host": "127.0.0.1",
         "port": 8766,
-        "stateless_http": True,
+        "stateless_http": False,
         "json_response": True,
     }
 

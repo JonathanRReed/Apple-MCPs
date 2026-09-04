@@ -281,6 +281,6 @@ def test_main_uses_streamable_http(monkeypatch):
         "host": "127.0.0.1",
         "port": 8765,
         "json_response": True,
-        "stateless_http": True,
+        "stateless_http": False,
         "log_level": "DEBUG",
     }

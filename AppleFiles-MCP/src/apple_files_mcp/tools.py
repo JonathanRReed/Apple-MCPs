@@ -485,5 +485,5 @@ def main() -> None:
         host=require_loopback_host(settings.host),
         port=settings.port,
         json_response=True,
-        stateless_http=True,
+        stateless_http=False,
     )

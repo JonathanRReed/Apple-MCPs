@@ -5,7 +5,9 @@ Reviewed September 4, 2026 against the [MCP 2026-07-28 specification](https://mo
 The suite uses the official Python SDK and requires `mcp>=2.1.1,<3`.
 Resource notifications use the SDK's subscription methods for modern protocols and its session notification methods for legacy protocols. A wire test verifies both legacy resource-update and list-change messages. All servers
 report version 1.0.4 and expose JSON Schema inputs and structured outputs.
-Streamable HTTP is stateless in production and restricted to loopback addresses.
+Streamable HTTP preserves sessions for legacy clients so their GET notification
+streams remain available. MCP 2026-07-28 requests still use the SDK's
+self-contained stateless request path. HTTP remains restricted to loopback addresses.
 Remote access would require a separate authentication and deployment design.
 
 ## Protocol checks
@@ -49,7 +51,7 @@ and deletion. The checks found and verified fixes for Notes folder deletion
 and the Reminders list deletion response. All dedicated test records and
 containers were removed. Contacts also passed a bounded read check.
 
-The package suites passed 251 tests before publication. These checks do not
+The package suites passed 252 tests before publication. These checks do not
 assert that every operation in every Apple app was exercised live. Mail sending
 and Messages sending were not used for release testing.
 

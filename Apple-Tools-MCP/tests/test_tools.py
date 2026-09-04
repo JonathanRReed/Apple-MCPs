@@ -1282,7 +1282,7 @@ def test_main_uses_streamable_http_settings(monkeypatch, tmp_path) -> None:
         "host": "127.0.0.1",
         "port": 8765,
         "log_level": "DEBUG",
-        "stateless_http": True,
+        "stateless_http": False,
         "json_response": True,
     }
 
@@ -1313,7 +1313,7 @@ def test_resource_updates_use_current_subscription_api() -> None:
     assert context.list_changed is True
 
 
-def test_main_uses_stateless_http_for_current_conformance_mode(monkeypatch, tmp_path) -> None:
+def test_main_preserves_legacy_sessions_in_current_conformance_mode(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("APPLE_AGENT_MCP_TRANSPORT", "streamable-http")
     monkeypatch.setenv("APPLE_AGENT_MCP_HOST", "127.0.0.1")
     monkeypatch.setenv("APPLE_AGENT_MCP_PORT", "8765")
@@ -1336,7 +1336,7 @@ def test_main_uses_stateless_http_for_current_conformance_mode(monkeypatch, tmp_
         "transport": "streamable-http",
         "host": "127.0.0.1",
         "port": 8765,
-        "stateless_http": True,
+        "stateless_http": False,
         "json_response": False,
     }
 

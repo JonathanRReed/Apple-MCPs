@@ -309,6 +309,6 @@ def main() -> None:
         transport="streamable-http",
         host=require_loopback_host(settings.host),
         port=settings.port,
-        stateless_http=True,
+        stateless_http=False,
         json_response=True,
     )

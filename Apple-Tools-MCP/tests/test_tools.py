@@ -134,6 +134,12 @@ def test_conformance_mode_registers_expected_surface() -> None:
     assert resource_names["conformance_static_text"].description
     assert "test_image_content" in tool_names
     assert "test_tool_with_progress" in tool_names
+    assert "test_input_required_result_elicitation" in tool_names
+    assert "test_input_required_result_sampling" in tool_names
+    assert "test_input_required_result_list_roots" in tool_names
+    assert "test_input_required_result_multi_round" in tool_names
+    assert "test_input_required_result_prompt" in prompt_names
+    assert server._lowlevel_server.cache_hints["tools/list"].ttl_ms == 0
 
 
 def test_briefing_tools_registered_as_standard_tools() -> None:
@@ -1254,7 +1260,7 @@ def test_messages_send_attachment_wrapper_passes_text(monkeypatch) -> None:
 
 def test_main_uses_streamable_http_settings(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("APPLE_AGENT_MCP_TRANSPORT", "streamable-http")
-    monkeypatch.setenv("APPLE_AGENT_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("APPLE_AGENT_MCP_HOST", "127.0.0.1")
     monkeypatch.setenv("APPLE_AGENT_MCP_PORT", "8765")
     monkeypatch.setenv("APPLE_AGENT_MCP_LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(tmp_path / "prefs.json"))
@@ -1273,17 +1279,43 @@ def test_main_uses_streamable_http_settings(monkeypatch, tmp_path) -> None:
 
     assert captured == {
         "transport": "streamable-http",
-        "host": "0.0.0.0",
+        "host": "127.0.0.1",
         "port": 8765,
         "log_level": "DEBUG",
-        "stateless_http": True,
+        "stateless_http": False,
         "json_response": True,
     }
 
 
-def test_main_uses_streaming_http_for_conformance_mode(monkeypatch, tmp_path) -> None:
+def test_resource_updates_use_current_subscription_api() -> None:
+    class StubContext:
+        def __init__(self) -> None:
+            self.protocol_version = "2026-07-28"
+
+            class StubSession:
+                protocol_version = "2026-07-28"
+
+            self.request_context = type("RequestContext", (), {"session": StubSession()})()
+            self.updated: list[str] = []
+            self.list_changed = False
+
+        async def notify_resource_updated(self, uri: str) -> None:
+            self.updated.append(uri)
+
+        async def notify_resources_changed(self) -> None:
+            self.list_changed = True
+
+    context = StubContext()
+
+    asyncio.run(tools._notify_apple_resource_updates(context, "apple://health", list_changed=True))
+
+    assert context.updated == ["apple://health"]
+    assert context.list_changed is True
+
+
+def test_main_preserves_legacy_sessions_in_current_conformance_mode(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("APPLE_AGENT_MCP_TRANSPORT", "streamable-http")
-    monkeypatch.setenv("APPLE_AGENT_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("APPLE_AGENT_MCP_HOST", "127.0.0.1")
     monkeypatch.setenv("APPLE_AGENT_MCP_PORT", "8765")
     monkeypatch.setenv("APPLE_AGENT_MCP_LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("APPLE_AGENT_MCP_CONFORMANCE_MODE", "true")
@@ -1302,11 +1334,31 @@ def test_main_uses_streaming_http_for_conformance_mode(monkeypatch, tmp_path) ->
 
     assert captured == {
         "transport": "streamable-http",
-        "host": "0.0.0.0",
+        "host": "127.0.0.1",
         "port": 8765,
         "stateless_http": False,
         "json_response": False,
     }
+
+
+def test_main_preserves_stateful_http_for_legacy_conformance_mode(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("APPLE_AGENT_MCP_TRANSPORT", "streamable-http")
+    monkeypatch.setenv("APPLE_AGENT_MCP_HOST", "127.0.0.1")
+    monkeypatch.setenv("APPLE_AGENT_MCP_PORT", "8765")
+    monkeypatch.setenv("APPLE_AGENT_MCP_CONFORMANCE_MODE", "legacy")
+    monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(tmp_path / "prefs.json"))
+    load_settings.cache_clear()
+    captured: dict[str, object] = {}
+
+    def fake_run(*, transport: str, **kwargs: object) -> None:
+        captured["transport"] = transport
+        captured.update(kwargs)
+
+    monkeypatch.setattr(tools.mcp, "run", fake_run)
+    tools.main()
+
+    assert captured["stateless_http"] is False
+    assert captured["json_response"] is False
 
 
 def test_apple_create_reminder_and_note_record_actions(monkeypatch, tmp_path) -> None:

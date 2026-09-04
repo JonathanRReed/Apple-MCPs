@@ -29,6 +29,7 @@ from apple_mail_mcp.models import (
 )
 from apple_mail_mcp.permissions import SafetyPolicyError, ensure_tool_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
 
 LOGGER = logging.getLogger("apple_mail_mcp")
 SERVER_INSTRUCTIONS = (
@@ -126,7 +127,7 @@ def mail_permission_guide() -> dict[str, object]:
 async def mail_recheck_permissions(ctx: Context) -> HealthResponse:
     await ctx.report_progress(25, 100, "Rechecking Mail access")
     response = mail_health()
-    await ctx.session.send_resource_list_changed()
+    await notify_resources_changed(ctx)
     await ctx.report_progress(100, 100, "Done")
     return response
 
@@ -720,6 +721,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
     mcp = MCPServer(
         "Apple Mail MCP",
         instructions=SERVER_INSTRUCTIONS,
+        version=server_settings.version,
         log_level=server_settings.log_level,
     )
 
@@ -1071,10 +1073,10 @@ def main() -> None:
     if settings.transport == "streamable-http":
         server.run(
             transport="streamable-http",
-            host=settings.host,
+            host=require_loopback_host(settings.host),
             port=settings.port,
             json_response=True,
-            stateless_http=True,
+            stateless_http=False,
         )
         return
     server.run(transport="stdio")

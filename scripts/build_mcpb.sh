@@ -20,7 +20,7 @@
 # bundle is printed (needed for MCP Registry entries).
 #
 # Requirements: macOS bash 3.2+, tar, shasum, npx (Node). `npx -y
-# @anthropic-ai/mcpb pack` validates each manifest as part of packing.
+# @anthropic-ai/mcpb@2.1.2 pack` validates each manifest as part of packing.
 
 set -euo pipefail
 
@@ -161,7 +161,7 @@ build_one() {
 
   out="$OUT_DIR/$name-$version.mcpb"
   echo "==> Packing $folder -> ${out#"$REPO_DIR"/}"
-  npx -y @anthropic-ai/mcpb pack "$stage" "$out"
+  npx -y @anthropic-ai/mcpb@2.1.2 pack "$stage" "$out"
 
   sha_line="$(shasum -a 256 "$out")"
   echo "SHA-256: $sha_line"

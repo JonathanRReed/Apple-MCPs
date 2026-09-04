@@ -47,7 +47,7 @@ wheels = [
 
 [[package]]
 name = "apple-calendar-mcp"
-version = "1.0.3"
+version = "1.0.4"
 source = { editable = "Apple-Calendar-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -73,7 +73,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-contacts-mcp"
-version = "1.0.3"
+version = "1.0.4"
 source = { editable = "AppleContacts-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -99,7 +99,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-files-mcp"
-version = "1.0.3"
+version = "1.0.4"
 source = { editable = "AppleFiles-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -125,7 +125,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-maps-mcp"
-version = "1.0.3"
+version = "1.0.4"
 source = { editable = "AppleMaps-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -151,7 +151,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-mcp-common"
-version = "1.0.3"
+version = "1.0.4"
 source = { editable = "AppleMCPCommon" }
 dependencies = [
     { name = "mcp" },
@@ -166,7 +166,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "mcp", specifier = ">=2.0.0,<3" },
+    { name = "mcp", specifier = ">=2.1.1,<3" },
     { name = "pydantic", specifier = ">=2.12.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8,<10" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12,<1" },
@@ -175,7 +175,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-mcp-mail"
-version = "1.0.3"
+version = "1.0.4"
 source = { editable = "AppleMail-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -201,7 +201,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-mcp-notes"
-version = "1.0.3"
+version = "1.0.4"
 source = { editable = "AppleNotes-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -227,7 +227,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-mcp-reminders"
-version = "1.0.3"
+version = "1.0.4"
 source = { editable = "AppleReminders-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -253,7 +253,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-messages-mcp"
-version = "1.0.3"
+version = "1.0.4"
 source = { editable = "AppleMessages-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -279,7 +279,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-shortcuts-mcp"
-version = "1.0.3"
+version = "1.0.4"
 source = { editable = "AppleShortcuts-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -305,7 +305,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-system-mcp"
-version = "1.0.3"
+version = "1.0.4"
 source = { editable = "AppleSystem-MCP" }
 dependencies = [
     { name = "apple-mcp-common" },
@@ -331,7 +331,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "apple-tools-mcp"
-version = "1.0.3"
+version = "1.0.4"
 source = { editable = "Apple-Tools-MCP" }
 dependencies = [
     { name = "apple-calendar-mcp" },

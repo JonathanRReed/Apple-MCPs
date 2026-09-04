@@ -17,6 +17,8 @@ ENV/
 env/
 *.egg-info/
 dist/
+release-assets/
+release-metadata/
 build/
 *.egg
 .pytest_cache/

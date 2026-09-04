@@ -1,5 +1,7 @@
 import asyncio
 
+import pytest
+
 from apple_files_mcp import tools
 from apple_files_mcp.models import FileEntry
 
@@ -152,7 +154,7 @@ def test_files_open_and_recent_locations(monkeypatch):
 
 def test_main_uses_streamable_http(monkeypatch):
     monkeypatch.setenv("APPLE_FILES_MCP_TRANSPORT", "streamable-http")
-    monkeypatch.setenv("APPLE_FILES_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("APPLE_FILES_MCP_HOST", "127.0.0.1")
     monkeypatch.setenv("APPLE_FILES_MCP_PORT", "8765")
     monkeypatch.setenv("APPLE_FILES_MCP_LOG_LEVEL", "DEBUG")
     tools.load_settings.cache_clear()
@@ -173,12 +175,22 @@ def test_main_uses_streamable_http(monkeypatch):
 
     assert captured == {
         "transport": "streamable-http",
-        "host": "0.0.0.0",
+        "host": "127.0.0.1",
         "port": 8765,
         "json_response": True,
-        "stateless_http": True,
+        "stateless_http": False,
         "log_level": "DEBUG",
     }
+
+
+def test_main_rejects_non_loopback_http_host(monkeypatch):
+    monkeypatch.setenv("APPLE_FILES_MCP_TRANSPORT", "streamable-http")
+    monkeypatch.setenv("APPLE_FILES_MCP_HOST", "0.0.0.0")
+    tools.load_settings.cache_clear()
+    monkeypatch.setattr(tools.mcp, "run", lambda **_kwargs: None)
+
+    with pytest.raises(ValueError, match="loopback"):
+        tools.main()
 
 
 def test_search_first_mcp_surface_exposes_discovery_and_full_catalog() -> None:

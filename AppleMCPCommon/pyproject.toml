@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apple-mcp-common"
-version = "1.0.3"
+version = "1.0.4"
 description = "Shared discovery and generation helpers for the Apple MCP suite"
 readme = "README.md"
 license = "MIT"
@@ -23,7 +23,7 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-  "mcp>=2.0.0,<3",
+  "mcp>=2.1.1,<3",
   "pydantic>=2.12.0",
 ]
 

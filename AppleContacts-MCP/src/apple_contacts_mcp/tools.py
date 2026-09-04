@@ -22,6 +22,7 @@ from apple_contacts_mcp.models import (
 )
 from apple_contacts_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Contacts on macOS. "
@@ -29,7 +30,7 @@ SERVER_INSTRUCTIONS = (
     "or resolve a contact into a message-ready recipient before using Apple Messages."
 )
 
-mcp = MCPServer("Apple Contacts", instructions=SERVER_INSTRUCTIONS)
+mcp = MCPServer("Apple Contacts", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def _bridge() -> AppleContactsBridge:
@@ -141,7 +142,7 @@ def contacts_permission_guide() -> dict[str, object]:
 async def contacts_recheck_permissions(ctx: Context) -> HealthResponse:
     await ctx.report_progress(25, 100, "Rechecking Contacts access")
     response = contacts_health()
-    await ctx.session.send_resource_list_changed()
+    await notify_resources_changed(ctx)
     await ctx.report_progress(100, 100, "Done")
     return response
 
@@ -387,9 +388,10 @@ def main() -> None:
     if transport == "streamable-http":
         mcp.run(
             transport="streamable-http",
-            host=os.environ.get("APPLE_CONTACTS_MCP_HOST", "127.0.0.1"),
+            host=require_loopback_host(os.environ.get("APPLE_CONTACTS_MCP_HOST", "127.0.0.1")),
             port=int(os.environ.get("APPLE_CONTACTS_MCP_PORT", "8733")),
             json_response=True,
+            stateless_http=False,
         )
         return
     mcp.run(transport="stdio")

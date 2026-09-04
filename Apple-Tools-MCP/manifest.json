@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "apple-tools",
   "display_name": "Apple Tools",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Unified Apple tools MCP server for macOS, covering Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps.",
   "long_description": "Local MCP server for Apple Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps on macOS. Reuses the standalone Apple-native integrations while providing one coherent agent entrypoint, unified health, cross-app prompts, aggregated overview resources, assistant workflows, Finder-aware file handling, and truthful system context.",
   "icon": "icon.png",
@@ -62,5 +62,17 @@
         "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "full_access"
       }
     }
-  }
+  },
+  "tools": [
+    {
+      "name": "search_tools",
+      "description": "Search available tools by keyword."
+    },
+    {
+      "name": "get_tool_info",
+      "description": "Read the schema and usage of an available tool."
+    }
+  ],
+  "tools_generated": true,
+  "prompts_generated": true
 }

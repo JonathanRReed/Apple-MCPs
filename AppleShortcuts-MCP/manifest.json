@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "apple-shortcuts",
   "display_name": "Apple Shortcuts",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "List, inspect, and run Apple Shortcuts on macOS.",
   "long_description": "Local MCP server for Apple Shortcuts on macOS. Uses the official shortcuts CLI to list shortcuts, inspect shortcut metadata, browse folders, and run shortcuts with structured inputs and outputs. Designed for agentic use with concise resources, prompts, and typed results.",
   "icon": "icon.png",
@@ -46,5 +46,17 @@
         "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "full_access"
       }
     }
-  }
+  },
+  "tools": [
+    {
+      "name": "search_tools",
+      "description": "Search available tools by keyword."
+    },
+    {
+      "name": "get_tool_info",
+      "description": "Read the schema and usage of an available tool."
+    }
+  ],
+  "tools_generated": true,
+  "prompts_generated": true
 }

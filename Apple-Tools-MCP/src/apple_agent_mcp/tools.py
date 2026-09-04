@@ -15,7 +15,7 @@ from uuid import uuid4
 from mcp import types
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
-from pydantic import AnyUrl, BaseModel, TypeAdapter
+from pydantic import BaseModel
 
 from apple_agent_mcp.bootstrap import ensure_domain_paths
 from apple_agent_mcp.config import load_settings
@@ -44,6 +44,7 @@ from apple_agent_mcp.models import (
 )
 from apple_agent_mcp.state import StateStoreError, load_action_history, load_preferences, save_action_history, save_preferences
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.runtime import notify_resource_updated, notify_resources_changed, require_loopback_host
 
 ensure_domain_paths()
 
@@ -371,12 +372,7 @@ SERVER_INSTRUCTIONS = (
     "Some clients defer tool schemas, so batch tool discovery on first use when needed."
 )
 
-mcp = MCPServer("Apple Tools MCP", instructions=SERVER_INSTRUCTIONS)
-_ANY_URL = TypeAdapter(AnyUrl)
-
-
-def _as_any_url(uri: str) -> AnyUrl:
-    return _ANY_URL.validate_python(uri)
+mcp = MCPServer("Apple Tools MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 LOGGER = logging.getLogger("apple_agent_mcp")
 
@@ -852,9 +848,9 @@ async def _notify_apple_resource_updates(ctx: Context | None, *uris: str, list_c
     if ctx is None:
         return
     for uri in uris:
-        await ctx.session.send_resource_updated(_as_any_url(uri))
+        await notify_resource_updated(ctx, uri)
     if list_changed:
-        await ctx.session.send_resource_list_changed()
+        await notify_resources_changed(ctx)
 
 
 def _domain_health() -> dict[str, dict[str, Any]]:
@@ -3534,7 +3530,8 @@ TOOL_DISCOVERY = install_search_first_discovery(
 def main() -> None:
     settings = load_settings()
     logging.basicConfig(level=getattr(logging, settings.log_level, logging.INFO))
-    conformance_mode = os.environ.get("APPLE_AGENT_MCP_CONFORMANCE_MODE", "").strip().lower() in {"1", "true", "yes", "on"}
+    conformance_value = os.environ.get("APPLE_AGENT_MCP_CONFORMANCE_MODE", "").strip().lower()
+    conformance_mode = conformance_value in {"1", "true", "yes", "on", "legacy"}
     if conformance_mode:
         enable_conformance_mode(mcp)
     if settings.transport == "stdio":
@@ -3543,8 +3540,8 @@ def main() -> None:
     mcp.settings.log_level = settings.log_level
     mcp.run(
         transport="streamable-http",
-        host=settings.host,
+        host=require_loopback_host(settings.host),
         port=settings.port,
         json_response=not conformance_mode,
-        stateless_http=not conformance_mode,
+        stateless_http=False,
     )

@@ -26,7 +26,7 @@ def load_settings() -> Settings:
 
     return Settings(
         server_name="Apple Contacts",
-        version="1.0.3",
+        version="1.0.4",
         safety_mode=cast(SafetyMode, raw_safety_mode),
         log_level=os.environ.get("APPLE_CONTACTS_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",
         scripts_dir=package_dir / "applescripts",

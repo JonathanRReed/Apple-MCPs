@@ -7,6 +7,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
 from apple_messages_mcp.config import load_settings
 from apple_messages_mcp.messages_automation_bridge import MessagesAutomationBridge, MessagesAutomationBridgeError
 from apple_messages_mcp.messages_db_bridge import MessagesDBBridge, MessagesDBBridgeError
@@ -30,7 +31,7 @@ SERVER_INSTRUCTIONS = (
     "History features require Full Disk Access, while send features require Messages automation permission."
 )
 
-mcp = MCPServer("Apple Messages MCP", instructions=SERVER_INSTRUCTIONS)
+mcp = MCPServer("Apple Messages MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def _db_bridge() -> MessagesDBBridge:
@@ -202,7 +203,7 @@ def messages_permission_guide() -> dict[str, object]:
 async def messages_recheck_permissions(ctx: Context) -> HealthResponse:
     await ctx.report_progress(25, 100, "Rechecking Messages access")
     response = messages_health()
-    await ctx.session.send_resource_list_changed()
+    await notify_resources_changed(ctx)
     await ctx.report_progress(100, 100, "Done")
     return response
 
@@ -439,9 +440,10 @@ def main() -> None:
     if transport == "streamable-http":
         mcp.run(
             transport="streamable-http",
-            host=os.environ.get("APPLE_MESSAGES_MCP_HOST", "127.0.0.1"),
+            host=require_loopback_host(os.environ.get("APPLE_MESSAGES_MCP_HOST", "127.0.0.1")),
             port=int(os.environ.get("APPLE_MESSAGES_MCP_PORT", "8737")),
             json_response=True,
+            stateless_http=False,
         )
         return
     mcp.run(transport="stdio")

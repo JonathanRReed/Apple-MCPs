@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apple-maps-mcp"
-version = "1.0.3"
+version = "1.0.4"
 description = "Local Apple Maps MCP server for macOS"
 readme = "README.md"
 license = "MIT"
@@ -23,7 +23,7 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-  "apple-mcp-common>=1.0.0,<2",
+  "apple-mcp-common>=1.0.4,<2",
   "mcp>=2.1.1,<3",
   "pydantic>=2.12.0",
 ]

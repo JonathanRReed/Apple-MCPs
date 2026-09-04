@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleMaps-MCP"
   },
-  "version": "1.0.3",
+  "version": "1.0.4",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-maps-mcp",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

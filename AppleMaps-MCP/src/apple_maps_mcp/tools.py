@@ -10,13 +10,14 @@ from apple_maps_mcp.config import load_settings
 from apple_maps_mcp.maps_bridge import AppleMapsBridge, MapsBridgeError, build_bridge
 from apple_maps_mcp.models import DirectionsResponse, ErrorResponse, HealthResponse, MapsLinkResponse, OpenMapsResponse, PlaceRecord, PlaceSearchResponse, ToolError
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.runtime import require_loopback_host
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Maps and travel context on macOS. "
     "Search here when the user wants to find a place, estimate travel time, build an Apple Maps link, or open directions in Apple Maps."
 )
 
-mcp = MCPServer("Apple Maps MCP", instructions=SERVER_INSTRUCTIONS)
+mcp = MCPServer("Apple Maps MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def _bridge() -> AppleMapsBridge:
@@ -224,8 +225,8 @@ def main() -> None:
     mcp.settings.log_level = settings.log_level
     mcp.run(
         transport="streamable-http",
-        host=settings.host,
+        host=require_loopback_host(settings.host),
         port=settings.port,
         json_response=True,
-        stateless_http=True,
+        stateless_http=False,
     )

@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "apple-maps",
   "display_name": "Apple Maps",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Search places, estimate routes, and build Apple Maps links on macOS.",
   "long_description": "Local MCP server for Apple Maps workflows on macOS. Uses a local Swift helper to search places, estimate travel time, build Apple Maps links, and open directions in the Apple Maps app.",
   "icon": "icon.png",
@@ -43,5 +43,17 @@
         "server.py"
       ]
     }
-  }
+  },
+  "tools": [
+    {
+      "name": "search_tools",
+      "description": "Search available tools by keyword."
+    },
+    {
+      "name": "get_tool_info",
+      "description": "Read the schema and usage of an available tool."
+    }
+  ],
+  "tools_generated": true,
+  "prompts_generated": true
 }

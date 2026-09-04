@@ -30,30 +30,30 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Verify tag and source versions
+        run: python3 scripts/check_release.py --tag "$GITHUB_REF_NAME"
+
       - name: Build sdists and wheels for all packages
         run: uv build --all-packages
 
-      - name: Build .mcpb bundles (if build script exists)
+      - name: Build .mcpb bundles
+        run: bash scripts/build_mcpb.sh
+
+      - name: Verify built assets and generate release metadata
+        run: python3 scripts/check_release.py --tag "$GITHUB_REF_NAME" --artifacts
+
+      - name: Verify isolated bundle launches
         run: |
-          if [ -f scripts/build_mcpb.sh ]; then
-            bash scripts/build_mcpb.sh
-          else
-            echo "scripts/build_mcpb.sh not present; skipping bundle build."
-          fi
+          uv sync --all-packages --locked
+          uv run --no-sync python scripts/bundle_smoke.py
 
       - name: Collect release assets and write SHA256SUMS
         run: |
           mkdir -p release-assets
-          # Collect any .mcpb bundles the build script produced, wherever it
-          # wrote them.
-          find . -name '*.mcpb' -not -path './release-assets/*' -exec cp {} release-assets/ \;
-          # Checksums cover everything shipped from this tag: PyPI dists and
-          # any bundles attached to the GitHub Release.
+          cp dist/mcpb/*.mcpb release-assets/
           cp dist/*.tar.gz dist/*.whl release-assets/
+          cp release-metadata/*.server.json release-assets/
           (cd release-assets && shasum -a 256 -- * > SHA256SUMS.tmp && mv SHA256SUMS.tmp SHA256SUMS)
-          # Only bundles + SHA256SUMS are attached to the Release; dists go to
-          # PyPI, so drop them from the asset directory after checksumming.
-          rm -f release-assets/*.tar.gz release-assets/*.whl
           ls -la release-assets
           cat release-assets/SHA256SUMS
 
@@ -71,20 +71,47 @@ jobs:
           path: release-assets/
           if-no-files-found: error
 
-  publish-pypi:
-    # One job per package, each in its own GitHub environment
-    # (pypi-<package>). PyPI's pending trusted publishers require a unique
-    # (repo, workflow, environment) tuple per project, so a shared "pypi"
-    # environment cannot cover a 12-package monorepo.
-    name: Publish ${{ matrix.package }} to PyPI
+  publish-common:
+    name: Publish apple-mcp-common to PyPI
     needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: pypi-apple-mcp-common
+      url: https://pypi.org/project/apple-mcp-common/
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Stage apple-mcp-common distributions
+        run: |
+          mkdir -p staged
+          cp dist/apple_mcp_common-*.tar.gz dist/apple_mcp_common-*.whl staged/
+          ls -la staged
+
+      - name: Publish via trusted publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: staged
+          skip-existing: true
+
+  publish-domains:
+    # Each package keeps its own GitHub environment because PyPI's pending
+    # trusted publishers require a unique repo, workflow, and environment.
+    name: Publish ${{ matrix.package }} to PyPI
+    needs: publish-common
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         package:
-          - apple-mcp-common
           - apple-calendar-mcp
           - apple-contacts-mcp
           - apple-files-mcp
@@ -95,7 +122,6 @@ jobs:
           - apple-mcp-reminders
           - apple-shortcuts-mcp
           - apple-system-mcp
-          - apple-tools-mcp
     environment:
       name: pypi-${{ matrix.package }}
       url: https://pypi.org/project/${{ matrix.package }}/
@@ -122,9 +148,39 @@ jobs:
           packages-dir: staged
           skip-existing: true
 
+  publish-unified:
+    name: Publish apple-tools-mcp to PyPI
+    needs: publish-domains
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: pypi-apple-tools-mcp
+      url: https://pypi.org/project/apple-tools-mcp/
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Stage apple-tools-mcp distributions
+        run: |
+          mkdir -p staged
+          cp dist/apple_tools_mcp-*.tar.gz dist/apple_tools_mcp-*.whl staged/
+          ls -la staged
+
+      - name: Publish via trusted publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: staged
+          skip-existing: true
+
   github-release:
     name: Create GitHub Release
-    needs: build
+    needs: publish-unified
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -142,3 +198,51 @@ jobs:
         with:
           files: release-assets/*
           generate_release_notes: true
+
+  publish-registry:
+    name: Publish servers to MCP Registry
+    needs: github-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download exact release metadata
+        uses: actions/download-artifact@v8
+        with:
+          name: release-assets
+          path: release-assets/
+
+      - name: Install verified mcp-publisher v1.8.1
+        run: |
+          archive="mcp-publisher_linux_amd64.tar.gz"
+          expected_sha256="a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc"
+          curl --fail --location --silent --show-error \
+            "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/$archive" \
+            --output "$archive"
+          echo "$expected_sha256  $archive" | sha256sum --check --strict
+          tar -xzf "$archive" mcp-publisher
+          chmod +x mcp-publisher
+
+      - name: Validate all registry records
+        run: |
+          shopt -s nullglob
+          metadata=(release-assets/*.server.json)
+          if [ "${#metadata[@]}" -ne 11 ]; then
+            echo "Expected 11 generated server.json files, found ${#metadata[@]}" >&2
+            exit 1
+          fi
+          for server_json in "${metadata[@]}"; do
+            ./mcp-publisher validate "$server_json"
+          done
+
+      - name: Authenticate to MCP Registry with GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish all registry records sequentially
+        run: |
+          for server_json in release-assets/*.server.json; do
+            ./mcp-publisher publish "$server_json"
+          done

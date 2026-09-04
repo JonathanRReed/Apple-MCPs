@@ -1,9 +1,18 @@
 on run argv
+	set resultLimit to (item 1 of argv) as integer
+	set resultOffset to (item 2 of argv) as integer
 	set jsonItems to {}
 	tell application "Contacts"
-		repeat with p in every person
-			set end of jsonItems to my person_json(p, false)
-		end repeat
+		set people to every person
+		set peopleCount to count of people
+		set firstIndex to resultOffset + 1
+		set lastIndex to resultOffset + resultLimit
+		if lastIndex > peopleCount then set lastIndex to peopleCount
+		if firstIndex <= lastIndex then
+			repeat with personIndex from firstIndex to lastIndex
+				set end of jsonItems to my person_json(item personIndex of people, false)
+			end repeat
+		end if
 	end tell
 	return "{" & quote & "items" & quote & ":[" & my join_list(jsonItems, ",") & "]}"
 end run

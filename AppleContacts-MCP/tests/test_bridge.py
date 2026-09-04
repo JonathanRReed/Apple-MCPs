@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from apple_contacts_mcp import contacts_bridge
 from apple_contacts_mcp.contacts_bridge import AppleContactsBridge, ContactsBridgeError
 
 
@@ -43,7 +44,7 @@ def test_search_contacts_prefers_direct_name_search(monkeypatch) -> None:
 
     def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
         assert script_name == "search_contacts.applescript"
-        assert args == ("Sona",)
+        assert args == ("Sona", "25")
         return {
             "items": [
                 {
@@ -85,12 +86,48 @@ def test_get_contact_raises_when_missing(monkeypatch) -> None:
         raise AssertionError("Expected ContactsBridgeError")
 
 
+def test_run_script_times_out_and_terminates_child(monkeypatch, tmp_path) -> None:
+    script_path = tmp_path / "permission_check.applescript"
+    script_path.touch()
+    bridge = AppleContactsBridge(tmp_path)
+    real_popen = subprocess.Popen
+
+    def sleeping_popen(command, **kwargs):
+        return real_popen([sys.executable, "-c", "import time; time.sleep(10)"], **kwargs)
+
+    monkeypatch.setattr(contacts_bridge, "SCRIPT_TIMEOUT_SECONDS", 0.05)
+    monkeypatch.setattr(contacts_bridge.subprocess, "Popen", sleeping_popen)
+
+    with pytest.raises(ContactsBridgeError, match="timeout") as exc_info:
+        bridge._run_script(script_path.name)
+
+    assert exc_info.value.error_code == "APPLESCRIPT_TIMEOUT"
+
+
+def test_run_script_rejects_oversized_output(monkeypatch, tmp_path) -> None:
+    script_path = tmp_path / "permission_check.applescript"
+    script_path.touch()
+    bridge = AppleContactsBridge(tmp_path)
+    real_popen = subprocess.Popen
+
+    def noisy_popen(command, **kwargs):
+        return real_popen([sys.executable, "-c", "print('x' * 1024)"], **kwargs)
+
+    monkeypatch.setattr(contacts_bridge, "MAX_SCRIPT_OUTPUT_BYTES", 32)
+    monkeypatch.setattr(contacts_bridge.subprocess, "Popen", noisy_popen)
+
+    with pytest.raises(ContactsBridgeError) as exc_info:
+        bridge._run_script(script_path.name)
+
+    assert exc_info.value.error_code == "APPLESCRIPT_OUTPUT_TOO_LARGE"
+
+
 def test_search_contacts_matches_parenthetical_nickname(monkeypatch) -> None:
     bridge = AppleContactsBridge(Path("/tmp/scripts"))
 
     def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
         assert script_name == "search_contacts.applescript"
-        assert args == ("Sona",) or args == ("Sonali",)
+        assert args == ("Sona", "25") or args == ("Sonali", "25")
         return {
             "items": [
                 {

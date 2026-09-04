@@ -1,11 +1,16 @@
 on run argv
 	set queryText to item 1 of argv
+	set resultLimit to (item 2 of argv) as integer
 	set jsonItems to {}
 	tell application "Contacts"
 		set matches to (every person whose name contains queryText or organization contains queryText)
-		repeat with p in matches
-			set end of jsonItems to my person_json(p, false)
-		end repeat
+		set matchCount to count of matches
+		if matchCount > resultLimit then set matchCount to resultLimit
+		if matchCount > 0 then
+			repeat with matchIndex from 1 to matchCount
+				set end of jsonItems to my person_json(item matchIndex of matches, false)
+			end repeat
+		end if
 	end tell
 	return "{" & quote & "items" & quote & ":[" & my join_list(jsonItems, ",") & "]}"
 end run

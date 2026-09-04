@@ -148,9 +148,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-tools-1.0.3.mcpb",
-      "version": "1.0.3",
-      "fileSha256": "a491f33f48c98188f416727dfaa3763b63186ded7132dbd6bbe4d511d0998e9f",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.4/apple-tools-1.0.4.mcpb",
+      "version": "1.0.4",
+      "fileSha256": "b2f06bf0bc7b679be63ff3bbf9b147c9e5ebe6e9206f2ecbd89c35d67827f233",
       "transport": {
         "type": "stdio"
       }

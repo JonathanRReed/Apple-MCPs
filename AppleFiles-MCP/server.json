@@ -45,9 +45,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-files-1.0.3.mcpb",
-      "version": "1.0.3",
-      "fileSha256": "d161f4a48fb3ab324a44bcdd0fd4ec50acd27a8d48c622f5c4f2ba9fccf86ee0",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.4/apple-files-1.0.4.mcpb",
+      "version": "1.0.4",
+      "fileSha256": "b268faf8f1515e3d3bea3ad33756659e7b12647858e33c7e5ab3ec12f41f95bf",
       "transport": {
         "type": "stdio"
       }

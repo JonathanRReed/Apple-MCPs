@@ -45,9 +45,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-calendar-1.0.3.mcpb",
-      "version": "1.0.3",
-      "fileSha256": "e1388cf0e843804b27ba49a3d211a626f928206bd04b25cbccc965983747ab8a",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.4/apple-calendar-1.0.4.mcpb",
+      "version": "1.0.4",
+      "fileSha256": "594ecdd2dc502b779880a146ca45493cbe380c114097467687d233842cf349ea",
       "transport": {
         "type": "stdio"
       }

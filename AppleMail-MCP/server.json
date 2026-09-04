@@ -51,9 +51,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-mail-1.0.3.mcpb",
-      "version": "1.0.3",
-      "fileSha256": "ce9f9f5b982ca4498b003492d9bde8b4992424f52ce807305dc97046076a6661",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.4/apple-mail-1.0.4.mcpb",
+      "version": "1.0.4",
+      "fileSha256": "2deb90dd2926874b1b8ed5a83f4d1c64163919b714cc6cf325fa5283179305c8",
       "transport": {
         "type": "stdio"
       }

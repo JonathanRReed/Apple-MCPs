@@ -24,9 +24,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-maps-1.0.3.mcpb",
-      "version": "1.0.3",
-      "fileSha256": "39f547c64b01d8da63e3c0ed21965db268a12db1ace8b50e48528d1b35f29fe0",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.4/apple-maps-1.0.4.mcpb",
+      "version": "1.0.4",
+      "fileSha256": "54387ba71002ee51f5123d5c4e5aaef1d6efb022fdca413473ba42c95a59c871",
       "transport": {
         "type": "stdio"
       }

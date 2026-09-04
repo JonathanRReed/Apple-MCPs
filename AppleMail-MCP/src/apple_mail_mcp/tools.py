@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
@@ -157,6 +158,36 @@ def mail_get_message_tool(bridge: AppleMailBridge, message_id: str) -> MessageRe
     return bridge.get_message(message_id)
 
 
+def _validate_attachments(attachments: list[str] | None, allowed_root: Path | None) -> list[str] | None:
+    if not attachments:
+        return attachments
+    if allowed_root is None:
+        raise ValueError("Attachments are disabled; configure APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT to enable them")
+
+    try:
+        resolved_root = allowed_root.resolve(strict=True)
+    except OSError as exc:
+        raise ValueError("The configured attachment root does not exist or cannot be accessed") from exc
+    if not resolved_root.is_dir():
+        raise ValueError("The configured attachment root must be a directory")
+
+    validated: list[str] = []
+    for attachment in attachments:
+        if "\x1d" in attachment or "\x00" in attachment:
+            raise ValueError("Attachment paths must not contain control separators")
+        try:
+            resolved_attachment = Path(attachment).expanduser().resolve(strict=True)
+            resolved_attachment.relative_to(resolved_root)
+        except (OSError, ValueError) as exc:
+            raise ValueError(f"Attachment is not a file beneath the allowed attachment root: {attachment}") from exc
+        if not resolved_attachment.is_file():
+            raise ValueError(f"Attachment is not a regular file: {attachment}")
+        if "\x1d" in str(resolved_attachment) or "\x00" in str(resolved_attachment):
+            raise ValueError("Attachment paths must not contain control separators")
+        validated.append(str(resolved_attachment))
+    return validated
+
+
 def mail_compose_draft_tool(
     bridge: AppleMailBridge,
     settings: Settings,
@@ -169,6 +200,7 @@ def mail_compose_draft_tool(
     from_account: str | None = None,
 ) -> DraftRecord:
     ensure_tool_allowed(settings.safety_profile, "mail_compose_draft")
+    attachments = _validate_attachments(attachments, settings.allowed_attachment_root)
     draft = bridge.compose_draft(
         to=to,
         cc=cc,
@@ -195,6 +227,7 @@ def mail_send_message_tool(
     from_account: str | None = None,
 ) -> SendRecord:
     ensure_tool_allowed(settings.safety_profile, "mail_send_message")
+    attachments = _validate_attachments(attachments, settings.allowed_attachment_root)
     result = bridge.send_message(
         to=to,
         cc=cc,
@@ -451,6 +484,8 @@ def mail_compose_draft(
         )
     except SafetyPolicyError as exc:
         return error_response("SAFETY_POLICY_BLOCK", str(exc))
+    except ValueError as exc:
+        return error_response("INVALID_INPUT", str(exc))
     except MailBridgeError as exc:
         return error_response("DRAFT_CREATE_FAILED", str(exc))
 
@@ -482,6 +517,8 @@ def mail_send_message(
         )
     except SafetyPolicyError as exc:
         return error_response("SAFETY_POLICY_BLOCK", str(exc))
+    except ValueError as exc:
+        return error_response("INVALID_INPUT", str(exc))
     except MailBridgeError as exc:
         return error_response("SEND_FAILED", str(exc))
 

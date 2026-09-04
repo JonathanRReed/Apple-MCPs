@@ -38,9 +38,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-shortcuts-1.0.3.mcpb",
-      "version": "1.0.3",
-      "fileSha256": "17863c03bb0ea9289d4b5a6649a52b75c89d0f29c3b0e57197cea307f56ab1bb",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.4/apple-shortcuts-1.0.4.mcpb",
+      "version": "1.0.4",
+      "fileSha256": "4eefb1d95446d547374df923a325e138fb52660b35faeea1594eacb449f98d55",
       "transport": {
         "type": "stdio"
       }

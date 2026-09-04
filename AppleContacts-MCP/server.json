@@ -38,9 +38,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-contacts-1.0.3.mcpb",
-      "version": "1.0.3",
-      "fileSha256": "6ca799482cd4a3425bc2da97b773553cf0e9929ae6d2c059959d0651fa32d1a1",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.4/apple-contacts-1.0.4.mcpb",
+      "version": "1.0.4",
+      "fileSha256": "a9c580ce51603d70cffc1735f2273192fd149204f9cf9593d35ed42a03a2ade2",
       "transport": {
         "type": "stdio"
       }

@@ -38,9 +38,9 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.3/apple-messages-1.0.3.mcpb",
-      "version": "1.0.3",
-      "fileSha256": "f51b447329c32216ff98f1f7eb5337bc51e84753fa3bd62c2c967c2f03d34254",
+      "identifier": "https://github.com/JonathanRReed/Apple-MCPs/releases/download/v1.0.4/apple-messages-1.0.4.mcpb",
+      "version": "1.0.4",
+      "fileSha256": "bc3e28e6422bce0b9a6acc5d712ec27c0b2dffbeed5efab825821d470697b95a",
       "transport": {
         "type": "stdio"
       }

@@ -3,18 +3,18 @@ on run argv
 	set resultOffset to (item 2 of argv) as integer
 	set jsonItems to {}
 	tell application "Contacts"
-		set people to every person
-		set peopleCount to count of people
+		set contactPeople to every person
+		set peopleCount to count of contactPeople
 		set firstIndex to resultOffset + 1
 		set lastIndex to resultOffset + resultLimit
 		if lastIndex > peopleCount then set lastIndex to peopleCount
 		if firstIndex <= lastIndex then
 			repeat with personIndex from firstIndex to lastIndex
-				set end of jsonItems to my person_json(item personIndex of people, false)
+				set end of jsonItems to my person_json(item personIndex of contactPeople, false)
 			end repeat
 		end if
 	end tell
-	return "{" & quote & "items" & quote & ":[" & my join_list(jsonItems, ",") & "]}"
+	return "{" & quote & "items" & quote & ":[" & my join_list(jsonItems, ",") & "]," & quote & "total" & quote & ":" & peopleCount & "}"
 end run
 
 on person_json(p, includeNote)

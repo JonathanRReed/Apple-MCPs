@@ -6,6 +6,7 @@ import re
 import subprocess
 import tempfile
 import time
+from collections.abc import Iterator
 from contextlib import suppress
 from pathlib import Path
 
@@ -18,6 +19,7 @@ NO_CHANGE_SENTINEL = "__NOCHANGE__"
 SCRIPT_TIMEOUT_SECONDS = 30
 MAX_SCRIPT_OUTPUT_BYTES = 8 * 1024 * 1024
 MAX_CONTACTS_PER_REQUEST = 1000
+MAX_DIRECTORY_CONTACTS = 100_000
 
 
 class ContactsBridgeError(Exception):
@@ -72,7 +74,7 @@ class AppleContactsBridge:
         normalized_query = self._normalize_lookup_value(query)
         exact_matches: list[ContactSummary] = []
         partial_matches: list[ContactSummary] = []
-        for contact in self.list_contacts(limit=MAX_CONTACTS_PER_REQUEST):
+        for contact in self._iter_all_contacts():
             if self._is_exact_match(contact, query_text, normalized_query):
                 exact_matches.append(contact)
                 continue
@@ -179,7 +181,7 @@ class AppleContactsBridge:
         )
 
     def find_duplicates(self) -> list[DuplicateCandidateGroup]:
-        contacts = self.list_contacts()
+        contacts = list(self._iter_all_contacts())
         if len(contacts) < 2:
             return []
 
@@ -283,6 +285,56 @@ class AppleContactsBridge:
             "Use a different contact.",
         )
 
+    def _iter_all_contacts(self) -> Iterator[ContactSummary]:
+        offset = 0
+        expected_total: int | None = None
+        while expected_total is None or offset < expected_total:
+            payload = self._run_script(
+                "list_contacts.applescript",
+                str(MAX_CONTACTS_PER_REQUEST),
+                str(offset),
+            )
+            raw_total = payload.get("total")
+            if not isinstance(raw_total, int) or isinstance(raw_total, bool) or raw_total < 0:
+                raise ContactsBridgeError(
+                    "INVALID_SCRIPT_OUTPUT",
+                    "The list_contacts AppleScript did not return a valid directory total.",
+                    "Inspect the AppleScript output and try again.",
+                )
+            if raw_total > MAX_DIRECTORY_CONTACTS:
+                raise ContactsBridgeError(
+                    "CONTACT_DIRECTORY_TOO_LARGE",
+                    f"The contact directory contains {raw_total} contacts, above the {MAX_DIRECTORY_CONTACTS}-contact scan limit.",
+                    "Narrow the search by name or reduce the directory size before retrying.",
+                )
+            if expected_total is None:
+                expected_total = raw_total
+            elif raw_total != expected_total:
+                raise ContactsBridgeError(
+                    "CONTACT_DIRECTORY_CHANGED",
+                    "The contact directory changed while it was being scanned.",
+                    "Retry the request after Contacts finishes updating.",
+                )
+
+            raw_items = payload.get("items")
+            if not isinstance(raw_items, list):
+                raise ContactsBridgeError(
+                    "INVALID_SCRIPT_OUTPUT",
+                    "The list_contacts AppleScript did not return an items array.",
+                    "Inspect the AppleScript output and try again.",
+                )
+            items = [self._normalize_summary(item) for item in raw_items if isinstance(item, dict)]
+            remaining = expected_total - offset
+            expected_page_size = min(MAX_CONTACTS_PER_REQUEST, remaining)
+            if len(items) != expected_page_size:
+                raise ContactsBridgeError(
+                    "INCOMPLETE_CONTACT_DIRECTORY",
+                    f"The contact scan returned {len(items)} of {expected_page_size} expected contacts at offset {offset}.",
+                    "Retry the request after Contacts finishes updating.",
+                )
+            yield from items
+            offset += len(items)
+
     def _run_script(self, script_name: str, *args: str) -> dict[str, object]:
         script_path = self.scripts_dir / script_name
         if not script_path.exists():
@@ -361,11 +413,13 @@ class AppleContactsBridge:
         return payload
 
     def _stop_process(self, process: subprocess.Popen[bytes]) -> None:
-        process.terminate()
+        with suppress(ProcessLookupError):
+            process.terminate()
         try:
             process.wait(timeout=1)
         except subprocess.TimeoutExpired:
-            process.kill()
+            with suppress(ProcessLookupError):
+                process.kill()
             process.wait()
 
     def _search_contacts_by_name(self, query: str, limit: int) -> list[ContactSummary]:

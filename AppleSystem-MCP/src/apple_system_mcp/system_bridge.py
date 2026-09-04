@@ -213,13 +213,21 @@ class SystemBridge:
         self._run("pbcopy", input_text=text)
 
     def show_notification(self, title: str, body: str, subtitle: str | None = None) -> None:
-        escaped_body = body.replace('"', '\\"')
-        escaped_title = title.replace('"', '\\"')
-        command = [f'display notification "{escaped_body}" with title "{escaped_title}"']
-        if subtitle:
-            escaped_subtitle = subtitle.replace('"', '\\"')
-            command[0] += f' subtitle "{escaped_subtitle}"'
-        self._run("osascript", "-e", command[0])
+        self._run_osascript(
+            [
+                "on run argv",
+                "set notificationBody to item 1 of argv",
+                "set notificationTitle to item 2 of argv",
+                "set notificationSubtitle to item 3 of argv",
+                'if notificationSubtitle is "" then',
+                "display notification notificationBody with title notificationTitle",
+                "else",
+                "display notification notificationBody with title notificationTitle subtitle notificationSubtitle",
+                "end if",
+                "end run",
+            ],
+            args=[body, title, subtitle or ""],
+        )
 
     def open_application(self, application: str | None = None, bundle_id: str | None = None) -> AppRecord:
         if bundle_id and bundle_id.strip():

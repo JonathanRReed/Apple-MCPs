@@ -3530,7 +3530,9 @@ TOOL_DISCOVERY = install_search_first_discovery(
 def main() -> None:
     settings = load_settings()
     logging.basicConfig(level=getattr(logging, settings.log_level, logging.INFO))
-    conformance_mode = os.environ.get("APPLE_AGENT_MCP_CONFORMANCE_MODE", "").strip().lower() in {"1", "true", "yes", "on"}
+    conformance_value = os.environ.get("APPLE_AGENT_MCP_CONFORMANCE_MODE", "").strip().lower()
+    conformance_mode = conformance_value in {"1", "true", "yes", "on", "legacy"}
+    legacy_conformance = conformance_value == "legacy"
     if conformance_mode:
         enable_conformance_mode(mcp)
     if settings.transport == "stdio":
@@ -3542,5 +3544,5 @@ def main() -> None:
         host=require_loopback_host(settings.host),
         port=settings.port,
         json_response=not conformance_mode,
-        stateless_http=not conformance_mode,
+        stateless_http=not legacy_conformance,
     )

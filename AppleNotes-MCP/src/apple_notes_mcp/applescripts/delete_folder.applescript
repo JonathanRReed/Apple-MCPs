@@ -4,7 +4,7 @@ on run argv
 		repeat with acc in accounts
 			repeat with fld in folders of acc
 				if my safe_text(id of fld) is folderId then
-					delete fld
+					delete folder id folderId
 					return "{" & quote & "deleted" & quote & ":true," & quote & "folder_id" & quote & ":" & my json_string(folderId) & "}"
 				end if
 			end repeat
@@ -39,4 +39,3 @@ on replace_text(sourceText, findText, replaceText)
 	set AppleScript's text item delimiters to originalDelimiters
 	return resultText
 end replace_text
-

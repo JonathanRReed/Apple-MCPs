@@ -19,11 +19,13 @@ SERVERS = (
 )
 
 
-async def check_server(binary: str, mode: str) -> None:
-    command = shutil.which(binary)
-    if command is None:
-        raise RuntimeError(f"Missing installed entry point: {binary}")
-    async with Client(StdioServerParameters(command=command), mode=mode, read_timeout_seconds=30) as client:
+async def check_server(binary: str, mode: str, parameters: StdioServerParameters | None = None, *, timeout: float = 30) -> None:
+    if parameters is None:
+        command = shutil.which(binary)
+        if command is None:
+            raise RuntimeError(f"Missing installed entry point: {binary}")
+        parameters = StdioServerParameters(command=command)
+    async with Client(parameters, mode=mode, read_timeout_seconds=timeout) as client:
         result = await client.list_tools()
         names = [tool.name for tool in result.tools]
         assert names and len(names) == len(set(names)), (binary, "empty or duplicate tools")

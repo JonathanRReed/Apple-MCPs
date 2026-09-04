@@ -388,6 +388,7 @@ def test_mutation_scripts_compile(tmp_path) -> None:
         scripts_dir / "delete_note.applescript",
         scripts_dir / "update_note.applescript",
         scripts_dir / "move_note.applescript",
+        scripts_dir / "delete_folder.applescript",
     )
 
     for script_path in scripts:

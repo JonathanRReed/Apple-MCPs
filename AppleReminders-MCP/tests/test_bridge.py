@@ -1,6 +1,24 @@
 from pathlib import Path
 
+import pytest
+
 from apple_reminders_mcp.reminders_bridge import RemindersBridge, RemindersBridgeError
+
+
+@pytest.mark.parametrize("deleted", [True, False])
+def test_delete_list_maps_swift_object_id(monkeypatch, deleted) -> None:
+    bridge = RemindersBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        assert command == "delete-reminder-list"
+        assert args == ("list-qa",)
+        return {"deleted": deleted, "object_id": "list-qa"}
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    result = bridge.delete_list("list-qa")
+    assert result.ok is True
+    assert result.list_id == "list-qa"
+    assert result.deleted is deleted
 
 
 def test_list_lists_normalizes_payload(monkeypatch) -> None:

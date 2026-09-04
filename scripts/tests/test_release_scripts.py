@@ -19,7 +19,14 @@ def make_repo(root: Path, *, drift: bool = False) -> None:
         package = root / directory
         package.mkdir()
         dist_name = "apple-mcp-common" if directory == "AppleMCPCommon" else f"package-{index}"
-        (package / "pyproject.toml").write_text(f'[project]\nname = "{dist_name}"\nversion = "1.2.3"\n')
+        dependencies = "".join(
+            f'  "{dependency}>=1.2.3,<2",\n'
+            for dependency in sorted(bump_version.REQUIRED_INTERNAL_DEPENDENCIES[directory])
+        )
+        (package / "pyproject.toml").write_text(
+            f'[project]\nname = "{dist_name}"\nversion = "1.2.3"\n'
+            f"dependencies = [\n{dependencies}]\n"
+        )
         if directory == "AppleMCPCommon":
             continue
         source = package / "src" / f"module_{index}"
@@ -55,6 +62,11 @@ class BumpVersionTests(unittest.TestCase):
             self.assertIn('"version": "1.2.4"', mail_server.after)
             self.assertIn("bundle-5-1.2.2.mcpb", mail_server.after)
             self.assertIn('"version": "1.2.2"', mail_server.after)
+            tools_project = next(edit for edit in edits if edit.path == root / "Apple-Tools-MCP" / "pyproject.toml")
+            for dependency in bump_version.REQUIRED_INTERNAL_DEPENDENCIES["Apple-Tools-MCP"]:
+                self.assertIn(f'"{dependency}>=1.2.4,<2"', tools_project.after)
+            calendar_project = next(edit for edit in edits if edit.path == root / "Apple-Calendar-MCP" / "pyproject.toml")
+            self.assertIn('"apple-mcp-common>=1.2.4,<2"', calendar_project.after)
             self.assertEqual((root / "AppleMCPCommon" / "pyproject.toml").read_text(), edits[0].before)
 
     def test_rejects_typed_config_default_drift_without_writes(self) -> None:
@@ -98,6 +110,15 @@ class ReleaseCheckTests(unittest.TestCase):
             make_repo(root)
             with self.assertRaisesRegex(bump_version.VersionError, "does not match"):
                 check_release.validate_source("v1.2.4", root)
+
+    def test_rejects_an_old_internal_dependency_floor(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            make_repo(root)
+            pyproject = root / "Apple-Calendar-MCP" / "pyproject.toml"
+            pyproject.write_text(pyproject.read_text().replace(">=1.2.3,<2", ">=1.2.2,<2"))
+            with self.assertRaisesRegex(bump_version.VersionError, "internal dependencies"):
+                check_release.validate_source("v1.2.3", root)
 
 
 if __name__ == "__main__":

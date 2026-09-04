@@ -11,6 +11,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PACKAGE_DIRS = ("AppleMCPCommon", "Apple-Tools-MCP", "Apple-Calendar-MCP", "AppleContacts-MCP", "AppleFiles-MCP", "AppleMail-MCP", "AppleMaps-MCP", "AppleMessages-MCP", "AppleNotes-MCP", "AppleReminders-MCP", "AppleShortcuts-MCP", "AppleSystem-MCP")
 SERVER_DIRS = tuple(name for name in PACKAGE_DIRS if name != "AppleMCPCommon")
+PACKAGE_NAMES = {
+    "AppleMCPCommon": "apple-mcp-common",
+    "Apple-Tools-MCP": "apple-tools-mcp",
+    "Apple-Calendar-MCP": "apple-calendar-mcp",
+    "AppleContacts-MCP": "apple-contacts-mcp",
+    "AppleFiles-MCP": "apple-files-mcp",
+    "AppleMail-MCP": "apple-mcp-mail",
+    "AppleMaps-MCP": "apple-maps-mcp",
+    "AppleMessages-MCP": "apple-messages-mcp",
+    "AppleNotes-MCP": "apple-mcp-notes",
+    "AppleReminders-MCP": "apple-mcp-reminders",
+    "AppleShortcuts-MCP": "apple-shortcuts-mcp",
+    "AppleSystem-MCP": "apple-system-mcp",
+}
+REQUIRED_INTERNAL_DEPENDENCIES = {
+    name: ({"apple-mcp-common"} if name != "AppleMCPCommon" else set())
+    for name in PACKAGE_DIRS
+}
+REQUIRED_INTERNAL_DEPENDENCIES["Apple-Tools-MCP"] = set(PACKAGE_NAMES.values()) - {"apple-tools-mcp"}
 SEMVER = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 
 
@@ -64,7 +83,26 @@ def plan_edits(new_version: str, root: Path = ROOT) -> tuple[str, list[Edit]]:
                 found = _one(r'^version = "([0-9]+\.[0-9]+\.[0-9]+)"$', before, path, "project version")
                 if found != current:
                     raise VersionError(f"{path}: project version is {found}, expected {current}")
-                after, count = re.subn(r'^(version = ")' + re.escape(current) + r'("$)', rf"\g<1>{new_version}\2", before, flags=re.MULTILINE)
+                dependency_versions = {
+                    dependency: version
+                    for dependency, version in re.findall(
+                        r'^  "(apple-[a-z-]+)>=([0-9]+\.[0-9]+\.[0-9]+),<2",$', before, re.MULTILINE
+                    )
+                }
+                required = REQUIRED_INTERNAL_DEPENDENCIES[name]
+                if set(dependency_versions) != required or any(version != current for version in dependency_versions.values()):
+                    raise VersionError(
+                        f"{path}: internal dependencies {dependency_versions!r}, "
+                        f"expected {sorted(required)!r} at >= {current},<2"
+                    )
+                after, version_count = re.subn(r'^(version = ")' + re.escape(current) + r'("$)', rf"\g<1>{new_version}\2", before, flags=re.MULTILINE)
+                after, dependency_count = re.subn(
+                    r'(^  "apple-[a-z-]+>=)' + re.escape(current) + r'(,<2",$)',
+                    rf"\g<1>{new_version}\2",
+                    after,
+                    flags=re.MULTILINE,
+                )
+                count = version_count + dependency_count
             elif path.name == "config.py":
                 versions = re.findall(r'\bversion(?::\s*str)?\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"', before)
                 if not versions or any(version != current for version in versions):

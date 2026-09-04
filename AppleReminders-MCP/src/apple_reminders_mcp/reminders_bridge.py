@@ -153,7 +153,7 @@ class RemindersBridge:
 
     def delete_list(self, list_id: str) -> DeleteReminderListResponse:
         payload = self._run_helper("delete-reminder-list", list_id)
-        return DeleteReminderListResponse.model_validate(payload)
+        return DeleteReminderListResponse.model_validate({**payload, "list_id": payload["object_id"]})
 
     def _run_helper(self, command: str, *args: str) -> dict[str, object]:
         self._ensure_helper()

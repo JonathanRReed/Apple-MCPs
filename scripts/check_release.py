@@ -10,7 +10,14 @@ import re
 from pathlib import Path
 from urllib.parse import urlparse
 
-from bump_version import PACKAGE_DIRS, ROOT, SERVER_DIRS, VersionError, read_current_version
+from bump_version import (
+    PACKAGE_DIRS,
+    REQUIRED_INTERNAL_DEPENDENCIES,
+    ROOT,
+    SERVER_DIRS,
+    VersionError,
+    read_current_version,
+)
 
 
 def _project(path: Path) -> tuple[str, str]:
@@ -28,9 +35,24 @@ def validate_source(tag: str | None, root: Path = ROOT) -> str:
         raise VersionError(f"tag {tag!r} does not match source version v{version}")
     for directory in PACKAGE_DIRS:
         package = root / directory
-        _, found = _project(package / "pyproject.toml")
+        pyproject = package / "pyproject.toml"
+        _, found = _project(pyproject)
         if found != version:
-            raise VersionError(f"{package / 'pyproject.toml'}: version {found}, expected {version}")
+            raise VersionError(f"{pyproject}: version {found}, expected {version}")
+        dependency_versions = {
+            dependency: floor
+            for dependency, floor in re.findall(
+                r'^  "(apple-[a-z-]+)>=([0-9]+\.[0-9]+\.[0-9]+),<2",$',
+                pyproject.read_text(),
+                re.MULTILINE,
+            )
+        }
+        required = REQUIRED_INTERNAL_DEPENDENCIES[directory]
+        if set(dependency_versions) != required or any(floor != version for floor in dependency_versions.values()):
+            raise VersionError(
+                f"{pyproject}: internal dependencies {dependency_versions!r}, "
+                f"expected {sorted(required)!r} at >= {version},<2"
+            )
         if directory == "AppleMCPCommon":
             continue
         manifest = json.loads((package / "manifest.json").read_text())
@@ -58,7 +80,11 @@ def validate_artifacts(version: str, dist: Path, bundles: Path, output: Path, ro
         name, _ = _project(root / directory / "pyproject.toml")
         stem = re.sub(r"[-_.]+", "_", name)
         expected_dists.update((f"{stem}-{version}-py3-none-any.whl", f"{stem}-{version}.tar.gz"))
-    found_dists = {path.name for path in dist.iterdir() if path.is_file()}
+    found_dists = {
+        path.name
+        for path in dist.iterdir()
+        if path.is_file() and (path.name.endswith(".whl") or path.name.endswith(".tar.gz"))
+    }
     if found_dists != expected_dists:
         raise VersionError(f"distribution set mismatch; missing={sorted(expected_dists - found_dists)}, extra={sorted(found_dists - expected_dists)}")
     expected_bundles: dict[str, Path] = {}

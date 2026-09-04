@@ -1,11 +1,9 @@
-# Expected conformance failures for Apple-Tools-MCP.
+# Expected failures for the frozen legacy conformance job only.
 #
-# These scenarios exercise features that MCP spec 2026-07-28 deprecated or
-# removed (SEP-2577 deprecations, subscriptions redesign). The suite's
-# conformance fixtures for them were intentionally removed from conformance.py
-# when the repo moved to SDK v2. Once the conformance CLI supports filtering
-# by spec version 2026-07-28, this baseline can be replaced with
-# `--spec-version 2026-07-28`.
+# The current 2026-07-28 requirements job has no expected-failure baseline.
+# These scenarios cover protocol features that 2026-07-28 deprecated or
+# replaced. Keep this file paired with conformance CLI 0.1.16 and the
+# APPLE_AGENT_MCP_CONFORMANCE_MODE=legacy server mode in ci.yml.
 server:
   - logging-set-level          # logging/setLevel removed in 2026-07-28
   - tools-call-with-logging    # server logging deprecated; stderr/OTel instead

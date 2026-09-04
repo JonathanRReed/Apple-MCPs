@@ -42,6 +42,11 @@ jobs:
       - name: Verify built assets and generate release metadata
         run: python3 scripts/check_release.py --tag "$GITHUB_REF_NAME" --artifacts
 
+      - name: Verify isolated bundle launches
+        run: |
+          uv sync --all-packages --locked
+          uv run --no-sync python scripts/bundle_smoke.py
+
       - name: Collect release assets and write SHA256SUMS
         run: |
           mkdir -p release-assets

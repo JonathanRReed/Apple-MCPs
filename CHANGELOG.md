@@ -6,8 +6,26 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-09-04
+
+### Security
+- Pass notification text through AppleScript arguments instead of interpolating it into code. (#18)
+- Require an explicit Mail attachment directory. Reject paths outside it, escaping symlinks, non-files, and transport separators. Return structured validation errors for rejected attachments. (#16)
+- Bound Contacts subprocess time and output size. Scan larger directories in pages, and report incomplete scans instead of silently omitting contacts. (#17)
+- Restrict unauthenticated Streamable HTTP servers to loopback addresses. Network and wildcard binds now fail at startup.
+
 ### Fixed
 - Calendar `update_event` no longer fails with `-10025` ("start date must be before end date") when an event is moved so that its new start lies after its old end: the AppleScript fallback now assigns the two boundaries in whichever order keeps the intermediate state valid. (#15)
+- Send resource notifications through the current MCP subscription API while preserving legacy client support.
+- Report the suite version in MCP server metadata and align the Mail settings default.
+- Delete Notes folders by stable ID and map the Swift Reminders list deletion response to the public tool schema. Both fixes were verified in the native apps.
+- Require matching shared and domain package versions so upgrades cannot retain incompatible or vulnerable older components.
+
+### Changed
+- Test the frozen MCP 2026-07-28 requirements with a pinned conformance runner. Keep legacy conformance and its optional-feature baseline separate.
+- Check discovery, schemas, structured tool calls, errors, and current/legacy negotiation across every server. Validate isolated bundle launches through their manifest commands.
+- Validate source versions and artifact counts before publishing. Publish the GitHub release only after all PyPI packages succeed, and attach distributions plus exact registry metadata alongside bundles and checksums.
+- Pin MCPB and Inspector tooling, declare generated bundle capabilities, and document Codex setup and attachment restrictions.
 
 ## [1.0.3] - 2026-09-01
 

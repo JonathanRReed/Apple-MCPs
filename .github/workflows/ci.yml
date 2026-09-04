@@ -208,15 +208,10 @@ jobs:
           PY
 
       - name: Run official MCP conformance suite
-        # Direct CLI invocation so the expected-failures baseline applies:
-        # conformance-baseline.yaml documents scenarios for features that
-        # spec 2026-07-28 deprecated/removed and this suite intentionally
-        # does not implement.
         run: |
-          npx -y @modelcontextprotocol/conformance server \
+          npx -y @modelcontextprotocol/conformance@0.2.0-alpha.11 server \
             --url http://127.0.0.1:8765/mcp \
-            --suite active \
-            --expected-failures conformance-baseline.yaml
+            --requirements 2026-07-28
 
       - name: Show Apple-Tools-MCP log on failure
         if: failure()
@@ -228,6 +223,90 @@ jobs:
           if [ -f "$RUNNER_TEMP/apple-tools-conformance.pid" ]; then
             kill "$(cat "$RUNNER_TEMP/apple-tools-conformance.pid")" || true
           fi
+
+  apple-tools-conformance-legacy:
+    name: Apple-Tools Conformance (legacy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Sync workspace
+        run: uv sync --all-packages
+
+      - name: Start Apple-Tools-MCP in legacy conformance mode
+        working-directory: Apple-Tools-MCP
+        run: |
+          APPLE_AGENT_MCP_TRANSPORT=streamable-http \
+          APPLE_AGENT_MCP_PORT=8765 \
+          APPLE_AGENT_MCP_CONFORMANCE_MODE=legacy \
+          ./start.sh >"$RUNNER_TEMP/apple-tools-conformance-legacy.log" 2>&1 &
+          echo $! >"$RUNNER_TEMP/apple-tools-conformance-legacy.pid"
+
+      - name: Wait for Apple-Tools-MCP
+        run: |
+          python3 - <<'PY'
+          import socket
+          import time
+
+          deadline = time.time() + 180
+          while time.time() < deadline:
+              try:
+                  with socket.create_connection(("127.0.0.1", 8765), timeout=1):
+                      raise SystemExit(0)
+              except OSError:
+                  time.sleep(1)
+
+          raise SystemExit("Apple-Tools-MCP did not start on port 8765 within 180 seconds")
+          PY
+
+      - name: Run legacy MCP conformance suite
+        run: |
+          npx -y @modelcontextprotocol/conformance@0.1.16 server \
+            --url http://127.0.0.1:8765/mcp \
+            --suite active \
+            --expected-failures conformance-baseline.yaml
+
+      - name: Show Apple-Tools-MCP log on failure
+        if: failure()
+        run: cat "$RUNNER_TEMP/apple-tools-conformance-legacy.log"
+
+      - name: Stop Apple-Tools-MCP
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/apple-tools-conformance-legacy.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/apple-tools-conformance-legacy.pid")" || true
+          fi
+
+  release-preflight:
+    name: Release script tests and preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Sync workspace
+        run: uv sync --all-packages --all-extras
+
+      - name: Test release scripts
+        run: uv run --no-sync python -m unittest discover -s scripts/tests -p 'test_*.py'
+
+      - name: Validate release source metadata
+        run: uv run --no-sync python scripts/check_release.py
 
   inspector-smoke:
     name: Inspector Smoke
@@ -247,6 +326,12 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: "22"
+
+      - name: Sync workspace
+        run: uv sync --all-packages
+
+      - name: Run MCP protocol smoke checks
+        run: uv run --no-sync python scripts/protocol_smoke.py
 
       - name: Run Inspector smoke checks
         run: bash scripts/inspector_smoke.sh

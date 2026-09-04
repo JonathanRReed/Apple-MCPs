@@ -28,9 +28,9 @@ then update `CHANGELOG.md` (move `[Unreleased]` entries under the new
 heading), refresh the lockfile, and run the test suites:
 
 ```bash
-python3 scripts/bump_version.py 1.0.3
+python3 scripts/bump_version.py 1.0.4
 uv sync --all-packages
-python3 scripts/check_release.py --tag v1.0.3
+python3 scripts/check_release.py --tag v1.0.4
 ```
 
 The bump command validates every package before writing any file. It updates
@@ -41,9 +41,11 @@ the release workflow.
 
 ## 1. Publish packages to PyPI with uv
 
-Order matters: every server depends on `apple-mcp-common>=1.0.0,<2`, so publish
-`AppleMCPCommon` first. (The `[tool.uv.sources]` workspace pins only apply to
-local development; built wheels resolve `apple-mcp-common` from PyPI.)
+Order matters: every server requires the same suite version of
+`apple-mcp-common`, so publish `AppleMCPCommon` first. The unified server also
+requires that suite version of every domain package. The `[tool.uv.sources]`
+workspace pins apply only to local development. Built wheels resolve these
+packages from PyPI.
 
 ```bash
 cd AppleMCPCommon
@@ -85,13 +87,12 @@ GitHub account that owns the repo):
 mcp-publisher login github   # device-code flow in the browser
 ```
 
-Then publish each server (the CLI reads `./server.json`):
+After the GitHub release exists, download its generated `*.server.json` assets into `release-metadata/`. Validate and publish those exact records:
 
 ```bash
-for dir in Apple-Tools-MCP Apple-Calendar-MCP AppleContacts-MCP AppleFiles-MCP \
-           AppleMail-MCP AppleMaps-MCP AppleMessages-MCP AppleNotes-MCP \
-           AppleReminders-MCP AppleShortcuts-MCP AppleSystem-MCP; do
-  (cd "$dir" && mcp-publisher publish)
+for metadata in release-metadata/*.server.json; do
+  mcp-publisher validate "$metadata"
+  mcp-publisher publish "$metadata"
 done
 ```
 

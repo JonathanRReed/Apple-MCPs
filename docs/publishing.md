@@ -65,7 +65,26 @@ Sanity checks after publishing:
 - `uvx apple-mcp-mail` (etc.) starts the server via the console script.
 - The PyPI project page description contains the `mcp-name:` marker.
 
-## 2. Install mcp-publisher
+## 2. Automated registry publication
+
+The tag-triggered release workflow is the default publication path. It waits
+for all 12 PyPI uploads, creates the GitHub release, then publishes all 11
+generated metadata records to the MCP Registry in sequence.
+
+The registry job downloads the same `release-assets` artifact used for the
+GitHub release. It requires exactly 11 `*.server.json` files and validates all
+of them before publishing any record. It uses `mcp-publisher` v1.8.1, verifies
+the Linux archive against its pinned upstream SHA-256, and authenticates through
+GitHub OIDC. The job needs no registry secret or browser session.
+
+## 3. Manual recovery
+
+Use the manual path only to recover from a failed registry job after PyPI and
+the GitHub release have succeeded. Download the generated `*.server.json`
+assets from that GitHub release. Do not regenerate or edit them during
+recovery, since their MCPB URLs and hashes describe the attached release files.
+
+Install `mcp-publisher`:
 
 ```bash
 brew install mcp-publisher
@@ -78,7 +97,7 @@ curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/downlo
 sudo mv mcp-publisher /usr/local/bin/
 ```
 
-## 3. Authenticate and publish to the MCP Registry
+Authenticate and publish:
 
 GitHub auth grants the `io.github.JonathanRReed/*` namespace (must match the
 GitHub account that owns the repo):
@@ -87,11 +106,15 @@ GitHub account that owns the repo):
 mcp-publisher login github   # device-code flow in the browser
 ```
 
-After the GitHub release exists, download its generated `*.server.json` assets into `release-metadata/`. Validate and publish those exact records:
+Put the downloaded records in `release-metadata/`. Validate all 11 before
+publishing any of them, then publish the same files:
 
 ```bash
 for metadata in release-metadata/*.server.json; do
   mcp-publisher validate "$metadata"
+done
+
+for metadata in release-metadata/*.server.json; do
   mcp-publisher publish "$metadata"
 done
 ```
@@ -149,14 +172,13 @@ To update and publish registry metadata manually:
    The download URL must contain the string "mcp" (the `.mcpb` extension
    satisfies this). The registry does not verify the hash, but MCP clients do
    before installing.
-3. Run `mcp-publisher publish` from a directory containing that generated file
-   as `server.json`. Registry publishing remains a manual step.
+3. Publish the generated metadata through the release workflow. Use the manual
+   recovery steps above only if the registry job fails.
 
-## 5. Optional: automate with GitHub Actions
+## 5. GitHub Actions authentication
 
 Per [the registry docs](https://modelcontextprotocol.io/registry/github-actions),
-a tag-triggered workflow (`on: push: tags: ["v*"]`) can build, publish to PyPI,
-then publish every `server.json`. Key points:
+the workflow uses GitHub OIDC for registry authentication. Key points:
 
 - Use OIDC auth: job permissions `id-token: write`, then
   `mcp-publisher login github-oidc` — no stored registry secret needed.
@@ -171,8 +193,8 @@ then publish every `server.json`. Key points:
   https://pypi.org/manage/account/publishing/, set Environment name to
   `pypi-<package-name>` for each entry. A shared environment name will be
   rejected with "matching this configuration has already been registered".
-- For this monorepo, loop the publish step over the 11 server directories,
-  mirroring the loop in section 3.
+- The registry job consumes generated metadata from `release-assets`. It does
+  not publish the older `server.json` files checked into each server directory.
 
 ## Notes
 

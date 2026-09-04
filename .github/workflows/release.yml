@@ -142,3 +142,51 @@ jobs:
         with:
           files: release-assets/*
           generate_release_notes: true
+
+  publish-registry:
+    name: Publish servers to MCP Registry
+    needs: github-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download exact release metadata
+        uses: actions/download-artifact@v8
+        with:
+          name: release-assets
+          path: release-assets/
+
+      - name: Install verified mcp-publisher v1.8.1
+        run: |
+          archive="mcp-publisher_linux_amd64.tar.gz"
+          expected_sha256="a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc"
+          curl --fail --location --silent --show-error \
+            "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/$archive" \
+            --output "$archive"
+          echo "$expected_sha256  $archive" | sha256sum --check --strict
+          tar -xzf "$archive" mcp-publisher
+          chmod +x mcp-publisher
+
+      - name: Validate all registry records
+        run: |
+          shopt -s nullglob
+          metadata=(release-assets/*.server.json)
+          if [ "${#metadata[@]}" -ne 11 ]; then
+            echo "Expected 11 generated server.json files, found ${#metadata[@]}" >&2
+            exit 1
+          fi
+          for server_json in "${metadata[@]}"; do
+            ./mcp-publisher validate "$server_json"
+          done
+
+      - name: Authenticate to MCP Registry with GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish all registry records sequentially
+        run: |
+          for server_json in release-assets/*.server.json; do
+            ./mcp-publisher publish "$server_json"
+          done

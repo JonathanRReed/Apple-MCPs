@@ -14,6 +14,7 @@ class Settings:
     version: str
     safety_mode: SafetyMode
     allowed_calendars: tuple[str, ...]
+    write_allowed_calendars: tuple[str, ...]
     log_level: str
     helper_source: Path
     helper_binary: Path
@@ -43,6 +44,11 @@ def load_settings() -> Settings:
         version="1.0.2",
         safety_mode=cast(SafetyMode, raw_safety_mode),
         allowed_calendars=_parse_allowed_calendars(os.environ.get("APPLE_CALENDAR_MCP_ALLOWED_CALENDARS")),
+        # Write-only allowlist. Separate from allowed_calendars because that one gates
+        # reads as well: a client can legitimately need to read every calendar (to see
+        # what it must schedule around) while being allowed to create/update/delete on
+        # exactly one. Empty means "no write restriction beyond allowed_calendars".
+        write_allowed_calendars=_parse_allowed_calendars(os.environ.get("APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS")),
         log_level=os.environ.get("APPLE_CALENDAR_MCP_LOG_LEVEL", "INFO").strip() or "INFO",
         helper_source=package_dir / "apple_pim_bridge.swift",
         helper_binary=helper_build_dir / "apple-calendar-pim-bridge",

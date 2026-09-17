@@ -170,6 +170,7 @@ def calendar_health() -> HealthResponse:
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        write_allowed_calendars=list(settings.write_allowed_calendars),
         capabilities=capabilities,
         helper_available=helper_available,
         helper_compiled=helper_compiled,
@@ -327,6 +328,11 @@ def calendar_update_event(
 ) -> EventResponse | ErrorResponse:
     try:
         ensure_action_allowed("calendar_update_event", _event_owner_calendar(event_id))
+        if calendar_id is not None:
+            # A move is a write to the destination as much as to the source, so the
+            # destination is checked too -- otherwise an allowlisted calendar's events
+            # could be relocated out of it past the allowlist.
+            ensure_action_allowed("calendar_update_event", _calendar_name_from_id(calendar_id))
         event = _bridge().update_event(
             event_id,
             title=title,

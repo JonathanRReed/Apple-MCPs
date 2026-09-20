@@ -40,6 +40,13 @@
           "isRequired": false,
           "format": "string",
           "placeholder": "Work,Personal"
+        },
+        {
+          "name": "APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS",
+          "description": "Comma-separated allow-list of calendar names that may be written to (create/update/delete). Reads are unaffected, so a client can see every calendar while only being able to modify these. Empty applies no write-specific restriction.",
+          "isRequired": false,
+          "format": "string",
+          "placeholder": "AI CONTROLLED"
         }
       ]
     },

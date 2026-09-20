@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Added
+- **Event alarms in `Apple-Calendar-MCP`.** `calendar_create_event` and `calendar_update_event` accept an optional `alarms` list; each entry carries exactly one of `minutes_before` (a number of minutes before the event start, zero or greater) or `absolute_iso` (an ISO datetime). On update, `[]` clears every alarm and omitting the field leaves existing alarms untouched. Event responses now echo an `alarms` list of strings (`"-15m"` for relative alarms, an ISO datetime for absolute ones), and `calendar_health` reports the `event_alarms` capability. The same tools are re-exported by `Apple-Tools-MCP`, so the unified server gains alarms too.
+
 ### Changed
 - Refreshed compatible transitive dependencies in the workspace lockfile.
 

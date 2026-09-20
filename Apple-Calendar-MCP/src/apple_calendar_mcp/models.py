@@ -68,10 +68,19 @@ class EventSummary(BaseModel):
     availability: str | None = None
 
 
+class AlarmInfo(BaseModel):
+    type: Literal["absolute", "relative", "location"]
+    offset_minutes: int | None = None
+    absolute: str | None = None
+    proximity: str | None = None
+    location_title: str | None = None
+
+
 class EventDetail(EventSummary):
     notes: str | None = None
     recurrence_rule: RecurrenceInfo | None = None
     attendees: list[AttendeeInfo] | None = None
+    alarms: list[AlarmInfo] | None = None
 
 
 class EventListResponse(BaseModel):

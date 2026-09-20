@@ -15,11 +15,12 @@ async def calendar_update_event(
     notes: str | None = None,
     location: str | None = None,
     all_day: bool | None = None,
-    recurrence: dict[str, Any] | None = None
+    recurrence: dict[str, Any] | None = None,
+    alarms: list[Any] | None = None
 ) -> Any:
     """Update Event
 
-    Update one or more fields on an existing calendar event.
+    Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged.
 
     Example:
         await calendar_update_event(client, event_id='example_event_id', title='example_title')
@@ -34,6 +35,7 @@ async def calendar_update_event(
         "location": location,
         "all_day": all_day,
         "recurrence": recurrence,
+        "alarms": alarms,
     }
     payload = {key: value for key, value in arguments.items() if value is not None}
     return await call_tool_json(client, "calendar_update_event", payload)

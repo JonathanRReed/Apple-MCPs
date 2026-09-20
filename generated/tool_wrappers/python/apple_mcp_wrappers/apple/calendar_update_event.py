@@ -15,7 +15,8 @@ async def calendar_update_event(
     notes: str | None = None,
     location: str | None = None,
     all_day: bool | None = None,
-    recurrence: dict[str, Any] | None = None
+    recurrence: dict[str, Any] | None = None,
+    alarms: list[Any] | None = None
 ) -> Any:
     """Calendar Update Event
 
@@ -34,6 +35,7 @@ async def calendar_update_event(
         "location": location,
         "all_day": all_day,
         "recurrence": recurrence,
+        "alarms": alarms,
     }
     payload = {key: value for key, value in arguments.items() if value is not None}
     return await call_tool_json(client, "calendar_update_event", payload)

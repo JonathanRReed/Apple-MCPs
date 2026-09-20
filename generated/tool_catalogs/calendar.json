@@ -282,7 +282,7 @@
         "all_day: boolean (optional)",
         "recurrence: object (optional)"
       ],
-      "description": "Create a new event in a specific Apple Calendar calendar.",
+      "description": "Create a new event in a specific Apple Calendar calendar. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}.",
       "domain": "calendar",
       "example_calls": [
         {
@@ -308,10 +308,19 @@
         "schedule",
         "create",
         "new",
-        "specific"
+        "specific",
+        "optional",
+        "alarms",
+        "alarm",
+        "minutes",
+        "minut",
+        "before",
+        "absolute",
+        "iso",
+        "datetime"
       ],
       "title": "Create Event",
-      "usage_intent": "Create a new event in a specific Apple Calendar calendar."
+      "usage_intent": "Create a new event in a specific Apple Calendar calendar. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}."
     },
     {
       "aliases": [
@@ -334,7 +343,7 @@
         "location: string (optional)",
         "all_day: boolean (optional)"
       ],
-      "description": "Update one or more fields on an existing calendar event.",
+      "description": "Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged.",
       "domain": "calendar",
       "example_calls": [
         {
@@ -361,10 +370,18 @@
         "more",
         "fields",
         "field",
-        "existing"
+        "existing",
+        "optional",
+        "alarms",
+        "alarm",
+        "minutes",
+        "minut",
+        "before",
+        "absolute",
+        "iso"
       ],
       "title": "Update Event",
-      "usage_intent": "Update one or more fields on an existing calendar event."
+      "usage_intent": "Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged."
     },
     {
       "aliases": [

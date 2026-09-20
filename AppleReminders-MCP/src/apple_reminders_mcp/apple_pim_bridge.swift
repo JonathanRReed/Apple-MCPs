@@ -60,6 +60,19 @@ struct EventRecord: Encodable {
     let notes: String?
     let recurrence_rule: RecurrenceInfo?
     let attendees: [AttendeeInfo]?
+    let alarms: [AlarmInfo]?
+}
+
+struct AlarmInfo: Encodable {
+    // "absolute": fires at a fixed date. "relative": fires N minutes before/after the event
+    // (offset_minutes). "location": a "time to leave"-style alarm tied to a structured location;
+    // offset_minutes here is Apple's last-computed travel-time snapshot, not a fixed offset --
+    // EventKit exposes no separate travel-time field, so this is the closest available reading.
+    let type: String
+    let offset_minutes: Int?
+    let absolute: String?
+    let proximity: String?
+    let location_title: String?
 }
 
 struct RecurrenceInfo: Encodable {
@@ -536,6 +549,27 @@ struct ApplePIMBridge {
                 event.recurrenceRules = nil
             }
         }
+        if payload.keys.contains("alarms") {
+            if let alarmEntries = payload["alarms"] as? [[String: Any]] {
+                var alarms: [EKAlarm] = []
+                for entry in alarmEntries {
+                    if let minutes = doubleValue(entry, field: "minutes_before") {
+                        alarms.append(EKAlarm(relativeOffset: -minutes * 60))
+                    } else if let absoluteRaw = stringValue(entry, field: "absolute_iso") {
+                        alarms.append(EKAlarm(absoluteDate: try parseDate(absoluteRaw)))
+                    } else {
+                        throw BridgeFailure(
+                            errorCode: "INVALID_INPUT",
+                            message: "Each alarm entry must include minutes_before or absolute_iso.",
+                            suggestion: "Pass alarms like [{\"minutes_before\": 15}] or [{\"absolute_iso\": \"2026-01-01T09:00:00\"}]."
+                        )
+                    }
+                }
+                event.alarms = alarms.isEmpty ? nil : alarms
+            } else if payload["alarms"] is NSNull {
+                event.alarms = nil
+            }
+        }
     }
 
     static func reminderListRecord(_ calendar: EKCalendar) -> ReminderListRecord {
@@ -587,6 +621,7 @@ struct ApplePIMBridge {
     static func eventRecord(_ event: EKEvent) -> EventRecord {
         let recurrence = event.recurrenceRules?.first.map(recurrenceInfo)
         let attendeeList = event.attendees?.map(attendeeInfo)
+        let alarmList = event.alarms?.map(alarmInfo)
         return EventRecord(
             event_id: event.calendarItemIdentifier,
             title: event.title,
@@ -598,8 +633,31 @@ struct ApplePIMBridge {
             location: emptyToNil(event.location),
             notes: emptyToNil(event.notes),
             recurrence_rule: recurrence,
-            attendees: attendeeList
+            attendees: attendeeList,
+            alarms: alarmList
         )
+    }
+
+    static func alarmInfo(_ alarm: EKAlarm) -> AlarmInfo {
+        if let absoluteDate = alarm.absoluteDate {
+            return AlarmInfo(type: "absolute", offset_minutes: nil, absolute: isoString(absoluteDate), proximity: nil, location_title: nil)
+        }
+        if alarm.proximity != .none || alarm.structuredLocation != nil {
+            let proximityStr: String
+            switch alarm.proximity {
+            case .enter: proximityStr = "enter"
+            case .leave: proximityStr = "leave"
+            @unknown default: proximityStr = "none"
+            }
+            return AlarmInfo(
+                type: "location",
+                offset_minutes: Int(alarm.relativeOffset / 60),
+                absolute: nil,
+                proximity: proximityStr,
+                location_title: alarm.structuredLocation?.title
+            )
+        }
+        return AlarmInfo(type: "relative", offset_minutes: Int(alarm.relativeOffset / 60), absolute: nil, proximity: nil, location_title: nil)
     }
 
     static func recurrenceInfo(_ rule: EKRecurrenceRule) -> RecurrenceInfo {
@@ -930,6 +988,19 @@ struct ApplePIMBridge {
             return nil
         }
         return stringValue(payload, field: field)
+    }
+
+    static func doubleValue(_ payload: [String: Any], field: String) -> Double? {
+        if let value = payload[field] as? Double {
+            return value
+        }
+        if let value = payload[field] as? NSNumber {
+            return value.doubleValue
+        }
+        if let value = payload[field] as? String {
+            return Double(value)
+        }
+        return nil
     }
 
     static func intValue(_ payload: [String: Any], field: String) -> Int? {

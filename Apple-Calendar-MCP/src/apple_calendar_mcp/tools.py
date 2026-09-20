@@ -1,4 +1,5 @@
 import json
+import math
 import os
 
 from mcp.server.mcpserver import Context, MCPServer
@@ -54,6 +55,7 @@ def _capabilities() -> tuple[list[str], bool, bool]:
             "create_event",
             "update_event",
             "delete_event",
+            "event_alarms",
             "resources",
             "prompts",
         ],
@@ -68,6 +70,46 @@ def _validate_time_window(start_iso: str, end_iso: str) -> tuple[str, str]:
     if end <= start:
         raise ValueError("end_iso must be later than start_iso")
     return start.isoformat(timespec="seconds"), end.isoformat(timespec="seconds")
+
+
+def _coerce_alarm_minutes(value: object) -> float:
+    if isinstance(value, bool):
+        raise ValueError("minutes_before must be a number")
+    if isinstance(value, int | float):
+        minutes = float(value)
+    elif isinstance(value, str):
+        try:
+            minutes = float(value.strip())
+        except ValueError as exc:
+            raise ValueError("minutes_before must be a number") from exc
+    else:
+        raise ValueError("minutes_before must be a number")
+    if not math.isfinite(minutes):
+        raise ValueError("minutes_before must be a number")
+    if minutes < 0:
+        raise ValueError("minutes_before must be zero or greater")
+    if minutes != int(minutes):
+        raise ValueError("minutes_before must be a whole number of minutes")
+    return float(int(minutes))
+
+
+def _validate_alarms(alarms: list[dict[str, object]] | None) -> list[dict[str, object]] | None:
+    if alarms is None:
+        return None
+    normalized: list[dict[str, object]] = []
+    for entry in alarms:
+        if not isinstance(entry, dict):
+            raise ValueError("each alarm must be an object with minutes_before or absolute_iso")
+        has_minutes = "minutes_before" in entry
+        has_absolute = "absolute_iso" in entry
+        if has_minutes == has_absolute:
+            raise ValueError("each alarm must have exactly one of minutes_before or absolute_iso")
+        if has_minutes:
+            normalized.append({"minutes_before": _coerce_alarm_minutes(entry["minutes_before"])})
+        else:
+            absolute = parse_iso_datetime(str(entry["absolute_iso"]))
+            normalized.append({"absolute_iso": absolute.isoformat(timespec="seconds")})
+    return normalized
 
 
 def _calendar_name_from_id(calendar_id: str | None) -> str | None:
@@ -270,7 +312,7 @@ def calendar_get_event(event_id: str) -> EventResponse | ErrorResponse:
 
 @mcp.tool(
     title="Create Event",
-    description="Create a new event in a specific Apple Calendar calendar.",
+    description="Create a new event in a specific Apple Calendar calendar. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}.",
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
@@ -283,12 +325,14 @@ def calendar_create_event(
     location: str | None = None,
     all_day: bool = False,
     recurrence: dict[str, object] | None = None,
+    alarms: list[dict[str, object]] | None = None,
 ) -> EventResponse | ErrorResponse:
     try:
         if not title.strip():
             raise ValueError("title must not be empty")
         ensure_action_allowed("calendar_create_event", _calendar_name_from_id(calendar_id))
         start_value, end_value = _validate_time_window(start_iso, end_iso)
+        alarms_value = _validate_alarms(alarms)
         event = _bridge().create_event(
             title=title.strip(),
             calendar_id=calendar_id,
@@ -298,6 +342,7 @@ def calendar_create_event(
             location=location,
             all_day=all_day,
             recurrence=recurrence,
+            alarms=alarms_value,
         )
         return EventResponse(event=event)
     except SafetyError as exc:
@@ -305,12 +350,12 @@ def calendar_create_event(
     except CalendarBridgeError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except ValueError as exc:
-        return _error_response("INVALID_INPUT", str(exc), "Provide a non-empty title and valid ISO datetimes.")
+        return _error_response("INVALID_INPUT", str(exc), "Provide a non-empty title, valid ISO datetimes, and well-formed alarms.")
 
 
 @mcp.tool(
     title="Update Event",
-    description="Update one or more fields on an existing calendar event.",
+    description="Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged.",
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
@@ -324,9 +369,11 @@ def calendar_update_event(
     location: str | None = None,
     all_day: bool | None = None,
     recurrence: dict[str, object] | None = None,
+    alarms: list[dict[str, object]] | None = None,
 ) -> EventResponse | ErrorResponse:
     try:
         ensure_action_allowed("calendar_update_event", _event_owner_calendar(event_id))
+        alarms_value = _validate_alarms(alarms)
         event = _bridge().update_event(
             event_id,
             title=title,
@@ -337,12 +384,15 @@ def calendar_update_event(
             location=location,
             all_day=all_day,
             recurrence=recurrence,
+            alarms=alarms_value,
         )
         return EventResponse(event=event)
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except CalendarBridgeError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except ValueError as exc:
+        return _error_response("INVALID_INPUT", str(exc), "Provide well-formed alarms and valid ISO datetimes.")
 
 
 @mcp.tool(

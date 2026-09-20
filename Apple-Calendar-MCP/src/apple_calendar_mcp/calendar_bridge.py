@@ -86,6 +86,7 @@ class CalendarBridge:
         location: str | None = None,
         all_day: bool = False,
         recurrence: dict[str, object] | None = None,
+        alarms: list[dict[str, object]] | None = None,
     ) -> EventDetail:
         request = {
             "title": title,
@@ -98,6 +99,8 @@ class CalendarBridge:
         }
         if recurrence is not None:
             request["recurrence"] = recurrence
+        if alarms is not None:
+            request["alarms"] = alarms
         payload = self._run_helper("create-calendar-event", json.dumps(request))
         return self._normalize_detail(payload)
 
@@ -113,6 +116,7 @@ class CalendarBridge:
         location: str | None = None,
         all_day: bool | None = None,
         recurrence: dict[str, object] | None = None,
+        alarms: list[dict[str, object]] | None = None,
     ) -> EventDetail:
         request: dict[str, object] = {}
         if title is not None:
@@ -131,6 +135,8 @@ class CalendarBridge:
             request["all_day"] = all_day
         if recurrence is not None:
             request["recurrence"] = recurrence
+        if alarms is not None:
+            request["alarms"] = alarms
         payload = self._run_helper("update-calendar-event", event_id, json.dumps(request))
         return self._normalize_detail(payload)
 
@@ -438,6 +444,8 @@ function run(argv) {
             summary_dict["recurrence_rule"] = raw_event["recurrence_rule"]
         if raw_event.get("attendees") is not None:
             summary_dict["attendees"] = raw_event["attendees"]
+        if raw_event.get("alarms") is not None:
+            summary_dict["alarms"] = raw_event["alarms"]
         return EventDetail.model_validate(summary_dict)
 
     def _optional_text(self, value: object) -> str | None:

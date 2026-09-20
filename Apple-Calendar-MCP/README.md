@@ -16,6 +16,7 @@ Provides access to calendars and events through EventKit. Keep Calendar as the s
 
 - Discover and list calendars
 - Create, read, update, and delete events
+- Set event alarms (reminders) when creating or updating an event
 - Tool discovery helpers `search_tools` and `get_tool_info` for context-constrained clients
 - Today resources and planning prompts
 - Health checks that distinguish empty results from blocked access
@@ -81,6 +82,30 @@ claude mcp add --transport stdio --scope project apple-calendar -- uvx apple-cal
 ```
 
 </details>
+
+## Event Alarms
+
+`calendar_create_event` and `calendar_update_event` take an optional `alarms` parameter: a list of objects, each with **exactly one** of
+
+- `minutes_before` — a number of minutes before the event start (zero or greater); `15` means "alert 15 minutes before"
+- `absolute_iso` — an ISO datetime for a fixed alert time
+
+```json
+{
+  "title": "Design review",
+  "start_iso": "2026-08-30T14:00:00",
+  "end_iso": "2026-08-30T15:00:00",
+  "calendar_id": "...",
+  "alarms": [{ "minutes_before": 15 }, { "absolute_iso": "2026-08-30T09:00:00" }]
+}
+```
+
+Semantics:
+
+- On create, omitting `alarms` creates the event with no alarms.
+- On update, omitting `alarms` leaves the event's existing alarms unchanged; passing `[]` clears them all. There is no partial add or remove — the list you pass replaces the event's alarms.
+- Event responses echo alarms back as a list of strings: `"-15m"` for a relative alarm, an ISO datetime for an absolute one.
+- An entry with both fields, neither field, a negative `minutes_before`, or an unparseable `absolute_iso` is rejected with `INVALID_INPUT` before any calendar write happens.
 
 ## Safety Modes
 

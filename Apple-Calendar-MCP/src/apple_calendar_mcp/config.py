@@ -45,5 +45,8 @@ def load_settings() -> Settings:
         allowed_calendars=_parse_allowed_calendars(os.environ.get("APPLE_CALENDAR_MCP_ALLOWED_CALENDARS")),
         log_level=os.environ.get("APPLE_CALENDAR_MCP_LOG_LEVEL", "INFO").strip() or "INFO",
         helper_source=package_dir / "apple_pim_bridge.swift",
-        helper_binary=helper_build_dir / "apple-calendar-pim-bridge",
+        # Nested inside a bundle (Contents/MacOS/<exe> + a sibling Contents/Info.plist) so the
+        # compiled helper has real CFBundle identity instead of running as a bare CLI process.
+        # See CalendarBridge._write_bundle_info_plist for why that matters.
+        helper_binary=helper_build_dir / "apple-calendar-pim-bridge.app" / "Contents" / "MacOS" / "apple-calendar-pim-bridge",
     )

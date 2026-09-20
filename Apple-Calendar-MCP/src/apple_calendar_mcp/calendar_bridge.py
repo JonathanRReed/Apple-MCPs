@@ -1,4 +1,5 @@
 import json
+import plistlib
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -183,7 +184,12 @@ class CalendarBridge:
                 f"Missing native helper source at '{self.helper_source}'.",
                 "Restore the shared Swift helper and retry.",
             )
-        if self.helper_binary.exists() and self.helper_binary.stat().st_mtime >= self.helper_source.stat().st_mtime:
+        info_plist = self._bundle_info_plist_path()
+        if (
+            self.helper_binary.exists()
+            and info_plist.exists()
+            and self.helper_binary.stat().st_mtime >= self.helper_source.stat().st_mtime
+        ):
             return
 
         self.helper_binary.parent.mkdir(parents=True, exist_ok=True)
@@ -206,6 +212,35 @@ class CalendarBridge:
                 completed.stderr.strip() or completed.stdout.strip() or "Failed to compile the native helper.",
                 "Confirm Xcode command line tools and Swift are available, then retry.",
             )
+        self._write_bundle_info_plist(info_plist)
+
+    def _bundle_info_plist_path(self) -> Path:
+        # helper_binary is .../apple-calendar-pim-bridge.app/Contents/MacOS/apple-calendar-pim-bridge.
+        return self.helper_binary.parent.parent / "Info.plist"
+
+    def _write_bundle_info_plist(self, plist_path: Path) -> None:
+        # A bare CLI Mach-O has no CFBundleIdentifier, so when EventKit needs a real (non-cached)
+        # resync it can't attribute the request to us and routes it through Calendar.app instead --
+        # which brings Calendar.app to the foreground to service it. Giving the helper real bundle
+        # identity (this Info.plist, with LSUIElement so it never wants foreground/dock presence)
+        # stops macOS from needing to borrow Calendar.app's identity, so a background poll no
+        # longer steals focus from whatever the user is doing.
+        plist_data: dict[str, object] = {
+            "CFBundleIdentifier": "io.github.jonathanrreed.apple-mcps.calendar-pim-bridge",
+            "CFBundleName": self.helper_binary.name,
+            "CFBundleExecutable": self.helper_binary.name,
+            "CFBundlePackageType": "APPL",
+            "CFBundleShortVersionString": "1.0",
+            "CFBundleVersion": "1",
+            "LSUIElement": True,
+            "LSBackgroundOnly": True,
+            "NSCalendarsUsageDescription": "Reads and writes Calendar events for the Apple Calendar MCP server.",
+            "NSCalendarsFullAccessUsageDescription": "Reads and writes Calendar events for the Apple Calendar MCP server.",
+            "NSRemindersUsageDescription": "Reads and writes Reminders for the Apple Calendar MCP server.",
+            "NSRemindersFullAccessUsageDescription": "Reads and writes Reminders for the Apple Calendar MCP server.",
+        }
+        with plist_path.open("wb") as f:
+            plistlib.dump(plist_data, f)
 
     def _map_helper_error(self, stdout_text: str, stderr_text: str) -> CalendarBridgeError:
         if stdout_text:

@@ -1,5 +1,6 @@
 import json
 import subprocess
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 
@@ -74,6 +75,38 @@ class CalendarBridge:
     def get_event(self, event_id: str) -> EventDetail:
         payload = self._run_helper("get-calendar-event", event_id)
         return self._normalize_detail(payload)
+
+    def get_events(self, event_ids: Sequence[str]) -> dict[str, EventDetail | None]:
+        """Resolve many event ids in one helper call.
+
+        The helper pays its cost per invocation -- process launch plus
+        EKEventStore() setup -- not per id, so resolving N ids one at a time is
+        N times that fixed cost. This is the same lookup as get_event(), just
+        amortized.
+
+        Maps each id to its event, or to None where the helper reported that
+        the id no longer resolves. An id the helper did not answer for is
+        ABSENT from the mapping rather than None: callers that act on "gone"
+        (dropping a stored id, deleting a mapping) must be able to tell a
+        positive not-found from a non-answer, and treat the latter as unknown.
+        """
+        ids = list(event_ids)
+        if not ids:
+            return {}
+        payload = self._run_helper("get-calendar-events", json.dumps({"event_ids": ids}))
+        resolved: dict[str, EventDetail | None] = {}
+        for item in payload.get("items", []) or []:
+            event_id = item.get("event_id")
+            if not event_id:
+                continue
+            if item.get("found") and item.get("event"):
+                resolved[event_id] = self._normalize_detail(item["event"])
+            elif not item.get("found") and item.get("error_code") == "EVENT_NOT_FOUND":
+                resolved[event_id] = None
+            # Anything else is left out deliberately, so the caller treats that
+            # id as unanswered instead of inferring a state from a shape we do
+            # not recognize.
+        return resolved
 
     def create_event(
         self,

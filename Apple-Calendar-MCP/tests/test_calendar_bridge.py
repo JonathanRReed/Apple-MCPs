@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError
@@ -254,3 +255,92 @@ def test_list_events_aggregates_broad_fallback_by_calendar(monkeypatch) -> None:
     assert len(events) == 1
     assert events[0].event_id == "work-1"
     assert events[0].calendar_name == "Work"
+
+
+_BATCH_EVENT = {
+    "event_id": "event-123",
+    "title": "Planning",
+    "calendar_id": "calendar-1",
+    "calendar_name": "Work",
+    "start": "2026-03-27T10:00:00-05:00",
+    "end": "2026-03-27T10:30:00-05:00",
+    "all_day": False,
+    "location": "Room 1",
+}
+
+
+def _batch_bridge(monkeypatch, captured, payload):
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        captured["command"] = command
+        captured["request"] = json.loads(args[0]) if args else None
+        return payload
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    return bridge
+
+
+def test_get_events_sends_one_request_for_every_id(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    bridge = _batch_bridge(monkeypatch, captured, {
+        "count": 1,
+        "items": [{"event_id": "event-123", "found": True, "event": _BATCH_EVENT}],
+    })
+
+    resolved = bridge.get_events(["event-123"])
+
+    assert captured["command"] == "get-calendar-events"
+    assert captured["request"] == {"event_ids": ["event-123"]}
+    assert resolved["event-123"].title == "Planning"
+
+
+def test_get_events_maps_a_reported_miss_to_none(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    bridge = _batch_bridge(monkeypatch, captured, {
+        "count": 2,
+        "items": [
+            {"event_id": "event-123", "found": True, "event": _BATCH_EVENT},
+            {"event_id": "gone-1", "found": False, "error_code": "EVENT_NOT_FOUND"},
+        ],
+    })
+
+    resolved = bridge.get_events(["event-123", "gone-1"])
+
+    assert resolved["event-123"] is not None
+    assert resolved["gone-1"] is None
+
+
+def test_get_events_omits_ids_the_helper_did_not_answer_for(monkeypatch) -> None:
+    """Absence must not read as "gone". A caller that deletes a stored mapping
+    on not-found has to be able to tell a positive miss from a non-answer."""
+    captured: dict[str, object] = {}
+    bridge = _batch_bridge(monkeypatch, captured, {
+        "count": 1,
+        "items": [{"event_id": "event-123", "found": True, "event": _BATCH_EVENT}],
+    })
+
+    resolved = bridge.get_events(["event-123", "never-mentioned"])
+
+    assert "never-mentioned" not in resolved
+
+
+def test_get_events_omits_unrecognized_entry_shapes(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    bridge = _batch_bridge(monkeypatch, captured, {
+        "count": 2,
+        "items": [
+            {"event_id": "a", "found": True},                             # no event
+            {"event_id": "b", "found": False, "error_code": "SOMETHING"},  # unknown code
+        ],
+    })
+
+    assert bridge.get_events(["a", "b"]) == {}
+
+
+def test_get_events_makes_no_call_for_an_empty_list(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    bridge = _batch_bridge(monkeypatch, captured, {"count": 0, "items": []})
+
+    assert bridge.get_events([]) == {}
+    assert captured == {}

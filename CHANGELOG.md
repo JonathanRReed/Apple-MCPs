@@ -6,6 +6,22 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-09-25
+
+### Security
+- Calendar read tools and resources now consistently enforce the `APPLE_CALENDAR_MCP_ALLOWED_CALENDARS` read scope, and writes fail closed when an allowlisted target cannot be resolved. Single-event reads keep their preflight policy checks. (#25, #29)
+
+### Added
+- `APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS`: an optional write-only allowlist that restricts event create, update, and delete to named calendars without hiding other readable calendars. When both allowlists are set, writes must pass both; `safe_readonly` still blocks all writes. (#25, #29)
+
+### Fixed
+- Mail `mail_get_message`, `mail_move_message`, and `mail_delete_message` (including archive-anchor reads) now resolve targets through evaluated account/mailbox matches and numeric-ID-filtered message lookups instead of positional references, verify the resolved ID, and reject ambiguous targets. This addresses the AppleScript `-1728` deletion and archiving failures reported in #23 on a Gmail account with ~190 mailboxes. The fix passed CI, native AppleScript compilation, and handler tests, but has not been confirmed on the reporter's live Mail/Gmail setup — #23 stays open pending confirmation. (#30)
+- The Calendar helper now runs with a real application-bundle identity (`apple-calendar-pim-bridge.app`) so macOS attributes Automation and EventKit permission prompts to the helper instead of a transient process; previously compiled bare-binary helpers are migrated to the bundle layout automatically. (#24, #28)
+
+### Changed
+- Updated the MCP Python SDK from 2.1.1 to 2.2.0 across every server and `apple-mcp-common`. (#22)
+- Tightened setup, permissions, and usage documentation.
+
 ## [1.0.4] - 2026-09-04
 
 ### Security

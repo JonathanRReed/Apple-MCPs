@@ -41,7 +41,7 @@ def load_settings() -> Settings:
 
     return Settings(
         server_name="Apple Calendar",
-        version="1.0.4",
+        version="1.0.5",
         safety_mode=cast(SafetyMode, raw_safety_mode),
         allowed_calendars=_parse_allowed_calendars(os.environ.get("APPLE_CALENDAR_MCP_ALLOWED_CALENDARS")),
         # Write-only allowlist. Separate from allowed_calendars because that one gates

@@ -31,6 +31,12 @@ def ensure_action_allowed(action: str, calendar_name: str | None = None) -> None
                 f"Action '{action}' is blocked in safety mode '{settings.safety_mode}'.",
                 "Switch to safe_manage or full_access to create events.",
             )
+        if calendar_name is None and settings.allowed_calendars:
+            raise SafetyError(
+                "CALENDAR_BLOCKED",
+                f"Action '{action}' has no resolvable target calendar, so it cannot be checked against the allowlist.",
+                "Pass a calendar_id returned by calendar_list_calendars.",
+            )
         if calendar_name is not None and settings.allowed_calendars and calendar_name not in settings.allowed_calendars:
             raise SafetyError(
                 "CALENDAR_BLOCKED",

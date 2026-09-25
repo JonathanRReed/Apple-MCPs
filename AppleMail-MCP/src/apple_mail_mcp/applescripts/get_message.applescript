@@ -51,48 +51,52 @@ on boolText(flagValue)
     return "false"
 end boolText
 
+on parseMessageID(rawId)
+    try
+        set numericId to rawId as integer
+    on error
+        error "INVALID_MESSAGE_ID"
+    end try
+    -- Reject coercions such as 1.5 -> 2; never mutate a different message.
+    if numericId < 0 or (numericId as text) is not rawId then
+        error "INVALID_MESSAGE_ID"
+    end if
+    return numericId
+end parseMessageID
+
+on requireSingleMatch(matchedItems, missingCode, ambiguousCode)
+    if (count of matchedItems) is 0 then error missingCode
+    if (count of matchedItems) is not 1 then error ambiguousCode
+    -- The caller supplies Mail's evaluated result, not a live every-item specifier.
+    return contents of item 1 of matchedItems
+end requireSingleMatch
+
 on run argv
     set accountName to item 1 of argv
     set mailboxName to item 2 of argv
     set appleId to item 3 of argv
+    set numericMessageId to my parseMessageID(appleId)
 
     set fieldSeparator to ASCII character 31
     set recordSeparator to ASCII character 30
     set listSeparator to ASCII character 29
 
     tell application "Mail"
-        set targetAccount to missing value
-        repeat with theAccount in every account
-            if (name of theAccount) is accountName then
-                set targetAccount to theAccount
-                exit repeat
-            end if
-        end repeat
-        if targetAccount is missing value then
-            error "ACCOUNT_NOT_FOUND"
-        end if
+        -- Resolve concrete Mail objects instead of retaining repeat-loop item
+        -- references (issue #23). Refuse duplicate names rather than guessing.
+        set sourceAccount to my requireSingleMatch((get every account whose name is accountName), "ACCOUNT_NOT_FOUND", "ACCOUNT_AMBIGUOUS")
+        set sourceMailbox to my requireSingleMatch((get every mailbox of sourceAccount whose name is mailboxName), "MAILBOX_NOT_FOUND", "MAILBOX_AMBIGUOUS")
 
-        set targetMailbox to missing value
-        repeat with theMailbox in every mailbox of targetAccount
-            if (name of theMailbox) is mailboxName then
-                set targetMailbox to theMailbox
-                exit repeat
-            end if
-        end repeat
-        if targetMailbox is missing value then
-            error "MAILBOX_NOT_FOUND"
-        end if
-
-        set targetMessage to missing value
-        repeat with theMessage in messages of targetMailbox
-            if ((id of theMessage) as text) is appleId then
-                set targetMessage to theMessage
-                exit repeat
-            end if
-        end repeat
-        if targetMessage is missing value then
-            error "MESSAGE_NOT_FOUND"
-        end if
+        -- Use the ID from search, scoped to its original account and mailbox.
+        -- Mail's "message id" is a separate property; use a numeric-id filter.
+        -- No global search or automatic mutation retry if the message has moved.
+        try
+            set targetMessage to (get first message of sourceMailbox whose id is numericMessageId)
+        on error errorMessage number errorNumber
+            if errorNumber is -1728 then error "MESSAGE_NOT_FOUND"
+            error errorMessage number errorNumber
+        end try
+        if (id of targetMessage) is not numericMessageId then error "MESSAGE_ID_MISMATCH"
 
         set subjectText to ""
         try

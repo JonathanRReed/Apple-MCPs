@@ -88,6 +88,30 @@ claude mcp add --transport stdio --scope project apple-calendar -- uvx apple-cal
 - `safe_manage`
 - `full_access`
 
+### Calendar allowlists
+
+Set these environment variables in your MCP client's configuration, then restart the server:
+
+| Variable | Effect |
+| --- | --- |
+| `APPLE_CALENDAR_MCP_ALLOWED_CALENDARS` | Comma-separated calendar names the server may read or modify. Calendar listings, event listings, event details, and Calendar resources respect this scope. |
+| `APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS` | Additional comma-separated calendar names the server may create, update, or delete events in. It does not hide other readable calendars. |
+
+For an assistant that may read your schedule but only write to a dedicated calendar:
+
+```json
+{
+  "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
+  "APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS": "AI Planning"
+}
+```
+
+Leaving either allowlist unset or empty applies no restriction from that list. When both are set, writes must pass both; `safe_readonly` blocks all writes regardless of either list. Moving an event checks both the source and destination calendar. A write with an unresolved target is rejected when an allowlist is configured.
+
+Names are exact, case-sensitive matches after trimming configuration whitespace. Every calendar with a matching name is included, so use unique calendar names for security-sensitive scopes. `calendar_health` reports the configured write allowlist.
+
+These are policies enforced by the Python MCP server, not a macOS sandbox. Direct use of the native helper or bridge library does not enforce them. macOS permissions still apply, and your MCP client may send returned data to its model provider.
+
 ## Transport
 
 `stdio` is the default and recommended transport. Set `APPLE_CALENDAR_MCP_TRANSPORT=streamable-http` (with optional `APPLE_CALENDAR_MCP_HOST` and `APPLE_CALENDAR_MCP_PORT`) to serve Streamable HTTP instead.

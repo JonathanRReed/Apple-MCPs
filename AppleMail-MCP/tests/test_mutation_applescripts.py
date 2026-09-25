@@ -13,25 +13,26 @@ from pathlib import Path
 import pytest
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "apple_mail_mcp" / "applescripts"
-MUTATIONS = ("delete_message.applescript", "move_message.applescript")
+LOOKUP_SCRIPTS = ("delete_message.applescript", "move_message.applescript", "get_message.applescript")
 
 
-@pytest.mark.parametrize("name", MUTATIONS)
-def test_mutation_resolves_objects_instead_of_retaining_live_loop_references(name):
+@pytest.mark.parametrize("name", LOOKUP_SCRIPTS)
+def test_lookup_resolves_objects_instead_of_retaining_live_loop_references(name):
     source = (SCRIPTS / name).read_text()
     code = "\n".join(line.split("--", 1)[0] for line in source.splitlines())
-    assert not re.search(r"repeat\s+with\s+\w+\s+in", code, re.IGNORECASE)
+    assert not re.search(r"repeat\s+with\s+(?:theAccount|theMailbox|theMessage)\s+in", code, re.IGNORECASE)
     assert "(get every account whose name is accountName)" in code
     assert "(get every mailbox of sourceAccount whose name is mailboxName)" in code
-    assert "(get message id numericMessageId of sourceMailbox)" in code
+    assert "(get first message of sourceMailbox whose id is numericMessageId)" in code
     assert 'error "MESSAGE_NOT_FOUND"' in code
     assert 'error "INVALID_MESSAGE_ID"' in code
+    assert 'if (id of targetMessage) is not numericMessageId then error "MESSAGE_ID_MISMATCH"' in code
     if name == "move_message.applescript":
         assert "(get every account whose name is targetAccountName)" in code
         assert "(get every mailbox of destAccount whose name is targetMailboxName)" in code
 
 
-@pytest.fixture(scope="module", params=MUTATIONS)
+@pytest.fixture(scope="module", params=LOOKUP_SCRIPTS)
 def compiled_script(request, tmp_path_factory):
     if sys.platform != "darwin":
         pytest.skip("AppleScript compilation and execution require macOS")

@@ -294,6 +294,7 @@ def calendar_list_events(start_iso: str, end_iso: str, calendar_id: str | None =
 )
 def calendar_get_event(event_id: str) -> EventResponse | ErrorResponse:
     try:
+        ensure_action_allowed("calendar_get_event")
         event = _bridge().get_event(event_id)
         ensure_action_allowed("calendar_get_event", event.calendar_name)
         return EventResponse(event=event)

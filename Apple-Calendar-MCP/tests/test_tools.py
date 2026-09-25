@@ -1,10 +1,15 @@
 from apple_calendar_mcp import tools
 from apple_calendar_mcp.config import load_settings
-from apple_calendar_mcp.models import AttendeeInfo, EventDetail, RecurrenceInfo
+from apple_calendar_mcp.models import AttendeeInfo, CalendarInfo, EventDetail, RecurrenceInfo
 from apple_calendar_mcp.permissions import SafetyError
 
 
 class FakeBridge:
+    def __init__(self) -> None:
+        # The write-allowlist tests assert that a blocked write never reaches
+        # the bridge at all, so every mutating stub records itself here.
+        self.calls: list[dict[str, object]] = []
+
     def helper_available(self):
         return True, True
 
@@ -38,6 +43,7 @@ class FakeBridge:
         )
 
     def create_event(self, title: str, calendar_id: str, start_iso: str, end_iso: str, notes=None, location=None, all_day=False, recurrence=None) -> EventDetail:
+        self.calls.append({"method": "create_event", "calendar_id": calendar_id})
         return EventDetail(
             event_id="event-new",
             title=title,
@@ -46,6 +52,33 @@ class FakeBridge:
             start="2026-03-27T10:00:00-05:00",
             end="2026-03-27T10:30:00-05:00",
             all_day=all_day,
+            location=location,
+            availability=None,
+            notes=notes,
+        )
+
+    def update_event(
+        self,
+        event_id: str,
+        *,
+        title: str | None = None,
+        calendar_id: str | None = None,
+        start_iso: str | None = None,
+        end_iso: str | None = None,
+        notes: str | None = None,
+        location: str | None = None,
+        all_day: bool | None = None,
+        recurrence=None,
+    ) -> EventDetail:
+        self.calls.append({"method": "update_event", "calendar_id": calendar_id})
+        return EventDetail(
+            event_id=event_id,
+            title=title or "Planning",
+            calendar_id=calendar_id or "calendar-1",
+            calendar_name="Work",
+            start="2026-03-27T10:00:00-05:00",
+            end="2026-03-27T10:30:00-05:00",
+            all_day=bool(all_day),
             location=location,
             availability=None,
             notes=notes,
@@ -169,3 +202,42 @@ def test_calendar_health_reports_applescript_fallback(monkeypatch) -> None:
 
 def teardown_function() -> None:
     load_settings.cache_clear()
+
+
+class MoveBridge(FakeBridge):
+    """FakeBridge whose events live on 'Work' and which also knows a 'Personal' calendar,
+    so an update that moves an event between the two can be exercised."""
+
+    def list_calendars(self):
+        return [
+            CalendarInfo(calendar_id="calendar-1", name="Work"),
+            CalendarInfo(calendar_id="calendar-2", name="Personal"),
+        ]
+
+
+def test_update_event_cannot_move_event_out_of_write_allowlist(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    monkeypatch.delenv("APPLE_CALENDAR_MCP_ALLOWED_CALENDARS", raising=False)
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS", "Work")
+    load_settings.cache_clear()
+    bridge = MoveBridge()
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+
+    result = tools.calendar_update_event("event-1", calendar_id="calendar-2")
+
+    assert result.ok is False
+    assert result.error.error_code == "CALENDAR_WRITE_BLOCKED"
+    assert not [call for call in bridge.calls if call.get("method") == "update_event"]
+
+
+def test_update_event_allows_move_within_write_allowlist(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    monkeypatch.delenv("APPLE_CALENDAR_MCP_ALLOWED_CALENDARS", raising=False)
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS", "Work")
+    load_settings.cache_clear()
+    bridge = MoveBridge()
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+
+    result = tools.calendar_update_event("event-1", calendar_id="calendar-1", title="Renamed")
+
+    assert result.ok is True

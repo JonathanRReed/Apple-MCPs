@@ -19,6 +19,7 @@ class HealthResponse(BaseModel):
     server_name: str
     version: str
     safety_mode: str
+    write_allowed_calendars: list[str] = []
     transport: str = "stdio"
     capabilities: list[str]
     helper_available: bool

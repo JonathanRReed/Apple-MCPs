@@ -31,11 +31,31 @@ def ensure_action_allowed(action: str, calendar_name: str | None = None) -> None
                 f"Action '{action}' is blocked in safety mode '{settings.safety_mode}'.",
                 "Switch to safe_manage or full_access to create events.",
             )
+        if calendar_name is None and settings.allowed_calendars:
+            raise SafetyError(
+                "CALENDAR_BLOCKED",
+                f"Action '{action}' has no resolvable target calendar, so it cannot be checked against the allowlist.",
+                "Pass a calendar_id returned by calendar_list_calendars.",
+            )
         if calendar_name is not None and settings.allowed_calendars and calendar_name not in settings.allowed_calendars:
             raise SafetyError(
                 "CALENDAR_BLOCKED",
                 f"Calendar '{calendar_name}' is not in the allowed calendar list.",
                 "Choose one of the configured allowed calendars or clear the allowlist.",
+            )
+        if calendar_name is not None and settings.write_allowed_calendars and calendar_name not in settings.write_allowed_calendars:
+            raise SafetyError(
+                "CALENDAR_WRITE_BLOCKED",
+                f"Calendar '{calendar_name}' is not in the write-allowed calendar list.",
+                "Writes are restricted to APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS; reading other calendars is still permitted.",
+            )
+        if calendar_name is None and settings.write_allowed_calendars:
+            # A write whose target calendar could not be resolved must fail closed: an
+            # unresolvable name is exactly the case an allowlist exists to catch.
+            raise SafetyError(
+                "CALENDAR_WRITE_BLOCKED",
+                f"Action '{action}' has no resolvable target calendar, so it cannot be checked against the write allowlist.",
+                "Pass a calendar_id that resolves to one of APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS.",
             )
         return
 

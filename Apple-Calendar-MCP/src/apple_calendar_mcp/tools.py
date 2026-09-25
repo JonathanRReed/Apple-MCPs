@@ -6,7 +6,7 @@ from mcp.types import Annotations, ToolAnnotations
 
 from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError
 from apple_calendar_mcp.config import load_settings
-from apple_calendar_mcp.models import CalendarListResponse, DeleteEventResponse, ErrorResponse, EventListResponse, EventResponse, HealthResponse, ToolError
+from apple_calendar_mcp.models import CalendarInfo, CalendarListResponse, DeleteEventResponse, ErrorResponse, EventListResponse, EventResponse, EventSummary, HealthResponse, ToolError
 from apple_calendar_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_calendar_mcp.utils import parse_iso_datetime
 from apple_mcp_common.discovery import install_search_first_discovery
@@ -84,6 +84,39 @@ def _event_owner_calendar(event_id: str) -> str | None:
     return _bridge().get_event(event_id).calendar_name
 
 
+def _visible_calendars() -> list[CalendarInfo]:
+    allowed = load_settings().allowed_calendars
+    return [calendar for calendar in _bridge().list_calendars() if not allowed or calendar.name in allowed]
+
+
+def _list_visible_events(start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> list[EventSummary]:
+    allowed = load_settings().allowed_calendars
+    bridge = _bridge()
+    if not allowed:
+        return bridge.list_events(start_iso, end_iso, calendar_id=calendar_id, limit=limit)
+
+    calendars = _visible_calendars()
+    if calendar_id is not None:
+        calendars = [calendar for calendar in calendars if calendar.calendar_id == calendar_id]
+        if not calendars:
+            raise SafetyError(
+                "CALENDAR_BLOCKED",
+                "The requested calendar could not be resolved within the allowed calendar list.",
+                "Choose a calendar_id returned by calendar_list_calendars.",
+            )
+    # Scope native and automation reads before pagination: excluded events must
+    # neither leak to clients nor consume the caller's result limit.
+    events = [
+        event
+        for calendar in calendars
+        for event in bridge.list_events(start_iso, end_iso, calendar_id=calendar.calendar_id, limit=limit)
+        if event.calendar_name in allowed
+    ]
+    # A scoped backend response is checked again in case a calendar was renamed
+    # or an event moved during the read. Preserve chronological global limits.
+    return sorted(events, key=lambda event: parse_iso_datetime(event.start))[:limit]
+
+
 @mcp.resource(
     "calendar://calendars",
     name="calendar_list_snapshot",
@@ -93,7 +126,7 @@ def _event_owner_calendar(event_id: str) -> str | None:
     annotations=Annotations(audience=["assistant"], priority=0.9),
 )
 def calendar_calendars_resource() -> str:
-    calendars = _bridge().list_calendars()
+    calendars = _visible_calendars()
     return _resource_json({"calendars": [item.model_dump() for item in calendars], "count": len(calendars)})
 
 
@@ -111,7 +144,7 @@ def calendar_events_today_resource() -> str:
     now = datetime.now().astimezone()
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     end = start + timedelta(days=1)
-    events = _bridge().list_events(start.isoformat(timespec="seconds"), end.isoformat(timespec="seconds"), limit=50)
+    events = _list_visible_events(start.isoformat(timespec="seconds"), end.isoformat(timespec="seconds"), limit=50)
     return _resource_json({"events": [item.model_dump() for item in events], "count": len(events)})
 
 
@@ -171,6 +204,7 @@ def calendar_health() -> HealthResponse:
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        write_allowed_calendars=list(settings.write_allowed_calendars),
         capabilities=capabilities,
         helper_available=helper_available,
         helper_compiled=helper_compiled,
@@ -225,7 +259,7 @@ async def calendar_recheck_permissions(ctx: Context) -> HealthResponse:
 def calendar_list_calendars() -> CalendarListResponse | ErrorResponse:
     try:
         ensure_action_allowed("calendar_list_calendars")
-        calendars = _bridge().list_calendars()
+        calendars = _visible_calendars()
         return CalendarListResponse(calendars=calendars, count=len(calendars))
     except (SafetyError, CalendarBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
@@ -242,7 +276,7 @@ def calendar_list_events(start_iso: str, end_iso: str, calendar_id: str | None =
         limit_value = _coerce_int_arg("limit", limit, minimum=1)
         ensure_action_allowed("calendar_list_events", _calendar_name_from_id(calendar_id))
         start_value, end_value = _validate_time_window(start_iso, end_iso)
-        events = _bridge().list_events(start_value, end_value, calendar_id=calendar_id, limit=limit_value)
+        events = _list_visible_events(start_value, end_value, calendar_id=calendar_id, limit=limit_value)
         return EventListResponse(events=events, count=len(events))
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
@@ -260,8 +294,9 @@ def calendar_list_events(start_iso: str, end_iso: str, calendar_id: str | None =
 )
 def calendar_get_event(event_id: str) -> EventResponse | ErrorResponse:
     try:
-        ensure_action_allowed("calendar_get_event", _event_owner_calendar(event_id))
+        ensure_action_allowed("calendar_get_event")
         event = _bridge().get_event(event_id)
+        ensure_action_allowed("calendar_get_event", event.calendar_name)
         return EventResponse(event=event)
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
@@ -328,6 +363,11 @@ def calendar_update_event(
 ) -> EventResponse | ErrorResponse:
     try:
         ensure_action_allowed("calendar_update_event", _event_owner_calendar(event_id))
+        if calendar_id is not None:
+            # A move is a write to the destination as much as to the source, so the
+            # destination is checked too -- otherwise an allowlisted calendar's events
+            # could be relocated out of it past the allowlist.
+            ensure_action_allowed("calendar_update_event", _calendar_name_from_id(calendar_id))
         event = _bridge().update_event(
             event_id,
             title=title,

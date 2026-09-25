@@ -5,78 +5,59 @@ on boolText(flagValue)
     return "false"
 end boolText
 
+on parseMessageID(rawId)
+    try
+        set numericId to rawId as integer
+    on error
+        error "INVALID_MESSAGE_ID"
+    end try
+    -- Reject coercions such as 1.5 -> 2; never mutate a different message.
+    if numericId < 0 or (numericId as text) is not rawId then
+        error "INVALID_MESSAGE_ID"
+    end if
+    return numericId
+end parseMessageID
+
+on requireSingleMatch(matchedItems, missingCode, ambiguousCode)
+    if (count of matchedItems) is 0 then error missingCode
+    if (count of matchedItems) is not 1 then error ambiguousCode
+    -- The caller supplies Mail's evaluated result, not a live every-item specifier.
+    return contents of item 1 of matchedItems
+end requireSingleMatch
+
 on run argv
     set accountName to item 1 of argv
     set mailboxName to item 2 of argv
-    set appleId to item 3 of argv
+    set numericMessageId to my parseMessageID(item 3 of argv)
     set targetMailboxName to item 4 of argv
     set targetAccountName to item 5 of argv
-
     set fieldSeparator to ASCII character 31
     set recordSeparator to ASCII character 30
 
     tell application "Mail"
-        set sourceAccount to missing value
-        repeat with theAccount in every account
-            if (name of theAccount) is accountName then
-                set sourceAccount to theAccount
-                exit repeat
-            end if
-        end repeat
-        if sourceAccount is missing value then
-            error "ACCOUNT_NOT_FOUND"
-        end if
+        -- Resolve concrete Mail objects instead of retaining repeat-loop item
+        -- references (issue #23). Refuse duplicate names rather than guessing.
+        set sourceAccount to my requireSingleMatch((get every account whose name is accountName), "ACCOUNT_NOT_FOUND", "ACCOUNT_AMBIGUOUS")
+        set sourceMailbox to my requireSingleMatch((get every mailbox of sourceAccount whose name is mailboxName), "MAILBOX_NOT_FOUND", "MAILBOX_AMBIGUOUS")
 
-        set sourceMailbox to missing value
-        repeat with theMailbox in every mailbox of sourceAccount
-            if (name of theMailbox) is mailboxName then
-                set sourceMailbox to theMailbox
-                exit repeat
-            end if
-        end repeat
-        if sourceMailbox is missing value then
-            error "MAILBOX_NOT_FOUND"
-        end if
-
-        set targetMessage to missing value
-        repeat with theMessage in messages of sourceMailbox
-            if ((id of theMessage) as text) is appleId then
-                set targetMessage to theMessage
-                exit repeat
-            end if
-        end repeat
-        if targetMessage is missing value then
-            error "MESSAGE_NOT_FOUND"
-        end if
-
-        -- Resolve the destination mailbox
+        -- Resolve the destination before the message lookup. Do not carry a
+        -- positional source reference through a second account/mailbox scan.
         set destAccount to sourceAccount
         if targetAccountName is not "" then
-            set destAccount to missing value
-            repeat with theAccount in every account
-                if (name of theAccount) is targetAccountName then
-                    set destAccount to theAccount
-                    exit repeat
-                end if
-            end repeat
-            if destAccount is missing value then
-                error "TARGET_ACCOUNT_NOT_FOUND"
-            end if
+            set destAccount to my requireSingleMatch((get every account whose name is targetAccountName), "TARGET_ACCOUNT_NOT_FOUND", "TARGET_ACCOUNT_AMBIGUOUS")
         end if
+        set destMailbox to my requireSingleMatch((get every mailbox of destAccount whose name is targetMailboxName), "TARGET_MAILBOX_NOT_FOUND", "TARGET_MAILBOX_AMBIGUOUS")
 
-        set destMailbox to missing value
-        repeat with theMailbox in every mailbox of destAccount
-            if (name of theMailbox) is targetMailboxName then
-                set destMailbox to theMailbox
-                exit repeat
-            end if
-        end repeat
-        if destMailbox is missing value then
-            error "TARGET_MAILBOX_NOT_FOUND"
-        end if
+        -- Use the ID from search, scoped to its original account and mailbox.
+        -- No global search or automatic mutation retry if the message has moved.
+        try
+            set targetMessage to (get message id numericMessageId of sourceMailbox)
+        on error errorMessage number errorNumber
+            if errorNumber is -1728 then error "MESSAGE_NOT_FOUND"
+            error errorMessage number errorNumber
+        end try
 
         move targetMessage to destMailbox
-
         return my boolText(true) & fieldSeparator & targetMailboxName & recordSeparator
     end tell
 end run

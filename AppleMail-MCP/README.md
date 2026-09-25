@@ -91,8 +91,10 @@ claude mcp add --transport stdio --scope project apple-mail -- uvx apple-mcp-mai
 ## Safety Modes
 
 - `safe_readonly`, read and search only
-- `safe_manage`, read plus draft creation
-- `full_access`, full Mail tool surface in this repo
+- `safe_manage`, read, create drafts, reply/forward, mark, move, delete, and archive threads; new-message sending is blocked
+- `full_access`, full Mail tool surface in this repo, including new-message sending
+
+These are the existing policy rules. Deleting or archiving does not require switching from `safe_manage` to `full_access`.
 
 ## Transport
 
@@ -101,6 +103,18 @@ claude mcp add --transport stdio --scope project apple-mail -- uvx apple-mcp-mai
 ## macOS Permissions
 
 - Automation access to Mail is required
+
+## Troubleshooting move/delete errors
+
+[Issue #23](https://github.com/JonathanRReed/Apple-MCPs/issues/23) reports AppleScript `-1728` errors containing `item ... of every message/mailbox/account`. The move and delete scripts now resolve account/mailbox matches into concrete objects and look up messages by Mail's numeric ID within the original mailbox, instead of retaining positional repeat-loop references. They refuse missing or ambiguous targets and do not automatically retry mutations.
+
+Use `message_id` exactly as returned by `mail_search_messages`. If the message has moved or the ID no longer resolves in its original mailbox, search again rather than editing the ID. `ACCOUNT_AMBIGUOUS`, `MAILBOX_AMBIGUOUS`, and their `TARGET_` counterparts mean the configured names do not uniquely identify the requested object; make the selection unambiguous before retrying. Other native errors, including permission errors, remain visible.
+
+For archiving, call `mail_list_mailboxes` and pass the actual destination name. Do not assume the account exposes a mailbox literally named `Archive`, particularly with localized or nested Gmail labels. Keep the intended account explicit when moving between accounts.
+
+A successful `mail_health` response does not verify a move/delete round trip. Validate a new installation using disposable messages with unique subjects: search, perform one requested operation, and confirm the outcome in Mail. Thread archiving moves messages individually and is not transactional; after an error, inspect Mail before retrying the whole thread.
+
+Restart the MCP client after upgrading. A fix merged on GitHub is not available to `uvx` installations from PyPI until a package release includes it. A source checkout can be tested through the clone instructions above; use `Apple-Tools-MCP/start.sh` for the unified server. If an error persists, report the installed version or source commit, macOS version, operation, and redacted error text. Do not post message bodies or private account details.
 
 ## Launch Checklist
 

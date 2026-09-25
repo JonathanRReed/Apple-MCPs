@@ -49,13 +49,15 @@ on run argv
         set destMailbox to my requireSingleMatch((get every mailbox of destAccount whose name is targetMailboxName), "TARGET_MAILBOX_NOT_FOUND", "TARGET_MAILBOX_AMBIGUOUS")
 
         -- Use the ID from search, scoped to its original account and mailbox.
+        -- Mail's "message id" is a separate property; use a numeric-id filter.
         -- No global search or automatic mutation retry if the message has moved.
         try
-            set targetMessage to (get message id numericMessageId of sourceMailbox)
+            set targetMessage to (get first message of sourceMailbox whose id is numericMessageId)
         on error errorMessage number errorNumber
             if errorNumber is -1728 then error "MESSAGE_NOT_FOUND"
             error errorMessage number errorNumber
         end try
+        if (id of targetMessage) is not numericMessageId then error "MESSAGE_ID_MISMATCH"
 
         move targetMessage to destMailbox
         return my boolText(true) & fieldSeparator & targetMailboxName & recordSeparator

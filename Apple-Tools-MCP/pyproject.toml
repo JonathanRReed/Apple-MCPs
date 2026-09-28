@@ -38,7 +38,7 @@ dependencies = [
   "apple-shortcuts-mcp>=1.0.5,<2",
   "apple-system-mcp>=1.0.5,<2",
   "mcp>=2.2.0,<3",
-  "pydantic>=2.12.0",
+  "pydantic>=2.13.5",
 ]
 
 [project.urls]

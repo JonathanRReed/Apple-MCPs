@@ -899,7 +899,7 @@ function run(argv) {
 
   const wantsMove = fields.calendar_id && fields.calendar_id !== cal.name();
   if (wantsMove) {
-    throw new Error("UNSUPPORTED_OPERATION: Automation cannot safely preserve all event fields during calendar moves. Use native Calendar access.");
+    return JSON.stringify({__error__: "UNSUPPORTED_OPERATION"});
   }
 
   if (fields.title !== null) { evt.summary = fields.title; }
@@ -947,6 +947,12 @@ function run(argv) {
     def _run_jxa_event(self, script: str, *args: str) -> dict[str, object]:
         payload = self._run_jxa(script, *args, timeout=self._JXA_TIMEOUT_SECONDS)
         error_code = payload.get("__error__")
+        if error_code == "UNSUPPORTED_OPERATION":
+            raise CalendarBridgeError(
+                "UNSUPPORTED_OPERATION",
+                "Automation cannot safely preserve all event fields during calendar moves.",
+                "Use native Calendar access to move this event.",
+            )
         if error_code:
             raise CalendarBridgeError(
                 str(error_code),

@@ -165,8 +165,8 @@ def test_note_json_fetches_values_in_explicit_notes_context(script_name) -> None
     sys.platform != "darwin" or shutil.which("osacompile") is None,
     reason="osacompile is only available on macOS",
 )
-@pytest.mark.parametrize("script_name", ["get_note", "list_notes"])
-def test_notes_read_scripts_compile(tmp_path, script_name) -> None:
+@pytest.mark.parametrize("script_name", ["get_note", "list_notes", "create_note", "update_note"])
+def test_notes_changed_scripts_compile(tmp_path, script_name) -> None:
     script_path = SCRIPTS_DIR / f"{script_name}.applescript"
     completed = subprocess.run(
         ["osacompile", "-o", str(tmp_path / f"{script_name}.scpt"), str(script_path)],

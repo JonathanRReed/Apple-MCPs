@@ -657,7 +657,6 @@ def test_batch_rejects_oversized_input_before_any_lookup(monkeypatch) -> None:
     [{"event_id": "a", "found": 0, "error_code": "EVENT_NOT_FOUND"}],
     [{"event_id": "a", "found": 1, "event": {**_BATCH_EVENT, "event_id": "a"}}],
     [{"event_id": "a", "found": False, "error_code": "EVENT_NOT_FOUND", "event": {}}],
-    [{"event_id": "a", "found": True, "event": {**_BATCH_EVENT, "event_id": "other"}}],
     [{"event_id": "a", "found": True, "event": {"event_id": "a"}}],
     [{"event_id": "a", "found": True, "event": {**_BATCH_EVENT, "event_id": "a", "all_day": "false"}}],
     [{"event_id": "a", "found": True, "error_code": "EVENT_NOT_FOUND", "event": {**_BATCH_EVENT, "event_id": "a"}}],
@@ -781,3 +780,134 @@ def test_batch_chunks_by_actual_encoded_bytes_and_dedupes_input(monkeypatch) -> 
     assert [event_id for call in calls for event_id in call] == ids
     assert list(result) == ids
 
+
+
+def test_batch_canonical_native_id_is_confirmed_with_single_get(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    raw = {**_BATCH_EVENT, "event_id": "calendar-item-id"}
+    calls = []
+
+    def native(command, *args):
+        calls.append((command, args))
+        if command == "get-calendar-events":
+            return {"items": [{"event_id": "event-identifier", "found": True, "event": raw}]}
+        assert command == "get-calendar-event"
+        assert args == ("event-identifier",)
+        return dict(raw)
+
+    monkeypatch.setattr(bridge, "_run_helper", native)
+    expected = bridge.get_event("event-identifier")
+    calls.clear()
+    result = bridge.get_events(["event-identifier"])
+    assert result["event-identifier"].model_dump() == expected.model_dump()
+    assert [command for command, args in calls] == ["get-calendar-events", "get-calendar-event"]
+
+
+@pytest.mark.parametrize("confirmation", ["missing", "permission", "other-id"])
+def test_batch_unconfirmed_canonical_alias_stays_unknown(monkeypatch, confirmation) -> None:
+    bridge = _batch_bridge(monkeypatch, {}, {"items": [{
+        "event_id": "a", "found": True, "event": {**_BATCH_EVENT, "event_id": "canonical"},
+    }]})
+
+    def confirm(event_id):
+        if confirmation == "missing":
+            raise CalendarBridgeError("EVENT_NOT_FOUND", "conflicts with prior found assertion")
+        if confirmation == "permission":
+            raise CalendarBridgeError("PERMISSION_DENIED", "unknown")
+        return bridge._normalize_detail({**_BATCH_EVENT, "event_id": "different"})
+
+    monkeypatch.setattr(bridge, "get_event", confirm)
+    assert bridge.get_events(["a"]) == {}
+
+
+@pytest.mark.parametrize("canonical_id", [None, "", " ", 42])
+def test_batch_invalid_canonical_ids_stay_unknown_without_confirmation(monkeypatch, canonical_id) -> None:
+    bridge = _batch_bridge(monkeypatch, {}, {"items": [{
+        "event_id": "a", "found": True, "event": {**_BATCH_EVENT, "event_id": canonical_id},
+    }]})
+
+    def unexpected(event_id):
+        raise AssertionError("invalid record must not trigger confirmation")
+
+    monkeypatch.setattr(bridge, "get_event", unexpected)
+    assert bridge.get_events(["a"]) == {}
+
+
+def test_unsupported_legacy_identifier_is_unknown_without_lookup(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def unexpected(*args):
+        raise AssertionError("unsupported legacy identity must remain unknown")
+
+    monkeypatch.setattr(bridge, "_run_helper", unexpected)
+    assert bridge.get_events(["uid:Work:legacy-id"]) == {}
+
+
+_JXA_NO_UID_STUB = """
+const EVENT = {
+  uid: function () { return null; },
+  id: function () { return "alternate-id"; },
+  summary: function () { return "Planning"; },
+  startDate: function () { return new Date("2026-03-27T10:00:00Z"); },
+  endDate: function () { return new Date("2026-03-27T10:30:00Z"); },
+  location: function () { return ""; },
+  description: function () { return ""; }
+};
+const CALENDAR = {
+  name: function () { return "Work"; },
+  events: {
+    whose: function (query) {
+      return function () {
+        if (Object.prototype.hasOwnProperty.call(query, "uid")) { return []; }
+        if (query.summary !== undefined) {
+          return query.summary === EVENT.summary() &&
+            query.startDate.getTime() === EVENT.startDate().getTime() ? [EVENT] : [];
+        }
+        return EVENT.startDate() > query.startDate._greaterThan &&
+          EVENT.startDate() < query.startDate._lessThan ? [EVENT] : [];
+      };
+    }
+  }
+};
+function Application() {
+  const calendars = function () { return [CALENDAR]; };
+  calendars.byName = function (name) { return name === "Work" ? CALENDAR : null; };
+  return {calendars: calendars};
+}
+"""
+
+
+def test_real_jxa_record_preserves_no_uid_synthetic_identity(monkeypatch, tmp_path) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required to execute generated JXA")
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    script_count = 0
+
+    def native(command, *args):
+        if command == "calendar-access-status":
+            return {"can_read_events": False}
+        raise CalendarBridgeError("PERMISSION_DENIED", "force the real generated fallback")
+
+    def jxa(script, *args, timeout=None):
+        nonlocal script_count
+        script_count += 1
+        path = tmp_path / f"no-uid-{script_count}.js"
+        path.write_text(_JXA_NO_UID_STUB + script + "\nconsole.log(run(process.argv.slice(2)));\n")
+        completed = subprocess.run(
+            [node, str(path), *args], capture_output=True, text=True, check=False,
+        )
+        assert completed.returncode == 0, completed.stderr
+        return json.loads(completed.stdout.strip())
+
+    monkeypatch.setattr(bridge, "_run_helper", native)
+    monkeypatch.setattr(bridge, "_run_jxa", jxa)
+
+    listed = bridge.list_events(
+        "2026-03-27T09:00:00+00:00", "2026-03-27T11:00:00+00:00", calendar_id="Work",
+    )
+    event_id = listed[0].event_id
+    assert event_id == "applescript::Work::2026-03-27T10:00:00.000Z::Planning"
+    single = bridge.get_event(event_id)
+    assert single.event_id == event_id
+    assert bridge.get_events([event_id])[event_id].model_dump() == single.model_dump()

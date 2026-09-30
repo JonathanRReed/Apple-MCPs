@@ -113,9 +113,11 @@ class CalendarBridge:
         if not ids:
             return {}
 
-        fallback_ids = [event_id for event_id in ids if event_id.startswith(("applescript::", "uid:"))]
+        fallback_ids = [event_id for event_id in ids if event_id.startswith("applescript::")]
         fallback_set = set(fallback_ids)
-        native_ids = [event_id for event_id in ids if event_id not in fallback_set]
+        # Legacy uid: identifiers have no supported resolver in current main.
+        # Keep them unknown instead of manufacturing a definitive miss.
+        native_ids = [event_id for event_id in ids if event_id not in fallback_set and not event_id.startswith("uid:")]
         chunks: list[list[str]] = []
         chunk: list[str] = []
         chunk_bytes = len(json.dumps({"event_ids": []}).encode("utf-8"))
@@ -147,8 +149,10 @@ class CalendarBridge:
                     # Native absence cannot distinguish a stale EventKit ID
                     # from a live UID previously supplied by JXA.
                     self._resolve_batch_individually([event_id], resolved)
-                else:
+                elif event.event_id == event_id:
                     resolved[event_id] = event
+                else:
+                    self._confirm_batch_alias(event_id, event.event_id, resolved)
         return {event_id: resolved[event_id] for event_id in ids if event_id in resolved}
 
     def _resolve_batch_individually(
@@ -168,6 +172,18 @@ class CalendarBridge:
             # Conservatively keep that alias unknown rather than misattribute it.
             if event.event_id == event_id:
                 resolved[event_id] = event
+
+    def _confirm_batch_alias(
+        self, requested_id: str, canonical_id: str, resolved: dict[str, EventDetail | None],
+    ) -> None:
+        # A batch's canonical ID may differ from the lookup ID. Confirm their
+        # association through a separate lookup; a conflicting miss is unknown.
+        try:
+            event = self.get_event(requested_id)
+        except (CalendarBridgeError, ValueError):
+            return
+        if event.event_id == canonical_id:
+            resolved[requested_id] = event
 
     def _validated_batch_entries(
         self, payload: object, requested: set[str],
@@ -190,7 +206,10 @@ class CalendarBridge:
             seen.add(event_id)
             if item.get("found") is True and item.get("error_code") is None:
                 raw = item.get("event")
-                if not isinstance(raw, dict) or raw.get("event_id") != event_id:
+                if not isinstance(raw, dict):
+                    continue
+                canonical_id = raw.get("event_id")
+                if not isinstance(canonical_id, str) or not canonical_id.strip():
                     continue
                 try:
                     EventDetail.model_validate(raw, strict=True)
@@ -575,11 +594,15 @@ function findEventByUid(app, uid, calendarNameHint) {
 function eventRecord(cal, evt) {
   const startDate = evt.startDate();
   const endDate = evt.endDate();
+  const title = evt.summary() || "";
+  const calendarName = cal.name();
+  // Match list fallback identity exactly when Calendar supplies no UID.
+  const eventId = evt.uid ? evt.uid() : (evt.id ? evt.id() : null);
   return {
-    event_id: evt.uid(),
-    title: evt.summary() || "",
-    calendar_id: cal.name(),
-    calendar_name: cal.name(),
+    event_id: eventId || ("applescript::" + calendarName + "::" + startDate.toISOString() + "::" + title),
+    title: title,
+    calendar_id: calendarName,
+    calendar_name: calendarName,
     start: startDate.toISOString(),
     end: endDate.toISOString(),
     all_day: startDate.getHours() === 0 && startDate.getMinutes() === 0 &&

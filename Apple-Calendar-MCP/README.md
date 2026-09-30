@@ -91,7 +91,7 @@ The returned mapping distinguishes:
 - None: an explicit native miss confirmed through the existing single-get/JXA fallback, or a definitive miss on that fallback path
 - An absent key: unknown, including unanswered, malformed, contradictory, duplicate-response, mismatched, or unsupported entries
 
-Known synthetic fallback IDs use the single-get path. Native misses also retry that path, so a live JXA-derived UID is not discarded just because EventKit cannot resolve it. Permission or per-ID confirmation failures remain unknown; non-fallback whole-helper transport failures remain explicit errors. A synthetic ID returning a different canonical UID is conservatively unknown. Callers must not delete mappings for absent keys.
+Known synthetic fallback IDs use the single-get path. No-UID JXA detail records use the same synthetic identity as list records. Native misses also retry that path, so a live JXA-derived UID is not discarded just because EventKit cannot resolve it. Permission or per-ID confirmation failures remain unknown; non-fallback whole-helper transport failures remain explicit errors. A valid native reply with a different canonical ID requires a separate single-get lookup confirming that canonical ID before it is accepted. Conflicting or unconfirmed aliases remain unknown. Unsupported legacy `uid:` IDs remain unknown without a lookup. Callers must not delete mappings for absent keys.
 
 The native batch command itself reports EventKit-only lookup outcomes. Synthetic IDs produce UNSUPPORTED_IDENTIFIER; native EVENT_NOT_FOUND alone is not a confirmed absence across both backends.
 

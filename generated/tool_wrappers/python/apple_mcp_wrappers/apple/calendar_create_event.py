@@ -14,7 +14,8 @@ async def calendar_create_event(
     notes: str | None = None,
     location: str | None = None,
     all_day: bool | None = None,
-    recurrence: dict[str, Any] | None = None
+    recurrence: dict[str, Any] | None = None,
+    alarms: list[Any] | None = None
 ) -> Any:
     """Calendar Create Event
 
@@ -32,6 +33,7 @@ async def calendar_create_event(
         "location": location,
         "all_day": all_day,
         "recurrence": recurrence,
+        "alarms": alarms,
     }
     payload = {key: value for key, value in arguments.items() if value is not None}
     return await call_tool_json(client, "calendar_create_event", payload)

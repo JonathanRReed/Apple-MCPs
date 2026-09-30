@@ -8,7 +8,6 @@ import pytest
 
 from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError
 
-
 _EVENT_PAYLOAD = {
     "event_id": "event-123",
     "title": "Planning",

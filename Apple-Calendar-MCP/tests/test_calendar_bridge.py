@@ -1193,8 +1193,11 @@ def test_jxa_mutation_refuses_stale_calendar_name_and_clone_move_before_writes(m
     token = "applescript::v2::" + quote(json.dumps(stale, separators=(",", ":")), safe="")
     with pytest.raises(CalendarBridgeError, match="STALE_CALENDAR"):
         bridge.update_event(token, title="wrong")
-    with pytest.raises(CalendarBridgeError, match="UNSUPPORTED_OPERATION"):
+    with pytest.raises(CalendarBridgeError) as move_failure:
         bridge.update_event(emitted, calendar_id="Personal", title="wrong")
+    assert move_failure.value.error_code == "UNSUPPORTED_OPERATION"
+    assert move_failure.value.suggestion == "Use native Calendar access to move this event."
+    assert "retry" not in (move_failure.value.suggestion or "").lower()
     assert state["writes"] == []
 
 
@@ -1264,3 +1267,17 @@ def test_generated_calendar_identity_scripts_compile_on_macos(monkeypatch, tmp_p
             _jxa_token(), title=None, calendar_id=None, start_iso=None, end_iso=None,
             notes=None, location=None, all_day=None,
         )
+
+
+def test_run_jxa_keeps_recovery_guidance_for_unrelated_process_failures(monkeypatch):
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: subprocess.CompletedProcess(
+        args, returncode=1, stdout="", stderr="Calendar.app automation failed",
+    ))
+
+    with pytest.raises(CalendarBridgeError) as failure:
+        bridge._run_jxa("generated script")
+
+    assert failure.value.error_code == "APPLESCRIPT_FALLBACK_FAILED"
+    assert failure.value.message == "Calendar.app automation failed"
+    assert failure.value.suggestion == "Confirm Calendar.app automation is allowed, then retry."

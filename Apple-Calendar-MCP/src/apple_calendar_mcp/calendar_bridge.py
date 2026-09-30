@@ -91,7 +91,8 @@ class CalendarBridge:
         None means a valid explicit native miss confirmed by the existing
         single-get fallback path, or a definitive miss on that path for a
         fallback identifier. Missing keys mean unknown. Malformed, duplicate,
-        contradictory, unrequested, or mismatched native entries stay unknown.
+        contradictory or unrequested entries stay unknown; canonical aliases
+        require independent single-get confirmation.
         All input is validated before any helper call. Each JSON argv payload
         is at most 32768 UTF-8 bytes; at most 10000 input IDs are accepted.
         """

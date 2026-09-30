@@ -911,3 +911,33 @@ def test_real_jxa_record_preserves_no_uid_synthetic_identity(monkeypatch, tmp_pa
     single = bridge.get_event(event_id)
     assert single.event_id == event_id
     assert bridge.get_events([event_id])[event_id].model_dump() == single.model_dump()
+
+
+@pytest.mark.parametrize("error_code", ["PERMISSION_DENIED", "HELPER_COMPILE_FAILED", "HELPER_SOURCE_MISSING"])
+def test_batch_unavailable_native_backend_cannot_confirm_opaque_id_absence(monkeypatch, error_code) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def native(command, *args):
+        raise CalendarBridgeError(error_code, "native backend cannot answer")
+
+    def fallback(event_id):
+        raise CalendarBridgeError("EVENT_NOT_FOUND", "opaque native ID is not a JXA UID")
+
+    monkeypatch.setattr(bridge, "_run_helper", native)
+    monkeypatch.setattr(bridge, "_fallback_get_event", fallback)
+    assert bridge.get_events(["opaque-native-id"]) == {}
+
+
+def test_supported_synthetic_identifier_can_confirm_fallback_miss(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def native(command, *args):
+        raise CalendarBridgeError("PERMISSION_DENIED", "native backend cannot answer")
+
+    def fallback(event_id):
+        raise CalendarBridgeError("EVENT_NOT_FOUND", "supported synthetic ID definitively missing")
+
+    monkeypatch.setattr(bridge, "_run_helper", native)
+    monkeypatch.setattr(bridge, "_fallback_get_event", fallback)
+    event_id = "applescript::Work::2026-03-27T10:00:00.000Z::Missing"
+    assert bridge.get_events([event_id]) == {event_id: None}

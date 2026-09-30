@@ -142,7 +142,7 @@ class CalendarBridge:
             except CalendarBridgeError as exc:
                 if not self._should_use_read_fallback(exc):
                     raise
-                self._resolve_batch_individually(requested, resolved)
+                self._resolve_batch_individually(requested, resolved, allow_missing=False)
                 continue
             candidates = self._validated_batch_entries(payload, set(requested))
             for event_id, event in candidates.items():
@@ -158,12 +158,13 @@ class CalendarBridge:
 
     def _resolve_batch_individually(
         self, event_ids: Sequence[str], resolved: dict[str, EventDetail | None],
+        *, allow_missing: bool = True,
     ) -> None:
         for event_id in event_ids:
             try:
                 event = self.get_event(event_id)
             except CalendarBridgeError as exc:
-                if exc.error_code == "EVENT_NOT_FOUND":
+                if allow_missing and exc.error_code == "EVENT_NOT_FOUND":
                     resolved[event_id] = None
                 # Permission, transport, or other lookup failures are unknown.
                 continue

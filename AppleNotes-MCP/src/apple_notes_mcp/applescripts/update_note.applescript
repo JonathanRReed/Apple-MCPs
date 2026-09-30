@@ -97,26 +97,30 @@ on tags_html(tagsCsv)
 end tags_html
 
 on note_json(accountId, accountName, folderId, folderName, n)
-	set noteId to my safe_text(id of n)
+	tell application "Notes" to set rawNoteId to id of n
+	set noteId to my safe_text(rawNoteId)
 	set titleText to ""
 	set bodyHtml to ""
 	set plainText to ""
 	set sharedValue to false
 	set attachmentCount to 0
 	try
-		set titleText to my safe_text(name of n)
+		tell application "Notes" to set rawTitleText to name of n
+		set titleText to my safe_text(rawTitleText)
 	end try
 	try
-		set bodyHtml to my safe_text(body of n)
+		tell application "Notes" to set rawBodyHtml to body of n
+		set bodyHtml to my safe_text(rawBodyHtml)
 	end try
 	try
-		set plainText to my safe_text(plaintext of n)
+		tell application "Notes" to set rawPlainText to plaintext of n
+		set plainText to my safe_text(rawPlainText)
 	end try
 	try
-		set sharedValue to shared of n
+		tell application "Notes" to set sharedValue to shared of n
 	end try
 	try
-		set attachmentCount to count of attachments of n
+		tell application "Notes" to set attachmentCount to count of attachments of n
 	end try
 	return "{" & ¬
 		quote & "note_id" & quote & ":" & my json_string(noteId) & "," & ¬

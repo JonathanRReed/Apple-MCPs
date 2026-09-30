@@ -26,7 +26,8 @@ on run argv
 end run
 
 on note_json(accountId, accountName, folderId, folderName, n, includeBody)
-	set noteId to my safe_text(id of n)
+	tell application "Notes" to set rawNoteId to id of n
+	set noteId to my safe_text(rawNoteId)
 	set titleText to ""
 	set bodyHtml to ""
 	set plainText to ""
@@ -34,22 +35,27 @@ on note_json(accountId, accountName, folderId, folderName, n, includeBody)
 	set modifiedEpoch to 0
 		set sharedValue to false
 		try
-			set titleText to my safe_text(name of n)
+			tell application "Notes" to set rawTitleText to name of n
+			set titleText to my safe_text(rawTitleText)
 		end try
 	try
-		set bodyHtml to my safe_text(body of n)
+		tell application "Notes" to set rawBodyHtml to body of n
+		set bodyHtml to my safe_text(rawBodyHtml)
 	end try
 	try
-		set plainText to my safe_text(plaintext of n)
+		tell application "Notes" to set rawPlainText to plaintext of n
+		set plainText to my safe_text(rawPlainText)
 	end try
 	try
-		set createdEpoch to my date_to_epoch(creation date of n)
+		tell application "Notes" to set rawCreatedDate to creation date of n
+		set createdEpoch to my date_to_epoch(rawCreatedDate)
 	end try
 	try
-		set modifiedEpoch to my date_to_epoch(modification date of n)
+		tell application "Notes" to set rawModifiedDate to modification date of n
+		set modifiedEpoch to my date_to_epoch(rawModifiedDate)
 	end try
 		try
-			set sharedValue to shared of n
+			tell application "Notes" to set sharedValue to shared of n
 		end try
 	return "{" & ¬
 		quote & "note_id" & quote & ":" & my json_string(noteId) & "," & ¬

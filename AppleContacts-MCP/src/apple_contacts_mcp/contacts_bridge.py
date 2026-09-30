@@ -72,6 +72,11 @@ class AppleContactsBridge:
         if direct_matches:
             return direct_matches
         normalized_query = self._normalize_lookup_value(query)
+        # A failed name/organization lookup is final. Only recognizable phone
+        # or email queries need the expensive, paginated method-value scan.
+        is_phone_query = bool(normalized_query) and re.fullmatch(r"[+\d\s()./-]+", query_text) is not None
+        if "@" not in query_text and not is_phone_query:
+            return []
         exact_matches: list[ContactSummary] = []
         partial_matches: list[ContactSummary] = []
         for contact in self._iter_all_contacts():
@@ -397,7 +402,10 @@ class AppleContactsBridge:
         if not output:
             return {}
         try:
-            payload = json.loads(output)
+            # Legacy AppleScript JSON may contain literal controls in strings.
+            # Python preserves those and complex emoji without grapheme-splitting
+            # escapes; malformed structure and non-object payloads still fail.
+            payload = json.loads(output, strict=False)
         except json.JSONDecodeError as exc:
             raise ContactsBridgeError(
                 "INVALID_SCRIPT_OUTPUT",

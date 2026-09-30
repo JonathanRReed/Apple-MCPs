@@ -44,7 +44,18 @@ class AppleNotesBridge:
         folder_id: str | None = None,
     ) -> list[NoteSummary]:
         payload = self._run_script("list_notes.applescript", account_name or "", folder_id or "")
-        return [self._normalize_summary(item) for item in payload.get("items", []) if isinstance(item, dict)]
+        raw_notes = [item for item in payload.get("items", []) if isinstance(item, dict)]
+        # Native note payloads already contain their folder/account metadata.
+        # Resolve incomplete payloads against one request-local snapshot, never
+        # one AppleScript folder scan per note or a stale cross-request cache.
+        folder_lookup: dict[str, FolderInfo] | None = None
+        if any(
+            self._optional_text(item.get("folder_id"))
+            and any(not self._optional_text(item.get(field)) for field in ("account_id", "account_name", "folder_name"))
+            for item in raw_notes
+        ):
+            folder_lookup = {folder.folder_id: folder for folder in self.list_folders(account_name=account_name)}
+        return [self._normalize_summary(item, folder_lookup=folder_lookup) for item in raw_notes]
 
     def get_note(self, note_id: str) -> NoteDetail:
         payload = self._run_script("get_note.applescript", note_id)
@@ -258,7 +269,10 @@ class AppleNotesBridge:
             return {}
 
         try:
-            payload = json.loads(output)
+            # AppleScript's legacy serializers can emit literal C0 controls
+            # inside strings. Decode those losslessly in Python; JSON structure
+            # and escapes still must be valid, and Unicode graphemes stay whole.
+            payload = json.loads(output, strict=False)
         except json.JSONDecodeError as exc:
             raise NotesBridgeError("INVALID_SCRIPT_OUTPUT", f"AppleScript returned invalid JSON: {exc.msg}.", "Inspect the AppleScript output and ensure it returns valid JSON.") from exc
 
@@ -276,16 +290,27 @@ class AppleNotesBridge:
             return NotesBridgeError("FOLDER_NOT_FOUND", error_text, "List folders first to discover valid folder ids.")
         return NotesBridgeError("APPLESCRIPT_EXECUTION_FAILED", error_text or "AppleScript execution failed.", "Inspect Notes.app state and the AppleScript file, then retry.")
 
-    def _normalize_summary(self, raw_note: dict[str, object], *, body_html_override: str | None = None) -> NoteSummary:
+    def _normalize_summary(
+        self,
+        raw_note: dict[str, object],
+        *,
+        body_html_override: str | None = None,
+        folder_lookup: dict[str, FolderInfo] | None = None,
+    ) -> NoteSummary:
         plaintext = self._optional_text(raw_note.get("plaintext")) or ""
         body_html = self._resolved_body_html(raw_note, body_html_override=body_html_override)
         tags = self._derive_tags(plaintext)
         attachment_count = int(raw_note.get("attachment_count", 0) or 0)
         folder_id = self._optional_text(raw_note.get("folder_id")) or ""
-        folder = self._folder_by_id(folder_id)
-        account_name = self._optional_text(raw_note.get("account_name")) or (folder.account_name if folder is not None else "")
-        account_id = self._optional_text(raw_note.get("account_id")) or (folder.account_id if folder is not None else "")
-        folder_name = self._optional_text(raw_note.get("folder_name")) or (folder.name if folder is not None else "")
+        account_name = self._optional_text(raw_note.get("account_name")) or ""
+        account_id = self._optional_text(raw_note.get("account_id")) or ""
+        folder_name = self._optional_text(raw_note.get("folder_name")) or ""
+        if folder_id and (not account_name or not account_id or not folder_name):
+            folder = self._folder_by_id(folder_id) if folder_lookup is None else folder_lookup.get(folder_id)
+            if folder is not None:
+                account_name = account_name or folder.account_name
+                account_id = account_id or folder.account_id
+                folder_name = folder_name or folder.name
         return NoteSummary(
             note_id=str(raw_note.get("note_id", "")),
             title=self._optional_text(raw_note.get("title")) or "",

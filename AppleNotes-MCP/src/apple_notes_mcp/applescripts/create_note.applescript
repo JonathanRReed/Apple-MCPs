@@ -57,7 +57,8 @@ on tags_html(tagsCsv)
 end tags_html
 
 on note_json(accountId, accountName, folderId, folderName, n)
-	set noteId to my safe_text(id of n)
+	tell application "Notes" to set rawNoteId to id of n
+	set noteId to my safe_text(rawNoteId)
 	set titleText to ""
 	set bodyHtml to ""
 	set plainText to ""
@@ -67,22 +68,25 @@ on note_json(accountId, accountName, folderId, folderName, n)
 	-- instead of hanging the whole script past the caller's deadline.
 	try
 		with timeout of 10 seconds
-			set titleText to my safe_text(name of n)
+			tell application "Notes" to set rawTitleText to name of n
+			set titleText to my safe_text(rawTitleText)
 		end timeout
 	end try
 	try
 		with timeout of 10 seconds
-			set bodyHtml to my safe_text(body of n)
+			tell application "Notes" to set rawBodyHtml to body of n
+			set bodyHtml to my safe_text(rawBodyHtml)
 		end timeout
 	end try
 	try
 		with timeout of 10 seconds
-			set plainText to my safe_text(plaintext of n)
+			tell application "Notes" to set rawPlainText to plaintext of n
+			set plainText to my safe_text(rawPlainText)
 		end timeout
 	end try
 	try
 		with timeout of 10 seconds
-			set attachmentCount to count of attachments of n
+			tell application "Notes" to set attachmentCount to count of attachments of n
 		end timeout
 	end try
 	return "{" & ¬

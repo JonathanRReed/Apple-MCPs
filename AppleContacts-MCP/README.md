@@ -94,6 +94,12 @@ claude mcp add --transport stdio --scope project apple-contacts -- uvx apple-con
 
 `stdio` is the default and recommended transport. Set `APPLE_CONTACTS_MCP_TRANSPORT=streamable-http` (with optional `APPLE_CONTACTS_MCP_HOST` and `APPLE_CONTACTS_MCP_PORT`) to serve Streamable HTTP instead.
 
+## Search Behavior
+
+Name and organization searches use Contacts.app's filtered lookup. A no-match name returns an empty result without scanning the whole address book. Phone queries containing digits and phone punctuation, and email queries containing `@`, retain the paginated directory fallback for method-value matching.
+
+Literal control characters and complex emoji returned by Contacts are decoded on the Python side without changing their text.
+
 ## macOS Permissions
 
 - Contacts access is required

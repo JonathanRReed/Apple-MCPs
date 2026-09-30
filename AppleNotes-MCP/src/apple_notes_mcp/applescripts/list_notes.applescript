@@ -29,7 +29,8 @@ on run argv
 end run
 
 on note_json(accountId, accountName, folderId, folderName, n)
-	set noteId to my safe_text(id of n)
+	tell application "Notes" to set rawNoteId to id of n
+	set noteId to my safe_text(rawNoteId)
 	set titleText to ""
 	set plainText to ""
 	set createdEpoch to 0
@@ -37,22 +38,26 @@ on note_json(accountId, accountName, folderId, folderName, n)
 		set sharedValue to false
 		set attachmentCount to 0
 		try
-			set titleText to my safe_text(name of n)
+			tell application "Notes" to set rawTitleText to name of n
+			set titleText to my safe_text(rawTitleText)
 		end try
 	try
-		set plainText to my safe_text(plaintext of n)
+		tell application "Notes" to set rawPlainText to plaintext of n
+		set plainText to my safe_text(rawPlainText)
 	end try
 	try
-		set createdEpoch to my date_to_epoch(creation date of n)
+		tell application "Notes" to set rawCreatedDate to creation date of n
+		set createdEpoch to my date_to_epoch(rawCreatedDate)
 	end try
 	try
-		set modifiedEpoch to my date_to_epoch(modification date of n)
+		tell application "Notes" to set rawModifiedDate to modification date of n
+		set modifiedEpoch to my date_to_epoch(rawModifiedDate)
 	end try
 		try
-			set sharedValue to shared of n
+			tell application "Notes" to set sharedValue to shared of n
 		end try
 	try
-		set attachmentCount to count of attachments of n
+		tell application "Notes" to set attachmentCount to count of attachments of n
 	end try
 	set noteJson to "{" & ¬
 		quote & "note_id" & quote & ":" & my json_string(noteId) & "," & ¬

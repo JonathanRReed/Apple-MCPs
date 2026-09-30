@@ -5,7 +5,8 @@ on run argv
         set targetPerson to missing value
         repeat with thePerson in every person
             if (id of thePerson) is contactId then
-                set targetPerson to thePerson
+                -- Resolve the repeat variable now, before deleting its person.
+                set targetPerson to contents of thePerson
                 exit repeat
             end if
         end repeat

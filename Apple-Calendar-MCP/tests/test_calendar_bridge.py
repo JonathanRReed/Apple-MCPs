@@ -877,7 +877,8 @@ function Application() {
 """
 
 
-def test_real_jxa_record_preserves_no_uid_synthetic_identity(monkeypatch, tmp_path) -> None:
+@pytest.mark.parametrize("has_uid_method", [True, False])
+def test_generated_jxa_record_preserves_no_uid_synthetic_identity(monkeypatch, tmp_path, has_uid_method) -> None:
     node = shutil.which("node")
     if node is None:
         pytest.skip("node is required to execute generated JXA")
@@ -893,7 +894,8 @@ def test_real_jxa_record_preserves_no_uid_synthetic_identity(monkeypatch, tmp_pa
         nonlocal script_count
         script_count += 1
         path = tmp_path / f"no-uid-{script_count}.js"
-        path.write_text(_JXA_NO_UID_STUB + script + "\nconsole.log(run(process.argv.slice(2)));\n")
+        stub = _JXA_NO_UID_STUB if has_uid_method else _JXA_NO_UID_STUB.replace("  uid: function () { return null; },\n", "")
+        path.write_text(stub + script + "\nconsole.log(run(process.argv.slice(2)));\n")
         completed = subprocess.run(
             [node, str(path), *args], capture_output=True, text=True, check=False,
         )

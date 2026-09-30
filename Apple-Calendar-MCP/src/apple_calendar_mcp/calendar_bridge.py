@@ -534,7 +534,7 @@ function run(argv) {
       const startDate = evt.startDate();
       const endDate = evt.endDate();
       const title = evt.summary() || "";
-      const eventId = evt.uid ? evt.uid() : (evt.id ? evt.id() : null);
+      const eventId = evt.uid ? evt.uid() : null;
       items.push({
         event_id: eventId || ("applescript::" + calendarName + "::" + startDate.toISOString() + "::" + title),
         title: title,
@@ -599,7 +599,7 @@ function eventRecord(cal, evt) {
   const title = evt.summary() || "";
   const calendarName = cal.name();
   // Match list fallback identity exactly when Calendar supplies no UID.
-  const eventId = evt.uid ? evt.uid() : (evt.id ? evt.id() : null);
+  const eventId = evt.uid ? evt.uid() : null;
   return {
     event_id: eventId || ("applescript::" + calendarName + "::" + startDate.toISOString() + "::" + title),
     title: title,

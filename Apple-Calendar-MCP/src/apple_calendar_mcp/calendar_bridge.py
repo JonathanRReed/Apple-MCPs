@@ -4,6 +4,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+from apple_calendar_mcp.alarm_validation import validate_alarms
 from apple_calendar_mcp.models import CalendarInfo, EventDetail, EventSummary
 
 
@@ -92,6 +93,7 @@ class CalendarBridge:
         location: str | None = None,
         all_day: bool = False,
         recurrence: dict[str, object] | None = None,
+        alarms: list[dict[str, object]] | None = None,
     ) -> EventDetail:
         request = {
             "title": title,
@@ -104,11 +106,15 @@ class CalendarBridge:
         }
         if recurrence is not None:
             request["recurrence"] = recurrence
+        alarms = validate_alarms(alarms)
+        if alarms is not None:
+            request["alarms"] = alarms
         try:
             payload = self._run_helper("create-calendar-event", json.dumps(request))
         except CalendarBridgeError as exc:
             if not self._should_use_fallback(exc):
                 raise
+            self._require_fallback_alarm_support(alarms)
             # The identifier came from the JXA read fallback (a calendar NAME,
             # not a real EKCalendar.calendarIdentifier), so the native helper
             # can never resolve it. Create the event by name instead.
@@ -135,6 +141,7 @@ class CalendarBridge:
         location: str | None = None,
         all_day: bool | None = None,
         recurrence: dict[str, object] | None = None,
+        alarms: list[dict[str, object]] | None = None,
     ) -> EventDetail:
         request: dict[str, object] = {}
         if title is not None:
@@ -153,11 +160,15 @@ class CalendarBridge:
             request["all_day"] = all_day
         if recurrence is not None:
             request["recurrence"] = recurrence
+        alarms = validate_alarms(alarms)
+        if alarms is not None:
+            request["alarms"] = alarms
         try:
             payload = self._run_helper("update-calendar-event", event_id, json.dumps(request))
         except CalendarBridgeError as exc:
             if not self._should_use_fallback(exc):
                 raise
+            self._require_fallback_alarm_support(alarms)
             payload = self._fallback_update_event(
                 event_id,
                 title=title,
@@ -169,6 +180,15 @@ class CalendarBridge:
                 all_day=all_day,
             )
         return self._normalize_detail(payload)
+
+    @staticmethod
+    def _require_fallback_alarm_support(alarms: list[dict[str, object]] | None) -> None:
+        if alarms is not None:
+            raise CalendarBridgeError(
+                "UNSUPPORTED_OPERATION",
+                "The Calendar automation fallback cannot apply alarms; no fallback write was performed.",
+                "Grant the native helper full Calendar access, then retry the alarms-bearing request.",
+            )
 
     def delete_event(self, event_id: str) -> bool:
         try:
@@ -741,6 +761,8 @@ function run(argv) {
             summary_dict["recurrence_rule"] = raw_event["recurrence_rule"]
         if raw_event.get("attendees") is not None:
             summary_dict["attendees"] = raw_event["attendees"]
+        if raw_event.get("alarms") is not None:
+            summary_dict["alarms"] = raw_event["alarms"]
         return EventDetail.model_validate(summary_dict)
 
     def _optional_text(self, value: object) -> str | None:

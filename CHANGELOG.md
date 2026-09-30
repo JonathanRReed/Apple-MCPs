@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Added
+- Calendar event alarm mutations and structured native detail readback, adapted from #26. Relative inputs are bounded to 0–525600 whole minutes and 100 entries. Omitted alarms preserve existing behavior; [] clears alarms. Alarm-bearing automation fallback writes fail explicitly before mutation. Event summaries do not include alarms; location offsets are raw EventKit values without guaranteed travel-time semantics.
+
 ## [1.0.5] - 2026-09-25
 
 ### Security

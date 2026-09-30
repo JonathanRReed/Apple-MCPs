@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 
 class ToolError(BaseModel):
@@ -70,6 +70,7 @@ class EventSummary(BaseModel):
 
 
 class EventDetail(EventSummary):
+    _identifier_provider: str | None = PrivateAttr(default=None)
     notes: str | None = None
     recurrence_rule: RecurrenceInfo | None = None
     attendees: list[AttendeeInfo] | None = None

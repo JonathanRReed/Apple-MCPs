@@ -4,6 +4,7 @@ import subprocess
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import unquote
 
 from apple_calendar_mcp.models import CalendarInfo, EventDetail, EventSummary
 
@@ -73,14 +74,47 @@ class CalendarBridge:
             for item in self._dedupe_event_items(payload.get("items", []), limit=limit)
         ]
 
+    @staticmethod
+    def _is_jxa_token(event_id: str) -> bool:
+        return event_id.startswith("applescript::v2::%7B")
+
+    @staticmethod
+    def _jxa_lookup_corresponds(requested: str, returned: str) -> bool:
+        prefix = "applescript::v2::"
+        try:
+            result = json.loads(unquote(returned[len(prefix):])) if returned.startswith(prefix) else None
+            if not isinstance(result, dict) or result.get("v") != 2 or result.get("kind") not in {"uid", "id"}:
+                return False
+            aliases = (result.get("uid"), result.get("id"))
+            if not requested.startswith(prefix):
+                return any(value is not None and str(value) == requested for value in aliases)
+            query = json.loads(unquote(requested[len(prefix):]))
+            if not isinstance(query, dict) or query.get("v") != 2 or query.get("kind") not in {"uid", "id"}:
+                return False
+            expected = query.get("value")
+            actual = result.get(query["kind"])
+            if type(expected) is not type(actual) or expected != actual:
+                return False
+            scope = query.get("calendar")
+            return scope == result.get("calendar") or (
+                isinstance(scope, dict) and scope.get("kind") == "name"
+                and scope.get("value") == result.get("calendar_name")
+            )
+        except (ValueError, TypeError, AttributeError):
+            return False
+
     def get_event(self, event_id: str) -> EventDetail:
+        if self._is_jxa_token(event_id):
+            return self._normalize_detail(self._fallback_get_event(event_id), identifier_provider="jxa")
+        provider = None
         try:
             payload = self._run_helper("get-calendar-event", event_id)
         except CalendarBridgeError as exc:
             if not self._should_use_fallback(exc):
                 raise
             payload = self._fallback_get_event(event_id)
-        return self._normalize_detail(payload)
+            provider = "jxa"
+        return self._normalize_detail(payload, identifier_provider=provider)
 
     _MAX_BATCH_IDS = 10000
     _MAX_BATCH_PAYLOAD_BYTES = 32768
@@ -164,15 +198,19 @@ class CalendarBridge:
             try:
                 event = self.get_event(event_id)
             except CalendarBridgeError as exc:
-                if allow_missing and exc.error_code == "EVENT_NOT_FOUND":
+                if allow_missing and exc.error_code == "EVENT_NOT_FOUND" and (
+                    not event_id.startswith("applescript::") or self._is_jxa_token(event_id)
+                ):
                     resolved[event_id] = None
                 # Permission, transport, or other lookup failures are unknown.
                 continue
             except ValueError:
                 continue
-            # Single-get can return a canonical UID for a synthetic identifier.
-            # Conservatively keep that alias unknown rather than misattribute it.
-            if event.event_id == event_id:
+            # Only our verified JXA lookup may confirm a backend-specific alias;
+            # arbitrary helper records cannot claim a differently scoped identity.
+            if event.event_id == event_id or (
+                event._identifier_provider == "jxa" and self._jxa_lookup_corresponds(event_id, event.event_id)
+            ):
                 resolved[event_id] = event
 
     def _confirm_batch_alias(
@@ -300,6 +338,13 @@ class CalendarBridge:
             request["all_day"] = all_day
         if recurrence is not None:
             request["recurrence"] = recurrence
+        if self._is_jxa_token(event_id):
+            if recurrence is not None:
+                raise CalendarBridgeError("UNSUPPORTED_OPERATION", "Automation cannot apply recurrence.", None)
+            return self._normalize_detail(self._fallback_update_event(
+                event_id, title=title, calendar_id=calendar_id, start_iso=start_iso, end_iso=end_iso,
+                notes=notes, location=location, all_day=all_day,
+            ))
         try:
             payload = self._run_helper("update-calendar-event", event_id, json.dumps(request))
         except CalendarBridgeError as exc:
@@ -318,6 +363,8 @@ class CalendarBridge:
         return self._normalize_detail(payload)
 
     def delete_event(self, event_id: str) -> bool:
+        if self._is_jxa_token(event_id):
+            return bool(self._fallback_delete_event(event_id).get("deleted", False))
         try:
             payload = self._run_helper("delete-calendar-event", event_id)
         except CalendarBridgeError as exc:
@@ -501,7 +548,7 @@ function run(argv) {
     def _fallback_list_events(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, object]:
         start = datetime.fromisoformat(start_iso)
         end = datetime.fromisoformat(end_iso)
-        script = """
+        script = self._JXA_ID_HELPERS + """
 function isAllDay(startDate, endDate) {
   return startDate.getHours() === 0 &&
     startDate.getMinutes() === 0 &&
@@ -523,20 +570,20 @@ function run(argv) {
     if (calendarFilter && calendarName !== calendarFilter) {
       return;
     }
-    const events = app.calendars.byName(calendarName).events.whose({
+    const events = cal.events.whose({
       startDate: {
         _greaterThan: start,
         _lessThan: end
       }
     })();
 
-    events.forEach(function(evt) {
+    events.forEach(function(evt, eventIndex) {
       const startDate = evt.startDate();
       const endDate = evt.endDate();
       const title = evt.summary() || "";
-      const eventId = evt.uid ? evt.uid() : null;
+      const eventId = eventIdentifier(cal, evt, eventIndex);
       items.push({
-        event_id: eventId || ("applescript::" + calendarName + "::" + startDate.toISOString() + "::" + title),
+        event_id: eventId,
         title: title,
         calendar_id: calendarName,
         calendar_name: calendarName,
@@ -546,6 +593,22 @@ function run(argv) {
         location: evt.location ? (evt.location() || null) : null
       });
     });
+  });
+
+  // Duplicate provider identities are display-only. Retain every row instead
+  // of collapsing twins, but do not hand out an actionable ambiguous token.
+  const counts = Object.create(null);
+  items.forEach(function(item) { counts[item.event_id] = (counts[item.event_id] || 0) + 1; });
+  items.forEach(function(item, row) {
+    if (counts[item.event_id] <= 1) { return; }
+    const token = decodeEventIdentifier(item.event_id);
+    token.kind = "weak";
+    token.value = null;
+    token.row = row;
+    token.start = item.start;
+    token.end = item.end;
+    token.title = item.title;
+    item.event_id = "applescript::v2::" + encodeURIComponent(JSON.stringify(token));
   });
 
   items.sort(function(a, b) {
@@ -561,34 +624,167 @@ function run(argv) {
 """
         return self._run_jxa(script, start.isoformat(), end.isoformat(), calendar_id or "", str(limit), timeout=self._JXA_TIMEOUT_SECONDS)
 
-    # Shared by every fallback below: locate an event by the uid the JXA read
-    # fallback handed out (or, for delete/update called with a helper-issued
-    # "applescript::calendar::start::title" synthetic id, fall back to that
-    # composite match too), searching one named calendar first when known,
-    # otherwise every calendar.
-    _JXA_FIND_EVENT = """
-function findEventByUid(app, uid, calendarNameHint) {
-  const calendars = calendarNameHint
-    ? app.calendars.byName(calendarNameHint) ? [app.calendars.byName(calendarNameHint)] : []
-    : app.calendars();
-  for (const cal of calendars) {
-    const matches = cal.events.whose({uid: uid})();
-    if (matches.length > 0) {
-      return {calendar: cal, event: matches[0]};
-    }
+    # Fallback IDs name their backend, calendar scope, and UID/id namespace.
+    # Legacy bare IDs are resolved only when their meanings agree; metadata-only
+    # composites are read-only and cannot safely identify a mutation target.
+    _JXA_ID_HELPERS = """
+function readIdentifier(obj, field) {
+  try { return typeof obj[field] === "function" ? obj[field]() : null; }
+  catch (_) { return null; }
+}
+function usableId(value) {
+  return (typeof value === "string" && value.trim().length > 0) ||
+    (typeof value === "number" && Number.isSafeInteger(value));
+}
+function sameId(left, right) { return typeof left === typeof right && left === right; }
+function calendarSelector(cal) {
+  const id = readIdentifier(cal, "id");
+  return usableId(id) ? {kind: "id", value: id} : {kind: "name", value: cal.name()};
+}
+function eventIdentifier(cal, evt, row) {
+  const uid = readIdentifier(evt, "uid");
+  const id = readIdentifier(evt, "id");
+  const strongUid = typeof uid === "string" && uid.length > 0;
+  const payload = {
+    v: 2, calendar: calendarSelector(cal), calendar_name: cal.name(),
+    kind: strongUid ? "uid" : (usableId(id) ? "id" : "weak"),
+    value: strongUid ? uid : (usableId(id) ? id : null),
+    uid: strongUid ? uid : null, id: usableId(id) ? id : null
+  };
+  if (payload.kind === "weak") {
+    payload.row = row === undefined ? null : row;
+    payload.start = evt.startDate().toISOString();
+    payload.end = evt.endDate().toISOString();
+    payload.title = evt.summary() || "";
   }
-  if (uid.indexOf("applescript::") === 0) {
-    const parts = uid.split("::");
-    const calName = parts[1];
-    const startIso = parts[2];
-    const title = parts.slice(3).join("::");
-    const targets = calName ? [app.calendars.byName(calName)] : app.calendars();
-    for (const cal of targets) {
-      const matches = cal.events.whose({summary: title, startDate: new Date(startIso)})();
-      if (matches.length > 0) {
-        return {calendar: cal, event: matches[0]};
+  return "applescript::v2::" + encodeURIComponent(JSON.stringify(payload));
+}
+function decodeEventIdentifier(value) {
+  const prefix = "applescript::v2::";
+  if (value.indexOf(prefix + "%7B") !== 0) { return null; }
+  const payload = JSON.parse(decodeURIComponent(value.slice(prefix.length)));
+  if (!payload || payload.v !== 2 || !payload.calendar ||
+      ["id", "name"].indexOf(payload.calendar.kind) < 0 ||
+      !usableId(payload.calendar.value) ||
+      (payload.calendar.kind === "name" && typeof payload.calendar.value !== "string") ||
+      ["uid", "id", "weak"].indexOf(payload.kind) < 0) {
+    throw new Error("INVALID_EVENT_IDENTIFIER");
+  }
+  if ((payload.kind !== "weak" && !usableId(payload.value)) ||
+      (payload.kind === "uid" && typeof payload.value !== "string")) {
+    throw new Error("INVALID_EVENT_IDENTIFIER");
+  }
+  return payload;
+}
+function sameCandidate(left, right) {
+  if (left.index !== right.index) { return false; }
+  const leftId = readIdentifier(left.event, "id");
+  const rightId = readIdentifier(right.event, "id");
+  if (usableId(leftId) && usableId(rightId)) {
+    return sameId(leftId, rightId) &&
+      readIdentifier(left.event, "uid") === readIdentifier(right.event, "uid");
+  }
+  const leftUid = readIdentifier(left.event, "uid");
+  const rightUid = readIdentifier(right.event, "uid");
+  return typeof leftUid === "string" && leftUid.length > 0 && leftUid === rightUid;
+}
+function uniqueCandidates(items) {
+  const unique = [];
+  items.forEach(function(item) {
+    if (!unique.some(function(prior) { return sameCandidate(prior, item); })) { unique.push(item); }
+  });
+  if (unique.length > 1) { throw new Error("AMBIGUOUS_EVENT_IDENTIFIER"); }
+  return unique[0] || null;
+}
+function identifierMatches(calendars, field, value, strict) {
+  const items = [];
+  calendars.forEach(function(entry) {
+    const query = {};
+    query[field] = value;
+    const matches = entry.calendar.events.whose(query)();
+    if (matches.length > 1000) { throw new Error("IDENTIFIER_LOOKUP_LIMIT"); }
+    let verified = 0;
+    matches.forEach(function(evt) {
+      const actual = readIdentifier(evt, field);
+      if (!sameId(actual, value)) {
+        if (strict) { throw new Error("UNVERIFIABLE_EVENT_IDENTIFIER"); }
+        return;
       }
+      verified += 1;
+      if (verified > 1) { throw new Error("AMBIGUOUS_EVENT_IDENTIFIER"); }
+      items.push({calendar: entry.calendar, event: evt, index: entry.index});
+    });
+  });
+  return items;
+}
+"""
+
+    _JXA_FIND_EVENT = _JXA_ID_HELPERS + """
+function findEventByUid(app, identifier, calendarNameHint, requireStable) {
+  if (identifier.length > 32768) { throw new Error("IDENTIFIER_LOOKUP_LIMIT"); }
+  const snapshot = app.calendars();
+  if (snapshot.length > 1000) { throw new Error("IDENTIFIER_LOOKUP_LIMIT"); }
+  const calendars = snapshot.map(function(cal, index) { return {calendar: cal, index: index}; });
+  const token = decodeEventIdentifier(identifier);
+  if (token) {
+    if (token.kind === "weak") { throw new Error("UNSUPPORTED_EVENT_IDENTIFIER"); }
+    const scoped = calendars.filter(function(entry) {
+      const actual = token.calendar.kind === "id"
+        ? readIdentifier(entry.calendar, "id") : entry.calendar.name();
+      return sameId(actual, token.calendar.value);
+    });
+    if (scoped.length !== 1) { throw new Error("AMBIGUOUS_OR_MISSING_CALENDAR"); }
+    if (requireStable && token.calendar_name !== scoped[0].calendar.name()) {
+      throw new Error("STALE_CALENDAR_IDENTIFIER");
     }
+    const found = uniqueCandidates(identifierMatches(scoped, token.kind, token.value, true));
+    // Legacy UID data can resemble the new protocol. Refuse conflicting meanings.
+    const legacy = uniqueCandidates(identifierMatches(calendars, "uid", identifier, true));
+    if (legacy && (!found || !sameCandidate(legacy, found))) {
+      throw new Error("AMBIGUOUS_EVENT_IDENTIFIER");
+    }
+    return found;
+  }
+  const scoped = calendarNameHint
+    ? calendars.filter(function(entry) { return entry.calendar.name() === calendarNameHint; })
+    : calendars;
+  const uidMatches = identifierMatches(scoped, "uid", identifier, true);
+  const idValues = [identifier];
+  const numeric = Number(identifier);
+  if (Number.isSafeInteger(numeric) && String(numeric) === identifier) { idValues.push(numeric); }
+  let unavailable = false;
+  let candidates = uidMatches.slice();
+  idValues.forEach(function(value) {
+    try { candidates = candidates.concat(identifierMatches(scoped, "id", value, true)); }
+    catch (error) {
+      if (/AMBIGUOUS|UNVERIFIABLE|LOOKUP_LIMIT/.test(String(error))) { throw error; }
+      unavailable = true;
+    }
+  });
+  const strong = uniqueCandidates(candidates);
+  if (unavailable) { throw new Error("UNSUPPORTED_IDENTIFIER_NAMESPACE"); }
+  if (strong) { return strong; }
+  if (identifier.indexOf("applescript::") === 0) {
+    if (requireStable) { throw new Error("UNSUPPORTED_WEAK_EVENT_IDENTIFIER"); }
+    const parts = identifier.split("::");
+    const calName = parts[1];
+    const start = new Date(parts[2]);
+    const title = parts.slice(3).join("::");
+    if (!Number.isFinite(start.getTime())) { throw new Error("INVALID_EVENT_IDENTIFIER"); }
+    const found = [];
+    calendars.filter(function(entry) { return entry.calendar.name() === calName; }).forEach(function(entry) {
+      const matches = entry.calendar.events.whose({summary: title, startDate: start})();
+      if (matches.length > 1000) { throw new Error("IDENTIFIER_LOOKUP_LIMIT"); }
+      matches.forEach(function(evt) {
+        if (evt.summary() !== title || evt.startDate().getTime() !== start.getTime()) {
+          throw new Error("UNVERIFIABLE_EVENT_IDENTIFIER");
+        }
+        found.push({calendar: entry.calendar, event: evt, index: entry.index});
+      });
+    });
+    // Weak identities cannot establish physical equality for duplicate matches.
+    if (found.length > 1) { throw new Error("AMBIGUOUS_EVENT_IDENTIFIER"); }
+    return found[0] || null;
   }
   return null;
 }
@@ -596,15 +792,11 @@ function findEventByUid(app, uid, calendarNameHint) {
 function eventRecord(cal, evt) {
   const startDate = evt.startDate();
   const endDate = evt.endDate();
-  const title = evt.summary() || "";
-  const calendarName = cal.name();
-  // Match list fallback identity exactly when Calendar supplies no UID.
-  const eventId = evt.uid ? evt.uid() : null;
   return {
-    event_id: eventId || ("applescript::" + calendarName + "::" + startDate.toISOString() + "::" + title),
-    title: title,
-    calendar_id: calendarName,
-    calendar_name: calendarName,
+    event_id: eventIdentifier(cal, evt),
+    title: evt.summary() || "",
+    calendar_id: cal.name(),
+    calendar_name: cal.name(),
     start: startDate.toISOString(),
     end: endDate.toISOString(),
     all_day: startDate.getHours() === 0 && startDate.getMinutes() === 0 &&
@@ -698,7 +890,7 @@ function run(argv) {
   const app = Application("Calendar");
   const eventId = argv[0];
   const fields = JSON.parse(argv[1]);
-  const found = findEventByUid(app, eventId, "");
+  const found = findEventByUid(app, eventId, "", true);
   if (!found) {
     return JSON.stringify({__error__: "EVENT_NOT_FOUND"});
   }
@@ -707,23 +899,7 @@ function run(argv) {
 
   const wantsMove = fields.calendar_id && fields.calendar_id !== cal.name();
   if (wantsMove) {
-    const targetCal = app.calendars.byName(fields.calendar_id);
-    if (!targetCal || !targetCal.exists()) {
-      return JSON.stringify({__error__: "CALENDAR_NOT_FOUND"});
-    }
-    const moved = app.Event({
-      summary: fields.title !== null ? fields.title : (evt.summary() || ""),
-      startDate: fields.start !== null ? new Date(fields.start) : evt.startDate(),
-      endDate: fields.end !== null ? new Date(fields.end) : evt.endDate(),
-      location: fields.location !== null ? fields.location : (evt.location ? (evt.location() || "") : ""),
-      description: fields.notes !== null ? fields.notes : (evt.description ? (evt.description() || "") : "")
-    });
-    targetCal.events.push(moved);
-    if (fields.all_day !== null) {
-      moved.alldayEvent = fields.all_day;
-    }
-    cal.events.whose({uid: eventId})[0].delete();
-    return JSON.stringify(eventRecord(targetCal, moved));
+    throw new Error("UNSUPPORTED_OPERATION: Automation cannot safely preserve all event fields during calendar moves. Use native Calendar access.");
   }
 
   if (fields.title !== null) { evt.summary = fields.title; }
@@ -758,7 +934,7 @@ function run(argv) {
         script = self._JXA_FIND_EVENT + """
 function run(argv) {
   const app = Application("Calendar");
-  const found = findEventByUid(app, argv[0], "");
+  const found = findEventByUid(app, argv[0], "", true);
   if (!found) {
     return JSON.stringify({__error__: "EVENT_NOT_FOUND"});
   }
@@ -885,14 +1061,18 @@ function run(argv) {
             availability=None,
         )
 
-    def _normalize_detail(self, raw_event: dict[str, object]) -> EventDetail:
+    def _normalize_detail(
+        self, raw_event: dict[str, object], *, identifier_provider: str | None = None,
+    ) -> EventDetail:
         summary_dict = self._normalize_summary(raw_event).model_dump()
         summary_dict["notes"] = self._optional_text(raw_event.get("notes"))
         if raw_event.get("recurrence_rule") is not None:
             summary_dict["recurrence_rule"] = raw_event["recurrence_rule"]
         if raw_event.get("attendees") is not None:
             summary_dict["attendees"] = raw_event["attendees"]
-        return EventDetail.model_validate(summary_dict)
+        detail = EventDetail.model_validate(summary_dict)
+        detail._identifier_provider = identifier_provider
+        return detail
 
     def _optional_text(self, value: object) -> str | None:
         if value is None:

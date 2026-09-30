@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from urllib.parse import quote, unquote
 
 import pytest
 
@@ -843,78 +844,6 @@ def test_unsupported_legacy_identifier_is_unknown_without_lookup(monkeypatch) ->
     assert bridge.get_events(["uid:Work:legacy-id"]) == {}
 
 
-_JXA_NO_UID_STUB = """
-const EVENT = {
-  uid: function () { return null; },
-  id: function () { return "alternate-id"; },
-  summary: function () { return "Planning"; },
-  startDate: function () { return new Date("2026-03-27T10:00:00Z"); },
-  endDate: function () { return new Date("2026-03-27T10:30:00Z"); },
-  location: function () { return ""; },
-  description: function () { return ""; }
-};
-const CALENDAR = {
-  name: function () { return "Work"; },
-  events: {
-    whose: function (query) {
-      return function () {
-        if (Object.prototype.hasOwnProperty.call(query, "uid")) { return []; }
-        if (query.summary !== undefined) {
-          return query.summary === EVENT.summary() &&
-            query.startDate.getTime() === EVENT.startDate().getTime() ? [EVENT] : [];
-        }
-        return EVENT.startDate() > query.startDate._greaterThan &&
-          EVENT.startDate() < query.startDate._lessThan ? [EVENT] : [];
-      };
-    }
-  }
-};
-function Application() {
-  const calendars = function () { return [CALENDAR]; };
-  calendars.byName = function (name) { return name === "Work" ? CALENDAR : null; };
-  return {calendars: calendars};
-}
-"""
-
-
-@pytest.mark.parametrize("has_uid_method", [True, False])
-def test_generated_jxa_record_preserves_no_uid_synthetic_identity(monkeypatch, tmp_path, has_uid_method) -> None:
-    node = shutil.which("node")
-    if node is None:
-        pytest.skip("node is required to execute generated JXA")
-    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
-    script_count = 0
-
-    def native(command, *args):
-        if command == "calendar-access-status":
-            return {"can_read_events": False}
-        raise CalendarBridgeError("PERMISSION_DENIED", "force the real generated fallback")
-
-    def jxa(script, *args, timeout=None):
-        nonlocal script_count
-        script_count += 1
-        path = tmp_path / f"no-uid-{script_count}.js"
-        stub = _JXA_NO_UID_STUB if has_uid_method else _JXA_NO_UID_STUB.replace("  uid: function () { return null; },\n", "")
-        path.write_text(stub + script + "\nconsole.log(run(process.argv.slice(2)));\n")
-        completed = subprocess.run(
-            [node, str(path), *args], capture_output=True, text=True, check=False,
-        )
-        assert completed.returncode == 0, completed.stderr
-        return json.loads(completed.stdout.strip())
-
-    monkeypatch.setattr(bridge, "_run_helper", native)
-    monkeypatch.setattr(bridge, "_run_jxa", jxa)
-
-    listed = bridge.list_events(
-        "2026-03-27T09:00:00+00:00", "2026-03-27T11:00:00+00:00", calendar_id="Work",
-    )
-    event_id = listed[0].event_id
-    assert event_id == "applescript::Work::2026-03-27T10:00:00.000Z::Planning"
-    single = bridge.get_event(event_id)
-    assert single.event_id == event_id
-    assert bridge.get_events([event_id])[event_id].model_dump() == single.model_dump()
-
-
 @pytest.mark.parametrize("error_code", ["PERMISSION_DENIED", "HELPER_COMPILE_FAILED", "HELPER_SOURCE_MISSING"])
 def test_batch_unavailable_native_backend_cannot_confirm_opaque_id_absence(monkeypatch, error_code) -> None:
     bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
@@ -930,7 +859,7 @@ def test_batch_unavailable_native_backend_cannot_confirm_opaque_id_absence(monke
     assert bridge.get_events(["opaque-native-id"]) == {}
 
 
-def test_supported_synthetic_identifier_can_confirm_fallback_miss(monkeypatch) -> None:
+def test_legacy_metadata_identifier_cannot_confirm_fallback_miss(monkeypatch) -> None:
     bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
 
     def native(command, *args):
@@ -942,4 +871,396 @@ def test_supported_synthetic_identifier_can_confirm_fallback_miss(monkeypatch) -
     monkeypatch.setattr(bridge, "_run_helper", native)
     monkeypatch.setattr(bridge, "_fallback_get_event", fallback)
     event_id = "applescript::Work::2026-03-27T10:00:00.000Z::Missing"
-    assert bridge.get_events([event_id]) == {event_id: None}
+    assert bridge.get_events([event_id]) == {}
+
+# Execute generated scripts against deterministic app objects in automatic CI.
+# The harness records every write and filtered query; it never opens Calendar.
+_JXA_IDENTITY_STUB = """
+const fixture = __FIXTURE__;
+const writes = [];
+const queries = [];
+function makeEvent(data) {
+  const event = {};
+  if (Object.prototype.hasOwnProperty.call(data, "uid")) {
+    event.uid = function () { return data.uid; };
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "id")) {
+    event.id = function () { return data.id; };
+  }
+  ["summary", "startDate", "endDate", "location", "description"].forEach(function(field) {
+    const key = {summary: "title", startDate: "start", endDate: "end",
+      location: "location", description: "notes"}[field];
+    Object.defineProperty(event, field, {
+      get: function () { return function () {
+        return field === "startDate" || field === "endDate"
+          ? new Date(data[key]) : (data[key] || "");
+      }; },
+      set: function (value) {
+        writes.push({id: data.id, uid: data.uid, field: field});
+        data[key] = value instanceof Date ? value.toISOString() : value;
+      }
+    });
+  });
+  Object.defineProperty(event, "alldayEvent", {
+    set: function () { writes.push({id: data.id, field: "alldayEvent"}); }
+  });
+  event.delete = function () { writes.push({id: data.id, uid: data.uid, field: "delete"}); };
+  return event;
+}
+const calendarObjects = fixture.calendars.map(function(data) {
+  const events = data.events.map(makeEvent);
+  const calendar = {name: function () { return data.name; }};
+  if (Object.prototype.hasOwnProperty.call(data, "id")) {
+    calendar.id = function () { return data.id; };
+  }
+  calendar.events = {
+    whose: function (query) {
+      return function () {
+        queries.push(Object.keys(query));
+        if (data.unsupported_id && Object.prototype.hasOwnProperty.call(query, "id")) {
+          throw new Error("id property unsupported");
+        }
+        if (data.unverifiable && Object.prototype.hasOwnProperty.call(query, "id")) {
+          return events;
+        }
+        return events.filter(function(event) {
+          if (Object.prototype.hasOwnProperty.call(query, "uid")) {
+            return typeof event.uid === "function" && event.uid() === query.uid;
+          }
+          if (Object.prototype.hasOwnProperty.call(query, "id")) {
+            return typeof event.id === "function" && event.id() === query.id;
+          }
+          if (Object.prototype.hasOwnProperty.call(query, "summary")) {
+            return event.summary() === query.summary &&
+              event.startDate().getTime() === query.startDate.getTime();
+          }
+          return event.startDate() > query.startDate._greaterThan &&
+            event.startDate() < query.startDate._lessThan;
+        });
+      };
+    },
+    push: function () { writes.push({field: "push"}); throw new Error("unexpected push"); }
+  };
+  return calendar;
+});
+function Application() {
+  const calendars = function () { return calendarObjects; };
+  calendars.byName = function (name) {
+    return calendarObjects.find(function(cal) { return cal.name() === name; });
+  };
+  return {calendars: calendars, Event: function () {
+    writes.push({field: "create"}); throw new Error("unexpected Event");
+  }};
+}
+"""
+
+
+def _identity_event(**fields):
+    return {
+        "title": "Planning", "start": "2026-03-27T10:00:00Z",
+        "end": "2026-03-27T10:30:00Z", **fields,
+    }
+
+
+def _jxa_token(**fields):
+    payload = {
+        "v": 2, "calendar": {"kind": "name", "value": "Work"},
+        "calendar_name": "Work", "kind": "id", "value": "left",
+        "uid": None, "id": "left", **fields,
+    }
+    return "applescript::v2::" + quote(json.dumps(payload, separators=(",", ":")), safe="")
+
+
+def _decode_jxa_token(event_id):
+    return json.loads(unquote(event_id.removeprefix("applescript::v2::")))
+
+
+def _identity_bridge(monkeypatch, tmp_path, calendars):
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required to execute generated JXA")
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    state = {"writes": [], "queries": [], "native": [], "count": 0}
+
+    def native(command, *args):
+        state["native"].append(command)
+        if command == "calendar-access-status":
+            return {"can_read_events": False}
+        if command == "get-calendar-events":
+            return {"items": [
+                {"event_id": event_id, "found": False, "error_code": "EVENT_NOT_FOUND"}
+                for event_id in json.loads(args[0])["event_ids"]
+            ]}
+        raise CalendarBridgeError("EVENT_NOT_FOUND", "use the generated JXA fallback")
+
+    def jxa(script, *args, timeout=None):
+        state["count"] += 1
+        path = tmp_path / f"identity-{state['count']}.js"
+        stub = _JXA_IDENTITY_STUB.replace("__FIXTURE__", json.dumps({"calendars": calendars}))
+        trailer = """
+try {
+  console.log(JSON.stringify({payload: JSON.parse(run(process.argv.slice(2))),
+    writes: writes, queries: queries}));
+} catch (error) {
+  console.log(JSON.stringify({error: String(error), writes: writes, queries: queries}));
+}
+"""
+        path.write_text(stub + script + trailer)
+        completed = subprocess.run([node, str(path), *args], capture_output=True, text=True, check=False)
+        assert completed.returncode == 0, completed.stderr
+        result = json.loads(completed.stdout)
+        state["writes"].extend(result["writes"])
+        state["queries"].extend(result["queries"])
+        if "error" in result:
+            raise CalendarBridgeError("APPLESCRIPT_FALLBACK_FAILED", result["error"])
+        return result["payload"]
+
+    monkeypatch.setattr(bridge, "_run_helper", native)
+    monkeypatch.setattr(bridge, "_run_jxa", jxa)
+    return bridge, state
+
+
+def _listed_ids(bridge):
+    return [
+        event.event_id for event in bridge.list_events(
+            "2026-03-27T09:00:00+00:00", "2026-03-27T11:00:00+00:00", calendar_id="Work",
+        )
+    ]
+
+
+@pytest.mark.parametrize("ids", [("left", "right"), (41, 42)])
+@pytest.mark.parametrize("uid_mode", ["absent", "null"])
+def test_jxa_no_uid_twins_keep_distinct_strong_ids_and_batch_parity(monkeypatch, tmp_path, ids, uid_mode):
+    extra = {"uid": None} if uid_mode == "null" else {}
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [{
+        "name": "Work", "id": "calendar-1",
+        "events": [_identity_event(id=value, **extra) for value in ids],
+    }])
+    listed = _listed_ids(bridge)
+    assert len(listed) == len(set(listed)) == 2
+    assert [_decode_jxa_token(value)["value"] for value in listed] == list(ids)
+    for event_id in listed:
+        single = bridge.get_event(event_id)
+        assert single.event_id == event_id
+        assert bridge.get_events([event_id])[event_id].model_dump() == single.model_dump()
+    assert "get-calendar-event" not in state["native"]
+    assert state["writes"] == []
+
+
+def test_jxa_uid_tokens_preserve_legacy_uid_and_numeric_id_aliases(monkeypatch, tmp_path):
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [{
+        "name": "Work", "events": [_identity_event(uid="legacy-uid", id=41)],
+    }])
+    emitted = _listed_ids(bridge)[0]
+    assert _decode_jxa_token(emitted)["kind"] == "uid"
+    for requested in [emitted, "legacy-uid", "41"]:
+        single = bridge.get_event(requested)
+        assert single.event_id == emitted
+        assert bridge.get_events([requested])[requested].model_dump() == single.model_dump()
+    assert state["writes"] == []
+    assert all(query in [["uid"], ["id"], ["startDate"]] for query in state["queries"])
+
+
+@pytest.mark.parametrize("identity", [{"uid": None}, {"uid": None, "id": "same"}])
+def test_jxa_unstable_or_duplicate_provider_ids_are_display_only(monkeypatch, tmp_path, identity):
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [{
+        "name": "Work", "events": [_identity_event(**identity), _identity_event(**identity)],
+    }])
+    listed = _listed_ids(bridge)
+    assert len(listed) == len(set(listed)) == 2
+    assert all(_decode_jxa_token(value)["kind"] == "weak" for value in listed)
+    assert bridge.get_events(listed) == {}
+    for event_id in listed:
+        with pytest.raises(CalendarBridgeError):
+            bridge.update_event(event_id, title="wrong")
+        with pytest.raises(CalendarBridgeError):
+            bridge.delete_event(event_id)
+    assert state["writes"] == []
+
+
+@pytest.mark.parametrize("requested", ["left", "same-uid", "applescript::Work::2026-03-27T10:00:00.000Z::Planning"])
+def test_jxa_legacy_collisions_refuse_read_batch_and_writes(monkeypatch, tmp_path, requested):
+    if requested == "left":
+        events = [_identity_event(uid="left", id="one"), _identity_event(uid="other", id="left")]
+    elif requested == "same-uid":
+        events = [_identity_event(uid="same-uid", id="one"), _identity_event(uid="same-uid", id="two")]
+    else:
+        events = [_identity_event(id="one"), _identity_event(id="two")]
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [{"name": "Work", "events": events}])
+    with pytest.raises(CalendarBridgeError, match="AMBIGUOUS"):
+        bridge.get_event(requested)
+    assert bridge.get_events([requested]) == {}
+    with pytest.raises(CalendarBridgeError):
+        bridge.update_event(requested, title="wrong")
+    with pytest.raises(CalendarBridgeError):
+        bridge.delete_event(requested)
+    assert state["writes"] == []
+
+
+def test_jxa_scoped_tokens_avoid_same_uid_in_another_calendar(monkeypatch, tmp_path):
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [
+        {"name": "Work", "id": "work", "events": [_identity_event(uid="same", id="work-event")]},
+        {"name": "Personal", "id": "personal", "events": [_identity_event(uid="same", id="personal-event")]},
+    ])
+    event_id = _listed_ids(bridge)[0]
+    assert bridge.get_events([event_id])[event_id].calendar_name == "Work"
+    assert bridge.update_event(event_id, title="correct").calendar_name == "Work"
+    assert bridge.delete_event(event_id) is True
+    assert [write["id"] for write in state["writes"]] == ["work-event", "work-event"]
+    assert "update-calendar-event" not in state["native"]
+    assert "delete-calendar-event" not in state["native"]
+    with pytest.raises(CalendarBridgeError, match="AMBIGUOUS"):
+        bridge.get_event("same")
+
+
+def test_jxa_protocol_looking_legacy_uid_collision_is_not_actionable(monkeypatch, tmp_path):
+    token = _jxa_token()
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [{
+        "name": "Work", "events": [
+            _identity_event(id="left"), _identity_event(uid=token, id="shadow"),
+        ],
+    }])
+    assert bridge.get_events([token]) == {}
+    with pytest.raises(CalendarBridgeError, match="AMBIGUOUS"):
+        bridge.delete_event(token)
+    assert state["writes"] == []
+
+
+@pytest.mark.parametrize("change", [
+    {"calendar": {"kind": "name", "value": "Missing"}},
+    {"calendar": {"kind": "name", "value": 41}},
+    {"kind": "uid", "value": 41},
+    {"kind": "other"},
+])
+def test_jxa_missing_scope_and_malformed_tokens_are_unknown(monkeypatch, tmp_path, change):
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [{
+        "name": "Work", "events": [_identity_event(id="left")],
+    }])
+    token = _jxa_token(**change)
+    assert bridge.get_events([token]) == {}
+    with pytest.raises(CalendarBridgeError):
+        bridge.update_event(token, title="wrong")
+    assert state["writes"] == []
+
+
+def test_jxa_verified_scoped_miss_is_none_but_unsupported_namespace_is_unknown(monkeypatch, tmp_path):
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [{"name": "Work", "events": []}])
+    missing = _jxa_token(value="missing", id="missing")
+    assert bridge.get_events([missing]) == {missing: None}
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge.get_event(missing)
+    assert error.value.error_code == "EVENT_NOT_FOUND"
+    unsupported, _ = _identity_bridge(monkeypatch, tmp_path, [{
+        "name": "Work", "unsupported_id": True, "events": [],
+    }])
+    assert unsupported.get_events([missing]) == {}
+    assert state["writes"] == []
+
+
+def test_jxa_duplicate_name_scope_is_unknown_and_keeps_both_list_rows(monkeypatch, tmp_path):
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [
+        {"name": "Work", "events": [_identity_event(id="left")]},
+        {"name": "Work", "events": [_identity_event(id="left")]},
+    ])
+    listed = _listed_ids(bridge)
+    assert len(listed) == len(set(listed)) == 2
+    assert bridge.get_events([_jxa_token()]) == {}
+    with pytest.raises(CalendarBridgeError):
+        bridge.delete_event(_jxa_token())
+    assert state["writes"] == []
+
+
+@pytest.mark.parametrize("calendar", [
+    {"name": "Work", "unverifiable": True, "events": [_identity_event(id="right")]},
+    {"name": "Work", "events": [_identity_event(id="left"), _identity_event(id="left")]},
+])
+def test_jxa_filtered_results_are_verified_and_duplicates_rejected(monkeypatch, tmp_path, calendar):
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [calendar])
+    token = _jxa_token()
+    assert bridge.get_events([token]) == {}
+    with pytest.raises(CalendarBridgeError):
+        bridge.delete_event(token)
+    assert state["writes"] == []
+
+
+def test_jxa_mutation_refuses_stale_calendar_name_and_clone_move_before_writes(monkeypatch, tmp_path):
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [{
+        "name": "Work", "id": "work", "events": [_identity_event(id="left")],
+    }])
+    emitted = _listed_ids(bridge)[0]
+    stale = _decode_jxa_token(emitted)
+    stale["calendar_name"] = "Old name"
+    token = "applescript::v2::" + quote(json.dumps(stale, separators=(",", ":")), safe="")
+    with pytest.raises(CalendarBridgeError, match="STALE_CALENDAR"):
+        bridge.update_event(token, title="wrong")
+    with pytest.raises(CalendarBridgeError, match="UNSUPPORTED_OPERATION"):
+        bridge.update_event(emitted, calendar_id="Personal", title="wrong")
+    assert state["writes"] == []
+
+
+def test_jxa_weak_legacy_identifier_cannot_be_used_for_mutation(monkeypatch, tmp_path):
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [{
+        "name": "Work", "events": [_identity_event(id="left")],
+    }])
+    legacy = "applescript::Work::2026-03-27T10:00:00.000Z::Planning"
+    assert bridge.get_event(legacy).title == "Planning"
+    with pytest.raises(CalendarBridgeError, match="UNSUPPORTED_WEAK"):
+        bridge.delete_event(legacy)
+    assert state["writes"] == []
+
+
+def test_jxa_calendar_snapshot_is_bounded_before_filtered_lookup(monkeypatch, tmp_path):
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [
+        {"name": "Work", "id": index, "events": []} for index in range(1001)
+    ])
+    assert bridge.get_events([_jxa_token()]) == {}
+    assert state["queries"] == state["writes"] == []
+
+
+def test_jxa_provider_marker_is_private_and_untrusted_alias_is_not_accepted(monkeypatch):
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    token = _jxa_token()
+    detail = bridge._normalize_detail(
+        {**_BATCH_EVENT, "event_id": token}, identifier_provider="jxa",
+    )
+    assert detail._identifier_provider == "jxa"
+    untrusted = bridge._normalize_detail({**_BATCH_EVENT, "__bridge_provider": "jxa"})
+    assert untrusted._identifier_provider is None
+    assert "__bridge_provider" not in detail.model_dump()
+    assert "_identifier_provider" not in detail.model_dump()
+    detail._identifier_provider = None
+    monkeypatch.setattr(bridge, "get_event", lambda event_id: detail)
+    resolved = {}
+    bridge._resolve_batch_individually(["left"], resolved)
+    assert resolved == {}
+
+
+@pytest.mark.parametrize("kind", ["get", "list", "update", "delete"])
+def test_generated_calendar_identity_scripts_compile_on_macos(monkeypatch, tmp_path, kind):
+    compiler = shutil.which("osacompile")
+    if compiler is None:
+        pytest.skip("osacompile requires macOS")
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def compile_script(script, *args, timeout=None):
+        source = tmp_path / f"{kind}.js"
+        source.write_text(script)
+        completed = subprocess.run(
+            [compiler, "-l", "JavaScript", "-o", str(tmp_path / f"{kind}.scpt"), str(source)],
+            capture_output=True, text=True, check=False,
+        )
+        assert completed.returncode == 0, completed.stderr
+        return {"deleted": True, "items": []}
+
+    monkeypatch.setattr(bridge, "_run_jxa", compile_script)
+    if kind == "get":
+        bridge._fallback_get_event(_jxa_token())
+    elif kind == "list":
+        bridge._fallback_list_events("2026-03-27T09:00:00Z", "2026-03-27T11:00:00Z", "Work")
+    elif kind == "delete":
+        bridge._fallback_delete_event(_jxa_token())
+    else:
+        bridge._fallback_update_event(
+            _jxa_token(), title=None, calendar_id=None, start_iso=None, end_iso=None,
+            notes=None, location=None, all_day=None,
+        )

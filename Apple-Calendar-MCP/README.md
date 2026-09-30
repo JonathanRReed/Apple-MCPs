@@ -16,6 +16,7 @@ Provides access to calendars and events through EventKit. Keep Calendar as the s
 
 - Discover and list calendars
 - Create, read, update, and delete events
+- Set event alarms (reminders) when creating or updating an event
 - Tool discovery helpers `search_tools` and `get_tool_info` for context-constrained clients
 - Today resources and planning prompts
 - Health checks that distinguish empty results from blocked access
@@ -81,6 +82,33 @@ claude mcp add --transport stdio --scope project apple-calendar -- uvx apple-cal
 ```
 
 </details>
+
+## Event Alarms
+
+`calendar_create_event` and `calendar_update_event` take an optional `alarms` parameter: a list of objects, each with **exactly one** of
+
+- `minutes_before` — a whole number of minutes before the event start, from 0 through 525600 (one year); `15` means "alert 15 minutes before"
+- `absolute_iso` — an ISO datetime for a fixed alert time
+
+```json
+{
+  "title": "Design review",
+  "start_iso": "2026-08-30T14:00:00",
+  "end_iso": "2026-08-30T15:00:00",
+  "calendar_id": "...",
+  "alarms": [{ "minutes_before": 15 }, { "absolute_iso": "2026-08-30T09:00:00" }]
+}
+```
+
+Semantics:
+
+- On create, omitting `alarms` creates the event with no alarms.
+- On update, omitting `alarms` leaves the event's existing alarms unchanged; passing `[]` clears them all. There is no partial add or remove — the list you pass replaces the event's alarms.
+- Native get/create/update detail responses return structured alarm records. Relative alarms have `type: "relative"` and signed `offset_minutes` (for example, -15); absolute alarms have `type: "absolute"` and `absolute`; location alarms have `type: "location"`, `proximity`, and `location_title`. Location alarms are read-only through these tools. Their offset is a raw EventKit value, not a guaranteed travel-time estimate. Nonfinite or unrepresentable external offsets are omitted.
+- List responses remain event summaries and do not include alarms. The automation fallback cannot read alarms, so its detail responses return alarms as null rather than implying an empty list. Native detail responses return [] when no alarms exist.
+- Any provided alarms list, including `[]`, requires native EventKit support. If the helper cannot service the mutation, the request returns `UNSUPPORTED_OPERATION` before any automation fallback write. Omitting alarms preserves existing fallback behavior.
+- At most 100 alarms are accepted. Python and Swift both validate the range and shape before saving.
+- An entry with both fields, neither field, a negative `minutes_before`, or an unparseable `absolute_iso` is rejected with `INVALID_INPUT` before any calendar write happens.
 
 ## Safety Modes
 

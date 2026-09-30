@@ -1,3 +1,4 @@
+import CoreFoundation
 import EventKit
 import Foundation
 
@@ -60,6 +61,18 @@ struct EventRecord: Encodable {
     let notes: String?
     let recurrence_rule: RecurrenceInfo?
     let attendees: [AttendeeInfo]?
+    let alarms: [AlarmInfo]?
+}
+
+struct AlarmInfo: Encodable {
+    // Relative offsets are signed minutes. Location offsets are raw EventKit
+    // values, not a guaranteed travel-time estimate. An unrepresentable offset
+    // is omitted rather than trapping while serializing an external alarm.
+    let type: String
+    let offset_minutes: Int?
+    let absolute: String?
+    let proximity: String?
+    let location_title: String?
 }
 
 struct RecurrenceInfo: Encodable {
@@ -540,6 +553,61 @@ struct ApplePIMBridge {
                 event.recurrenceRules = nil
             }
         }
+        if let rawAlarms = payload["alarms"] {
+            let alarms = try eventAlarms(rawAlarms)
+            event.alarms = alarms.isEmpty ? nil : alarms
+        }
+    }
+
+    static let maxAlarmMinutes = 525600.0
+    static let maxEventAlarms = 100
+
+    static func eventAlarms(_ rawAlarms: Any) throws -> [EKAlarm] {
+        guard let entries = rawAlarms as? [[String: Any]], entries.count <= maxEventAlarms else {
+            throw BridgeFailure(
+                errorCode: "INVALID_INPUT",
+                message: "alarms must be an array of at most 100 objects; use [] to clear.",
+                suggestion: "Omit alarms to leave them unchanged."
+            )
+        }
+        return try entries.map { entry in
+            guard entry.count == 1 else {
+                throw BridgeFailure(errorCode: "INVALID_INPUT", message: "Each alarm requires exactly one supported field.", suggestion: nil)
+            }
+            if let rawMinutes = entry["minutes_before"] {
+                let minutes: Double?
+                if let number = rawMinutes as? NSNumber {
+                    // JSON booleans bridge to NSNumber; never accept them as offsets.
+                    guard CFGetTypeID(number) != CFBooleanGetTypeID() else {
+                        throw BridgeFailure(errorCode: "INVALID_INPUT", message: "minutes_before must be a number, not a boolean.", suggestion: nil)
+                    }
+                    minutes = number.doubleValue
+                } else if let text = rawMinutes as? String {
+                    minutes = Double(text.trimmingCharacters(in: .whitespacesAndNewlines))
+                } else {
+                    minutes = nil
+                }
+                guard let value = minutes, value.isFinite, value >= 0,
+                      value <= maxAlarmMinutes, value.rounded(.towardZero) == value else {
+                    throw BridgeFailure(
+                        errorCode: "INVALID_INPUT",
+                        message: "minutes_before must be a whole number from 0 through 525600.",
+                        suggestion: nil
+                    )
+                }
+                return EKAlarm(relativeOffset: -value * 60)
+            }
+            if let rawDate = entry["absolute_iso"] as? String, !rawDate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return EKAlarm(absoluteDate: try parseDate(rawDate.trimmingCharacters(in: .whitespacesAndNewlines)))
+            }
+            throw BridgeFailure(errorCode: "INVALID_INPUT", message: "Each alarm requires minutes_before or a non-empty absolute_iso string.", suggestion: nil)
+        }
+    }
+
+    static func safeAlarmOffsetMinutes(_ seconds: Double) -> Int? {
+        let minutes = seconds / 60
+        guard minutes.isFinite else { return nil }
+        return Int(exactly: minutes.rounded(.towardZero))
     }
 
     static func reminderListRecord(_ calendar: EKCalendar) -> ReminderListRecord {
@@ -591,6 +659,7 @@ struct ApplePIMBridge {
     static func eventRecord(_ event: EKEvent) -> EventRecord {
         let recurrence = event.recurrenceRules?.first.map(recurrenceInfo)
         let attendeeList = event.attendees?.map(attendeeInfo)
+        let alarmList = (event.alarms ?? []).map(alarmInfo)
         return EventRecord(
             event_id: event.calendarItemIdentifier,
             title: event.title,
@@ -602,8 +671,31 @@ struct ApplePIMBridge {
             location: emptyToNil(event.location),
             notes: emptyToNil(event.notes),
             recurrence_rule: recurrence,
-            attendees: attendeeList
+            attendees: attendeeList,
+            alarms: alarmList
         )
+    }
+
+    static func alarmInfo(_ alarm: EKAlarm) -> AlarmInfo {
+        if let absoluteDate = alarm.absoluteDate {
+            return AlarmInfo(type: "absolute", offset_minutes: nil, absolute: isoString(absoluteDate), proximity: nil, location_title: nil)
+        }
+        if alarm.proximity != .none || alarm.structuredLocation != nil {
+            let proximityStr: String
+            switch alarm.proximity {
+            case .enter: proximityStr = "enter"
+            case .leave: proximityStr = "leave"
+            @unknown default: proximityStr = "none"
+            }
+            return AlarmInfo(
+                type: "location",
+                offset_minutes: safeAlarmOffsetMinutes(alarm.relativeOffset),
+                absolute: nil,
+                proximity: proximityStr,
+                location_title: alarm.structuredLocation?.title
+            )
+        }
+        return AlarmInfo(type: "relative", offset_minutes: safeAlarmOffsetMinutes(alarm.relativeOffset), absolute: nil, proximity: nil, location_title: nil)
     }
 
     static func recurrenceInfo(_ rule: EKRecurrenceRule) -> RecurrenceInfo {

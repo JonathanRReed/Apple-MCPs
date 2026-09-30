@@ -9,6 +9,29 @@ import pytest
 from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError
 
 
+_EVENT_PAYLOAD = {
+    "event_id": "event-123",
+    "title": "Planning",
+    "calendar_id": "calendar-1",
+    "calendar_name": "Work",
+    "start": "2026-03-27T10:00:00-05:00",
+    "end": "2026-03-27T10:30:00-05:00",
+    "all_day": False,
+}
+
+
+def _capture_bridge(monkeypatch, captured: dict[str, object], response: dict[str, object] | None = None) -> CalendarBridge:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        captured["command"] = command
+        captured["request"] = json.loads(args[-1])
+        return {**_EVENT_PAYLOAD, **(response or {})}
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    return bridge
+
+
 def test_list_events_normalizes_event_ids(monkeypatch) -> None:
     bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
 
@@ -528,3 +551,159 @@ def test_update_event_fallback_keeps_working_for_overlapping_and_single_bound_mo
     end_only = update(None, "2026-03-27T16:00:00Z")
     assert end_only["start"] == "2026-03-27T13:30:00.000Z"
     assert end_only["end"] == "2026-03-27T16:00:00.000Z"
+
+
+def test_create_event_includes_alarms_in_request(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    bridge = _capture_bridge(monkeypatch, captured, {"alarms": [{"type": "relative", "offset_minutes": -15}]})
+
+    event = bridge.create_event(
+        title="Planning",
+        calendar_id="calendar-1",
+        start_iso="2026-03-27T10:00:00-05:00",
+        end_iso="2026-03-27T10:30:00-05:00",
+        alarms=[{"minutes_before": 15.0}],
+    )
+
+    assert captured["command"] == "create-calendar-event"
+    assert captured["request"]["alarms"] == [{"minutes_before": 15.0}]
+    assert [(a.type, a.offset_minutes) for a in event.alarms] == [("relative", -15)]
+
+
+def test_create_event_omits_alarms_key_when_none(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    bridge = _capture_bridge(monkeypatch, captured)
+
+    bridge.create_event(
+        title="Planning",
+        calendar_id="calendar-1",
+        start_iso="2026-03-27T10:00:00-05:00",
+        end_iso="2026-03-27T10:30:00-05:00",
+    )
+
+    assert "alarms" not in captured["request"]
+
+
+def test_update_event_sends_empty_alarms_to_clear(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    bridge = _capture_bridge(monkeypatch, captured)
+
+    bridge.update_event("event-123", alarms=[])
+
+    assert captured["command"] == "update-calendar-event"
+    assert captured["request"]["alarms"] == []
+
+
+def test_update_event_omits_alarms_key_when_unchanged(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    bridge = _capture_bridge(monkeypatch, captured)
+
+    bridge.update_event("event-123", title="Renamed")
+
+    assert captured["request"] == {"title": "Renamed"}
+
+
+def test_update_event_sends_absolute_alarms(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    bridge = _capture_bridge(monkeypatch, captured, {"alarms": [{"type": "absolute", "absolute": "2026-03-27T09:00:00-05:00"}]})
+
+    event = bridge.update_event("event-123", alarms=[{"absolute_iso": "2026-03-27T09:00:00-05:00"}])
+
+    assert captured["request"]["alarms"] == [{"absolute_iso": "2026-03-27T09:00:00-05:00"}]
+    assert [(a.type, a.absolute) for a in event.alarms] == [
+        ("absolute", "2026-03-27T09:00:00-05:00")
+    ]
+
+
+def test_get_event_reports_location_alarms(monkeypatch) -> None:
+    """Location alarm records retain raw proximity, title, and offset metadata."""
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        return {**_EVENT_PAYLOAD, "alarms": [{
+            "type": "location",
+            "proximity": "leave",
+            "location_title": "Office",
+            "offset_minutes": 22,
+        }]}
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+
+    alarm = bridge.get_event("event-123").alarms[0]
+
+    assert alarm.type == "location"
+    assert alarm.proximity == "leave"
+    assert alarm.location_title == "Office"
+    assert alarm.offset_minutes == 22
+
+
+def test_get_event_normalizes_alarms(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        assert command == "get-calendar-event"
+        return {**_EVENT_PAYLOAD, "alarms": [{"type": "relative", "offset_minutes": -15}, {"type": "absolute", "absolute": "2026-03-27T09:00:00-05:00"}]}
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+
+    event = bridge.get_event("event-123")
+
+    assert [a.type for a in event.alarms] == ["relative", "absolute"]
+    assert event.alarms[0].offset_minutes == -15
+    assert event.alarms[1].absolute == "2026-03-27T09:00:00-05:00"
+
+
+
+@pytest.mark.parametrize("operation", ["create", "update"])
+@pytest.mark.parametrize("alarms", [None, [], [{"minutes_before": 15}]])
+@pytest.mark.parametrize("error_code", ["PERMISSION_DENIED", "CALENDAR_NOT_FOUND", "EVENT_NOT_FOUND"])
+def test_alarm_mutation_fallback_is_explicit(monkeypatch, operation, alarms, error_code) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    fallback_calls = []
+
+    def fail_native(command, *args):
+        raise CalendarBridgeError(error_code, "native unavailable")
+
+    def fallback(*args, **kwargs):
+        fallback_calls.append((args, kwargs))
+        return dict(_EVENT_PAYLOAD)
+
+    monkeypatch.setattr(bridge, "_run_helper", fail_native)
+    monkeypatch.setattr(bridge, "_fallback_create_event", fallback)
+    monkeypatch.setattr(bridge, "_fallback_update_event", fallback)
+
+    def mutate():
+        if operation == "create":
+            return bridge.create_event(
+                title="Planning", calendar_id="calendar-1",
+                start_iso=_EVENT_PAYLOAD["start"], end_iso=_EVENT_PAYLOAD["end"], alarms=alarms,
+            )
+        return bridge.update_event("event-123", title="Planning", alarms=alarms)
+
+    if alarms is None:
+        assert mutate().event_id == "event-123"
+        assert len(fallback_calls) == 1
+    else:
+        with pytest.raises(CalendarBridgeError) as failure:
+            mutate()
+        assert failure.value.error_code == "UNSUPPORTED_OPERATION"
+        assert fallback_calls == []
+
+
+@pytest.mark.parametrize("operation", ["create", "update"])
+def test_direct_bridge_rejects_overflowing_alarm_before_helper(monkeypatch, operation) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def unexpected(*args):
+        raise AssertionError("invalid alarm must be rejected before helper invocation")
+
+    monkeypatch.setattr(bridge, "_run_helper", unexpected)
+    with pytest.raises(ValueError):
+        if operation == "create":
+            bridge.create_event(
+                title="Planning", calendar_id="calendar-1",
+                start_iso=_EVENT_PAYLOAD["start"], end_iso=_EVENT_PAYLOAD["end"],
+                alarms=[{"minutes_before": 10**400}],
+            )
+        else:
+            bridge.update_event("event-123", alarms=[{"minutes_before": 10**400}])

@@ -68,20 +68,13 @@ class AppleContactsBridge:
         if not query_text:
             raise ContactsBridgeError("INVALID_INPUT", "query must not be empty", "Provide a non-empty name, phone number, or email address.")
         bounded_limit = max(1, min(limit, 100))
-        direct_matches = self._search_contacts_by_name(query, bounded_limit)
+        phone_parts = self._phone_query_parts(query_text)
+        # An explicit extension query identifies a phone method, not a name.
+        direct_matches = [] if phone_parts and phone_parts[1] is not None else self._search_contacts_by_name(query, bounded_limit)
         if direct_matches:
             return direct_matches
         normalized_query = self._normalize_lookup_value(query)
-        # A failed name/organization lookup is final. Only recognizable phone
-        # or email queries need the expensive, paginated method-value scan.
-        # Whitespace is irrelevant to number matching. Recognized extension
-        # suffixes are allowed, while names such as Studio54 remain name-only.
-        compact_phone_query = re.sub(r"\s+", "", query_text)
-        is_phone_query = re.fullmatch(
-            r"(?:tel:)?(?=[+\d()./-]*\d)[+\d()./-]+"
-            r"(?:(?:ext(?:ension|n)?\.?|x|#|;ext=)\d+)?",
-            compact_phone_query,
-        ) is not None
+        is_phone_query = phone_parts is not None
         if "@" not in query_text and not is_phone_query:
             return []
         exact_matches: list[ContactSummary] = []
@@ -123,7 +116,7 @@ class AppleContactsBridge:
             )
 
         detail = self.get_contact(selected.contact_id)
-        recipient_kind, recipient = self._choose_recipient(detail, channel)
+        recipient_kind, recipient = self._choose_recipient(detail, channel, query=query)
         return ResolvedRecipientResponse(
             contact=detail,
             recipient_kind=recipient_kind,
@@ -270,7 +263,29 @@ class AppleContactsBridge:
             or any(normalized_query in evidence.value.lower() for evidence in group.evidence)
         ]
 
-    def _choose_recipient(self, contact: ContactDetail, channel: str) -> tuple[str, ContactMethod]:
+    def _choose_recipient(self, contact: ContactDetail, channel: str, *, query: str | None = None) -> tuple[str, ContactMethod]:
+        parts = self._phone_query_parts(query) if query is not None else None
+        if channel in {"phone", "any"} and parts is not None and parts[1] is not None:
+            normalized_query = self._normalize_lookup_value(query)
+            exact = [method for method in contact.phones if self._normalize_lookup_value(method.value) == normalized_query]
+            matching = exact or [
+                method for method in contact.phones
+                if self._extension_phone_matches(parts, self._phone_query_parts(method.value))
+            ]
+            unique: dict[str, ContactMethod] = {}
+            for method in matching:
+                unique.setdefault(self._normalize_lookup_value(method.value), method)
+            if len(unique) == 1:
+                return "phone", next(iter(unique.values()))
+            if len(unique) > 1:
+                raise ContactsBridgeError(
+                    "AMBIGUOUS_PHONE_NUMBER", "Multiple phone methods match the requested extension.",
+                    "Provide the complete phone number and extension.",
+                )
+            raise ContactsBridgeError(
+                "NO_PHONE_NUMBER_MATCH", "No phone method matches the requested extension.",
+                "Choose a matching phone method explicitly.",
+            )
         if channel == "phone":
             if contact.phones:
                 return "phone", contact.phones[0]
@@ -484,6 +499,9 @@ class AppleContactsBridge:
         return [ContactMethod.model_validate(item) for item in raw_methods if isinstance(item, dict)]
 
     def _is_exact_match(self, contact: ContactSummary, query_text: str, normalized_query: str) -> bool:
+        parts = self._phone_query_parts(query_text)
+        if parts is not None and parts[1] is not None:
+            return any(self._normalize_lookup_value(method.value) == normalized_query for method in contact.phones)
         if query_text in {contact.name.lower(), contact.first_name.lower(), contact.last_name.lower()}:
             return True
         if contact.organization and query_text == contact.organization.lower():
@@ -491,6 +509,9 @@ class AppleContactsBridge:
         return any(self._normalize_lookup_value(method.value) == normalized_query for method in [*contact.phones, *contact.emails])
 
     def _is_partial_match(self, contact: ContactSummary, query_text: str, normalized_query: str) -> bool:
+        parts = self._phone_query_parts(query_text)
+        if parts is not None and parts[1] is not None:
+            return any(self._extension_phone_matches(parts, self._phone_query_parts(method.value)) for method in contact.phones)
         haystacks = [contact.name, contact.first_name, contact.last_name, contact.organization]
         if any(query_text in value.lower() for value in haystacks if value):
             return True
@@ -508,10 +529,36 @@ class AppleContactsBridge:
             result.append(contact)
         return result
 
+    @staticmethod
+    def _phone_query_parts(value: str) -> tuple[str, str | None] | None:
+        compact = re.sub(r"\s+", "", value.strip().lower())
+        match = re.fullmatch(
+            r"(?:tel:)?(?=[+\d()./-]*\d)(?P<base>[+\d()./-]+)"
+            r"(?:(?:ext(?:ension|n)?\.?[:=]?|x[:=]?|#|;ext=)(?P<extension>\d+))?",
+            compact,
+        )
+        if match is None:
+            return None
+        return re.sub(r"\D+", "", match.group("base")), match.group("extension")
+
+    @staticmethod
+    def _extension_phone_matches(
+        query_parts: tuple[str, str | None], method_parts: tuple[str, str | None] | None,
+    ) -> bool:
+        return (
+            method_parts is not None
+            and query_parts[1] == method_parts[1]
+            and method_parts[0].endswith(query_parts[0])
+        )
+
     def _normalize_lookup_value(self, value: str) -> str:
         lowered = value.strip().lower()
         if "@" in lowered:
             return lowered
+        parts = self._phone_query_parts(lowered)
+        if parts is not None:
+            base, extension = parts
+            return base if extension is None else f"{base};ext={extension}"
         return re.sub(r"\D+", "", lowered)
 
     def _normalize_name_key(self, value: str) -> str:

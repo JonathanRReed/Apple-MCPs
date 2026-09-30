@@ -96,7 +96,7 @@ claude mcp add --transport stdio --scope project apple-contacts -- uvx apple-con
 
 ## Search Behavior
 
-Name and organization searches use Contacts.app's filtered lookup. A no-match name returns an empty result without scanning the whole address book. Phone queries with a numeric/punctuation base, including recognized extension suffixes (`ext`, `ext.`, `extension`, `extn.`, `x`, `#`, and `;ext=`) and an optional `tel:` prefix, retain the paginated directory fallback for method-value matching. Email queries containing `@` retain it too.
+Name and organization searches use Contacts.app's filtered lookup. A no-match name returns an empty result without scanning the whole address book. Phone queries with a numeric/punctuation base, including recognized extension suffixes (`ext`, `ext.`, `extension`, `extn.`, `x`, `#`, and `;ext=`) and an optional `tel:` prefix, retain the paginated directory fallback for method-value matching. Email queries containing `@` retain it too. Extension matching keeps the base number and extension separate, requires the exact extension, and allows local-number suffix matching. Recipient resolution chooses the matching phone method and rejects multiple distinct matching methods.
 
 Literal control characters and complex emoji returned by Contacts are decoded on the Python side without changing their text.
 

@@ -176,3 +176,78 @@ def test_contacts_delete_script_compiles(tmp_path) -> None:
         check=False,
     )
     assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+@pytest.mark.parametrize("query", ["555-1234 x5", "555-1234 ext. 5", "555-1234;ext=5"])
+def test_extension_query_does_not_match_concatenated_number_or_other_extension(monkeypatch, query) -> None:
+    bridge = AppleContactsBridge(SCRIPTS_DIR)
+
+    def fake_run_script(script_name, *args):
+        assert script_name == "list_contacts.applescript"
+        return {"total": 3, "items": [
+            {"contact_id": "concatenated", "name": "Wrong", "phones": [{"label": "work", "value": "555-12345"}]},
+            {"contact_id": "longer-base", "name": "Wrong", "phones": [{"label": "work", "value": "555-12345 x5"}]},
+            {"contact_id": "other-extension", "name": "Wrong", "phones": [{"label": "work", "value": "555-1234 x50"}]},
+        ]}
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+    assert bridge.search_contacts(query) == []
+    with pytest.raises(ContactsBridgeError) as failure:
+        bridge.resolve_message_recipient(query)
+    assert failure.value.error_code == "CONTACT_NOT_FOUND"
+
+
+def test_extension_query_selects_correct_contact_and_matching_secondary_phone(monkeypatch) -> None:
+    bridge = AppleContactsBridge(SCRIPTS_DIR)
+    target = {
+        "contact_id": "target", "name": "Target",
+        "phones": [
+            {"label": "primary", "value": "888-0000"},
+            {"label": "work", "value": "+1 555-1234 ext. 5"},
+        ],
+    }
+    wrong = {"contact_id": "wrong", "name": "Wrong", "phones": [{"label": "work", "value": "555-12345"}]}
+
+    def fake_run_script(script_name, *args):
+        if script_name == "list_contacts.applescript":
+            return {"total": 2, "items": [wrong, target]}
+        assert script_name == "get_contact.applescript"
+        assert args == ("target",)
+        return {"found": True, "contact": target}
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+    matches = bridge.search_contacts("555-1234 x5")
+    assert [contact.contact_id for contact in matches] == ["target"]
+    result = bridge.resolve_message_recipient("555-1234 x5")
+    assert result.contact.contact_id == "target"
+    assert result.recipient_value == "+1 555-1234 ext. 5"
+
+
+def test_extension_query_rejects_multiple_matching_phone_methods(monkeypatch) -> None:
+    bridge = AppleContactsBridge(SCRIPTS_DIR)
+    target = {
+        "contact_id": "target", "name": "Target",
+        "phones": [
+            {"label": "one", "value": "555-1234 x5"},
+            {"label": "two", "value": "777-1234 x5"},
+        ],
+    }
+
+    def fake_run_script(script_name, *args):
+        if script_name == "list_contacts.applescript":
+            return {"total": 1, "items": [target]}
+        assert script_name == "get_contact.applescript"
+        return {"found": True, "contact": target}
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+    with pytest.raises(ContactsBridgeError) as failure:
+        bridge.resolve_message_recipient("1234 x5")
+    assert failure.value.error_code == "AMBIGUOUS_PHONE_NUMBER"
+
+
+def test_phone_identity_preserves_extension_boundary_and_leading_zeroes() -> None:
+    bridge = AppleContactsBridge(SCRIPTS_DIR)
+    assert bridge._normalize_lookup_value("555-1234 x5") == "5551234;ext=5"
+    assert bridge._normalize_lookup_value("555-12345") == "55512345"
+    assert bridge._normalize_lookup_value("555-1234 ext. 05") == "5551234;ext=05"
+    assert bridge._normalize_lookup_value("tel:555-1234;ext=5") == "5551234;ext=5"

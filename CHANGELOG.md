@@ -6,6 +6,21 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-10-04
+
+### Fixed
+- Read Notes body/plaintext properties in the application's context, reuse folder lookups, and safely encode control characters and Unicode in Notes/Contacts JSON output. (#34)
+- Resolve Contacts deletion targets without stale positional references, avoid unnecessary full scans for name-only misses, and preserve phone-extension matching and matching-method reporting. (#34, #37)
+- Resolve Calendar event IDs in batches while preserving request order and missing-versus-unknown outcomes. This adapts the batch implementation proposed by @LightSpeedSpirit in #27. (#36)
+- Scope fallback Calendar identities, verify native-ID aliases before accepting them, and fail closed when mutations cannot safely identify the target. (#38)
+
+### Changed
+- Refresh the locked Pydantic dependency to 2.13.5. (#33)
+
+### Verification limits
+- Automated package tests and native compilation checks cover these changes. Live macOS 26 Notes/Contacts confirmation and differential Calendar batch checks remain pending; #32 stays open.
+- Calendar alarm support is not included. Its separate integration and live round-trip checks remain pending in #26/#35.
+
 ## [1.0.5] - 2026-09-25
 
 ### Security

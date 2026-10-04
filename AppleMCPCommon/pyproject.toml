@@ -25,6 +25,7 @@ classifiers = [
 dependencies = [
   "mcp>=2.1.1,<3",
   "pydantic>=2.12.0",
+  "pyjwt>=2.15.0,<3",
 ]
 
 [project.urls]

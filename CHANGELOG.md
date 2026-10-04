@@ -9,7 +9,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [1.0.6] - 2026-10-04
 
 ### Fixed
-- Read Notes body/plaintext properties in the application's context, reuse folder lookups, and safely encode control characters and Unicode in Notes/Contacts JSON output. (#34)
+- Read Notes body/plaintext properties in the application's context, reuse folder lookups, and preserve control characters and complex Unicode when decoding Notes/Contacts script output. (#34)
 - Resolve Contacts deletion targets without stale positional references, avoid unnecessary full scans for name-only misses, and preserve phone-extension matching and matching-method reporting. (#34, #37)
 - Resolve Calendar event IDs in batches while preserving request order and missing-versus-unknown outcomes. This adapts the batch implementation proposed by @LightSpeedSpirit in #27. (#36)
 - Scope fallback Calendar identities, verify native-ID aliases before accepting them, and fail closed when mutations cannot safely identify the target. (#38)

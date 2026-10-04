@@ -8,6 +8,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [1.0.6] - 2026-10-04
 
+### Security
+- Require PyJWT 2.15.0 or newer within the 2.x series across the suite and refresh its locked version, addressing the published advisories affecting the prior 2.13.0 dependency.
+
 ### Fixed
 - Read Notes body/plaintext properties in the application's context, reuse folder lookups, and preserve control characters and complex Unicode when decoding Notes/Contacts script output. (#34)
 - Resolve Contacts deletion targets without stale positional references, avoid unnecessary full scans for name-only misses, and preserve phone-extension matching and matching-method reporting. (#34, #37)

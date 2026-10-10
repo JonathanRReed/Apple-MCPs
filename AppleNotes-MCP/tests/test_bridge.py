@@ -256,13 +256,16 @@ def test_create_note_recovers_note_after_create_timeout(monkeypatch) -> None:
     bridge._folder_by_id = lambda folder_id: None  # type: ignore[method-assign]
     monkeypatch.setattr(bridge, "list_attachments", lambda note_id: [])
 
+    clock = iter([1000.5, 1001.0, 1001.0, 1001.0])
+    monkeypatch.setattr("apple_notes_mcp.notes_bridge.time.time", lambda: next(clock))
+
     def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
         if script_name == "create_note.applescript":
             raise NotesBridgeError("APPLESCRIPT_TIMEOUT", "timed out")
         if script_name == "list_notes.applescript":
-            return {"items": [_note_payload("note-9", "Disposable title", created_epoch=int(time.time()))]}
+            return {"items": [_note_payload("note-9", "Disposable title", created_epoch=1001)]}
         if script_name == "get_note.applescript":
-            return {"found": True, "note": _note_payload("note-9", "Disposable title", created_epoch=int(time.time()))}
+            return {"found": True, "note": _note_payload("note-9", "Disposable title", created_epoch=1001)}
         raise AssertionError(f"Unexpected script: {script_name}")
 
     monkeypatch.setattr(bridge, "_run_script", fake_run_script)

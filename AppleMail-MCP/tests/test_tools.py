@@ -480,3 +480,29 @@ def test_attachment_separator_cannot_inject_another_path(operation, through_syml
             to=["test@example.com"], cc=None, bcc=None, subject="Test", body="Body",
             attachments=[str(candidate)],
         )
+
+
+@pytest.mark.parametrize('subject', ['', 'Re:', ' Fwd: '])
+def test_subjectless_thread_archive_only_moves_anchor(subject):
+    class SubjectlessBridge(FakeBridge):
+        def __init__(self):
+            self.moved = []
+
+        def get_message(self, message_id):
+            record = super().get_message(message_id)
+            record.subject = subject
+            return record
+
+        def search_messages(self, **kwargs):
+            raise AssertionError('Sender does not establish a thread')
+
+        def move_message(self, message_id, target_mailbox, target_account=None):
+            self.moved.append(message_id)
+            return MoveRecord(message_id=message_id, moved=True, target_mailbox=target_mailbox)
+
+    bridge = SubjectlessBridge()
+    settings = Settings(safety_profile=SafetyProfile.FULL_ACCESS)
+    assert mail_get_thread_tool(bridge, settings, 'id-1').count == 1
+    result = mail_archive_thread_tool(bridge, settings, 'id-1')
+    assert result.affected_message_ids == ['id-1']
+    assert bridge.moved == ['id-1']

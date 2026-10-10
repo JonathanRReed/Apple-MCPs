@@ -21,9 +21,8 @@ class NotesBridgeError(Exception):
 
 
 class AppleNotesBridge:
-    # After a create-script timeout, a same-title note only counts as the one
-    # we just made when its creation date is at most this old (or unknown).
-    _CREATE_RECOVERY_FRESHNESS_SECONDS = 600
+    # Whole-second creation dates cannot prove whether a note from the same
+    # second predates this request. Recovery deliberately fails closed there.
 
     def __init__(self, scripts_dir: Path, script_timeout_seconds: int = 60) -> None:
         self.scripts_dir = scripts_dir
@@ -79,6 +78,7 @@ class AppleNotesBridge:
         tags: list[str] | None = None,
     ) -> NoteDetail:
         prepared_body_html = self._prepare_body_html(title, body_html) if body_html is not None else None
+        create_started = time.time()
         try:
             payload = self._run_script(
                 "create_note.applescript",
@@ -93,7 +93,7 @@ class AppleNotesBridge:
             # Notes can commit `make new note` and then stall in the readback,
             # so a timeout leaves the create ambiguous. Creation is not
             # idempotent: resolve the outcome instead of making callers guess.
-            detail = self._recover_created_note(title, folder_id)
+            detail = self._recover_created_note(title, folder_id, create_started)
             if detail is None:
                 raise NotesBridgeError(
                     "NOTE_CREATE_STATUS_UNKNOWN",
@@ -135,11 +135,20 @@ class AppleNotesBridge:
         folder_id: str | None = None,
         tags: list[str] | None = None,
     ) -> NoteDetail:
+        current = None
+        if title is not None or body_html is not None or tags:
+            current = self.get_note(note_id)
+            if current.attachments or current.attachment_count:
+                raise NotesBridgeError(
+                    "NOTE_HAS_ATTACHMENTS",
+                    "Changing this note's title, body, or tags would rewrite its body and could lose attachments.",
+                    "Edit its content in Notes.app. Moving the note to another folder is still supported.",
+                )
         prepared_body_html = body_html
         if title is not None:
             body_source = body_html
             if body_source is None:
-                current = self.get_note(note_id)
+                current = current or self.get_note(note_id)
                 body_source = current.body_html or self._html_from_plaintext(current.plaintext)
             prepared_body_html = self._prepare_body_html(title, body_source)
         payload = self._run_script(
@@ -201,7 +210,7 @@ class AppleNotesBridge:
         query: str,
         account_name: str | None = None,
         folder_id: str | None = None,
-        limit: int = 25,
+        limit: int | None = 25,
     ) -> list[NoteSummary]:
         query_text = query.strip().lower()
         notes = self.list_notes(account_name=account_name, folder_id=folder_id)
@@ -219,12 +228,11 @@ class AppleNotesBridge:
             if not query_text or query_text in haystack:
                 matched.append(note)
         matched.sort(key=lambda item: item.modified_epoch or 0, reverse=True)
-        return matched[: max(1, min(limit, 100))]
+        return matched if limit is None else matched[: max(1, min(limit, 100))]
 
-    def _recover_created_note(self, title: str, folder_id: str) -> NoteDetail | None:
+    def _recover_created_note(self, title: str, folder_id: str, create_started: float) -> NoteDetail | None:
         # Only claim recovery when exactly one note in the target folder has
-        # the exact title and is fresh enough (or has no creation date) to be
-        # the one just created — a lone stale match is a pre-existing note.
+        # the exact title and a known creation date within this request.
         try:
             candidates = [note for note in self.list_notes(folder_id=folder_id) if note.title == title]
         except NotesBridgeError:
@@ -232,8 +240,8 @@ class AppleNotesBridge:
         if len(candidates) != 1:
             return None
         candidate = candidates[0]
-        created_epoch = candidate.created_epoch or 0
-        if created_epoch and created_epoch < time.time() - self._CREATE_RECOVERY_FRESHNESS_SECONDS:
+        created_epoch = candidate.created_epoch
+        if created_epoch is None or created_epoch <= 0 or created_epoch <= int(create_started) or created_epoch > time.time():
             return None
         try:
             return self.get_note(candidate.note_id)

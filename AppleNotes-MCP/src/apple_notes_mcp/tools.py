@@ -69,7 +69,18 @@ def _folder_account_name(folder_id: str | None) -> str | None:
     for folder in _bridge().list_folders():
         if folder.folder_id == folder_id:
             return folder.account_name
-    return None
+    raise NotesBridgeError("FOLDER_NOT_FOUND", f"No folder matched '{folder_id}'.", "List folders first to discover valid folder ids.")
+
+
+def _scope_visible(account_name: str, folder_name: str | None = None) -> bool:
+    settings = load_settings()
+    return (not settings.allowed_accounts or account_name in settings.allowed_accounts) and (
+        folder_name is None or not settings.allowed_folders or folder_name in settings.allowed_folders
+    )
+
+
+def _visible_notes(notes):
+    return [note for note in notes if _scope_visible(note.account_name, note.folder_name)]
 
 
 def _folder_info(folder_id: str | None):
@@ -78,7 +89,7 @@ def _folder_info(folder_id: str | None):
     for folder in _bridge().list_folders():
         if folder.folder_id == folder_id:
             return folder
-    return None
+    raise NotesBridgeError("FOLDER_NOT_FOUND", f"No folder matched '{folder_id}'.", "List folders first to discover valid folder ids.")
 
 
 @mcp.resource(
@@ -90,7 +101,7 @@ def _folder_info(folder_id: str | None):
     annotations=Annotations(audience=["assistant"], priority=0.9),
 )
 def notes_folders_resource() -> str:
-    folders = _bridge().list_folders()
+    folders = [folder for folder in _bridge().list_folders() if _scope_visible(folder.account_name, folder.name)]
     return _resource_json({"folders": [item.model_dump() for item in folders], "count": len(folders)})
 
 
@@ -103,7 +114,7 @@ def notes_folders_resource() -> str:
     annotations=Annotations(audience=["assistant"], priority=0.8),
 )
 def notes_recent_resource() -> str:
-    notes = sorted(_bridge().list_notes(), key=lambda item: item.modified_epoch or 0, reverse=True)[:25]
+    notes = sorted(_visible_notes(_bridge().list_notes()), key=lambda item: item.modified_epoch or 0, reverse=True)[:25]
     return _resource_json({"notes": [item.model_dump() for item in notes], "count": len(notes)})
 
 
@@ -117,6 +128,7 @@ def notes_recent_resource() -> str:
 )
 def notes_note_resource(note_id: str) -> str:
     note = _bridge().get_note(note_id)
+    ensure_action_allowed("notes_get_note", note.account_name, note.folder_name)
     return _resource_json(note.model_dump())
 
 
@@ -211,7 +223,7 @@ async def notes_recheck_permissions(ctx: Context) -> HealthResponse:
 def notes_list_accounts() -> AccountListResponse | ErrorResponse:
     try:
         ensure_action_allowed("notes_list_accounts")
-        accounts = _bridge().list_accounts()
+        accounts = [account for account in _bridge().list_accounts() if _scope_visible(account.name)]
         return AccountListResponse(accounts=accounts, count=len(accounts))
     except (SafetyError, NotesBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
@@ -228,7 +240,7 @@ def notes_list_folders(account_name: str | None = None, limit: int | str = 100, 
         limit_value = _coerce_int_arg("limit", limit, minimum=1)
         offset_value = _coerce_int_arg("offset", offset, minimum=0)
         ensure_action_allowed("notes_list_folders", account_name)
-        folders = _bridge().list_folders(account_name=account_name)
+        folders = [folder for folder in _bridge().list_folders(account_name=account_name) if _scope_visible(folder.account_name, folder.name)]
         page = folders[offset_value : offset_value + limit_value]
         return FolderListResponse(folders=page, count=len(page))
     except SafetyError as exc:
@@ -249,9 +261,10 @@ def notes_list_notes(account_name: str | None = None, folder_id: str | None = No
     try:
         limit_value = _coerce_int_arg("limit", limit, minimum=1)
         offset_value = _coerce_int_arg("offset", offset, minimum=0)
+        folder_id = folder_id or None
         folder = _folder_info(folder_id)
         ensure_action_allowed("notes_list_notes", account_name or (folder.account_name if folder is not None else None), folder.name if folder is not None else None)
-        notes = _bridge().list_notes(account_name=account_name, folder_id=folder_id)
+        notes = _visible_notes(_bridge().list_notes(account_name=account_name, folder_id=folder_id))
         page = notes[offset_value : offset_value + limit_value]
         return NoteListResponse(notes=page, count=len(page))
     except SafetyError as exc:
@@ -289,9 +302,10 @@ def notes_search_notes(query: str, account_name: str | None = None, folder_id: s
     try:
         limit_value = _coerce_int_arg("limit", limit, minimum=1)
         offset_value = _coerce_int_arg("offset", offset, minimum=0)
+        folder_id = folder_id or None
         folder = _folder_info(folder_id)
         ensure_action_allowed("notes_search_notes", account_name or (folder.account_name if folder is not None else None), folder.name if folder is not None else None)
-        notes = _bridge().search_notes(query=query, account_name=account_name, folder_id=folder_id, limit=100)
+        notes = _visible_notes(_bridge().search_notes(query=query, account_name=account_name, folder_id=folder_id or None, limit=None))
         page = notes[offset_value : offset_value + limit_value]
         return NoteListResponse(notes=page, count=len(page))
     except SafetyError as exc:
@@ -333,7 +347,9 @@ def notes_create_note(title: str, folder_id: str, body_html: str | None = None, 
 )
 def notes_update_note(note_id: str, title: str | None = None, body_html: str | None = None, folder_id: str | None = None, tags: list[str] | None = None) -> NoteResponse | ErrorResponse:
     try:
+        folder_id = folder_id or None
         current = _bridge().get_note(note_id)
+        ensure_action_allowed("notes_update_note", current.account_name, current.folder_name)
         target_folder = _folder_info(folder_id) if folder_id is not None else None
         target_account = target_folder.account_name if target_folder is not None else current.account_name
         target_folder_name = target_folder.name if target_folder is not None else current.folder_name
@@ -397,6 +413,8 @@ def notes_delete_note(note_id: str) -> DeleteNoteResponse | ErrorResponse:
 )
 def notes_move_note(note_id: str, folder_id: str) -> MoveNoteResponse | ErrorResponse:
     try:
+        current = _bridge().get_note(note_id)
+        ensure_action_allowed("notes_move_note", current.account_name, current.folder_name)
         target_folder = _folder_info(folder_id)
         target_account = target_folder.account_name if target_folder is not None else None
         ensure_action_allowed("notes_move_note", target_account, target_folder.name if target_folder is not None else None)
@@ -418,7 +436,10 @@ def notes_create_folder(folder_name: str, account_name: str, parent_folder_id: s
     try:
         if not folder_name.strip():
             raise ValueError("folder_name must not be empty")
-        ensure_action_allowed("notes_create_folder", account_name, None)
+        ensure_action_allowed("notes_create_folder", account_name, folder_name.strip())
+        if parent_folder_id is not None:
+            parent = _folder_info(parent_folder_id)
+            ensure_action_allowed("notes_create_folder", parent.account_name, parent.name)
         folder = _bridge().create_folder(folder_name=folder_name.strip(), account_name=account_name, parent_folder_id=parent_folder_id)
         return FolderMutationResponse(folder=folder)
     except SafetyError as exc:
@@ -437,10 +458,9 @@ def notes_create_folder(folder_name: str, account_name: str, parent_folder_id: s
 )
 def notes_rename_folder(folder_id: str, folder_name: str) -> FolderMutationResponse | ErrorResponse:
     try:
-        folder = _bridge().list_folders()
-        target = next((item for item in folder if item.folder_id == folder_id), None)
-        if target is not None:
-            ensure_action_allowed("notes_rename_folder", target.account_name, target.name)
+        target = _folder_info(folder_id)
+        ensure_action_allowed("notes_rename_folder", target.account_name, target.name)
+        ensure_action_allowed("notes_rename_folder", target.account_name, folder_name)
         renamed = _bridge().rename_folder(folder_id, folder_name)
         return FolderMutationResponse(folder=renamed)
     except SafetyError as exc:
@@ -457,9 +477,20 @@ def notes_rename_folder(folder_id: str, folder_name: str) -> FolderMutationRespo
 )
 def notes_delete_folder(folder_id: str) -> DeleteFolderResponse | ErrorResponse:
     try:
-        folder = next((item for item in _bridge().list_folders() if item.folder_id == folder_id), None)
-        if folder is not None:
-            ensure_action_allowed("notes_delete_folder", folder.account_name, folder.name)
+        folder = _folder_info(folder_id)
+        ensure_action_allowed("notes_delete_folder", folder.account_name, folder.name)
+        folders = _bridge().list_folders()
+        pending = [folder_id]
+        visited = set()
+        while pending:
+            parent_id = pending.pop()
+            if parent_id in visited:
+                continue
+            visited.add(parent_id)
+            for child in folders:
+                if child.parent_folder_id == parent_id:
+                    ensure_action_allowed("notes_delete_folder", child.account_name, child.name)
+                    pending.append(child.folder_id)
         deleted = _bridge().delete_folder(folder_id)
         return DeleteFolderResponse(deleted=deleted, folder_id=folder_id)
     except SafetyError as exc:

@@ -84,7 +84,7 @@ class MessageRecord(MessageSummary):
 
 def normalized_thread_subject(subject: str) -> str:
     cleaned = re.sub(r"^\s*((re|fw|fwd):\s*)+", "", subject or "", flags=re.IGNORECASE).strip()
-    return cleaned or (subject or "").strip()
+    return cleaned
 
 
 @dataclass

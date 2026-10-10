@@ -1,6 +1,7 @@
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -82,6 +83,7 @@ def test_unscoped_read_filters_before_limit(scoped):
     assert [r.title for r in tools.reminders_list_lists().lists] == ['Work']
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="EventKit requires macOS")
 def test_native_deletion_guard_without_opening_event_store(tmp_path):
     compiler = shutil.which('swiftc')
     if compiler is None:

@@ -1,4 +1,5 @@
 import json
+import os
 import plistlib
 import subprocess
 import tempfile
@@ -9,7 +10,7 @@ from urllib.parse import unquote
 
 from apple_calendar_mcp.alarm_validation import validate_alarms
 from apple_calendar_mcp.models import CalendarInfo, EventDetail, EventSummary
-from apple_mcp_common.native import NativeHelperError, ensure_swift_helper
+from apple_mcp_common.native import NativeHelperError, ensure_swift_helper, swift_helper_path
 
 
 class CalendarBridgeError(Exception):
@@ -26,9 +27,11 @@ class CalendarBridge:
     def __init__(self, helper_source: Path, helper_binary: Path) -> None:
         self.helper_source = helper_source
         self.helper_binary = helper_binary
+        self._helper_base_binary = helper_binary
 
     def helper_available(self) -> tuple[bool, bool]:
-        return self.helper_source.exists(), self.helper_binary.exists()
+        source_available = self.helper_source.exists()
+        return source_available, source_available and swift_helper_path(self.helper_source, self._helper_base_binary).is_file()
 
     def list_calendars(self) -> list[CalendarInfo]:
         if self._helper_read_blocked():
@@ -387,10 +390,10 @@ class CalendarBridge:
         return bool(payload.get("deleted", False))
 
     def _run_helper(self, command: str, *args: str) -> dict[str, object]:
-        self._ensure_helper()
+        helper_binary = self._ensure_helper()
         try:
             completed = subprocess.run(
-                [str(self.helper_binary), command, *args],
+                [str(helper_binary), command, *args],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -398,7 +401,7 @@ class CalendarBridge:
         except OSError as exc:
             raise CalendarBridgeError(
                 "HELPER_UNAVAILABLE",
-                f"Could not run the native helper '{self.helper_binary}': {exc}.",
+                f"Could not run the native helper '{helper_binary}': {exc}.",
                 "This server requires macOS with the compiled Calendar helper available.",
             ) from exc
         output = completed.stdout.strip()
@@ -424,7 +427,7 @@ class CalendarBridge:
             )
         return payload
 
-    def _ensure_helper(self) -> None:
+    def _ensure_helper(self) -> Path:
         if not self.helper_source.exists():
             raise CalendarBridgeError(
                 "HELPER_SOURCE_MISSING",
@@ -432,15 +435,15 @@ class CalendarBridge:
                 "Restore the shared Swift helper and retry.",
             )
         try:
-            changed = ensure_swift_helper(self.helper_source, self.helper_binary)
+            helper_binary = ensure_swift_helper(self.helper_source, self._helper_base_binary)
         except NativeHelperError as exc:
             raise CalendarBridgeError(exc.error_code, str(exc), "Confirm Xcode command line tools and Swift are available, then retry.") from exc
-        info_plist = self._bundle_info_plist_path()
-        if changed or not info_plist.exists():
-            self._write_bundle_info_plist(info_plist)
+        info_plist = helper_binary.parent.parent / "Info.plist"
+        self._write_bundle_info_plist(info_plist)
+        self.helper_binary = helper_binary
+        return helper_binary
 
     def _bundle_info_plist_path(self) -> Path:
-        # helper_binary is .../apple-calendar-pim-bridge.app/Contents/MacOS/apple-calendar-pim-bridge.
         return self.helper_binary.parent.parent / "Info.plist"
 
     def _write_bundle_info_plist(self, plist_path: Path) -> None:
@@ -464,14 +467,14 @@ class CalendarBridge:
             "NSRemindersUsageDescription": "Reads and writes Reminders for the Apple Calendar MCP server.",
             "NSRemindersFullAccessUsageDescription": "Reads and writes Reminders for the Apple Calendar MCP server.",
         }
-        with tempfile.NamedTemporaryFile("wb", dir=plist_path.parent, delete=False) as stream:
-            temporary = Path(stream.name)
-            try:
+        descriptor, name = tempfile.mkstemp(prefix=".Info.", dir=plist_path.parent)
+        temporary = Path(name)
+        try:
+            with os.fdopen(descriptor, "wb") as stream:
                 plistlib.dump(plist_data, stream)
-                stream.flush()
-                temporary.replace(plist_path)
-            finally:
-                temporary.unlink(missing_ok=True)
+            temporary.replace(plist_path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     def _map_helper_error(self, stdout_text: str, stderr_text: str) -> CalendarBridgeError:
         if stdout_text:

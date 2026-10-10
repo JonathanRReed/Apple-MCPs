@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -70,3 +71,21 @@ def test_create_reminder_rejects_subtask_parent(monkeypatch) -> None:
         assert exc.error_code == "SUBTASKS_UNSUPPORTED"
     else:
         raise AssertionError("Expected RemindersBridgeError")
+
+
+
+def test_execution_uses_the_path_returned_by_ensure(monkeypatch, tmp_path):
+    bridge = RemindersBridge(tmp_path / "source.swift", tmp_path / "helper")
+    selected = tmp_path / "chosen-version"
+
+    def ensure():
+        bridge.helper_binary = tmp_path / "other-version"
+        return selected
+
+    def run(command, **kwargs):
+        assert command[0] == str(selected)
+        return subprocess.CompletedProcess(command, 0, '{"ok":true}', "")
+
+    monkeypatch.setattr(bridge, "_ensure_helper", ensure)
+    monkeypatch.setattr(subprocess, "run", run)
+    assert bridge._run_helper("test") == {"ok": True}

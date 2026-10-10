@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import ctypes
+import errno
 import heapq
 import os
 import plistlib
+import stat
 import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -45,10 +49,12 @@ class FilesBridge:
     def _location_kind(self, path: Path) -> str:
         return "icloud" if self._is_icloud_path(path) else "local"
 
-    def _ensure_allowed(self, path: str, *, allow_missing: bool = False) -> Path:
+    def _ensure_allowed(self, path: str, *, allow_missing: bool = False, follow_leaf: bool = True) -> Path:
         candidate = Path(path).expanduser()
-        resolved = candidate.resolve(strict=False)
-        if not allow_missing and not resolved.exists():
+        if not follow_leaf and candidate.name == "..":
+            raise FilesBridgeError("INVALID_INPUT", "A mutation path cannot end in '..'.")
+        resolved = candidate.resolve(strict=False) if follow_leaf else candidate.parent.resolve(strict=False) / candidate.name
+        if not allow_missing and not (resolved.exists() or (not follow_leaf and resolved.is_symlink())):
             raise FilesBridgeError("PATH_NOT_FOUND", f"Path does not exist: {resolved}", "Choose an existing file or folder.")
         if allow_missing and not resolved.parent.exists():
             raise FilesBridgeError("PARENT_NOT_FOUND", f"Parent folder does not exist: {resolved.parent}", "Choose a destination inside an existing folder.")
@@ -62,14 +68,15 @@ class FilesBridge:
         )
 
     def _entry(self, path: Path) -> FileEntry:
-        stat = path.stat()
+        metadata = path.lstat()
+        is_directory = stat.S_ISDIR(metadata.st_mode)
         return FileEntry(
             path=str(path),
             name=path.name or str(path),
             parent=str(path.parent),
-            is_directory=path.is_dir(),
-            size_bytes=None if path.is_dir() else stat.st_size,
-            modified_at=_iso_timestamp(stat.st_mtime),
+            is_directory=is_directory,
+            size_bytes=None if is_directory else metadata.st_size,
+            modified_at=_iso_timestamp(metadata.st_mtime),
             extension=path.suffix.lower() or None,
             tags=[],
             is_icloud=self._is_icloud_path(path),
@@ -169,9 +176,12 @@ class FilesBridge:
 
     def read_text_file(self, path: str, max_bytes: int = 100_000) -> tuple[str, bool]:
         file_path = self._ensure_allowed(path)
-        if file_path.is_dir():
-            raise FilesBridgeError("NOT_A_FILE", f"Path is a directory: {file_path}", "Choose a text file path.")
-        raw = file_path.read_bytes()
+        if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or not 1 <= max_bytes <= 10 * 1024 * 1024:
+            raise FilesBridgeError("INVALID_INPUT", "max_bytes must be an integer between 1 and 10485760.")
+        if not file_path.is_file():
+            raise FilesBridgeError("NOT_A_FILE", f"Path is not a regular file: {file_path}", "Choose a text file path.")
+        with file_path.open("rb") as stream:
+            raw = stream.read(max_bytes + 1)
         truncated = len(raw) > max_bytes
         payload = raw[:max_bytes]
         try:
@@ -341,15 +351,36 @@ class FilesBridge:
         folder.mkdir(parents=True, exist_ok=True)
         return str(folder)
 
+    def _rename_without_replace(self, source: Path, destination: Path) -> None:
+        # Native exclusive rename prevents two concurrent moves from replacing
+        # each other's destination after a separate existence check.
+        libc = ctypes.CDLL(None, use_errno=True)
+        if sys.platform == "darwin":
+            rename = libc.renamex_np
+            rename.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
+            arguments = [os.fsencode(source), os.fsencode(destination), 0x00000004]  # RENAME_EXCL
+        elif sys.platform == "linux" and hasattr(libc, "renameat2"):
+            rename = libc.renameat2
+            rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+            arguments = [-100, os.fsencode(source), -100, os.fsencode(destination), 1]  # AT_FDCWD, RENAME_NOREPLACE
+        else:
+            raise FilesBridgeError("UNSUPPORTED_OPERATION", "This platform cannot safely move files without replacing a destination.")
+        rename.restype = ctypes.c_int
+        if rename(*arguments) != 0:
+            error = ctypes.get_errno()
+            if error == errno.EEXIST:
+                raise FilesBridgeError("PATH_ALREADY_EXISTS", f"Destination already exists: {destination}", "Choose a new destination path.")
+            raise FilesBridgeError("MOVE_FAILED", f"Could not move path: {os.strerror(error)}", "Check the source and destination paths.")
+
     def move_path(self, source: str, destination: str) -> tuple[str, str]:
-        source_path = self._ensure_allowed(source)
-        destination_path = self._ensure_allowed(destination, allow_missing=True)
-        source_path.rename(destination_path)
+        source_path = self._ensure_allowed(source, follow_leaf=False)
+        destination_path = self._ensure_allowed(destination, allow_missing=True, follow_leaf=False)
+        self._rename_without_replace(source_path, destination_path)
         return str(source_path), str(destination_path)
 
     def delete_path(self, path: str) -> str:
-        target = self._ensure_allowed(path)
-        if target.is_dir():
+        target = self._ensure_allowed(path, follow_leaf=False)
+        if target.is_dir() and not target.is_symlink():
             if any(target.iterdir()):
                 raise FilesBridgeError("DIRECTORY_NOT_EMPTY", f"Directory is not empty: {target}", "Move or delete the contents first.")
             target.rmdir()

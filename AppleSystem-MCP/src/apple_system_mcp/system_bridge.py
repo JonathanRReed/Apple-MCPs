@@ -625,8 +625,10 @@ class SystemBridge:
 
     def read_preference_domain(self, domain: str, current_host: bool = False) -> dict[str, object]:
         normalized_domain = domain.strip()
-        if not normalized_domain:
-            raise SystemBridgeError("INVALID_INPUT", "Preference domain must not be empty.", "Provide a valid macOS defaults domain.")
+        if normalized_domain in {"-g", "-globalDomain"}:
+            normalized_domain = "NSGlobalDomain"
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", normalized_domain):
+            raise SystemBridgeError("INVALID_INPUT", "Use a named preference domain, not a file path or command option.", "For example: com.apple.finder or NSGlobalDomain.")
         command = ["defaults"]
         if current_host:
             command.append("-currentHost")

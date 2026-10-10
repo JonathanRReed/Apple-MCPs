@@ -45,7 +45,7 @@ Restart your client after installing or upgrading. Call `search_tools` with `cal
 
 For Claude Desktop, download a server's `.mcpb` bundle from [Releases](https://github.com/JonathanRReed/Apple-MCPs/releases) and double-click it.
 
-Set app-specific safety modes and directories in your client's `env` settings. The [configuration guide](Apple-Tools-MCP/README.md) lists defaults and options. Mail attachments are disabled until you set `APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT` to a dedicated directory. Files tools only access `APPLE_FILES_MCP_ALLOWED_ROOTS`; macOS may impose further restrictions.
+Set app-specific safety modes and directories in your client's `env` settings. An explicitly invalid or blank safety setting selects `safe_readonly`; unset settings retain each domain's documented default. The [configuration guide](Apple-Tools-MCP/README.md) lists defaults and options. Mail attachments are disabled until you set `APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT` to a dedicated directory. Files tools only access `APPLE_FILES_MCP_ALLOWED_ROOTS`; macOS may impose further restrictions.
 
 ## Choose a server
 

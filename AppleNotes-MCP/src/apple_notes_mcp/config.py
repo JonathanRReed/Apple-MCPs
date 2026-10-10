@@ -45,9 +45,9 @@ def _parse_script_timeout(value: str | None) -> int:
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
     package_dir = Path(__file__).resolve().parent
-    raw_safety_mode = os.environ.get("APPLE_NOTES_MCP_SAFETY_MODE", "full_access").strip() or "full_access"
+    raw_safety_mode = os.environ.get("APPLE_NOTES_MCP_SAFETY_MODE", "full_access").strip()
     if raw_safety_mode not in VALID_SAFETY_MODES:
-        raw_safety_mode = "full_access"
+        raw_safety_mode = "safe_readonly"
 
     return Settings(
         server_name="Apple Notes MCP",

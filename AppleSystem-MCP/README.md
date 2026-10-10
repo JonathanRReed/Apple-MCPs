@@ -135,3 +135,5 @@ The bounded GUI fallback surface is:
 - Call `system_health` first
 - If a scoped system action is blocked, call `system_permission_guide`
 - Call `system_status` to verify the full context surface is available
+
+Preference-domain reads accept named domains such as `com.apple.finder` and `NSGlobalDomain`, rather than filesystem paths or command options. The `-g` and `-globalDomain` aliases select `NSGlobalDomain`.

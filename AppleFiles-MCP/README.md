@@ -107,3 +107,5 @@ claude mcp add --transport stdio --scope project apple-files -- uvx apple-files-
 - Call `files_health` first
 - If access looks wrong, call `files_permission_guide`
 - Confirm `APPLE_FILES_MCP_ALLOWED_ROOTS` before any file mutation workflow
+
+Moves reject an existing destination, including files, folders and symbolic links. Moving or deleting a symbolic link operates on the link itself; reads still resolve the target and enforce allowed roots. Text reads accept `max_bytes` from 1 through 10485760, read only that bounded prefix, and reject non-regular files.

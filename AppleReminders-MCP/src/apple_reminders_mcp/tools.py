@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
@@ -94,6 +95,17 @@ def _list_visible(title: str) -> bool:
     return not allowed or title in allowed
 
 
+def _reminder_due_sort_key(item):
+    # EventKit emits date-only values in the Mac's local time zone and timed
+    # values with UTC offsets. Naive timestamp() resolves the due date's local
+    # offset (including DST), matching Calendar.current's midnight ordering.
+    try:
+        due = datetime.fromisoformat(item.due_date).timestamp() if item.due_date else float("inf")
+    except ValueError:
+        due = float("inf")
+    return due, item.title.casefold()
+
+
 def _scoped_reminders(*, list_id: str | None = None, limit: int = 100, **filters):
     if list_id is not None:
         ensure_action_allowed("reminders_list_reminders", _list_title(list_id))
@@ -102,7 +114,7 @@ def _scoped_reminders(*, list_id: str | None = None, limit: int = 100, **filters
         for item in _bridge().list_lists():
             if _list_visible(item.title):
                 reminders.extend(_bridge().list_reminders(list_id=item.list_id, limit=limit, **filters))
-        reminders.sort(key=lambda item: (item.due_date or "\uffff", item.title.casefold()))
+        reminders.sort(key=_reminder_due_sort_key)
     else:
         reminders = _bridge().list_reminders(list_id=list_id, limit=limit, **filters)
     return [item for item in reminders if _list_visible(item.list_name)][:limit]

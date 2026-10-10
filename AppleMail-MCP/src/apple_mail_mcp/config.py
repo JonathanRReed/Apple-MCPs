@@ -43,7 +43,7 @@ def load_settings() -> Settings:
     try:
         safety_profile = SafetyProfile(raw_profile)
     except ValueError:
-        safety_profile = SafetyProfile.SAFE_MANAGE
+        safety_profile = SafetyProfile.SAFE_READONLY
 
     raw_port = os.getenv("APPLE_MAIL_MCP_PORT", "8000")
     try:

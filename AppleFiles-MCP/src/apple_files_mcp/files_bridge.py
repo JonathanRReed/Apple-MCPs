@@ -1,19 +1,18 @@
 from __future__ import annotations
 
-import ctypes
 import errno
 import heapq
 import os
 import plistlib
 import stat
 import subprocess
-import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 from apple_files_mcp.config import load_settings
 from apple_files_mcp.models import FileEntry
+from apple_mcp_common.atomic import rename_without_replacement
 
 
 @dataclass(frozen=True)
@@ -50,6 +49,7 @@ class FilesBridge:
         return "icloud" if self._is_icloud_path(path) else "local"
 
     def _ensure_allowed(self, path: str, *, allow_missing: bool = False, follow_leaf: bool = True) -> Path:
+        self._validate_path(path)
         candidate = Path(path).expanduser()
         if not follow_leaf and candidate.name == "..":
             raise FilesBridgeError("INVALID_INPUT", "A mutation path cannot end in '..'.")
@@ -351,28 +351,26 @@ class FilesBridge:
         folder.mkdir(parents=True, exist_ok=True)
         return str(folder)
 
+    @staticmethod
+    def _validate_path(path: str) -> None:
+        if "\0" in path:
+            raise FilesBridgeError("INVALID_INPUT", "Paths cannot contain embedded NUL characters.")
+
     def _rename_without_replace(self, source: Path, destination: Path) -> None:
-        # Native exclusive rename prevents two concurrent moves from replacing
-        # each other's destination after a separate existence check.
-        libc = ctypes.CDLL(None, use_errno=True)
-        if sys.platform == "darwin":
-            rename = libc.renamex_np
-            rename.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
-            arguments = [os.fsencode(source), os.fsencode(destination), 0x00000004]  # RENAME_EXCL
-        elif sys.platform == "linux" and hasattr(libc, "renameat2"):
-            rename = libc.renameat2
-            rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
-            arguments = [-100, os.fsencode(source), -100, os.fsencode(destination), 1]  # AT_FDCWD, RENAME_NOREPLACE
-        else:
-            raise FilesBridgeError("UNSUPPORTED_OPERATION", "This platform cannot safely move files without replacing a destination.")
-        rename.restype = ctypes.c_int
-        if rename(*arguments) != 0:
-            error = ctypes.get_errno()
-            if error == errno.EEXIST:
-                raise FilesBridgeError("PATH_ALREADY_EXISTS", f"Destination already exists: {destination}", "Choose a new destination path.")
-            raise FilesBridgeError("MOVE_FAILED", f"Could not move path: {os.strerror(error)}", "Check the source and destination paths.")
+        try:
+            rename_without_replacement(source, destination)
+        except ValueError as error:
+            raise FilesBridgeError("INVALID_INPUT", str(error)) from error
+        except OSError as error:
+            if error.errno == errno.EEXIST:
+                raise FilesBridgeError("PATH_ALREADY_EXISTS", f"Destination already exists: {destination}", "Choose a new destination path.") from error
+            if error.errno in {errno.ENOTSUP, errno.EOPNOTSUPP, errno.ENOSYS}:
+                raise FilesBridgeError("UNSUPPORTED_OPERATION", "This filesystem cannot safely move files without replacing a destination.") from error
+            raise FilesBridgeError("MOVE_FAILED", f"Could not move path: {error.strerror}", "Check the source and destination paths.") from error
 
     def move_path(self, source: str, destination: str) -> tuple[str, str]:
+        self._validate_path(source)
+        self._validate_path(destination)
         source_path = self._ensure_allowed(source, follow_leaf=False)
         destination_path = self._ensure_allowed(destination, allow_missing=True, follow_leaf=False)
         self._rename_without_replace(source_path, destination_path)

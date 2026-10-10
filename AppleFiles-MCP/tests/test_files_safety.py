@@ -1,3 +1,4 @@
+import asyncio
 import io
 import os
 from pathlib import Path
@@ -147,3 +148,36 @@ def test_concurrent_moves_cannot_replace_each_others_destination(tmp_path):
     assert sorted(outcomes) == ["PATH_ALREADY_EXISTS", "moved"]
     assert sum(source.exists() for source in sources) == 1
     assert destination.read_text() in {"a", "b"}
+
+
+@pytest.mark.parametrize("where", ["source_leaf", "source_parent", "destination_leaf", "destination_parent"])
+def test_public_move_rejects_nul_before_path_or_native_calls(monkeypatch, tmp_path, where):
+    from apple_files_mcp import tools
+    source, destination = tmp_path / "source", tmp_path / "new"
+    source.write_text("owned fixture")
+    source_text, destination_text = str(source), str(destination)
+    if where == "source_leaf":
+        source_text += "\0suffix"
+    elif where == "source_parent":
+        source_text = str(tmp_path) + "\0suffix/source"
+    elif where == "destination_leaf":
+        destination_text += "\0suffix"
+    else:
+        destination_text = str(tmp_path) + "\0suffix/new"
+    bridge = FilesBridge((tmp_path,))
+    monkeypatch.setenv("APPLE_FILES_MCP_SAFETY_MODE", "safe_manage")
+    tools.load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("malformed input reached filesystem/native work")
+
+    monkeypatch.setattr("apple_files_mcp.files_bridge.Path", forbidden)
+    monkeypatch.setattr(bridge, "_rename_without_replace", forbidden)
+    try:
+        result = asyncio.run(tools.files_move_path(source_text, destination_text, None))
+        assert result.ok is False and result.error.error_code == "INVALID_INPUT"
+    finally:
+        tools.load_settings.cache_clear()
+    assert source.read_text() == "owned fixture"
+    assert not destination.exists()

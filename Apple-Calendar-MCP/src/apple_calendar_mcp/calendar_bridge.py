@@ -426,7 +426,7 @@ class CalendarBridge:
         try:
             helper_binary = ensure_swift_helper(self.helper_source, self._helper_base_binary)
         except NativeHelperError as exc:
-            raise CalendarBridgeError(exc.error_code, str(exc), "Confirm Xcode command line tools and Swift are available, then retry.") from exc
+            raise CalendarBridgeError(exc.error_code, str(exc), exc.suggestion or "Confirm Xcode command line tools and Swift are available, then retry.") from exc
         info_plist = helper_binary.parent.parent / "Info.plist"
         self._write_bundle_info_plist(info_plist)
         self.helper_binary = helper_binary

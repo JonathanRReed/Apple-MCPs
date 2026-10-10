@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import unquote
 
+from apple_calendar_mcp.alarm_validation import validate_alarms
 from apple_calendar_mcp.models import CalendarInfo, EventDetail, EventSummary
 
 
@@ -277,6 +278,7 @@ class CalendarBridge:
         location: str | None = None,
         all_day: bool = False,
         recurrence: dict[str, object] | None = None,
+        alarms: list[dict[str, object]] | None = None,
     ) -> EventDetail:
         request = {
             "title": title,
@@ -289,6 +291,9 @@ class CalendarBridge:
         }
         if recurrence is not None:
             request["recurrence"] = recurrence
+        alarms = validate_alarms(alarms)
+        if alarms is not None:
+            request["alarms"] = alarms
         try:
             payload = self._run_helper("create-calendar-event", json.dumps(request))
         except CalendarBridgeError as exc:
@@ -305,6 +310,7 @@ class CalendarBridge:
                 notes=notes,
                 location=location,
                 all_day=all_day,
+                alarms=alarms,
             )
         return self._normalize_detail(payload)
 
@@ -320,6 +326,7 @@ class CalendarBridge:
         location: str | None = None,
         all_day: bool | None = None,
         recurrence: dict[str, object] | None = None,
+        alarms: list[dict[str, object]] | None = None,
     ) -> EventDetail:
         request: dict[str, object] = {}
         if title is not None:
@@ -338,12 +345,15 @@ class CalendarBridge:
             request["all_day"] = all_day
         if recurrence is not None:
             request["recurrence"] = recurrence
+        alarms = validate_alarms(alarms)
+        if alarms is not None:
+            request["alarms"] = alarms
         if self._is_jxa_token(event_id):
             if recurrence is not None:
                 raise CalendarBridgeError("UNSUPPORTED_OPERATION", "Automation cannot apply recurrence.", None)
             return self._normalize_detail(self._fallback_update_event(
                 event_id, title=title, calendar_id=calendar_id, start_iso=start_iso, end_iso=end_iso,
-                notes=notes, location=location, all_day=all_day,
+                notes=notes, location=location, all_day=all_day, alarms=alarms,
             ))
         try:
             payload = self._run_helper("update-calendar-event", event_id, json.dumps(request))
@@ -359,6 +369,7 @@ class CalendarBridge:
                 notes=notes,
                 location=location,
                 all_day=all_day,
+                alarms=alarms,
             )
         return self._normalize_detail(payload)
 
@@ -548,7 +559,7 @@ function run(argv) {
     def _fallback_list_events(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, object]:
         start = datetime.fromisoformat(start_iso)
         end = datetime.fromisoformat(end_iso)
-        script = self._JXA_ID_HELPERS + """
+        script = self._JXA_ID_HELPERS + self._JXA_ALARM_HELPERS + """
 function isAllDay(startDate, endDate) {
   return startDate.getHours() === 0 &&
     startDate.getMinutes() === 0 &&
@@ -590,7 +601,8 @@ function run(argv) {
         start: startDate.toISOString(),
         end: endDate.toISOString(),
         all_day: isAllDay(startDate, endDate),
-        location: evt.location ? (evt.location() || null) : null
+        location: evt.location ? (evt.location() || null) : null,
+        alarms: eventAlarms(evt)
       });
     });
   });
@@ -627,6 +639,48 @@ function run(argv) {
     # Fallback IDs name their backend, calendar scope, and UID/id namespace.
     # Legacy bare IDs are resolved only when their meanings agree; metadata-only
     # composites are read-only and cannot safely identify a mutation target.
+    _JXA_ALARM_HELPERS = """
+function eventAlarms(evt) {
+  try {
+    const alarms = [];
+    [evt.displayAlarms, evt.soundAlarms, evt.mailAlarms, evt.openFileAlarms].forEach(function(collection) {
+      collection().forEach(function(alarm) {
+        const absolute = alarm.triggerDate();
+        if (absolute instanceof Date && Number.isFinite(absolute.getTime())) {
+          alarms.push({type: "absolute", absolute: absolute.toISOString()});
+        } else {
+          const offset = alarm.triggerInterval();
+          alarms.push({type: "relative", offset_minutes: Number.isSafeInteger(offset) ? offset : null});
+        }
+      });
+    });
+    return alarms;
+  } catch (error) {
+    // Older Calendar scripting dictionaries cannot expose every alarm type.
+    return null;
+  }
+}
+function prepareAlarmUpdate(app, evt, alarms) {
+  if (alarms === null) { return null; }
+  // Calendar no longer permits modifying open-file alarms. Refuse before
+  // changing other fields, rather than silently retaining a requested clear.
+  if (evt.openFileAlarms().length > 0) { throw new Error("UNSUPPORTED_OPERATION"); }
+  const existing = [].concat(evt.displayAlarms(), evt.soundAlarms(), evt.mailAlarms());
+  const replacements = alarms.map(function(alarm) {
+    return app.DisplayAlarm(alarm.minutes_before !== undefined
+      ? {triggerInterval: -alarm.minutes_before}
+      : {triggerDate: new Date(alarm.absolute_iso)});
+  });
+  return {existing: existing, replacements: replacements};
+}
+function applyAlarmUpdate(evt, update) {
+  if (update === null) { return; }
+  update.existing.forEach(function(alarm) { alarm.delete(); });
+  update.replacements.forEach(function(alarm) { evt.displayAlarms.push(alarm); });
+}
+
+"""
+
     _JXA_ID_HELPERS = """
 function readIdentifier(obj, field) {
   try { return typeof obj[field] === "function" ? obj[field]() : null; }
@@ -719,7 +773,7 @@ function identifierMatches(calendars, field, value, strict) {
 }
 """
 
-    _JXA_FIND_EVENT = _JXA_ID_HELPERS + """
+    _JXA_FIND_EVENT = _JXA_ID_HELPERS + _JXA_ALARM_HELPERS + """
 function findEventByUid(app, identifier, calendarNameHint, requireStable) {
   if (identifier.length > 32768) { throw new Error("IDENTIFIER_LOOKUP_LIMIT"); }
   const snapshot = app.calendars();
@@ -802,7 +856,8 @@ function eventRecord(cal, evt) {
     all_day: startDate.getHours() === 0 && startDate.getMinutes() === 0 &&
       endDate.getHours() === 23 && endDate.getMinutes() === 59,
     location: evt.location ? (evt.location() || null) : null,
-    notes: evt.description ? (evt.description() || null) : null
+    notes: evt.description ? (evt.description() || null) : null,
+    alarms: eventAlarms(evt)
   };
 }
 """
@@ -830,6 +885,7 @@ function run(argv) {
         notes: str | None,
         location: str | None,
         all_day: bool,
+        alarms: list[dict[str, object]] | None = None,
     ) -> dict[str, object]:
         script = self._JXA_FIND_EVENT + """
 function run(argv) {
@@ -847,10 +903,14 @@ function run(argv) {
     description: argv[5]
   });
   cal.events.push(newEvent);
-  if (argv[6] === "true") {
-    newEvent.alldayEvent = true;
+  try {
+    if (argv[6] === "true") { newEvent.alldayEvent = true; }
+    applyAlarmUpdate(newEvent, prepareAlarmUpdate(app, newEvent, JSON.parse(argv[7])));
+    return JSON.stringify(eventRecord(cal, newEvent));
+  } catch (error) {
+    newEvent.delete();
+    throw error;
   }
-  return JSON.stringify(eventRecord(cal, newEvent));
 }
 """
         return self._run_jxa_event(
@@ -862,6 +922,7 @@ function run(argv) {
             location or "",
             notes or "",
             "true" if all_day else "false",
+            json.dumps(alarms),
         )
 
     def _fallback_update_event(
@@ -875,6 +936,7 @@ function run(argv) {
         notes: str | None,
         location: str | None,
         all_day: bool | None,
+        alarms: list[dict[str, object]] | None = None,
     ) -> dict[str, object]:
         fields = {
             "title": title,
@@ -884,6 +946,7 @@ function run(argv) {
             "notes": notes,
             "location": location,
             "all_day": all_day,
+            "alarms": alarms,
         }
         script = self._JXA_FIND_EVENT + """
 function run(argv) {
@@ -902,6 +965,7 @@ function run(argv) {
     return JSON.stringify({__error__: "UNSUPPORTED_OPERATION"});
   }
 
+  applyAlarmUpdate(evt, prepareAlarmUpdate(app, evt, fields.alarms === undefined ? null : fields.alarms));
   if (fields.title !== null) { evt.summary = fields.title; }
 
   // Calendar.app validates every single assignment, so the write order matters
@@ -1065,6 +1129,7 @@ function run(argv) {
             all_day=bool(raw_event.get("all_day", False)),
             location=self._optional_text(raw_event.get("location")),
             availability=None,
+            alarms=raw_event.get("alarms"),
         )
 
     def _normalize_detail(
@@ -1076,6 +1141,8 @@ function run(argv) {
             summary_dict["recurrence_rule"] = raw_event["recurrence_rule"]
         if raw_event.get("attendees") is not None:
             summary_dict["attendees"] = raw_event["attendees"]
+        if raw_event.get("alarms") is not None:
+            summary_dict["alarms"] = raw_event["alarms"]
         detail = EventDetail.model_validate(summary_dict)
         detail._identifier_provider = identifier_provider
         return detail

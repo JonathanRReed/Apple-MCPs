@@ -1,3 +1,5 @@
+import pytest
+
 from apple_calendar_mcp import tools
 from apple_calendar_mcp.config import load_settings
 from apple_calendar_mcp.models import AttendeeInfo, CalendarInfo, EventDetail, RecurrenceInfo
@@ -42,8 +44,8 @@ class FakeBridge:
             attendees=[AttendeeInfo(name="Alex", email="alex@example.com", status="accepted")],
         )
 
-    def create_event(self, title: str, calendar_id: str, start_iso: str, end_iso: str, notes=None, location=None, all_day=False, recurrence=None) -> EventDetail:
-        self.calls.append({"method": "create_event", "calendar_id": calendar_id})
+    def create_event(self, title: str, calendar_id: str, start_iso: str, end_iso: str, notes=None, location=None, all_day=False, recurrence=None, alarms=None) -> EventDetail:
+        self.calls.append({"method": "create_event", "calendar_id": calendar_id, "alarms": alarms})
         return EventDetail(
             event_id="event-new",
             title=title,
@@ -55,6 +57,7 @@ class FakeBridge:
             location=location,
             availability=None,
             notes=notes,
+            alarms=[{"type": "relative", "offset_minutes": -15}] if alarms else [],
         )
 
     def update_event(
@@ -69,8 +72,9 @@ class FakeBridge:
         location: str | None = None,
         all_day: bool | None = None,
         recurrence=None,
+        alarms=None,
     ) -> EventDetail:
-        self.calls.append({"method": "update_event", "calendar_id": calendar_id})
+        self.calls.append({"method": "update_event", "calendar_id": calendar_id, "alarms": alarms})
         return EventDetail(
             event_id=event_id,
             title=title or "Planning",
@@ -82,6 +86,7 @@ class FakeBridge:
             location=location,
             availability=None,
             notes=notes,
+            alarms=[{"type": "relative", "offset_minutes": -15}] if alarms else [],
         )
 
 
@@ -241,3 +246,224 @@ def test_update_event_allows_move_within_write_allowlist(monkeypatch) -> None:
     result = tools.calendar_update_event("event-1", calendar_id="calendar-1", title="Renamed")
 
     assert result.ok is True
+
+
+def test_validate_alarms_returns_none_when_omitted() -> None:
+    assert tools._validate_alarms(None) is None
+
+
+def test_validate_alarms_returns_empty_list_for_clear() -> None:
+    assert tools._validate_alarms([]) == []
+
+
+def test_validate_alarms_normalizes_relative_and_absolute_entries() -> None:
+    normalized = tools._validate_alarms(
+        [
+            {"minutes_before": 15},
+            {"absolute_iso": "2026-03-27T09:00:00-05:00"},
+        ]
+    )
+
+    assert normalized == [
+        {"minutes_before": 15.0},
+        {"absolute_iso": "2026-03-27T09:00:00-05:00"},
+    ]
+
+
+def test_validate_alarms_accepts_zero_minutes() -> None:
+    assert tools._validate_alarms([{"minutes_before": 0}]) == [{"minutes_before": 0.0}]
+
+
+def test_validate_alarms_accepts_string_minutes() -> None:
+    assert tools._validate_alarms([{"minutes_before": "30"}]) == [{"minutes_before": 30.0}]
+
+
+def test_validate_alarms_rejects_both_fields() -> None:
+    with pytest.raises(ValueError, match="exactly one"):
+        tools._validate_alarms([{"minutes_before": 15, "absolute_iso": "2026-03-27T09:00:00"}])
+
+
+def test_validate_alarms_rejects_neither_field() -> None:
+    with pytest.raises(ValueError, match="exactly one"):
+        tools._validate_alarms([{"note": "ring loudly"}])
+
+
+def test_validate_alarms_rejects_negative_minutes() -> None:
+    with pytest.raises(ValueError, match="zero or greater"):
+        tools._validate_alarms([{"minutes_before": -5}])
+
+
+def test_validate_alarms_rejects_non_numeric_minutes() -> None:
+    with pytest.raises(ValueError, match="must be a number"):
+        tools._validate_alarms([{"minutes_before": "soon"}])
+
+
+@pytest.mark.parametrize("value", [float("inf"), float("-inf"), float("nan"), "inf", "nan", "1e400"])
+def test_validate_alarms_rejects_non_finite_minutes(value) -> None:
+    with pytest.raises(ValueError, match="must be a number"):
+        tools._validate_alarms([{"minutes_before": value}])
+
+
+def test_validate_alarms_rejects_boolean_minutes() -> None:
+    with pytest.raises(ValueError, match="must be a number"):
+        tools._validate_alarms([{"minutes_before": True}])
+
+
+def test_validate_alarms_rejects_non_numeric_type_minutes() -> None:
+    with pytest.raises(ValueError, match="must be a number"):
+        tools._validate_alarms([{"minutes_before": [15]}])
+
+
+def test_validate_alarms_rejects_fractional_minutes() -> None:
+    with pytest.raises(ValueError, match="whole number"):
+        tools._validate_alarms([{"minutes_before": 0.5}])
+
+
+def test_validate_alarms_accepts_whole_float_minutes() -> None:
+    assert tools._validate_alarms([{"minutes_before": 15.0}]) == [{"minutes_before": 15.0}]
+
+
+def test_validate_alarms_rejects_bad_absolute_iso() -> None:
+    with pytest.raises(ValueError):
+        tools._validate_alarms([{"absolute_iso": "not-a-datetime"}])
+
+
+def test_validate_alarms_rejects_non_object_entry() -> None:
+    with pytest.raises(ValueError, match="must be an object"):
+        tools._validate_alarms(["15m"])
+
+
+def test_calendar_create_event_passes_alarms_to_bridge(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    load_settings.cache_clear()
+    bridge = FakeBridge()
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+
+    result = tools.calendar_create_event(
+        title="Planning",
+        start_iso="2026-03-27T10:00:00-05:00",
+        end_iso="2026-03-27T10:30:00-05:00",
+        calendar_id="calendar-1",
+        alarms=[{"minutes_before": 15}],
+    )
+
+    assert result.ok is True
+    assert [(a.type, a.offset_minutes) for a in result.event.alarms] == [("relative", -15)]
+    assert bridge.calls[-1]["alarms"] == [{"minutes_before": 15.0}]
+
+
+def test_calendar_create_event_omits_alarms_when_not_given(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    load_settings.cache_clear()
+    bridge = FakeBridge()
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+
+    result = tools.calendar_create_event(
+        title="Planning",
+        start_iso="2026-03-27T10:00:00-05:00",
+        end_iso="2026-03-27T10:30:00-05:00",
+        calendar_id="calendar-1",
+    )
+
+    assert result.ok is True
+    assert bridge.calls[-1]["alarms"] is None
+
+
+def test_calendar_create_event_rejects_malformed_alarms(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    load_settings.cache_clear()
+    bridge = FakeBridge()
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+
+    result = tools.calendar_create_event(
+        title="Planning",
+        start_iso="2026-03-27T10:00:00-05:00",
+        end_iso="2026-03-27T10:30:00-05:00",
+        calendar_id="calendar-1",
+        alarms=[{"minutes_before": -1}],
+    )
+
+    assert result.ok is False
+    assert result.error.error_code == "INVALID_INPUT"
+    assert not any(call["method"] == "create_event" for call in bridge.calls)
+
+
+def test_calendar_update_event_clears_alarms_with_empty_list(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    load_settings.cache_clear()
+    bridge = FakeBridge()
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+    monkeypatch.setattr(tools, "_event_owner_calendar", lambda event_id: "Work")
+
+    result = tools.calendar_update_event("event-1", alarms=[])
+
+    assert result.ok is True
+    assert bridge.calls[-1]["alarms"] == []
+
+
+def test_calendar_update_event_leaves_alarms_untouched_when_omitted(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    load_settings.cache_clear()
+    bridge = FakeBridge()
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+    monkeypatch.setattr(tools, "_event_owner_calendar", lambda event_id: "Work")
+
+    result = tools.calendar_update_event("event-1", title="Renamed")
+
+    assert result.ok is True
+    assert bridge.calls[-1]["alarms"] is None
+
+
+def test_calendar_update_event_rejects_malformed_alarms(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    load_settings.cache_clear()
+    bridge = FakeBridge()
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+    monkeypatch.setattr(tools, "_event_owner_calendar", lambda event_id: "Work")
+
+    result = tools.calendar_update_event("event-1", alarms=[{"minutes_before": -1}])
+
+    assert result.ok is False
+    assert result.error.error_code == "INVALID_INPUT"
+    assert not any(call["method"] == "update_event" for call in bridge.calls)
+
+
+def test_calendar_health_reports_event_alarms_capability(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: FakeBridge())
+
+    result = tools.calendar_health()
+
+    assert "event_alarms" in result.capabilities
+
+
+
+@pytest.mark.parametrize("value", [525601, 1e30, 10**400, "1e30"])
+def test_validate_alarms_rejects_out_of_range_minutes(value) -> None:
+    with pytest.raises(ValueError):
+        tools._validate_alarms([{"minutes_before": value}])
+
+
+@pytest.mark.parametrize("value", [0, 525600, "525600", 525600.0])
+def test_validate_alarms_accepts_inclusive_boundaries(value) -> None:
+    assert tools._validate_alarms([{"minutes_before": value}]) == [{"minutes_before": float(value)}]
+
+
+@pytest.mark.parametrize("value", ["15", {}, (), 42, True])
+def test_validate_alarms_rejects_non_list_container(value) -> None:
+    with pytest.raises(ValueError, match="must be a list"):
+        tools._validate_alarms(value)
+
+
+@pytest.mark.parametrize("value", [None, True, 42, [], ""])
+def test_validate_alarms_rejects_non_string_absolute(value) -> None:
+    with pytest.raises(ValueError):
+        tools._validate_alarms([{"absolute_iso": value}])
+
+
+def test_validate_alarms_rejects_unknown_keys_and_excess_entries() -> None:
+    with pytest.raises(ValueError):
+        tools._validate_alarms([{"minutes_before": 15, "extra": True}])
+    with pytest.raises(ValueError):
+        tools._validate_alarms([{"minutes_before": 15}] * 101)

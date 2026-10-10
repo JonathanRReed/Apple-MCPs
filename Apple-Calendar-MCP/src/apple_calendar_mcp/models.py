@@ -57,6 +57,14 @@ class AttendeeInfo(BaseModel):
     status: str
 
 
+class AlarmInfo(BaseModel):
+    type: Literal["absolute", "relative", "location"]
+    offset_minutes: int | None = None
+    absolute: str | None = None
+    proximity: str | None = None
+    location_title: str | None = None
+
+
 class EventSummary(BaseModel):
     event_id: str
     title: str
@@ -67,6 +75,7 @@ class EventSummary(BaseModel):
     all_day: bool
     location: str | None = None
     availability: str | None = None
+    alarms: list[AlarmInfo] | None = None
 
 
 class EventDetail(EventSummary):

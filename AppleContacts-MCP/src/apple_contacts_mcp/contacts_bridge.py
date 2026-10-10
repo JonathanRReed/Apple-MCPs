@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import plistlib
 import re
 import subprocess
 import tempfile
@@ -31,8 +32,11 @@ class ContactsBridgeError(Exception):
 
 
 class AppleContactsBridge:
-    def __init__(self, scripts_dir: Path) -> None:
+    def __init__(self, scripts_dir: Path, *, helper_source: Path | None = None, helper_build_dir: Path | None = None) -> None:
         self.scripts_dir = scripts_dir
+        self.helper_source = helper_source
+        self.helper_build_dir = helper_build_dir
+        self._native_binary: Path | None = None
 
     def permission_diagnostic(self) -> tuple[bool, ContactsBridgeError | None]:
         try:
@@ -363,8 +367,12 @@ class AppleContactsBridge:
             offset += len(items)
 
     def _run_script(self, script_name: str, *args: str) -> dict[str, object]:
+        if self.helper_source is not None:
+            command = [str(self._ensure_native_helper()), script_name.removesuffix(".applescript"), *args]
+        else:
+            command = ["osascript", str(self.scripts_dir / script_name), *args]
         script_path = self.scripts_dir / script_name
-        if not script_path.exists():
+        if self.helper_source is None and not script_path.exists():
             raise ContactsBridgeError(
                 "SCRIPT_NOT_FOUND",
                 f"Missing AppleScript file '{script_name}'.",
@@ -374,7 +382,7 @@ class AppleContactsBridge:
         try:
             with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
                 process = subprocess.Popen(
-                    ["osascript", str(script_path), *args],
+                    command,
                     stdout=stdout_file,
                     stderr=stderr_file,
                 )
@@ -411,8 +419,8 @@ class AppleContactsBridge:
                 returncode = process.returncode
         except OSError as exc:
             raise ContactsBridgeError(
-                "OSASCRIPT_UNAVAILABLE",
-                f"Could not run 'osascript': {exc}.",
+                "HELPER_UNAVAILABLE" if self.helper_source else "OSASCRIPT_UNAVAILABLE",
+                f"Could not run Contacts bridge: {exc}.",
                 "This server requires macOS with osascript available.",
             ) from exc
         stdout_text = stdout.decode("utf-8", errors="replace")
@@ -442,6 +450,53 @@ class AppleContactsBridge:
             )
         return payload
 
+    def _ensure_native_helper(self) -> Path:
+        if self._native_binary is not None and self._native_binary.is_file():
+            return self._native_binary
+        assert self.helper_source is not None and self.helper_build_dir is not None
+        try:
+            digest = hashlib.sha256(self.helper_source.read_bytes()).hexdigest()[:16]
+            app = self.helper_build_dir / f"apple-contacts-bridge-{digest}.app"
+            binary = app / "Contents" / "MacOS" / "apple-contacts-bridge"
+            if binary.is_file() and (app / "Contents" / "Info.plist").is_file():
+                self._native_binary = binary
+                return binary
+            self.helper_build_dir.mkdir(parents=True, exist_ok=True)
+            with tempfile.TemporaryDirectory(prefix="contacts-build-", dir=self.helper_build_dir) as directory:
+                temporary_app = Path(directory) / app.name
+                executable = temporary_app / "Contents" / "MacOS" / binary.name
+                executable.parent.mkdir(parents=True)
+                info = {
+                    "CFBundleIdentifier": "io.github.jonathanrreed.apple-mcps.contacts-bridge",
+                    "CFBundleName": "Apple Contacts MCP Bridge",
+                    "CFBundleExecutable": binary.name,
+                    "CFBundlePackageType": "APPL",
+                    "CFBundleVersion": "1",
+                    "LSUIElement": True,
+                    "LSBackgroundOnly": True,
+                    "NSContactsUsageDescription": "Reads and manages contacts for Apple Contacts MCP.",
+                }
+                with (temporary_app / "Contents" / "Info.plist").open("wb") as stream:
+                    plistlib.dump(info, stream)
+                result = subprocess.run(
+                    ["swiftc", "-parse-as-library", "-O", str(self.helper_source), "-o", str(executable)],
+                    capture_output=True, text=True, timeout=300, check=False,
+                )
+                if result.returncode != 0:
+                    raise ContactsBridgeError("HELPER_COMPILE_FAILED", result.stderr.strip() or "Contacts helper compilation failed.", "Install Xcode Command Line Tools, or select APPLE_CONTACTS_MCP_BACKEND=applescript.")
+                try:
+                    temporary_app.rename(app)
+                except OSError:
+                    # A concurrent first-use compile may have installed the same source.
+                    if not binary.is_file() or not (app / "Contents" / "Info.plist").is_file():
+                        raise
+            self._native_binary = binary
+            return binary
+        except subprocess.TimeoutExpired as exc:
+            raise ContactsBridgeError("HELPER_COMPILE_TIMEOUT", "Contacts helper compilation exceeded 300 seconds.", "Check the Swift toolchain, or select the AppleScript backend.") from exc
+        except OSError as exc:
+            raise ContactsBridgeError("HELPER_BUILD_UNAVAILABLE", str(exc), "Check the packaged Swift source, build directory and Xcode Command Line Tools, or select the AppleScript backend.") from exc
+
     def _stop_process(self, process: subprocess.Popen[bytes]) -> None:
         with suppress(ProcessLookupError):
             process.terminate()
@@ -460,6 +515,8 @@ class AppleContactsBridge:
 
     def _map_script_error(self, error_text: str) -> ContactsBridgeError:
         lowered = error_text.lower()
+        if "notes cannot be written" in lowered:
+            return ContactsBridgeError("CONTACT_NOTE_UNAVAILABLE", error_text, "Leave note empty, or select APPLE_CONTACTS_MCP_BACKEND=applescript.")
         if "not authorized" in lowered or ("contacts" in lowered and "not allowed" in lowered):
             return ContactsBridgeError(
                 "PERMISSION_DENIED",
@@ -613,4 +670,9 @@ class AppleContactsBridge:
 
 
 def build_bridge() -> AppleContactsBridge:
-    return AppleContactsBridge(load_settings().scripts_dir)
+    settings = load_settings()
+    return AppleContactsBridge(
+        settings.scripts_dir,
+        helper_source=settings.helper_source if settings.backend == "native" else None,
+        helper_build_dir=settings.helper_build_dir if settings.backend == "native" else None,
+    )

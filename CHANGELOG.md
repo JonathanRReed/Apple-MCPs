@@ -19,6 +19,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Require PyJWT 2.15.1 or newer within the 2.x series and refresh the locked version, addressing advisory records affecting the previous 2.13.0 dependency. (#39)
 
 ### Fixed
+- Apply initial fallback Calendar alarms only after field assignments and event-record reads succeed, so a failed update cannot leave new alerts behind. Existing-alarm edits still require native EventKit access. (#39)
 - Compile Contacts, Calendar and Reminders from immutable source snapshots into separate source-hash executables or bundles. A concurrent build cannot overwrite an installed winner, and a source change during compilation is rejected. Helper caches can use atomic exclusive rename when hard links are unsupported; unsupported cache locations return actionable errors. (#44, #45, #46)
 - Read Notes body/plaintext in the application's context, reuse folder lookups, and preserve control characters and complex Unicode in Notes/Contacts script output. (#34)
 - Resolve Contacts deletion without stale positional references, avoid unnecessary full scans for name-only misses, and preserve phone-extension matching and matching-method reporting. (#34, #37)

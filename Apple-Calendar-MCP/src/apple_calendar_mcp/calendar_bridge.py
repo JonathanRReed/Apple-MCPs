@@ -1013,7 +1013,6 @@ function run(argv) {
   if (alarmUpdate !== null && alarmUpdate.error) {
     return JSON.stringify({__error__: alarmUpdate.error});
   }
-  applyAlarmUpdate(evt, alarmUpdate);
   if (fields.title !== null) { evt.summary = fields.title; }
 
   if (newStart !== null && newEnd !== null && newStart >= evt.endDate()) {
@@ -1030,7 +1029,12 @@ function run(argv) {
   if (fields.location !== null) { evt.location = fields.location; }
   if (fields.notes !== null) { evt.description = fields.notes; }
   if (fields.all_day !== null) { evt.alldayEvent = fields.all_day; }
-  return JSON.stringify(eventRecord(cal, evt));
+  // Complete field writes and fallible record reads before adding initial
+  // alarms. A later field error must not leave new alerts on this event.
+  const record = eventRecord(cal, evt);
+  applyAlarmUpdate(evt, alarmUpdate);
+  record.alarms = eventAlarms(evt);
+  return JSON.stringify(record);
 }
 """
         return self._run_jxa_event(script, event_id, json.dumps(fields))

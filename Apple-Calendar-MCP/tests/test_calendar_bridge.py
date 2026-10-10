@@ -1716,3 +1716,48 @@ def test_fallback_create_cleanup_failure_reports_unknown_outcome(monkeypatch):
             notes=None, location=None, all_day=False, alarms=[])
     assert error.value.error_code == 'EVENT_CREATE_CLEANUP_FAILED'
     assert 'unknown' in error.value.suggestion
+
+
+@pytest.mark.parametrize('field', ['summary', 'startDate', 'endDate', 'location', 'description', 'alldayEvent', 'record'])
+def test_fallback_field_assignment_failure_does_not_add_initial_alarms(monkeypatch, field):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    observed = []
+
+    def run(script, *args, **kwargs):
+        setup = """
+STUB_EVENT.displayAlarms = alarmCollection([]);
+const rejectingEvent = new Proxy(STUB_EVENT, {
+  get: function(target, key) {
+    if (REJECTED_FIELD === "record" && key === "description") {
+      return function() { throw new Error("Calendar rejected field assignment"); };
+    }
+    return Reflect.get(target, key);
+  },
+  set: function(target, key, value) {
+    if (key === REJECTED_FIELD) { throw new Error("Calendar rejected field assignment"); }
+    return Reflect.set(target, key, value);
+  }
+});
+STUB_CALENDAR.events.whose = function(query) {
+  return function() { return STUB_EVENT.uid() === query.uid ? [rejectingEvent] : []; };
+};
+""".replace('REJECTED_FIELD', json.dumps(field))
+        wrapped = script + """
+const update = run;
+run = function(argv) {
+  let failure = null;
+  try { update(argv); } catch(error) { failure = error.message; }
+  return JSON.stringify({__error__: "ASSIGNMENT_FAILED", failure: failure, alarms: eventAlarms(STUB_EVENT)});
+};
+"""
+        result = _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + wrapped, args[0], args[1])
+        observed.append(result)
+        return result
+
+    monkeypatch.setattr(bridge, '_run_jxa', run)
+    with pytest.raises(CalendarBridgeError):
+        bridge._fallback_update_event('event-1', title='Updated', calendar_id=None,
+            start_iso='2026-03-28T13:30:00Z', end_iso='2026-03-28T14:30:00Z',
+            notes='Updated', location='Updated', all_day=True, alarms=[{'minutes_before':15}])
+    assert observed[0]['failure'] == 'Calendar rejected field assignment'
+    assert observed[0]['alarms'] == []

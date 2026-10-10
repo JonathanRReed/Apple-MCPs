@@ -43,8 +43,12 @@ func emit(_ object: [String: Any]) {
 let store = CNContactStore()
 
 func requireAccess() {
-    switch CNContactStore.authorizationStatus(for: .contacts) {
-    case .authorized, .limited:
+    let status = CNContactStore.authorizationStatus(for: .contacts)
+    // Limited access is raw value 4; older macOS SDKs do not name this case.
+    // Honor the selected-contact grant without requiring a newer SDK symbol.
+    if status.rawValue == 4 { return }
+    switch status {
+    case .authorized:
         return
     case .denied, .restricted:
         fail("Not authorized to access Contacts. Allow it in System Settings > Privacy & Security > Contacts.")

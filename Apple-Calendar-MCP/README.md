@@ -160,7 +160,7 @@ These are policies enforced by the Python MCP server, not a macOS sandbox. Direc
 
 ### Event alerts
 
-`calendar_create_event` and `calendar_update_event` accept `alarms`: an array of `{ "minutes_before": 15 }` or `{ "absolute_iso": "2030-10-11T10:00:00Z" }` objects. Relative offsets must be whole minutes from 0 through 525600; each event accepts at most 100 alarms. Omit `alarms` to preserve existing alerts on update, or pass `[]` to clear them.
+`calendar_create_event` and `calendar_update_event` accept `alarms`: an array of `{ "minutes_before": 15 }` or `{ "absolute_iso": "2030-10-11T10:00:00Z" }` objects. Absolute dates require an explicit `Z` or UTC offset; timezone-naive dates are rejected. Relative offsets must be whole minutes from 0 through 525600; each event accepts at most 100 alarms. Omit `alarms` to preserve existing alerts on update, or pass `[]` to clear them.
 
 Event detail and list responses include alarm metadata. EventKit reports relative, absolute, and location alerts. The Calendar scripting fallback creates display alerts and reads the alert types exposed by Calendar's scripting dictionary. It refuses replacement when an event has an open-file alert, which current macOS versions do not allow scripts to modify.
 

@@ -125,3 +125,13 @@ Literal control characters and complex emoji returned by Contacts are decoded on
 ## Related
 
 - [Apple-Tools-MCP](../Apple-Tools-MCP/README.md)
+
+### Native Contacts access
+
+Contacts uses `CNContactStore` by default, so reads and writes do not wait for Contacts.app. First use compiles the packaged Swift helper with Xcode Command Line Tools and caches an application bundle under `~/.apple-mcps/build`. Set `APPLE_CONTACTS_MCP_HELPER_BUILD_DIR` to choose another build directory. Grant Contacts access to your MCP host when macOS asks.
+
+Set `APPLE_CONTACTS_MCP_BACKEND=applescript` to use the previous backend. The native backend returns first and last names directly and preserves phone/email update semantics: omit a collection to keep it, or pass `[]` to clear it. Contact notes require a separate macOS entitlement; a nonempty `note` is rejected before a native write. The AppleScript backend remains available for notes.
+
+The native helper compiles an immutable source snapshot into a bundle named by its full SHA-256 hash. A source change during compilation is rejected, and a concurrent build cannot replace an installed bundle. Different source versions keep separate executables with the same Contacts permission identity.
+
+The native helper is adapted from Jaume Puig's work in [JaumeAP/Apple-MCPs](https://github.com/JaumeAP/Apple-MCPs).

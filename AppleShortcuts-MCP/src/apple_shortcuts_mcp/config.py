@@ -34,13 +34,13 @@ def _parse_int(value: str | None, default: int) -> int:
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
     root_dir = Path(__file__).resolve().parents[2]
-    raw_safety_mode = os.environ.get("APPLE_SHORTCUTS_MCP_SAFETY_MODE", "full_access").strip() or "full_access"
+    raw_safety_mode = os.environ.get("APPLE_SHORTCUTS_MCP_SAFETY_MODE", "full_access").strip()
     if raw_safety_mode not in VALID_SAFETY_MODES:
-        raw_safety_mode = "full_access"
+        raw_safety_mode = "safe_readonly"
 
     return Settings(
         server_name="Apple Shortcuts MCP",
-        version="1.0.6",
+        version="1.1.0",
         safety_mode=cast(SafetyMode, raw_safety_mode),
         log_level=os.environ.get("APPLE_SHORTCUTS_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",
         transport=os.environ.get("APPLE_SHORTCUTS_MCP_TRANSPORT", "stdio").strip() or "stdio",

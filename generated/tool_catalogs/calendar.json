@@ -282,7 +282,7 @@
         "all_day: boolean (optional)",
         "recurrence: object (optional)"
       ],
-      "description": "Create a new event in a specific Apple Calendar calendar.",
+      "description": "Create a new event in a specific Apple Calendar calendar. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
       "domain": "calendar",
       "example_calls": [
         {
@@ -308,10 +308,21 @@
         "schedule",
         "create",
         "new",
-        "specific"
+        "specific",
+        "optional",
+        "alarms",
+        "alarm",
+        "minutes",
+        "minut",
+        "before",
+        "absolute",
+        "iso",
+        "datetime",
+        "automation",
+        "can"
       ],
       "title": "Create Event",
-      "usage_intent": "Create a new event in a specific Apple Calendar calendar."
+      "usage_intent": "Create a new event in a specific Apple Calendar calendar. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access."
     },
     {
       "aliases": [
@@ -334,7 +345,7 @@
         "location: string (optional)",
         "all_day: boolean (optional)"
       ],
-      "description": "Update one or more fields on an existing calendar event.",
+      "description": "Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields.",
       "domain": "calendar",
       "example_calls": [
         {
@@ -361,10 +372,18 @@
         "more",
         "fields",
         "field",
-        "existing"
+        "existing",
+        "optional",
+        "alarms",
+        "alarm",
+        "minutes",
+        "minut",
+        "before",
+        "absolute",
+        "iso"
       ],
       "title": "Update Event",
-      "usage_intent": "Update one or more fields on an existing calendar event."
+      "usage_intent": "Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields."
     },
     {
       "aliases": [

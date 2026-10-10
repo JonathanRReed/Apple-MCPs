@@ -1,3 +1,6 @@
+use framework "Foundation"
+use scripting additions
+
 on run argv
 	set accountFilter to ""
 	set folderFilter to ""
@@ -75,12 +78,9 @@ on note_json(accountId, accountName, folderId, folderName, n)
 end note_json
 
 on date_to_epoch(dateValue)
-	set epochDate to current date
-	set year of epochDate to 1970
-	set month of epochDate to January
-	set day of epochDate to 1
-	set time of epochDate to 0
-	return (dateValue - epochDate) as integer
+	-- NSDate's epoch is an absolute UTC instant, independent of local timezone.
+	set cocoaDate to current application's NSDate's dateWithTimeInterval:0 sinceDate:dateValue
+	return cocoaDate's timeIntervalSince1970() as integer
 end date_to_epoch
 
 on safe_text(valueText)

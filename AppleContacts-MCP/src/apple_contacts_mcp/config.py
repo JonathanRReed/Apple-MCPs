@@ -15,19 +15,25 @@ class Settings:
     safety_mode: SafetyMode
     log_level: str
     scripts_dir: Path
+    backend: Literal["native", "applescript"]
+    helper_source: Path
+    helper_build_dir: Path
 
 
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
     package_dir = Path(__file__).resolve().parent
-    raw_safety_mode = os.environ.get("APPLE_CONTACTS_MCP_SAFETY_MODE", "safe_manage").strip() or "safe_manage"
+    raw_safety_mode = os.environ.get("APPLE_CONTACTS_MCP_SAFETY_MODE", "safe_manage").strip()
     if raw_safety_mode not in VALID_SAFETY_MODES:
-        raw_safety_mode = "safe_manage"
+        raw_safety_mode = "safe_readonly"
 
     return Settings(
         server_name="Apple Contacts",
-        version="1.0.6",
+        version="1.1.0",
         safety_mode=cast(SafetyMode, raw_safety_mode),
         log_level=os.environ.get("APPLE_CONTACTS_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",
         scripts_dir=package_dir / "applescripts",
+        backend="applescript" if os.environ.get("APPLE_CONTACTS_MCP_BACKEND", "native").strip().lower() == "applescript" else "native",
+        helper_source=package_dir / "contacts_bridge.swift",
+        helper_build_dir=Path(os.environ.get("APPLE_CONTACTS_MCP_HELPER_BUILD_DIR", str(Path.home() / ".apple-mcps" / "build"))).expanduser(),
     )

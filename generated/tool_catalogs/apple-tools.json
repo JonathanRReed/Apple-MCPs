@@ -3352,7 +3352,7 @@
         "calendar_id: string (optional)",
         "limit: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'calendar_list_events' exposed through Apple-Tools-MCP.",
+      "description": "List Apple Calendar events in a date range, including their alarm metadata.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3374,15 +3374,15 @@
         "calendar",
         "events",
         "event",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "date",
+        "range",
+        "including",
+        "their",
+        "alarm",
+        "metadata"
       ],
       "title": "Calendar List Events",
-      "usage_intent": "Delegated Apple domain tool 'calendar_list_events' exposed through Apple-Tools-MCP."
+      "usage_intent": "List Apple Calendar events in a date range, including their alarm metadata."
     },
     {
       "aliases": [
@@ -3395,7 +3395,7 @@
       "argument_summary": [
         "event_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'calendar_get_event' exposed through Apple-Tools-MCP.",
+      "description": "Read an Apple Calendar event, including relative, absolute, and location-based alarms.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3415,15 +3415,16 @@
         "cross-app",
         "calendar",
         "event",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "including",
+        "relative",
+        "absolute",
+        "location",
+        "based",
+        "alarms",
+        "alarm"
       ],
       "title": "Calendar Get Event",
-      "usage_intent": "Delegated Apple domain tool 'calendar_get_event' exposed through Apple-Tools-MCP."
+      "usage_intent": "Read an Apple Calendar event, including relative, absolute, and location-based alarms."
     },
     {
       "aliases": [
@@ -3443,7 +3444,7 @@
         "all_day: boolean (optional)",
         "recurrence: object (optional)"
       ],
-      "description": "Delegated Apple domain tool 'calendar_create_event' exposed through Apple-Tools-MCP.",
+      "description": "Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3467,15 +3468,23 @@
         "calendar",
         "create",
         "event",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "optional",
+        "alarms",
+        "alarm",
+        "minutes",
+        "minut",
+        "before",
+        "absolute",
+        "iso",
+        "datetime",
+        "timezone",
+        "automation",
+        "can",
+        "add",
+        "initial"
       ],
       "title": "Calendar Create Event",
-      "usage_intent": "Delegated Apple domain tool 'calendar_create_event' exposed through Apple-Tools-MCP."
+      "usage_intent": "Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access."
     },
     {
       "aliases": [
@@ -3495,7 +3504,7 @@
         "location: string (optional)",
         "all_day: boolean (optional)"
       ],
-      "description": "Delegated Apple domain tool 'calendar_update_event' exposed through Apple-Tools-MCP.",
+      "description": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3517,15 +3526,23 @@
         "calendar",
         "update",
         "event",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "its",
+        "alarms",
+        "alarm",
+        "pass",
+        "pas",
+        "clear",
+        "omit",
+        "preserve",
+        "them",
+        "replacing",
+        "clearing",
+        "existing",
+        "requires",
+        "requir"
       ],
       "title": "Calendar Update Event",
-      "usage_intent": "Delegated Apple domain tool 'calendar_update_event' exposed through Apple-Tools-MCP."
+      "usage_intent": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields."
     },
     {
       "aliases": [

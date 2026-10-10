@@ -45,13 +45,13 @@ def _parse_script_timeout(value: str | None) -> int:
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
     package_dir = Path(__file__).resolve().parent
-    raw_safety_mode = os.environ.get("APPLE_NOTES_MCP_SAFETY_MODE", "full_access").strip() or "full_access"
+    raw_safety_mode = os.environ.get("APPLE_NOTES_MCP_SAFETY_MODE", "full_access").strip()
     if raw_safety_mode not in VALID_SAFETY_MODES:
-        raw_safety_mode = "full_access"
+        raw_safety_mode = "safe_readonly"
 
     return Settings(
         server_name="Apple Notes MCP",
-        version="1.0.6",
+        version="1.1.0",
         safety_mode=cast(SafetyMode, raw_safety_mode),
         allowed_accounts=_parse_csv(os.environ.get("APPLE_NOTES_MCP_ALLOWED_ACCOUNTS")),
         allowed_folders=_parse_csv(os.environ.get("APPLE_NOTES_MCP_ALLOWED_FOLDERS")),

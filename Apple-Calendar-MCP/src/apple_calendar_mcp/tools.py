@@ -4,6 +4,7 @@ import os
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
+from apple_calendar_mcp.alarm_validation import coerce_alarm_minutes, validate_alarms
 from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError
 from apple_calendar_mcp.config import load_settings
 from apple_calendar_mcp.models import CalendarInfo, CalendarListResponse, DeleteEventResponse, ErrorResponse, EventListResponse, EventResponse, EventSummary, HealthResponse, ToolError
@@ -55,6 +56,7 @@ def _capabilities() -> tuple[list[str], bool, bool]:
             "create_event",
             "update_event",
             "delete_event",
+            "event_alarms",
             "resources",
             "prompts",
         ],
@@ -69,6 +71,14 @@ def _validate_time_window(start_iso: str, end_iso: str) -> tuple[str, str]:
     if end <= start:
         raise ValueError("end_iso must be later than start_iso")
     return start.isoformat(timespec="seconds"), end.isoformat(timespec="seconds")
+
+
+def _coerce_alarm_minutes(value: object) -> float:
+    return coerce_alarm_minutes(value)
+
+
+def _validate_alarms(alarms: object) -> list[dict[str, object]] | None:
+    return validate_alarms(alarms)
 
 
 def _calendar_name_from_id(calendar_id: str | None) -> str | None:
@@ -176,6 +186,7 @@ def calendar_health() -> HealthResponse:
     access_status = "helper_unavailable"
     can_read_events = False
     can_write_events = False
+    can_edit_existing_alarms = False
     permission_error = None
     permission_suggestion = None
     if helper_available:
@@ -184,6 +195,7 @@ def calendar_health() -> HealthResponse:
             access_status = str(access_payload.get("status", "unknown"))
             can_read_events = bool(access_payload.get("can_read_events", False))
             can_write_events = bool(access_payload.get("can_write_events", False))
+            can_edit_existing_alarms = can_read_events and can_write_events
             if not can_read_events:
                 permission_error = access_payload.get("message")
                 permission_suggestion = access_payload.get("suggestion")
@@ -211,6 +223,7 @@ def calendar_health() -> HealthResponse:
         access_status=access_status,
         can_read_events=can_read_events,
         can_write_events=can_write_events,
+        can_edit_existing_alarms=can_edit_existing_alarms,
         permission_error=permission_error,
         permission_suggestion=permission_suggestion,
     )
@@ -306,7 +319,7 @@ def calendar_get_event(event_id: str) -> EventResponse | ErrorResponse:
 
 @mcp.tool(
     title="Create Event",
-    description="Create a new event in a specific Apple Calendar calendar.",
+    description="Create a new event in a specific Apple Calendar calendar. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
@@ -319,12 +332,14 @@ def calendar_create_event(
     location: str | None = None,
     all_day: bool = False,
     recurrence: dict[str, object] | None = None,
+    alarms: list[dict[str, object]] | None = None,
 ) -> EventResponse | ErrorResponse:
     try:
         if not title.strip():
             raise ValueError("title must not be empty")
         ensure_action_allowed("calendar_create_event", _calendar_name_from_id(calendar_id))
         start_value, end_value = _validate_time_window(start_iso, end_iso)
+        alarms_value = _validate_alarms(alarms)
         event = _bridge().create_event(
             title=title.strip(),
             calendar_id=calendar_id,
@@ -334,6 +349,7 @@ def calendar_create_event(
             location=location,
             all_day=all_day,
             recurrence=recurrence,
+            alarms=alarms_value,
         )
         return EventResponse(event=event)
     except SafetyError as exc:
@@ -341,12 +357,12 @@ def calendar_create_event(
     except CalendarBridgeError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except ValueError as exc:
-        return _error_response("INVALID_INPUT", str(exc), "Provide a non-empty title and valid ISO datetimes.")
+        return _error_response("INVALID_INPUT", str(exc), "Provide a non-empty title, valid ISO datetimes, and well-formed alarms.")
 
 
 @mcp.tool(
     title="Update Event",
-    description="Update one or more fields on an existing calendar event.",
+    description="Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields.",
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
@@ -360,6 +376,7 @@ def calendar_update_event(
     location: str | None = None,
     all_day: bool | None = None,
     recurrence: dict[str, object] | None = None,
+    alarms: list[dict[str, object]] | None = None,
 ) -> EventResponse | ErrorResponse:
     try:
         ensure_action_allowed("calendar_update_event", _event_owner_calendar(event_id))
@@ -368,6 +385,7 @@ def calendar_update_event(
             # destination is checked too -- otherwise an allowlisted calendar's events
             # could be relocated out of it past the allowlist.
             ensure_action_allowed("calendar_update_event", _calendar_name_from_id(calendar_id))
+        alarms_value = _validate_alarms(alarms)
         event = _bridge().update_event(
             event_id,
             title=title,
@@ -378,12 +396,15 @@ def calendar_update_event(
             location=location,
             all_day=all_day,
             recurrence=recurrence,
+            alarms=alarms_value,
         )
         return EventResponse(event=event)
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except CalendarBridgeError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except ValueError as exc:
+        return _error_response("INVALID_INPUT", str(exc), "Provide well-formed alarms and valid ISO datetimes.")
 
 
 @mcp.tool(

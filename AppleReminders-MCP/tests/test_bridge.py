@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -70,3 +71,49 @@ def test_create_reminder_rejects_subtask_parent(monkeypatch) -> None:
         assert exc.error_code == "SUBTASKS_UNSUPPORTED"
     else:
         raise AssertionError("Expected RemindersBridgeError")
+
+
+
+def test_execution_uses_the_path_returned_by_ensure(monkeypatch, tmp_path):
+    bridge = RemindersBridge(tmp_path / "source.swift", tmp_path / "helper")
+    selected = tmp_path / "chosen-version"
+
+    def ensure():
+        bridge.helper_binary = tmp_path / "other-version"
+        return selected
+
+    def run(command, **kwargs):
+        assert command[0] == str(selected)
+        return subprocess.CompletedProcess(command, 0, '{"ok":true}', "")
+
+    monkeypatch.setattr(bridge, "_ensure_helper", ensure)
+    monkeypatch.setattr(subprocess, "run", run)
+    assert bridge._run_helper("test") == {"ok": True}
+
+
+
+def test_public_read_reports_unsupported_cache_with_location_suggestion(monkeypatch, tmp_path):
+    import errno
+
+    from apple_reminders_mcp import tools
+
+    source = tmp_path / "source.swift"
+    source.write_text("owned fixture")
+    bridge = RemindersBridge(source, tmp_path / "helper")
+
+    def compile(command, **kwargs):
+        Path(command[-1]).write_bytes(Path(command[-3]).read_bytes())
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    def unsupported(*args):
+        raise OSError(errno.ENOTSUP, "filesystem operation unavailable")
+
+    monkeypatch.setattr("apple_mcp_common.native.subprocess.run", compile)
+    monkeypatch.setattr("apple_mcp_common.native.os.link", unsupported)
+    monkeypatch.setattr("apple_mcp_common.native.rename_without_replacement", unsupported)
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+    result = tools.reminders_list_lists()
+    assert result.ok is False
+    assert result.error.error_code == "HELPER_CACHE_INSTALL_FAILED"
+    assert "helper build directory" in result.error.suggestion
+    assert not list(bridge.helper_source.parent.rglob(".*"))

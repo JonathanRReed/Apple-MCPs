@@ -34,13 +34,13 @@ def load_settings() -> Settings:
             str(Path.home() / ".apple-mcps" / "build"),
         )
     ).expanduser()
-    raw_safety_mode = os.environ.get("APPLE_REMINDERS_MCP_SAFETY_MODE", "safe_manage").strip() or "safe_manage"
+    raw_safety_mode = os.environ.get("APPLE_REMINDERS_MCP_SAFETY_MODE", "safe_manage").strip()
     if raw_safety_mode not in VALID_SAFETY_MODES:
-        raw_safety_mode = "safe_manage"
+        raw_safety_mode = "safe_readonly"
 
     return Settings(
         server_name="Apple Reminders MCP",
-        version="1.0.6",
+        version="1.1.0",
         safety_mode=cast(SafetyMode, raw_safety_mode),
         allowed_lists=_parse_allowed_lists(os.environ.get("APPLE_REMINDERS_MCP_ALLOWED_LISTS")),
         log_level=os.environ.get("APPLE_REMINDERS_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",

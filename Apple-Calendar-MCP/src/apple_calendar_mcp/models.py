@@ -27,6 +27,8 @@ class HealthResponse(BaseModel):
     access_status: str
     can_read_events: bool
     can_write_events: bool
+    can_edit_existing_alarms: bool = False
+    alarm_edit_backend: Literal["native_eventkit"] = "native_eventkit"
     permission_error: str | None = None
     permission_suggestion: str | None = None
 
@@ -57,6 +59,14 @@ class AttendeeInfo(BaseModel):
     status: str
 
 
+class AlarmInfo(BaseModel):
+    type: Literal["absolute", "relative", "location"]
+    offset_minutes: int | None = None
+    absolute: str | None = None
+    proximity: str | None = None
+    location_title: str | None = None
+
+
 class EventSummary(BaseModel):
     event_id: str
     title: str
@@ -67,6 +77,7 @@ class EventSummary(BaseModel):
     all_day: bool
     location: str | None = None
     availability: str | None = None
+    alarms: list[AlarmInfo] | None = None
 
 
 class EventDetail(EventSummary):

@@ -6,23 +6,34 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
-## [1.0.6] - 2026-10-04
+## [1.1.0] - 2026-10-10
+
+### Added
+- A Contacts-framework backend for list, get, search, create, update, delete and permission checks. The previous backend remains available with `APPLE_CONTACTS_MCP_BACKEND=applescript`. Native writes preserve omitted phone/email collections and clear explicit empty collections. Nonempty notes require a macOS entitlement and are rejected before a native write. Adapted from Jaume Puig's work in [JaumeAP/Apple-MCPs](https://github.com/JaumeAP/Apple-MCPs/commit/cb60c29fc11a56c72d8817f3e5aa1126900bff13). (#44)
+- Calendar relative and absolute alarms, with native EventKit create/read/list/preserve/replace/clear support. Responses retain location-alarm metadata. Relative inputs accept whole minutes from 0 through 525600; absolute inputs require a timezone. Thanks to LightSpeedSpirit for the original alarm contribution in #26. (#44)
+- Calendar batch ID lookup that preserves request order and distinguishes confirmed absence from unknown outcomes, adapted from LightSpeedSpirit's proposal in #27. (#36)
 
 ### Security
-- Require PyJWT 2.15.1 or newer within the 2.x series across the suite and refresh its locked version, addressing the published advisories affecting the prior 2.13.0 dependency.
+- Reject unknown safety-mode settings as read-only, require safe Files moves to remain within their allowed roots, and restrict writable System preference domains. (#45)
+- Reject embedded NULs before resolving file move paths or calling native rename code; refuse destination replacement through an atomic exclusive rename. (#46)
+- Require PyJWT 2.15.1 or newer within the 2.x series and refresh the locked version, addressing advisory records affecting the previous 2.13.0 dependency. (#39)
 
 ### Fixed
-- Read Notes body/plaintext properties in the application's context, reuse folder lookups, and preserve control characters and complex Unicode when decoding Notes/Contacts script output. (#34)
-- Resolve Contacts deletion targets without stale positional references, avoid unnecessary full scans for name-only misses, and preserve phone-extension matching and matching-method reporting. (#34, #37)
-- Resolve Calendar event IDs in batches while preserving request order and missing-versus-unknown outcomes. This adapts the batch implementation proposed by @LightSpeedSpirit in #27. (#36)
-- Scope fallback Calendar identities, verify native-ID aliases before accepting them, and fail closed when mutations cannot safely identify the target. (#38)
+- Compile Contacts, Calendar and Reminders from immutable source snapshots into separate source-hash executables or bundles. A concurrent build cannot overwrite an installed winner, and a source change during compilation is rejected. Helper caches can use atomic exclusive rename when hard links are unsupported; unsupported cache locations return actionable errors. (#44, #45, #46)
+- Read Notes body/plaintext in the application's context, reuse folder lookups, and preserve control characters and complex Unicode in Notes/Contacts script output. (#34)
+- Resolve Contacts deletion without stale positional references, avoid unnecessary full scans for name-only misses, and preserve phone-extension matching and matching-method reporting. (#34, #37)
+- Scope fallback Calendar identities and verify native-ID aliases before accepting them. Ambiguous, unavailable and conflicting identities remain unknown and cannot authorize writes. (#38, #45)
+- Keep Calendar/Reminders date conversion consistent with UTC and preserve deadline and entity/writability checks. Mail subjectless lookup stays isolated to the requested mailbox. Native helper timeouts remain explicit errors with unknown mutation outcomes. (#43, #45)
 
 ### Changed
-- Refresh the locked Pydantic dependency to 2.13.5. (#33)
+- Require suite packages at version 1.1.0 or newer within the 1.x series so standalone installs receive the new shared native and atomic helpers. (#39)
+- Refresh Ruff to 0.16.10 and retain the locked Pydantic 2.13.5 update. (#40, #33)
 
-### Verification limits
-- Automated package tests and native compilation checks cover these changes. Live macOS 26 Notes/Contacts confirmation and differential Calendar batch checks remain pending; #32 stays open.
-- Calendar alarm support is not included. Its separate integration and live round-trip checks remain pending in #26/#35.
+### Compatibility and verification limits
+- Full alarm replacement and clearing require native EventKit access. Calendar automation supports initial display alerts and unchanged existing alerts. It rejects edits requiring removal of existing alerts, or unreadable alert collections, before changing other event fields. Creation refusal cleans up only the new event; failed cleanup reports an unknown outcome. Health, standalone/unified tool discovery and READMEs expose the native requirement. Issue #41 remains open and partially addressed. (#44)
+- Strict legacy fallback identifier collision checks can exceed the 30-second deadline on large calendar stores. Timeouts do not establish absence or permit mutation. Grant full native Calendar access and list events again to obtain native identifiers. No negative lookup shortcut or typed-reference API is introduced. (#44, #45)
+- A controlled Notes creation timed out on the maintainer's Mac and returned `NOTE_CREATE_STATUS_UNKNOWN`; scoped fixture cleanup was verified. One explicit Contacts AppleScript get also timed out; native Contacts CRUD passed. No complete Notes CRUD or Contacts fallback parity is claimed.
+- Controlled native tests use owned disposable fixtures on the maintainer's Mac. They do not establish behavior on every provider or the reporters' macOS 26 setups. Issues #32, #41 and #42 remain open for post-release retesting. Physical exFAT/SMB helper-cache testing has not been run.
 
 ## [1.0.5] - 2026-09-25
 

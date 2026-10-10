@@ -108,7 +108,7 @@ def test_create_and_delete_list_return_structured_payload(monkeypatch) -> None:
     monkeypatch.setattr(tools, "_bridge", lambda: FakeBridge())
 
     created = tools.reminders_create_list("General")
-    deleted = tools.reminders_delete_list("list-new")
+    deleted = tools.reminders_delete_list("list-1")
 
     assert created.ok is True
     assert created.title == "General"

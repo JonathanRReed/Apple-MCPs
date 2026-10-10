@@ -1,9 +1,8 @@
 on run argv
 	set targetContactId to item 1 of argv
 	tell application "Contacts"
-		set matches to (every person whose id is targetContactId)
-		if (count of matches) is greater than 0 then
-			set p to item 1 of matches
+		set p to person id targetContactId
+		if exists p then
 			return "{" & quote & "found" & quote & ":true," & quote & "contact" & quote & ":" & my person_json(p, true) & "}"
 		end if
 	end tell
@@ -28,6 +27,14 @@ on person_json(p, includeNote)
 		end try
 		try
 			set fullName to (name of p) as text
+		on error
+		end try
+		try
+			set firstName to (first name of p) as text
+		on error
+		end try
+		try
+			set lastName to (last name of p) as text
 		on error
 		end try
 		try

@@ -1281,3 +1281,17 @@ def test_run_jxa_keeps_recovery_guidance_for_unrelated_process_failures(monkeypa
     assert failure.value.error_code == "APPLESCRIPT_FALLBACK_FAILED"
     assert failure.value.message == "Calendar.app automation failed"
     assert failure.value.suggestion == "Confirm Calendar.app automation is allowed, then retry."
+
+
+@pytest.mark.parametrize('argument', ['-e', '-s', '--', '-eJSON.stringify({injected:true})'])
+def test_jxa_caller_arguments_never_become_interpreter_options(monkeypatch, argument):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append((command, kwargs['timeout']))
+        return subprocess.CompletedProcess(command, 0, stdout='{}', stderr='')
+
+    monkeypatch.setattr(subprocess, 'run', run)
+    bridge._run_jxa('generated script', argument)
+    assert calls == [(['osascript', '-l', 'JavaScript', '-e', 'generated script', '--', argument], 30)]

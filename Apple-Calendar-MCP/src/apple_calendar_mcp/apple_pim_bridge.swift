@@ -1139,10 +1139,25 @@ struct ApplePIMBridge {
         return ReminderListMutationPayload(list_id: calendar.calendarIdentifier, title: calendar.title, created: true)
     }
 
+    static func validateReminderListDeletion(entityTypes: EKEntityMask, allowsModifications: Bool) throws {
+        // Event and reminder calendars share identifiers. A mixed calendar
+        // must never be deleted through the Reminders list tool either.
+        guard entityTypes.contains(.reminder), !entityTypes.contains(.event) else {
+            throw BridgeFailure(errorCode: "LIST_NOT_FOUND", message: "The target is not an exclusive reminder list.", suggestion: "List reminder lists first to discover valid ids.")
+        }
+        guard allowsModifications else {
+            throw BridgeFailure(errorCode: "LIST_READ_ONLY", message: "The reminder list does not allow modifications.", suggestion: "Choose a writable reminder list.")
+        }
+    }
+
     static func deleteReminderList(store: EKEventStore, listID: String) throws -> BooleanMutationPayload {
         guard let calendar = store.calendar(withIdentifier: listID) else {
             return BooleanMutationPayload(deleted: false, object_id: listID)
         }
+        try validateReminderListDeletion(
+            entityTypes: calendar.allowedEntityTypes,
+            allowsModifications: calendar.allowsContentModifications
+        )
         try store.removeCalendar(calendar, commit: true)
         return BooleanMutationPayload(deleted: true, object_id: listID)
     }

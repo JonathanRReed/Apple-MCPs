@@ -329,14 +329,16 @@ def mail_get_thread_tool(
     ensure_tool_allowed(settings.safety_profile, "mail_get_thread")
     anchor = bridge.get_message(message_id)
     normalized_subject = normalized_thread_subject(anchor.subject)
-    search_query = normalized_subject or anchor.sender or "*"
-    search_limit = max(25, min(limit * 4, 100))
-    candidates = bridge.search_messages(
-        query=search_query or "*",
-        mailbox=anchor.mailbox,
-        unread_only=False,
-        limit=search_limit,
-    )
+    # A missing subject does not establish a thread. Sender-only matching
+    # would let archive/reply operate on unrelated messages from that sender.
+    candidates = []
+    if normalized_subject:
+        candidates = bridge.search_messages(
+            query=normalized_subject,
+            mailbox=anchor.mailbox,
+            unread_only=False,
+            limit=max(25, min(limit * 4, 100)),
+        )
     matched: list[object] = []
     seen: set[str] = set()
     for candidate in [*candidates, anchor]:

@@ -82,6 +82,32 @@ def _reminder_owner_list(reminder_id: str) -> str | None:
     return detail.list_name
 
 
+def _list_title(list_id: str) -> str:
+    for item in _bridge().list_lists():
+        if item.list_id == list_id:
+            return item.title
+    raise RemindersBridgeError("LIST_NOT_FOUND", f"No reminder list matched '{list_id}'.", "List reminder lists first to discover valid ids.")
+
+
+def _list_visible(title: str) -> bool:
+    allowed = load_settings().allowed_lists
+    return not allowed or title in allowed
+
+
+def _scoped_reminders(*, list_id: str | None = None, limit: int = 100, **filters):
+    if list_id is not None:
+        ensure_action_allowed("reminders_list_reminders", _list_title(list_id))
+    if list_id is None and load_settings().allowed_lists:
+        reminders = []
+        for item in _bridge().list_lists():
+            if _list_visible(item.title):
+                reminders.extend(_bridge().list_reminders(list_id=item.list_id, limit=limit, **filters))
+        reminders.sort(key=lambda item: (item.due_date or "\uffff", item.title.casefold()))
+    else:
+        reminders = _bridge().list_reminders(list_id=list_id, limit=limit, **filters)
+    return [item for item in reminders if _list_visible(item.list_name)][:limit]
+
+
 @mcp.resource(
     "reminders://lists",
     name="reminder_lists",
@@ -91,7 +117,7 @@ def _reminder_owner_list(reminder_id: str) -> str | None:
     annotations=Annotations(audience=["assistant"], priority=0.9),
 )
 def reminders_lists_resource() -> str:
-    lists = _bridge().list_lists()
+    lists = [item for item in _bridge().list_lists() if _list_visible(item.title)]
     return _resource_json({"lists": [item.model_dump() for item in lists], "count": len(lists)})
 
 
@@ -104,7 +130,7 @@ def reminders_lists_resource() -> str:
     annotations=Annotations(audience=["assistant"], priority=0.8),
 )
 def reminders_today_resource() -> str:
-    reminders = _bridge().list_reminders(include_completed=False, limit=25)
+    reminders = _scoped_reminders(include_completed=False, limit=25)
     return _resource_json({"reminders": [item.model_dump() for item in reminders], "count": len(reminders)})
 
 
@@ -186,7 +212,7 @@ async def reminders_recheck_permissions(ctx: Context) -> HealthResponse:
 def reminders_list_lists() -> ReminderListResponse | ErrorResponse:
     try:
         ensure_action_allowed("reminders_list_lists")
-        lists = _bridge().list_lists()
+        lists = [item for item in _bridge().list_lists() if _list_visible(item.title)]
         return ReminderListResponse(lists=lists, count=len(lists))
     except (SafetyError, RemindersBridgeError) as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
@@ -202,7 +228,7 @@ def reminders_create_list(title: str) -> ReminderListMutationResponse | ErrorRes
     if not title.strip():
         return _error_response("INVALID_INPUT", "title must not be empty", "Provide a non-empty title.")
     try:
-        ensure_action_allowed("reminders_create_list")
+        ensure_action_allowed("reminders_create_list", title.strip())
         return _bridge().create_list(title=title.strip())
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
@@ -219,6 +245,13 @@ def reminders_create_list(title: str) -> ReminderListMutationResponse | ErrorRes
 def reminders_delete_list(list_id: str) -> DeleteReminderListResponse | ErrorResponse:
     try:
         ensure_action_allowed("reminders_delete_list")
+        try:
+            title = _list_title(list_id)
+        except RemindersBridgeError as exc:
+            if exc.error_code == "LIST_NOT_FOUND":
+                return DeleteReminderListResponse(list_id=list_id, deleted=False)
+            raise
+        ensure_action_allowed("reminders_delete_list", title)
         return _bridge().delete_list(list_id=list_id)
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
@@ -242,14 +275,8 @@ def reminders_list_reminders(
 ) -> ReminderListItemsResponse | ErrorResponse:
     try:
         limit_value = _coerce_int_arg("limit", limit, minimum=1)
-        list_name = None
-        if list_id is not None:
-            for list_info in _bridge().list_lists():
-                if list_info.list_id == list_id:
-                    list_name = list_info.title
-                    break
-        ensure_action_allowed("reminders_list_reminders", list_name)
-        reminders = _bridge().list_reminders(
+        ensure_action_allowed("reminders_list_reminders")
+        reminders = _scoped_reminders(
             list_id=list_id,
             include_completed=include_completed,
             limit=limit_value,
@@ -310,11 +337,7 @@ def reminders_create_reminder(
                 "Create a top-level reminder instead, or omit parent_reminder_id.",
             )
         priority_value = _coerce_int_arg("priority", priority, minimum=0)
-        list_title = None
-        for list_info in _bridge().list_lists():
-            if list_info.list_id == list_id:
-                list_title = list_info.title
-                break
+        list_title = _list_title(list_id)
         ensure_action_allowed("reminders_create_reminder", list_title)
         detail = _bridge().create_reminder(
             title=title.strip(),
@@ -362,6 +385,8 @@ def reminders_update_reminder(
                 "Update the reminder without parent_reminder_id.",
             )
         ensure_action_allowed("reminders_update_reminder", _reminder_owner_list(reminder_id))
+        if list_id is not None:
+            ensure_action_allowed("reminders_update_reminder", _list_title(list_id))
         priority_value = _coerce_int_arg("priority", priority, minimum=0) if priority is not None else None
         detail = _bridge().update_reminder(
             reminder_id,

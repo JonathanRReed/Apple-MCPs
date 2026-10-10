@@ -1008,10 +1008,10 @@ function run(argv) {
                 break
         return unique_items
 
-    def _run_jxa(self, script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+    def _run_jxa(self, script: str, *args: str, timeout: int = _JXA_TIMEOUT_SECONDS) -> dict[str, object]:
         try:
             completed = subprocess.run(
-                ["osascript", "-l", "JavaScript", "-e", script, *args],
+                ["osascript", "-l", "JavaScript", "-e", script, "--", *args],
                 capture_output=True,
                 text=True,
                 check=False,

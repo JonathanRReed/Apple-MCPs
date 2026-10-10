@@ -145,7 +145,7 @@
         "calendar list calendars"
       ],
       "argument_summary": [],
-      "description": "List available Apple Calendar calendars.",
+      "description": "List available Apple Calendar calendars. Select by name and source, then pass the returned calendar_id unchanged. Re-list after Calendar access changes to refresh identifiers.",
       "domain": "calendar",
       "example_calls": [
         {
@@ -165,10 +165,22 @@
         "meetings",
         "schedule",
         "calendars",
-        "available"
+        "available",
+        "select",
+        "name",
+        "source",
+        "then",
+        "pass",
+        "pas",
+        "returned",
+        "unchanged",
+        "after",
+        "access",
+        "acces",
+        "changes"
       ],
       "title": "List Calendars",
-      "usage_intent": "List available Apple Calendar calendars."
+      "usage_intent": "List available Apple Calendar calendars. Select by name and source, then pass the returned calendar_id unchanged. Re-list after Calendar access changes to refresh identifiers."
     },
     {
       "aliases": [
@@ -187,7 +199,7 @@
         "calendar_id: string (optional)",
         "limit: integer (optional)"
       ],
-      "description": "List calendar events in a time window, optionally filtered to one calendar.",
+      "description": "List calendar events in a time window, optionally filtered to one calendar. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits.",
       "domain": "calendar",
       "example_calls": [
         {
@@ -213,10 +225,19 @@
         "window",
         "optionally",
         "filtered",
-        "one"
+        "one",
+        "calendars",
+        "listing",
+        "native",
+        "eventkit",
+        "returns",
+        "ids",
+        "full",
+        "alarm",
+        "edits"
       ],
       "title": "List Events",
-      "usage_intent": "List calendar events in a time window, optionally filtered to one calendar."
+      "usage_intent": "List calendar events in a time window, optionally filtered to one calendar. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits."
     },
     {
       "aliases": [
@@ -282,7 +303,7 @@
         "all_day: boolean (optional)",
         "recurrence: object (optional)"
       ],
-      "description": "Create a new event in a specific Apple Calendar calendar. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
+      "description": "Create a new event in a specific Apple Calendar calendar. Use the exact calendar_id returned by calendar_list_calendars; a display name can select automation even with native access. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
       "domain": "calendar",
       "example_calls": [
         {
@@ -309,20 +330,20 @@
         "create",
         "new",
         "specific",
-        "optional",
-        "alarms",
-        "alarm",
-        "minutes",
-        "minut",
-        "before",
-        "absolute",
-        "iso",
-        "datetime",
+        "exact",
+        "returned",
+        "calendars",
+        "display",
+        "name",
+        "can",
+        "select",
         "automation",
-        "can"
+        "even",
+        "native",
+        "access"
       ],
       "title": "Create Event",
-      "usage_intent": "Create a new event in a specific Apple Calendar calendar. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access."
+      "usage_intent": "Create a new event in a specific Apple Calendar calendar. Use the exact calendar_id returned by calendar_list_calendars; a display name can select automation even with native access. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access."
     },
     {
       "aliases": [
@@ -345,7 +366,7 @@
         "location: string (optional)",
         "all_day: boolean (optional)"
       ],
-      "description": "Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
+      "description": "Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
       "domain": "calendar",
       "example_calls": [
         {
@@ -373,17 +394,17 @@
         "fields",
         "field",
         "existing",
-        "optional",
-        "alarms",
+        "full",
         "alarm",
-        "minutes",
-        "minut",
-        "before",
-        "absolute",
-        "iso"
+        "edits",
+        "edit",
+        "using",
+        "native",
+        "pass",
+        "pas"
       ],
       "title": "Update Event",
-      "usage_intent": "Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty."
+      "usage_intent": "Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty."
     },
     {
       "aliases": [

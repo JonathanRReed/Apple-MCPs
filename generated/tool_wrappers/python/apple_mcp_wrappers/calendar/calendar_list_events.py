@@ -14,7 +14,7 @@ async def calendar_list_events(
 ) -> Any:
     """List Events
 
-    List calendar events in a time window, optionally filtered to one calendar.
+    List calendar events in a time window, optionally filtered to one calendar. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits.
 
     Example:
         await calendar_list_events(client, start_iso='2026-04-07T18:00:00', end_iso='2026-04-07T18:00:00')

@@ -10,7 +10,7 @@ async def calendar_list_calendars(
 ) -> Any:
     """Calendar List Calendars
 
-    Delegated Apple domain tool 'calendar_list_calendars' exposed through Apple-Tools-MCP.
+    List available Apple Calendar calendars. Select by name and source, then pass the returned calendar_id unchanged. Re-list after Calendar access changes to refresh identifiers.
 
     Example:
         await calendar_list_calendars(client)

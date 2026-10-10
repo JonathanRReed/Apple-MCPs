@@ -93,10 +93,18 @@ def test_attachment_notes_refuse_content_rewrite(monkeypatch, change):
     assert failure.value.error_code == 'NOTE_HAS_ATTACHMENTS'
 
 
-@pytest.mark.parametrize('created', [None, 0, 995, 1000, 1100])
-def test_timeout_recovery_rejects_unknown_old_or_future_note(monkeypatch, created):
+@pytest.mark.parametrize('created', [None, 0, 995, 1000, 1001, 1100, 4600])
+def test_timeout_never_adopts_same_title_note(monkeypatch, created):
     bridge = AppleNotesBridge(Path('/tmp/unused'))
+    # Includes a concurrent note inside the request window and a pre-existing
+    # note whose local-midnight timestamp would look fresh east of UTC.
     monkeypatch.setattr(bridge, 'list_notes', lambda **kwargs: [note('Work', created_epoch=created)])
     monkeypatch.setattr(bridge, 'get_note', lambda _: pytest.fail('unverified note adopted'))
-    monkeypatch.setattr('apple_notes_mcp.notes_bridge.time.time', lambda: 1010)
-    assert bridge._recover_created_note('Title', 'Work', 1000) is None
+    monkeypatch.setattr(bridge, 'update_note', lambda *args, **kwargs: pytest.fail('unrelated note overwritten'))
+    def timeout(script, *args):
+        assert script == 'create_note.applescript'
+        raise NotesBridgeError('APPLESCRIPT_TIMEOUT', 'timed out')
+    monkeypatch.setattr(bridge, '_run_script', timeout)
+    with pytest.raises(NotesBridgeError) as failure:
+        bridge.create_note(title='Title', folder_id='Work', body_html='<p>request body</p>', tags=['requesttag'])
+    assert failure.value.error_code == 'NOTE_CREATE_STATUS_UNKNOWN'

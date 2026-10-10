@@ -100,7 +100,7 @@ Literal control characters and complex emoji returned by Notes are decoded on th
 
 ## Script Timeout
 
-Every AppleScript call is bounded by `APPLE_NOTES_MCP_SCRIPT_TIMEOUT_SECONDS` (default `60`, minimum `5`) so a stalled Notes.app can never hang an MCP request indefinitely. If a create-note call times out after the note was already committed, the server looks the note up by title in the target folder and returns it; when the outcome cannot be verified it returns a structured `NOTE_CREATE_STATUS_UNKNOWN` error instead of leaving the client guessing.
+Every AppleScript call is bounded by `APPLE_NOTES_MCP_SCRIPT_TIMEOUT_SECONDS` (default `60`, minimum `5`) so a stalled Notes.app can never hang an MCP request indefinitely. A create timeout returns `NOTE_CREATE_STATUS_UNKNOWN`. A matching title and creation time cannot establish which operation created a note, so the server leaves matching notes untouched. Inspect the target folder before retrying. Note timestamps use an absolute UTC Unix epoch.
 
 ## macOS Permissions
 
@@ -124,3 +124,4 @@ Every AppleScript call is bounded by `APPLE_NOTES_MCP_SCRIPT_TIMEOUT_SECONDS` (d
 ## Related
 
 - [Apple-Tools-MCP](../Apple-Tools-MCP/README.md)
+

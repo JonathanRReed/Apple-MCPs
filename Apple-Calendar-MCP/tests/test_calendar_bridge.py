@@ -1517,3 +1517,53 @@ def test_native_list_events_preserves_alarm_metadata(monkeypatch):
     monkeypatch.setattr(bridge, '_helper_read_blocked', lambda: False)
     monkeypatch.setattr(bridge, '_run_helper', lambda *args: {'items': [{**_EVENT_PAYLOAD, 'alarms': [{'type': 'relative', 'offset_minutes': -15}]}]})
     assert bridge.list_events('2030-10-11T00:00:00Z', '2030-10-12T00:00:00Z')[0].alarms[0].offset_minutes == -15
+
+@pytest.mark.parametrize('end,start', [
+    ('2026-03-27T13:00:00Z', None),
+    (None, 'not-a-date'),
+])
+@pytest.mark.parametrize('alarms', [[], [{'minutes_before': 30}]])
+def test_failed_time_validation_preserves_existing_alarms(monkeypatch, end, start, alarms):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    observed = []
+    def run(script, *args, **kwargs):
+        wrapped = script + '''
+const updateEvent = run;
+run = function(argv) {
+  const result = JSON.parse(updateEvent(argv));
+  result.originals = eventAlarms(STUB_EVENT);
+  return JSON.stringify(result);
+};
+'''
+        result = _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + wrapped, args[0], args[1])
+        observed.append(result['originals'])
+        return result
+    monkeypatch.setattr(bridge, '_run_jxa', run)
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge._fallback_update_event('event-1', title='Must not change', calendar_id=None, start_iso=start, end_iso=end, notes=None, location=None, all_day=None, alarms=alarms)
+    assert error.value.error_code == 'INVALID_INPUT'
+    assert observed == [[{'type': 'relative', 'offset_minutes': -15}]]
+
+
+def test_failed_alarm_push_restores_original_alerts(monkeypatch):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    observed = []
+    def run(script, *args, **kwargs):
+        wrapped = script + '''
+const updateEvent = run;
+const originalPush = STUB_EVENT.displayAlarms.push;
+STUB_EVENT.displayAlarms.push = function(alarm) {
+  if (alarm.triggerInterval() === -30) { throw new Error("Calendar rejected replacement"); }
+  originalPush(alarm);
+};
+run = function(argv) {
+  try { updateEvent(argv); } catch(error) {}
+  return JSON.stringify({event: eventRecord(STUB_CALENDAR, STUB_EVENT)});
+};
+'''
+        result = _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + wrapped, args[0], args[1])
+        observed.append(result['event']['alarms'])
+        return result['event']
+    monkeypatch.setattr(bridge, '_run_jxa', run)
+    bridge._fallback_update_event('event-1', title=None, calendar_id=None, start_iso=None, end_iso=None, notes=None, location=None, all_day=None, alarms=[{'minutes_before':30}])
+    assert observed == [[{'type': 'relative', 'offset_minutes': -15}]]

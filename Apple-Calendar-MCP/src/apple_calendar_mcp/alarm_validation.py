@@ -1,4 +1,5 @@
 import math
+from datetime import datetime
 
 from apple_calendar_mcp.utils import parse_iso_datetime
 
@@ -44,6 +45,9 @@ def validate_alarms(alarms: object) -> list[dict[str, object]] | None:
             value = entry["absolute_iso"]
             if not isinstance(value, str) or not value.strip():
                 raise ValueError("absolute_iso must be a non-empty ISO datetime string")
+            explicit = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+            if explicit.tzinfo is None or explicit.utcoffset() is None:
+                raise ValueError("absolute_iso requires an explicit UTC Z or timezone offset")
             absolute = parse_iso_datetime(value)
             normalized.append({"absolute_iso": absolute.isoformat(timespec="seconds")})
     return normalized

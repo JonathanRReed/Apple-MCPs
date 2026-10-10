@@ -21,9 +21,6 @@ class NotesBridgeError(Exception):
 
 
 class AppleNotesBridge:
-    # Whole-second creation dates cannot prove whether a note from the same
-    # second predates this request. Recovery deliberately fails closed there.
-
     def __init__(self, scripts_dir: Path, script_timeout_seconds: int = 60) -> None:
         self.scripts_dir = scripts_dir
         self.script_timeout_seconds = script_timeout_seconds
@@ -78,7 +75,6 @@ class AppleNotesBridge:
         tags: list[str] | None = None,
     ) -> NoteDetail:
         prepared_body_html = self._prepare_body_html(title, body_html) if body_html is not None else None
-        create_started = time.time()
         try:
             payload = self._run_script(
                 "create_note.applescript",
@@ -90,16 +86,13 @@ class AppleNotesBridge:
         except NotesBridgeError as exc:
             if exc.error_code != "APPLESCRIPT_TIMEOUT":
                 raise
-            # Notes can commit `make new note` and then stall in the readback,
-            # so a timeout leaves the create ambiguous. Creation is not
-            # idempotent: resolve the outcome instead of making callers guess.
-            detail = self._recover_created_note(title, folder_id, create_started)
-            if detail is None:
-                raise NotesBridgeError(
-                    "NOTE_CREATE_STATUS_UNKNOWN",
-                    f"The create-note AppleScript timed out after {self.script_timeout_seconds} seconds and the outcome could not be verified: a note titled '{title}' may or may not exist in folder '{folder_id}'.",
-                    "Do not retry blindly. List notes in the target folder and check for the title before creating again.",
-                ) from exc
+            # A title and timestamp cannot prove which operation created a note.
+            # Do not adopt a matching note or apply body/tags after an ambiguous create.
+            raise NotesBridgeError(
+                "NOTE_CREATE_STATUS_UNKNOWN",
+                f"The create-note AppleScript timed out after {self.script_timeout_seconds} seconds and the outcome could not be verified: a note titled '{title}' may or may not exist in folder '{folder_id}'.",
+                "Do not retry blindly. Inspect the target folder and verify the note before updating or creating again.",
+            ) from exc
         else:
             raw_note = payload.get("note")
             if not isinstance(raw_note, dict):
@@ -229,24 +222,6 @@ class AppleNotesBridge:
                 matched.append(note)
         matched.sort(key=lambda item: item.modified_epoch or 0, reverse=True)
         return matched if limit is None else matched[: max(1, min(limit, 100))]
-
-    def _recover_created_note(self, title: str, folder_id: str, create_started: float) -> NoteDetail | None:
-        # Only claim recovery when exactly one note in the target folder has
-        # the exact title and a known creation date within this request.
-        try:
-            candidates = [note for note in self.list_notes(folder_id=folder_id) if note.title == title]
-        except NotesBridgeError:
-            return None
-        if len(candidates) != 1:
-            return None
-        candidate = candidates[0]
-        created_epoch = candidate.created_epoch
-        if created_epoch is None or created_epoch <= 0 or created_epoch <= int(create_started) or created_epoch > time.time():
-            return None
-        try:
-            return self.get_note(candidate.note_id)
-        except NotesBridgeError:
-            return None
 
     def _run_script(self, script_name: str, *args: str) -> dict[str, object]:
         script_path = self.scripts_dir / script_name

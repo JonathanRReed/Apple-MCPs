@@ -248,33 +248,6 @@ def test_run_script_times_out_with_structured_error(monkeypatch, tmp_path) -> No
         raise AssertionError("Expected NotesBridgeError")
 
 
-def test_create_note_recovers_note_after_create_timeout(monkeypatch) -> None:
-    # Issue #6's ambiguous-commit case: Notes committed `make new note` but the
-    # script stalled afterwards. The deterministic post-timeout lookup must
-    # return the created note instead of surfacing an ambiguous failure.
-    bridge = AppleNotesBridge(Path("/tmp/scripts"))
-    bridge._folder_by_id = lambda folder_id: None  # type: ignore[method-assign]
-    monkeypatch.setattr(bridge, "list_attachments", lambda note_id: [])
-
-    clock = iter([1000.5, 1001.0, 1001.0, 1001.0])
-    monkeypatch.setattr("apple_notes_mcp.notes_bridge.time.time", lambda: next(clock))
-
-    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
-        if script_name == "create_note.applescript":
-            raise NotesBridgeError("APPLESCRIPT_TIMEOUT", "timed out")
-        if script_name == "list_notes.applescript":
-            return {"items": [_note_payload("note-9", "Disposable title", created_epoch=1001)]}
-        if script_name == "get_note.applescript":
-            return {"found": True, "note": _note_payload("note-9", "Disposable title", created_epoch=1001)}
-        raise AssertionError(f"Unexpected script: {script_name}")
-
-    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
-
-    detail = bridge.create_note(title="Disposable title", folder_id="folder-1")
-
-    assert detail.note_id == "note-9"
-
-
 def test_create_note_raises_status_unknown_when_recovery_finds_nothing(monkeypatch) -> None:
     bridge = AppleNotesBridge(Path("/tmp/scripts"))
     bridge._folder_by_id = lambda folder_id: None  # type: ignore[method-assign]

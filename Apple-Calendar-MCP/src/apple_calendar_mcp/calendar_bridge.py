@@ -643,8 +643,8 @@ function run(argv) {
 function eventAlarms(evt) {
   try {
     const alarms = [];
-    [evt.displayAlarms, evt.soundAlarms, evt.mailAlarms, evt.openFileAlarms].forEach(function(collection) {
-      collection().forEach(function(alarm) {
+    ["displayAlarms", "soundAlarms", "mailAlarms", "openFileAlarms"].forEach(function(kind) {
+      evt[kind]().forEach(function(alarm) {
         const absolute = alarm.triggerDate();
         if (absolute instanceof Date && Number.isFinite(absolute.getTime())) {
           alarms.push({type: "absolute", absolute: absolute.toISOString()});
@@ -665,18 +665,44 @@ function prepareAlarmUpdate(app, evt, alarms) {
   // Calendar no longer permits modifying open-file alarms. Refuse before
   // changing other fields, rather than silently retaining a requested clear.
   if (evt.openFileAlarms().length > 0) { throw new Error("UNSUPPORTED_OPERATION"); }
-  const existing = [].concat(evt.displayAlarms(), evt.soundAlarms(), evt.mailAlarms());
+  const existing = [];
+  const originals = [];
+  [["displayAlarms", "DisplayAlarm"], ["soundAlarms", "SoundAlarm"], ["mailAlarms", "MailAlarm"]].forEach(function(kind) {
+    evt[kind[0]]().forEach(function(alarm) {
+      const absolute = alarm.triggerDate();
+      const properties = absolute instanceof Date
+        ? {triggerDate: absolute} : {triggerInterval: alarm.triggerInterval()};
+      if (kind[0] === "soundAlarms") {
+        properties.soundName = alarm.soundName();
+        properties.soundFile = alarm.soundFile();
+      }
+      existing.push(alarm);
+      originals.push({collection: kind[0], alarm: app[kind[1]](properties)});
+    });
+  });
   const replacements = alarms.map(function(alarm) {
     return app.DisplayAlarm(alarm.minutes_before !== undefined
       ? {triggerInterval: -alarm.minutes_before}
       : {triggerDate: new Date(alarm.absolute_iso)});
   });
-  return {existing: existing, replacements: replacements};
+  return {existing: existing, originals: originals, replacements: replacements};
 }
 function applyAlarmUpdate(evt, update) {
   if (update === null) { return; }
-  update.existing.forEach(function(alarm) { alarm.delete(); });
-  update.replacements.forEach(function(alarm) { evt.displayAlarms.push(alarm); });
+  try {
+    update.existing.forEach(function(alarm) { alarm.delete(); });
+    update.replacements.forEach(function(alarm) { evt.displayAlarms.push(alarm); });
+  } catch (error) {
+    try {
+      ["displayAlarms", "soundAlarms", "mailAlarms"].forEach(function(kind) {
+        evt[kind]().forEach(function(alarm) { alarm.delete(); });
+      });
+      update.originals.forEach(function(original) { evt[original.collection].push(original.alarm); });
+    } catch (restoreError) {
+      throw new Error("ALARM_RESTORE_FAILED: verify the event's alarms before retrying");
+    }
+    throw error;
+  }
 }
 
 """
@@ -793,7 +819,16 @@ function findEventByUid(app, identifier, calendarNameHint, requireStable) {
     }
     const found = uniqueCandidates(identifierMatches(scoped, token.kind, token.value, true));
     // Legacy UID data can resemble the new protocol. Refuse conflicting meanings.
-    const legacy = uniqueCandidates(identifierMatches(calendars, "uid", identifier, true));
+    // A where(uid == encodedToken) query is expensive on large calendars.
+    // Read the UID column once per calendar and run the strict resolver only
+    // where that exact legacy UID exists. Preserve collision rejection.
+    const legacyCalendars = calendars.filter(function(entry) {
+      if (typeof entry.calendar.events.uid !== "function") { return true; }
+      const ids = entry.calendar.events.uid();
+      if (!Array.isArray(ids) || ids.length > 100000) { throw new Error("IDENTIFIER_LOOKUP_LIMIT"); }
+      return ids.some(function(uid) { return sameId(uid, identifier); });
+    });
+    const legacy = uniqueCandidates(identifierMatches(legacyCalendars, "uid", identifier, true));
     if (legacy && (!found || !sameCandidate(legacy, found))) {
       throw new Error("AMBIGUOUS_EVENT_IDENTIFIER");
     }
@@ -965,8 +1000,6 @@ function run(argv) {
     return JSON.stringify({__error__: "UNSUPPORTED_OPERATION"});
   }
 
-  applyAlarmUpdate(evt, prepareAlarmUpdate(app, evt, fields.alarms === undefined ? null : fields.alarms));
-  if (fields.title !== null) { evt.summary = fields.title; }
 
   // Calendar.app validates every single assignment, so the write order matters
   // whenever both boundaries move. Writing the new start first while the old
@@ -975,6 +1008,14 @@ function run(argv) {
   // end date"). Assign whichever boundary keeps the intermediate state valid.
   const newStart = fields.start !== null ? new Date(fields.start) : null;
   const newEnd = fields.end !== null ? new Date(fields.end) : null;
+  const prospectiveStart = newStart || evt.startDate();
+  const prospectiveEnd = newEnd || evt.endDate();
+  if (!Number.isFinite(prospectiveStart.getTime()) || !Number.isFinite(prospectiveEnd.getTime()) || prospectiveEnd <= prospectiveStart) {
+    return JSON.stringify({__error__: "INVALID_INPUT"});
+  }
+  const alarmUpdate = prepareAlarmUpdate(app, evt, fields.alarms === undefined ? null : fields.alarms);
+  if (fields.title !== null) { evt.summary = fields.title; }
+
   if (newStart !== null && newEnd !== null && newStart >= evt.endDate()) {
     // Moving later: widen the end first, then pull the start up behind it.
     evt.endDate = newEnd;
@@ -989,6 +1030,7 @@ function run(argv) {
   if (fields.location !== null) { evt.location = fields.location; }
   if (fields.notes !== null) { evt.description = fields.notes; }
   if (fields.all_day !== null) { evt.alldayEvent = fields.all_day; }
+  applyAlarmUpdate(evt, alarmUpdate);
   return JSON.stringify(eventRecord(cal, evt));
 }
 """
@@ -1011,6 +1053,8 @@ function run(argv) {
     def _run_jxa_event(self, script: str, *args: str) -> dict[str, object]:
         payload = self._run_jxa(script, *args, timeout=self._JXA_TIMEOUT_SECONDS)
         error_code = payload.get("__error__")
+        if error_code == "INVALID_INPUT":
+            raise CalendarBridgeError("INVALID_INPUT", "The prospective event time window is invalid.", "Use valid dates with end after start; no fallback fields were changed.")
         if error_code == "UNSUPPORTED_OPERATION":
             raise CalendarBridgeError(
                 "UNSUPPORTED_OPERATION",
@@ -1095,6 +1139,8 @@ function run(argv) {
             ) from exc
         output = completed.stdout.strip()
         if completed.returncode != 0:
+            if "ALARM_RESTORE_FAILED" in completed.stderr:
+                raise CalendarBridgeError("ALARM_RESTORE_FAILED", "Calendar rejected the alert change and the original alerts could not be restored.", "Inspect this event in Calendar.app before retrying.")
             raise CalendarBridgeError(
                 "APPLESCRIPT_FALLBACK_FAILED",
                 completed.stderr.strip() or output or "Calendar AppleScript fallback failed.",

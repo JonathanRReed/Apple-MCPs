@@ -82,6 +82,12 @@ claude mcp add --transport stdio --scope project apple-calendar -- uvx apple-cal
 
 </details>
 
+## Selecting calendar and event identifiers
+
+Call `calendar_list_calendars`, select the intended calendar by its displayed name and source, and pass its returned `calendar_id` unchanged to `calendar_list_events`, `calendar_create_event` or the destination of `calendar_update_event`. Native EventKit listings return native identifiers; automation listings use calendar names as identifiers. Supplying a display name when a native identifier is available can select automation even when `calendar_health` reports native access.
+
+After changing Calendar permissions, restart the MCP server and call `calendar_list_calendars` again to refresh identifiers. For full alarm replacement or clearing, list events with the native `calendar_id` and pass the returned native `event_id` to `calendar_update_event`. Existing `applescript::` event IDs still use automation after permissions change. Treat event IDs as opaque: re-list to obtain native IDs instead of rewriting an existing token. Calendar writability, safety modes and allowlists still apply.
+
 ## Bridge Batch Lookup
 
 The internal Python `CalendarBridge.get_events(event_ids)` method batches native lookups without adding an MCP tool. Pass a sequence of non-empty strings, at most 10000 input IDs. Duplicate input IDs are resolved once. Requests are chunked to an exact 32768-byte UTF-8 JSON argv budget, including JSON escaping; an individual oversized ID is rejected before any lookup.

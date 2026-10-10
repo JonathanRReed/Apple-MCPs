@@ -1,8 +1,10 @@
 import json
 import os
+from typing import Annotated
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
+from pydantic import Field
 
 from apple_calendar_mcp.alarm_validation import coerce_alarm_minutes, validate_alarms
 from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError
@@ -12,6 +14,11 @@ from apple_calendar_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_calendar_mcp.utils import parse_iso_datetime
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+
+_CALENDAR_ID_DESCRIPTION = (
+    "Select the calendar by name and source in calendar_list_calendars, then pass its calendar_id unchanged. "
+    "Re-list after Calendar access changes to obtain native IDs when EventKit is available."
+)
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Calendar on macOS. "
@@ -265,7 +272,7 @@ async def calendar_recheck_permissions(ctx: Context) -> HealthResponse:
 
 @mcp.tool(
     title="List Calendars",
-    description="List available Apple Calendar calendars.",
+    description="List available Apple Calendar calendars. Select by name and source, then pass the returned calendar_id unchanged. Re-list after Calendar access changes to refresh identifiers.",
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
@@ -280,11 +287,11 @@ def calendar_list_calendars() -> CalendarListResponse | ErrorResponse:
 
 @mcp.tool(
     title="List Events",
-    description="List calendar events in a time window, optionally filtered to one calendar.",
+    description="List calendar events in a time window, optionally filtered to one calendar. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits.",
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )
-def calendar_list_events(start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int | str = 100) -> EventListResponse | ErrorResponse:
+def calendar_list_events(start_iso: str, end_iso: str, calendar_id: Annotated[str | None, Field(description=_CALENDAR_ID_DESCRIPTION)] = None, limit: int | str = 100) -> EventListResponse | ErrorResponse:
     try:
         limit_value = _coerce_int_arg("limit", limit, minimum=1)
         ensure_action_allowed("calendar_list_events", _calendar_name_from_id(calendar_id))
@@ -319,7 +326,7 @@ def calendar_get_event(event_id: str) -> EventResponse | ErrorResponse:
 
 @mcp.tool(
     title="Create Event",
-    description="Create a new event in a specific Apple Calendar calendar. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
+    description="Create a new event in a specific Apple Calendar calendar. Use the exact calendar_id returned by calendar_list_calendars; a display name can select automation even with native access. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
@@ -327,7 +334,7 @@ def calendar_create_event(
     title: str,
     start_iso: str,
     end_iso: str,
-    calendar_id: str,
+    calendar_id: Annotated[str, Field(description=_CALENDAR_ID_DESCRIPTION)],
     notes: str | None = None,
     location: str | None = None,
     all_day: bool = False,
@@ -362,16 +369,19 @@ def calendar_create_event(
 
 @mcp.tool(
     title="Update Event",
-    description="Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
+    description="Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def calendar_update_event(
-    event_id: str,
+    event_id: Annotated[str, Field(description=(
+        "Event ID returned by calendar_list_events. For full alarm edits, list with a native calendar_id "
+        "and use the returned native event_id; existing applescript:: IDs use automation."
+    ))],
     title: str | None = None,
     start_iso: str | None = None,
     end_iso: str | None = None,
-    calendar_id: str | None = None,
+    calendar_id: Annotated[str | None, Field(description=_CALENDAR_ID_DESCRIPTION)] = None,
     notes: str | None = None,
     location: str | None = None,
     all_day: bool | None = None,

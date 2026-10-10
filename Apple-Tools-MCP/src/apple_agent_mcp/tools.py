@@ -2947,10 +2947,11 @@ def _tool_title(name: str) -> str:
 
 def _tool_description(name: str) -> str:
     calendar_descriptions = {
-        "calendar_create_event": "Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
-        "calendar_update_event": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
+        "calendar_list_calendars": "List available Apple Calendar calendars. Select by name and source, then pass the returned calendar_id unchanged. Re-list after Calendar access changes to refresh identifiers.",
+        "calendar_create_event": "Create an Apple Calendar event. Use the exact calendar_id returned by calendar_list_calendars; a display name can select automation even with native access. Optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
+        "calendar_update_event": "Update an Apple Calendar event and its alarms. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
         "calendar_get_event": "Read an Apple Calendar event, including relative, absolute, and location-based alarms.",
-        "calendar_list_events": "List Apple Calendar events in a date range, including their alarm metadata.",
+        "calendar_list_events": "List Apple Calendar events in a date range, including their alarm metadata. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits.",
     }
     return calendar_descriptions.get(name, f"Delegated Apple domain tool '{name}' exposed through Apple-Tools-MCP.")
 

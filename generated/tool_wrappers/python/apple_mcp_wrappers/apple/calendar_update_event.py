@@ -20,7 +20,7 @@ async def calendar_update_event(
 ) -> Any:
     """Calendar Update Event
 
-    Delegated Apple domain tool 'calendar_update_event' exposed through Apple-Tools-MCP.
+    Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them.
 
     Example:
         await calendar_update_event(client, event_id='example_event_id', title='example_title')

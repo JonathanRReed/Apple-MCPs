@@ -4,6 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 
+from apple_mcp_common.native import NativeHelperError, ensure_swift_helper
 from apple_reminders_mcp.config import load_settings
 from apple_reminders_mcp.models import (
     DeleteReminderListResponse,
@@ -201,29 +202,10 @@ class RemindersBridge:
                 f"Missing native helper source at '{self.helper_source}'.",
                 "Restore the shared Swift helper and retry.",
             )
-        if self.helper_binary.exists() and self.helper_binary.stat().st_mtime >= self.helper_source.stat().st_mtime:
-            return
-
-        self.helper_binary.parent.mkdir(parents=True, exist_ok=True)
         try:
-            completed = subprocess.run(
-                ["swiftc", "-parse-as-library", "-O", str(self.helper_source), "-o", str(self.helper_binary)],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-        except OSError as exc:
-            raise RemindersBridgeError(
-                "SWIFTC_UNAVAILABLE",
-                f"Could not run 'swiftc': {exc}.",
-                "This server requires macOS with the Swift toolchain (swiftc) available.",
-            ) from exc
-        if completed.returncode != 0:
-            raise RemindersBridgeError(
-                "HELPER_COMPILE_FAILED",
-                completed.stderr.strip() or completed.stdout.strip() or "Failed to compile the native helper.",
-                "Confirm Xcode command line tools and Swift are available, then retry.",
-            )
+            ensure_swift_helper(self.helper_source, self.helper_binary)
+        except NativeHelperError as exc:
+            raise RemindersBridgeError(exc.error_code, str(exc), "Confirm Xcode command line tools and Swift are available, then retry.") from exc
 
     def _raise_helper_error(self, stdout_text: str, stderr_text: str) -> None:
         if stdout_text:

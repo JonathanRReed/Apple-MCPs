@@ -1,6 +1,7 @@
 import json
 import plistlib
 import subprocess
+import tempfile
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -8,6 +9,7 @@ from urllib.parse import unquote
 
 from apple_calendar_mcp.alarm_validation import validate_alarms
 from apple_calendar_mcp.models import CalendarInfo, EventDetail, EventSummary
+from apple_mcp_common.native import NativeHelperError, ensure_swift_helper
 
 
 class CalendarBridgeError(Exception):
@@ -429,35 +431,13 @@ class CalendarBridge:
                 f"Missing native helper source at '{self.helper_source}'.",
                 "Restore the shared Swift helper and retry.",
             )
-        info_plist = self._bundle_info_plist_path()
-        if (
-            self.helper_binary.exists()
-            and info_plist.exists()
-            and self.helper_binary.stat().st_mtime >= self.helper_source.stat().st_mtime
-        ):
-            return
-
-        self.helper_binary.parent.mkdir(parents=True, exist_ok=True)
         try:
-            completed = subprocess.run(
-                ["swiftc", "-parse-as-library", "-O", str(self.helper_source), "-o", str(self.helper_binary)],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-        except OSError as exc:
-            raise CalendarBridgeError(
-                "SWIFTC_UNAVAILABLE",
-                f"Could not run 'swiftc': {exc}.",
-                "This server requires macOS with the Swift toolchain (swiftc) available.",
-            ) from exc
-        if completed.returncode != 0:
-            raise CalendarBridgeError(
-                "HELPER_COMPILE_FAILED",
-                completed.stderr.strip() or completed.stdout.strip() or "Failed to compile the native helper.",
-                "Confirm Xcode command line tools and Swift are available, then retry.",
-            )
-        self._write_bundle_info_plist(info_plist)
+            changed = ensure_swift_helper(self.helper_source, self.helper_binary)
+        except NativeHelperError as exc:
+            raise CalendarBridgeError(exc.error_code, str(exc), "Confirm Xcode command line tools and Swift are available, then retry.") from exc
+        info_plist = self._bundle_info_plist_path()
+        if changed or not info_plist.exists():
+            self._write_bundle_info_plist(info_plist)
 
     def _bundle_info_plist_path(self) -> Path:
         # helper_binary is .../apple-calendar-pim-bridge.app/Contents/MacOS/apple-calendar-pim-bridge.
@@ -484,8 +464,14 @@ class CalendarBridge:
             "NSRemindersUsageDescription": "Reads and writes Reminders for the Apple Calendar MCP server.",
             "NSRemindersFullAccessUsageDescription": "Reads and writes Reminders for the Apple Calendar MCP server.",
         }
-        with plist_path.open("wb") as f:
-            plistlib.dump(plist_data, f)
+        with tempfile.NamedTemporaryFile("wb", dir=plist_path.parent, delete=False) as stream:
+            temporary = Path(stream.name)
+            try:
+                plistlib.dump(plist_data, stream)
+                stream.flush()
+                temporary.replace(plist_path)
+            finally:
+                temporary.unlink(missing_ok=True)
 
     def _map_helper_error(self, stdout_text: str, stderr_text: str) -> CalendarBridgeError:
         if stdout_text:
@@ -640,11 +626,22 @@ function run(argv) {
     # Legacy bare IDs are resolved only when their meanings agree; metadata-only
     # composites are read-only and cannot safely identify a mutation target.
     _JXA_ALARM_HELPERS = """
+function readAlarmCollection(evt, kind) {
+  // JXA's object-specifier proxy can stall on computed collection access.
+  // Use the scripting dictionary's concrete accessors for nested alarms.
+  switch (kind) {
+    case "displayAlarms": return evt.displayAlarms();
+    case "soundAlarms": return evt.soundAlarms();
+    case "mailAlarms": return evt.mailAlarms();
+    case "openFileAlarms": return evt.openFileAlarms();
+  }
+  throw new Error("UNSUPPORTED_ALARM_TYPE");
+}
 function eventAlarms(evt) {
   try {
     const alarms = [];
     ["displayAlarms", "soundAlarms", "mailAlarms", "openFileAlarms"].forEach(function(kind) {
-      evt[kind]().forEach(function(alarm) {
+      readAlarmCollection(evt, kind).forEach(function(alarm) {
         const absolute = alarm.triggerDate();
         if (absolute instanceof Date && Number.isFinite(absolute.getTime())) {
           alarms.push({type: "absolute", absolute: absolute.toISOString()});
@@ -668,7 +665,7 @@ function prepareAlarmUpdate(app, evt, alarms) {
   const existing = [];
   const originals = [];
   [["displayAlarms", "DisplayAlarm"], ["soundAlarms", "SoundAlarm"], ["mailAlarms", "MailAlarm"]].forEach(function(kind) {
-    evt[kind[0]]().forEach(function(alarm) {
+    readAlarmCollection(evt, kind[0]).forEach(function(alarm) {
       const absolute = alarm.triggerDate();
       const properties = absolute instanceof Date
         ? {triggerDate: absolute} : {triggerInterval: alarm.triggerInterval()};
@@ -677,29 +674,29 @@ function prepareAlarmUpdate(app, evt, alarms) {
         properties.soundFile = alarm.soundFile();
       }
       existing.push(alarm);
-      originals.push({collection: kind[0], alarm: app[kind[1]](properties)});
+      originals.push({collection: kind[0], factory: kind[1], properties: properties});
     });
   });
   const replacements = alarms.map(function(alarm) {
-    return app.DisplayAlarm(alarm.minutes_before !== undefined
+    return alarm.minutes_before !== undefined
       ? {triggerInterval: -alarm.minutes_before}
-      : {triggerDate: new Date(alarm.absolute_iso)});
+      : {triggerDate: new Date(alarm.absolute_iso)};
   });
-  return {existing: existing, originals: originals, replacements: replacements};
+  return {app: app, existing: existing, originals: originals, replacements: replacements};
 }
 function applyAlarmUpdate(evt, update) {
   if (update === null) { return; }
   try {
-    update.existing.forEach(function(alarm) { alarm.delete(); });
-    update.replacements.forEach(function(alarm) { evt.displayAlarms.push(alarm); });
+    update.existing.slice().reverse().forEach(function(alarm) { alarm.delete(); });
+    update.replacements.forEach(function(properties) { evt.displayAlarms.push(update.app.DisplayAlarm(properties)); });
   } catch (error) {
     try {
       ["displayAlarms", "soundAlarms", "mailAlarms"].forEach(function(kind) {
-        evt[kind]().forEach(function(alarm) { alarm.delete(); });
+        readAlarmCollection(evt, kind).reverse().forEach(function(alarm) { alarm.delete(); });
       });
-      update.originals.forEach(function(original) { evt[original.collection].push(original.alarm); });
+      update.originals.forEach(function(original) { evt[original.collection].push(update.app[original.factory](original.properties)); });
     } catch (restoreError) {
-      throw new Error("ALARM_RESTORE_FAILED: verify the event's alarms before retrying");
+      throw new Error("ALARM_RESTORE_FAILED: " + String(error) + "; restore: " + String(restoreError));
     }
     throw error;
   }
@@ -819,16 +816,7 @@ function findEventByUid(app, identifier, calendarNameHint, requireStable) {
     }
     const found = uniqueCandidates(identifierMatches(scoped, token.kind, token.value, true));
     // Legacy UID data can resemble the new protocol. Refuse conflicting meanings.
-    // A where(uid == encodedToken) query is expensive on large calendars.
-    // Read the UID column once per calendar and run the strict resolver only
-    // where that exact legacy UID exists. Preserve collision rejection.
-    const legacyCalendars = calendars.filter(function(entry) {
-      if (typeof entry.calendar.events.uid !== "function") { return true; }
-      const ids = entry.calendar.events.uid();
-      if (!Array.isArray(ids) || ids.length > 100000) { throw new Error("IDENTIFIER_LOOKUP_LIMIT"); }
-      return ids.some(function(uid) { return sameId(uid, identifier); });
-    });
-    const legacy = uniqueCandidates(identifierMatches(legacyCalendars, "uid", identifier, true));
+    const legacy = uniqueCandidates(identifierMatches(calendars, "uid", identifier, true));
     if (legacy && (!found || !sameCandidate(legacy, found))) {
       throw new Error("AMBIGUOUS_EVENT_IDENTIFIER");
     }

@@ -1567,3 +1567,99 @@ run = function(argv) {
     monkeypatch.setattr(bridge, '_run_jxa', run)
     bridge._fallback_update_event('event-1', title=None, calendar_id=None, start_iso=None, end_iso=None, notes=None, location=None, all_day=None, alarms=[{'minutes_before':30}])
     assert observed == [[{'type': 'relative', 'offset_minutes': -15}]]
+
+
+def test_jxa_constructs_each_alarm_immediately_before_push(monkeypatch):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    def run(script, *args, **kwargs):
+        setup = '''
+let pending = false;
+const push = STUB_EVENT.displayAlarms.push;
+alarmApp.DisplayAlarm = function(properties) {
+  if (pending) { throw new Error("Multiple unsaved JXA alarm proxies"); }
+  pending = true;
+  return makeAlarm(properties);
+};
+STUB_EVENT.displayAlarms.push = function(alarm) { push(alarm); pending = false; };
+'''
+        return _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + script, args[0], args[1])
+    monkeypatch.setattr(bridge, '_run_jxa', run)
+    result = bridge._fallback_update_event('event-1', title=None, calendar_id=None, start_iso=None, end_iso=None, notes=None, location=None, all_day=None, alarms=[{'minutes_before':15}, {'minutes_before':30}])
+    assert [a['offset_minutes'] for a in result['alarms']] == [-15, -30]
+
+
+def test_failed_alarm_push_restores_absolute_sound_and_mail_alerts_in_mock(monkeypatch):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    observed = []
+    def run(script, *args, **kwargs):
+        setup = '''
+function soundAlarm(properties) {
+  const alarm = makeAlarm(properties);
+  alarm.soundName = function() { return properties.soundName; };
+  alarm.soundFile = function() { return properties.soundFile; };
+  return alarm;
+}
+alarmApp.SoundAlarm = soundAlarm;
+alarmApp.MailAlarm = makeAlarm;
+STUB_EVENT.displayAlarms = alarmCollection([makeAlarm({triggerDate:new Date("2030-10-11T10:00:00Z")})]);
+STUB_EVENT.soundAlarms = alarmCollection([soundAlarm({triggerInterval:-20,soundName:"Fixture",soundFile:"/tmp/fixture.aiff"})]);
+STUB_EVENT.mailAlarms = alarmCollection([makeAlarm({triggerDate:new Date("2030-10-11T09:00:00Z")})]);
+const push = STUB_EVENT.displayAlarms.push;
+STUB_EVENT.displayAlarms.push = function(alarm) {
+  if (alarm.triggerInterval() === -30) { throw new Error("Rejected"); }
+  push(alarm);
+};
+'''
+        wrapped = script + '''
+const update = run;
+run = function(argv) {
+  try { update(argv); } catch(error) {}
+  return JSON.stringify({event:eventRecord(STUB_CALENDAR,STUB_EVENT),sound:STUB_EVENT.soundAlarms().map(a=>({name:a.soundName(),file:a.soundFile(),offset:a.triggerInterval()})),mailCount:STUB_EVENT.mailAlarms().length});
+};
+'''
+        result = _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + wrapped, args[0], args[1])
+        observed.append(result)
+        return result['event']
+    monkeypatch.setattr(bridge, '_run_jxa', run)
+    bridge._fallback_update_event('event-1', title=None, calendar_id=None, start_iso=None, end_iso=None, notes=None, location=None, all_day=None, alarms=[{'minutes_before':30}])
+    result = observed[0]
+    assert result['sound'] == [{'name':'Fixture','file':'/tmp/fixture.aiff','offset':-20}]
+    assert result['mailCount'] == 1
+    assert sorted(a.get('absolute', '') for a in result['event']['alarms'] if a['type']=='absolute') == ['2030-10-11T09:00:00.000Z', '2030-10-11T10:00:00.000Z']
+
+
+def test_alarm_clear_deletes_positional_jxa_specifiers_in_reverse_order(monkeypatch):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    def run(script, *args, **kwargs):
+        setup = """
+const values = [makeAlarm({triggerInterval:-15}),makeAlarm({triggerInterval:-30})];
+STUB_EVENT.displayAlarms = function() {
+  return values.map(function(value,index) {
+    return {triggerDate:value.triggerDate, triggerInterval:value.triggerInterval,
+      delete:function() {
+        if (index >= values.length) { throw new Error("Positional specifier no longer exists"); }
+        values.splice(index,1);
+      }};
+  });
+};
+STUB_EVENT.displayAlarms.push = function(alarm) { values.push(alarm); };
+"""
+        return _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + script, args[0], args[1])
+    monkeypatch.setattr(bridge, '_run_jxa', run)
+    result = bridge._fallback_update_event('event-1', title=None, calendar_id=None, start_iso=None, end_iso=None, notes=None, location=None, all_day=None, alarms=[])
+    assert result['alarms'] == []
+
+
+@pytest.mark.parametrize("target_present", [True, False])
+@pytest.mark.parametrize("shadow_calendar", ["Work", "Personal"])
+def test_encoded_legacy_shadow_in_any_calendar_is_unknown_and_blocks_writes(monkeypatch, tmp_path, target_present, shadow_calendar):
+    token = _jxa_token()
+    work = [_identity_event(id="left")] if target_present else []
+    personal = []
+    (work if shadow_calendar == "Work" else personal).append(_identity_event(uid=token, id="shadow"))
+    bridge, state = _identity_bridge(monkeypatch, tmp_path, [{"name":"Work","events":work},{"name":"Personal","events":personal}])
+    assert bridge.get_events([token]) == {}
+    for operation in (lambda: bridge.get_event(token), lambda: bridge.update_event(token, title="wrong"), lambda: bridge.delete_event(token)):
+        with pytest.raises(CalendarBridgeError, match="AMBIGUOUS"):
+            operation()
+    assert state["writes"] == []

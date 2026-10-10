@@ -2946,7 +2946,13 @@ def _tool_title(name: str) -> str:
 
 
 def _tool_description(name: str) -> str:
-    return f"Delegated Apple domain tool '{name}' exposed through Apple-Tools-MCP."
+    calendar_descriptions = {
+        "calendar_create_event": "Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}.",
+        "calendar_update_event": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them.",
+        "calendar_get_event": "Read an Apple Calendar event, including relative, absolute, and location-based alarms.",
+        "calendar_list_events": "List Apple Calendar events in a date range, including their alarm metadata.",
+    }
+    return calendar_descriptions.get(name, f"Delegated Apple domain tool '{name}' exposed through Apple-Tools-MCP.")
 
 
 def _looks_like_message_address(value: str) -> bool:

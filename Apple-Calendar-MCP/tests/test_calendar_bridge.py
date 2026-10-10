@@ -1501,11 +1501,12 @@ Application = function () { return alarmApp; };
     ([{'minutes_before': 30}], [('relative', -30, None)]),
     ([{'absolute_iso': '2030-10-11T10:00:00Z'}], [('absolute', None, '2030-10-11T10:00:00.000Z')]),
 ])
-def test_generated_jxa_alarm_update_preserves_replaces_and_clears(monkeypatch, alarms, expected):
+def test_generated_jxa_alarm_update_preserves_or_sets_initial_alarms(monkeypatch, alarms, expected):
     bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
 
     def run(script, *args, **kwargs):
-        return _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + script, args[0], args[1])
+        setup = '' if alarms is None else 'STUB_EVENT.displayAlarms = alarmCollection([]);'
+        return _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + script, args[0], args[1])
 
     monkeypatch.setattr(bridge, '_run_jxa', run)
     result = bridge._fallback_update_event('event-1', title=None, calendar_id=None, start_iso=None, end_iso=None, notes=None, location=None, all_day=None, alarms=alarms)
@@ -1545,34 +1546,71 @@ run = function(argv) {
     assert observed == [[{'type': 'relative', 'offset_minutes': -15}]]
 
 
-def test_failed_alarm_push_restores_original_alerts(monkeypatch):
+@pytest.mark.parametrize('kind', ['displayAlarms', 'soundAlarms', 'mailAlarms', 'openFileAlarms'])
+@pytest.mark.parametrize('alarms', [[], [{'minutes_before': 30}]])
+def test_fallback_existing_alarm_edit_rejects_before_any_event_mutation(monkeypatch, kind, alarms):
     bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
     observed = []
+
     def run(script, *args, **kwargs):
-        wrapped = script + '''
-const updateEvent = run;
-const originalPush = STUB_EVENT.displayAlarms.push;
-STUB_EVENT.displayAlarms.push = function(alarm) {
-  if (alarm.triggerInterval() === -30) { throw new Error("Calendar rejected replacement"); }
-  originalPush(alarm);
-};
+        setup = 'STUB_EVENT.displayAlarms = alarmCollection([]);' + f'STUB_EVENT.{kind} = alarmCollection([makeAlarm({{triggerInterval:-15}})]);'
+        wrapped = script + """
+const update = run;
 run = function(argv) {
-  try { updateEvent(argv); } catch(error) {}
-  return JSON.stringify({event: eventRecord(STUB_CALENDAR, STUB_EVENT)});
+  const before = eventRecord(STUB_CALENDAR,STUB_EVENT);
+  const result = JSON.parse(update(argv));
+  result.before = before;
+  result.after = eventRecord(STUB_CALENDAR,STUB_EVENT);
+  return JSON.stringify(result);
 };
-'''
-        result = _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + wrapped, args[0], args[1])
-        observed.append(result['event']['alarms'])
-        return result['event']
+"""
+        result = _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + wrapped, args[0], args[1])
+        observed.append(result)
+        return result
+
     monkeypatch.setattr(bridge, '_run_jxa', run)
-    bridge._fallback_update_event('event-1', title=None, calendar_id=None, start_iso=None, end_iso=None, notes=None, location=None, all_day=None, alarms=[{'minutes_before':30}])
-    assert observed == [[{'type': 'relative', 'offset_minutes': -15}]]
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge._fallback_update_event('event-1', title='Must not change', calendar_id=None,
+            start_iso='2026-03-28T13:30:00Z', end_iso='2026-03-28T14:30:00Z',
+            notes='Must not change', location='Must not change', all_day=True, alarms=alarms)
+    assert error.value.error_code == 'ALARM_EDIT_REQUIRES_NATIVE'
+    assert 'EventKit' in error.value.suggestion
+    assert observed[0]['before'] == observed[0]['after']
 
 
-def test_jxa_constructs_each_alarm_immediately_before_push(monkeypatch):
+@pytest.mark.parametrize('collection', ['throw new Error("cannot read alarms");', 'return null;', 'return {};'])
+def test_unknown_alarm_collection_rejects_before_other_fields_change(monkeypatch, collection):
     bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    observed = []
+
     def run(script, *args, **kwargs):
-        setup = '''
+        setup = 'STUB_EVENT.displayAlarms = function() {' + collection + '};'
+        wrapped = script + """
+const update = run;
+run = function(argv) {
+  const result = JSON.parse(update(argv));
+  result.title = STUB_EVENT.summary();
+  return JSON.stringify(result);
+};
+"""
+        result = _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + wrapped, args[0], args[1])
+        observed.append(result)
+        return result
+
+    monkeypatch.setattr(bridge, '_run_jxa', run)
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge._fallback_update_event('event-1', title='Must not change', calendar_id=None,
+            start_iso=None, end_iso=None, notes=None, location=None, all_day=None, alarms=[])
+    assert error.value.error_code == 'ALARM_EDIT_REQUIRES_NATIVE'
+    assert observed[0]['title'] == 'Standup'
+
+
+def test_jxa_constructs_each_initial_alarm_immediately_before_push(monkeypatch):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+
+    def run(script, *args, **kwargs):
+        setup = """
+STUB_EVENT.displayAlarms = alarmCollection([]);
 let pending = false;
 const push = STUB_EVENT.displayAlarms.push;
 alarmApp.DisplayAlarm = function(properties) {
@@ -1581,73 +1619,13 @@ alarmApp.DisplayAlarm = function(properties) {
   return makeAlarm(properties);
 };
 STUB_EVENT.displayAlarms.push = function(alarm) { push(alarm); pending = false; };
-'''
-        return _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + script, args[0], args[1])
-    monkeypatch.setattr(bridge, '_run_jxa', run)
-    result = bridge._fallback_update_event('event-1', title=None, calendar_id=None, start_iso=None, end_iso=None, notes=None, location=None, all_day=None, alarms=[{'minutes_before':15}, {'minutes_before':30}])
-    assert [a['offset_minutes'] for a in result['alarms']] == [-15, -30]
-
-
-def test_failed_alarm_push_restores_absolute_sound_and_mail_alerts_in_mock(monkeypatch):
-    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
-    observed = []
-    def run(script, *args, **kwargs):
-        setup = '''
-function soundAlarm(properties) {
-  const alarm = makeAlarm(properties);
-  alarm.soundName = function() { return properties.soundName; };
-  alarm.soundFile = function() { return properties.soundFile; };
-  return alarm;
-}
-alarmApp.SoundAlarm = soundAlarm;
-alarmApp.MailAlarm = makeAlarm;
-STUB_EVENT.displayAlarms = alarmCollection([makeAlarm({triggerDate:new Date("2030-10-11T10:00:00Z")})]);
-STUB_EVENT.soundAlarms = alarmCollection([soundAlarm({triggerInterval:-20,soundName:"Fixture",soundFile:"/tmp/fixture.aiff"})]);
-STUB_EVENT.mailAlarms = alarmCollection([makeAlarm({triggerDate:new Date("2030-10-11T09:00:00Z")})]);
-const push = STUB_EVENT.displayAlarms.push;
-STUB_EVENT.displayAlarms.push = function(alarm) {
-  if (alarm.triggerInterval() === -30) { throw new Error("Rejected"); }
-  push(alarm);
-};
-'''
-        wrapped = script + '''
-const update = run;
-run = function(argv) {
-  try { update(argv); } catch(error) {}
-  return JSON.stringify({event:eventRecord(STUB_CALENDAR,STUB_EVENT),sound:STUB_EVENT.soundAlarms().map(a=>({name:a.soundName(),file:a.soundFile(),offset:a.triggerInterval()})),mailCount:STUB_EVENT.mailAlarms().length});
-};
-'''
-        result = _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + wrapped, args[0], args[1])
-        observed.append(result)
-        return result['event']
-    monkeypatch.setattr(bridge, '_run_jxa', run)
-    bridge._fallback_update_event('event-1', title=None, calendar_id=None, start_iso=None, end_iso=None, notes=None, location=None, all_day=None, alarms=[{'minutes_before':30}])
-    result = observed[0]
-    assert result['sound'] == [{'name':'Fixture','file':'/tmp/fixture.aiff','offset':-20}]
-    assert result['mailCount'] == 1
-    assert sorted(a.get('absolute', '') for a in result['event']['alarms'] if a['type']=='absolute') == ['2030-10-11T09:00:00.000Z', '2030-10-11T10:00:00.000Z']
-
-
-def test_alarm_clear_deletes_positional_jxa_specifiers_in_reverse_order(monkeypatch):
-    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
-    def run(script, *args, **kwargs):
-        setup = """
-const values = [makeAlarm({triggerInterval:-15}),makeAlarm({triggerInterval:-30})];
-STUB_EVENT.displayAlarms = function() {
-  return values.map(function(value,index) {
-    return {triggerDate:value.triggerDate, triggerInterval:value.triggerInterval,
-      delete:function() {
-        if (index >= values.length) { throw new Error("Positional specifier no longer exists"); }
-        values.splice(index,1);
-      }};
-  });
-};
-STUB_EVENT.displayAlarms.push = function(alarm) { values.push(alarm); };
 """
         return _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + script, args[0], args[1])
+
     monkeypatch.setattr(bridge, '_run_jxa', run)
-    result = bridge._fallback_update_event('event-1', title=None, calendar_id=None, start_iso=None, end_iso=None, notes=None, location=None, all_day=None, alarms=[])
-    assert result['alarms'] == []
+    result = bridge._fallback_update_event('event-1', title=None, calendar_id=None, start_iso=None,
+        end_iso=None, notes=None, location=None, all_day=None, alarms=[{'minutes_before':15}, {'minutes_before':30}])
+    assert [a['offset_minutes'] for a in result['alarms']] == [-15, -30]
 
 
 @pytest.mark.parametrize("target_present", [True, False])

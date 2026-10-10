@@ -1,3 +1,4 @@
+import errno
 import os
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -79,7 +80,8 @@ def test_concurrent_builds_install_only_complete_binaries(monkeypatch, tmp_path)
 
 
 @pytest.mark.parametrize("app_bundle", [False, True])
-def test_distinct_source_versions_keep_their_returned_executables(monkeypatch, tmp_path, app_bundle):
+@pytest.mark.parametrize("hard_link_errno", [None, *sorted({errno.ENOTSUP, errno.EOPNOTSUPP, errno.EPERM})])
+def test_distinct_source_versions_keep_their_returned_executables(monkeypatch, tmp_path, app_bundle, hard_link_errno):
     # Delay execution until BOTH versions have installed. A lock around a shared
     # binary + stamp cannot pass this: the returned shared path changes later.
     binary = tmp_path / "helper"
@@ -90,6 +92,10 @@ def test_distinct_source_versions_keep_their_returned_executables(monkeypatch, t
         source.write_text(f"#!/bin/sh\necho {version}\n")
     real_run = subprocess.run
     compile_fixture(monkeypatch, [])
+    if hard_link_errno is not None:
+        def unavailable(*args):
+            raise OSError(hard_link_errno, "hard links unavailable")
+        monkeypatch.setattr(os, "link", unavailable)
     installed = Barrier(2)
 
     def compile_and_execute(source):
@@ -123,3 +129,49 @@ def test_compiler_uses_hashed_snapshot_when_source_changes_and_changes_back(monk
 
     monkeypatch.setattr(subprocess, "run", compile)
     assert ensure_swift_helper(source, binary).read_text() == "old"
+
+
+@pytest.mark.parametrize("link_error", sorted({errno.ENOTSUP, errno.EOPNOTSUPP}))
+def test_no_link_or_exclusive_rename_has_actionable_error_and_cleans_temps(monkeypatch, tmp_path, link_error):
+    source, binary = tmp_path / "source.swift", tmp_path / "helper"
+    source.write_text("new")
+    binary.write_text("legacy executable")
+    compile_fixture(monkeypatch, [])
+
+    def no_links(*args):
+        raise OSError(link_error, "hard links unavailable")
+
+    def no_rename(*args):
+        raise OSError(errno.ENOTSUP, "exclusive rename unavailable")
+
+    monkeypatch.setattr(os, "link", no_links)
+    monkeypatch.setattr("apple_mcp_common.native.rename_without_replacement", no_rename)
+    with pytest.raises(NativeHelperError) as error:
+        ensure_swift_helper(source, binary)
+    assert error.value.error_code == "HELPER_CACHE_INSTALL_FAILED"
+    assert "helper build directory" in error.value.suggestion
+    assert binary.read_text() == "legacy executable"
+    assert not swift_helper_path(source, binary).exists()
+    assert not list(tmp_path.rglob(".*"))
+
+
+def test_same_source_fallback_publish_never_replaces_the_winner(monkeypatch, tmp_path):
+    source, binary = tmp_path / "source.swift", tmp_path / "helper"
+    source.write_text("same source")
+    barrier = Barrier(4)
+
+    def compile(command, **kwargs):
+        Path(command[-1]).write_bytes(Path(command[-3]).read_bytes())
+        barrier.wait(timeout=5)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    def no_links(*args):
+        raise OSError(errno.ENOTSUP, "hard links unavailable")
+
+    monkeypatch.setattr(subprocess, "run", compile)
+    monkeypatch.setattr(os, "link", no_links)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        paths = list(pool.map(lambda _: ensure_swift_helper(source, binary), range(4)))
+    assert len(set(paths)) == 1
+    assert paths[0].read_text() == "same source"
+    assert not list(tmp_path.rglob(".*"))

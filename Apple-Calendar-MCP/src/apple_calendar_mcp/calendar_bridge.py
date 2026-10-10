@@ -437,7 +437,7 @@ class CalendarBridge:
         try:
             helper_binary = ensure_swift_helper(self.helper_source, self._helper_base_binary)
         except NativeHelperError as exc:
-            raise CalendarBridgeError(exc.error_code, str(exc), "Confirm Xcode command line tools and Swift are available, then retry.") from exc
+            raise CalendarBridgeError(exc.error_code, str(exc), exc.suggestion or "Confirm Xcode command line tools and Swift are available, then retry.") from exc
         info_plist = helper_binary.parent.parent / "Info.plist"
         self._write_bundle_info_plist(info_plist)
         self.helper_binary = helper_binary
@@ -662,42 +662,35 @@ function eventAlarms(evt) {
 }
 function prepareAlarmUpdate(app, evt, alarms) {
   if (alarms === null) { return null; }
-  // Calendar no longer permits modifying open-file alarms. Refuse before
-  // changing other fields, rather than silently retaining a requested clear.
-  if (evt.openFileAlarms().length > 0) { throw new Error("UNSUPPORTED_OPERATION"); }
-  const existing = [];
-  const originals = [];
-  [["displayAlarms", "DisplayAlarm"], ["soundAlarms", "SoundAlarm"], ["mailAlarms", "MailAlarm"]].forEach(function(kind) {
-    readAlarmCollection(evt, kind[0]).forEach(function(alarm) {
-      const absolute = alarm.triggerDate();
-      const properties = absolute instanceof Date
-        ? {triggerDate: absolute} : {triggerInterval: alarm.triggerInterval()};
-      if (kind[0] === "soundAlarms") {
-        properties.soundName = alarm.soundName();
-        properties.soundFile = alarm.soundFile();
+  // Existing alarms cannot be removed reliably through Calendar automation on
+  // supported host configurations. Refuse before changing any event fields.
+  try {
+    const kinds = ["displayAlarms", "soundAlarms", "mailAlarms", "openFileAlarms"];
+    for (let index = 0; index < kinds.length; index++) {
+      const existing = readAlarmCollection(evt, kinds[index]);
+      if (!Array.isArray(existing) || existing.length > 0) {
+        return {error: "ALARM_EDIT_REQUIRES_NATIVE"};
       }
-      existing.push(alarm);
-      originals.push({collection: kind[0], factory: kind[1], properties: properties});
-    });
-  });
+    }
+  } catch (_) {
+    return {error: "ALARM_EDIT_REQUIRES_NATIVE"};
+  }
   const replacements = alarms.map(function(alarm) {
     return alarm.minutes_before !== undefined
       ? {triggerInterval: -alarm.minutes_before}
       : {triggerDate: new Date(alarm.absolute_iso)};
   });
-  return {app: app, existing: existing, originals: originals, replacements: replacements};
+  return {app: app, replacements: replacements};
 }
 function applyAlarmUpdate(evt, update) {
   if (update === null) { return; }
   try {
-    update.existing.slice().reverse().forEach(function(alarm) { alarm.delete(); });
     update.replacements.forEach(function(properties) { evt.displayAlarms.push(update.app.DisplayAlarm(properties)); });
   } catch (error) {
     try {
       ["displayAlarms", "soundAlarms", "mailAlarms"].forEach(function(kind) {
         readAlarmCollection(evt, kind).reverse().forEach(function(alarm) { alarm.delete(); });
       });
-      update.originals.forEach(function(original) { evt[original.collection].push(update.app[original.factory](original.properties)); });
     } catch (restoreError) {
       throw new Error("ALARM_RESTORE_FAILED: " + String(error) + "; restore: " + String(restoreError));
     }
@@ -1005,6 +998,10 @@ function run(argv) {
     return JSON.stringify({__error__: "INVALID_INPUT"});
   }
   const alarmUpdate = prepareAlarmUpdate(app, evt, fields.alarms === undefined ? null : fields.alarms);
+  if (alarmUpdate !== null && alarmUpdate.error) {
+    return JSON.stringify({__error__: alarmUpdate.error});
+  }
+  applyAlarmUpdate(evt, alarmUpdate);
   if (fields.title !== null) { evt.summary = fields.title; }
 
   if (newStart !== null && newEnd !== null && newStart >= evt.endDate()) {
@@ -1021,7 +1018,6 @@ function run(argv) {
   if (fields.location !== null) { evt.location = fields.location; }
   if (fields.notes !== null) { evt.description = fields.notes; }
   if (fields.all_day !== null) { evt.alldayEvent = fields.all_day; }
-  applyAlarmUpdate(evt, alarmUpdate);
   return JSON.stringify(eventRecord(cal, evt));
 }
 """
@@ -1044,6 +1040,12 @@ function run(argv) {
     def _run_jxa_event(self, script: str, *args: str) -> dict[str, object]:
         payload = self._run_jxa(script, *args, timeout=self._JXA_TIMEOUT_SECONDS)
         error_code = payload.get("__error__")
+        if error_code == "ALARM_EDIT_REQUIRES_NATIVE":
+            raise CalendarBridgeError(
+                "ALARM_EDIT_REQUIRES_NATIVE",
+                "Calendar automation cannot safely replace or clear existing alarms; no event fields were changed.",
+                "Use native EventKit access for this alarm edit, or omit alarms to preserve existing alerts.",
+            )
         if error_code == "INVALID_INPUT":
             raise CalendarBridgeError("INVALID_INPUT", "The prospective event time window is invalid.", "Use valid dates with end after start; no fallback fields were changed.")
         if error_code == "UNSUPPORTED_OPERATION":
@@ -1120,7 +1122,7 @@ function run(argv) {
             raise CalendarBridgeError(
                 "APPLESCRIPT_FALLBACK_TIMEOUT",
                 "Calendar AppleScript fallback timed out.",
-                "Retry the request with a narrower calendar scope.",
+                "Use a narrower list window. For event lookup, grant native EventKit full Calendar access, list events again for native identifiers, then retry.",
             ) from exc
         except OSError as exc:
             raise CalendarBridgeError(
@@ -1131,7 +1133,7 @@ function run(argv) {
         output = completed.stdout.strip()
         if completed.returncode != 0:
             if "ALARM_RESTORE_FAILED" in completed.stderr:
-                raise CalendarBridgeError("ALARM_RESTORE_FAILED", "Calendar rejected the alert change and the original alerts could not be restored.", "Inspect this event in Calendar.app before retrying.")
+                raise CalendarBridgeError("ALARM_RESTORE_FAILED", "Calendar rejected the alert change and could not remove alerts added during the attempt.", "The alert outcome is unknown. Inspect this event in Calendar.app before retrying.")
             raise CalendarBridgeError(
                 "APPLESCRIPT_FALLBACK_FAILED",
                 completed.stderr.strip() or output or "Calendar AppleScript fallback failed.",

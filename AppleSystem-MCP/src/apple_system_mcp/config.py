@@ -25,10 +25,13 @@ def _parse_int(value: str | None, default: int) -> int:
 
 @lru_cache(maxsize=1)
 def load_settings() -> Settings:
+    safety_mode = os.environ.get("APPLE_SYSTEM_MCP_SAFETY_MODE", "safe_manage").strip().lower()
+    if safety_mode not in {"safe_readonly", "safe_manage", "full_access"}:
+        safety_mode = "safe_readonly"
     return Settings(
         server_name="Apple System MCP",
         version="1.0.5",
-        safety_mode=os.environ.get("APPLE_SYSTEM_MCP_SAFETY_MODE", "safe_manage").strip().lower() or "safe_manage",
+        safety_mode=safety_mode,
         transport=os.environ.get("APPLE_SYSTEM_MCP_TRANSPORT", "stdio").strip().lower() or "stdio",
         host=os.environ.get("APPLE_SYSTEM_MCP_HOST", "127.0.0.1"),
         port=_parse_int(os.environ.get("APPLE_SYSTEM_MCP_PORT"), 8000),

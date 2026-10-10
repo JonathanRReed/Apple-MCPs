@@ -27,6 +27,8 @@ class HealthResponse(BaseModel):
     access_status: str
     can_read_events: bool
     can_write_events: bool
+    can_edit_existing_alarms: bool = False
+    alarm_edit_backend: Literal["native_eventkit"] = "native_eventkit"
     permission_error: str | None = None
     permission_suggestion: str | None = None
 

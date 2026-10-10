@@ -132,4 +132,6 @@ Contacts uses `CNContactStore` by default, so reads and writes do not wait for C
 
 Set `APPLE_CONTACTS_MCP_BACKEND=applescript` to use the previous backend. The native backend returns first and last names directly and preserves phone/email update semantics: omit a collection to keep it, or pass `[]` to clear it. Contact notes require a separate macOS entitlement; a nonempty `note` is rejected before a native write. The AppleScript backend remains available for notes.
 
+The native helper compiles an immutable source snapshot into a bundle named by its full SHA-256 hash. A source change during compilation is rejected, and a concurrent build cannot replace an installed bundle. Different source versions keep separate executables with the same Contacts permission identity.
+
 The native helper is adapted from Jaume Puig's work in [JaumeAP/Apple-MCPs](https://github.com/JaumeAP/Apple-MCPs).

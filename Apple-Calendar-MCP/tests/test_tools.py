@@ -128,6 +128,8 @@ def test_calendar_health_surfaces_permission_state(monkeypatch) -> None:
 
     assert result.access_status == "authorized"
     assert result.can_read_events is True
+    assert result.can_edit_existing_alarms is True
+    assert result.alarm_edit_backend == "native_eventkit"
 
 
 def test_calendar_get_event_checks_permissions_before_bridge(monkeypatch) -> None:
@@ -202,6 +204,7 @@ def test_calendar_health_reports_applescript_fallback(monkeypatch) -> None:
 
     assert result.access_status == "applescript_fallback"
     assert result.can_read_events is True
+    assert result.can_edit_existing_alarms is False
     assert result.permission_error is None
 
 

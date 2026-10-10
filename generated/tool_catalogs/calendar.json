@@ -343,7 +343,7 @@
         "location: string (optional)",
         "all_day: boolean (optional)"
       ],
-      "description": "Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged.",
+      "description": "Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields.",
       "domain": "calendar",
       "example_calls": [
         {
@@ -381,7 +381,7 @@
         "iso"
       ],
       "title": "Update Event",
-      "usage_intent": "Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged."
+      "usage_intent": "Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields."
     },
     {
       "aliases": [

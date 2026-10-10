@@ -13,6 +13,7 @@ from pathlib import Path
 
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSummary, CreateContactResponse, DeleteContactResponse, DuplicateCandidateGroup, DuplicateEvidence, ResolvedRecipientResponse
+from apple_mcp_common.atomic import rename_without_replacement
 
 METHOD_FIELD_SEPARATOR = "\x1f"
 METHOD_RECORD_SEPARATOR = "\x1e"
@@ -451,11 +452,10 @@ class AppleContactsBridge:
         return payload
 
     def _ensure_native_helper(self) -> Path:
-        if self._native_binary is not None and self._native_binary.is_file():
-            return self._native_binary
         assert self.helper_source is not None and self.helper_build_dir is not None
         try:
-            digest = hashlib.sha256(self.helper_source.read_bytes()).hexdigest()[:16]
+            source_bytes = self.helper_source.read_bytes()
+            digest = hashlib.sha256(source_bytes).hexdigest()
             app = self.helper_build_dir / f"apple-contacts-bridge-{digest}.app"
             binary = app / "Contents" / "MacOS" / "apple-contacts-bridge"
             if binary.is_file() and (app / "Contents" / "Info.plist").is_file():
@@ -463,6 +463,8 @@ class AppleContactsBridge:
                 return binary
             self.helper_build_dir.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryDirectory(prefix="contacts-build-", dir=self.helper_build_dir) as directory:
+                source_snapshot = Path(directory) / "contacts_bridge.swift"
+                source_snapshot.write_bytes(source_bytes)
                 temporary_app = Path(directory) / app.name
                 executable = temporary_app / "Contents" / "MacOS" / binary.name
                 executable.parent.mkdir(parents=True)
@@ -479,14 +481,16 @@ class AppleContactsBridge:
                 with (temporary_app / "Contents" / "Info.plist").open("wb") as stream:
                     plistlib.dump(info, stream)
                 result = subprocess.run(
-                    ["swiftc", "-parse-as-library", "-O", str(self.helper_source), "-o", str(executable)],
+                    ["swiftc", "-parse-as-library", "-O", str(source_snapshot), "-o", str(executable)],
                     capture_output=True, text=True, timeout=300, check=False,
                 )
                 if result.returncode != 0:
                     raise ContactsBridgeError("HELPER_COMPILE_FAILED", result.stderr.strip() or "Contacts helper compilation failed.", "Install Xcode Command Line Tools, or select APPLE_CONTACTS_MCP_BACKEND=applescript.")
+                if self.helper_source.read_bytes() != source_bytes:
+                    raise ContactsBridgeError("HELPER_SOURCE_CHANGED", "Contacts helper source changed during compilation.", "Retry with the installed source unchanged.")
                 try:
-                    temporary_app.rename(app)
-                except OSError:
+                    rename_without_replacement(temporary_app, app)
+                except FileExistsError:
                     # A concurrent first-use compile may have installed the same source.
                     if not binary.is_file() or not (app / "Contents" / "Info.plist").is_file():
                         raise

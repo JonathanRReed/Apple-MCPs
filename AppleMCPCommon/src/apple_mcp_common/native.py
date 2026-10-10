@@ -1,16 +1,22 @@
 """Content-aware, atomic compilation for cached Swift command-line helpers."""
 
+import errno
 import hashlib
 import os
 import subprocess
 import tempfile
 from pathlib import Path
 
+from apple_mcp_common.atomic import rename_without_replacement
+
+_CACHE_SUGGESTION = "Choose a local helper build directory that supports hard links or atomic exclusive renames, then retry."
+
 
 class NativeHelperError(Exception):
-    def __init__(self, error_code: str, message: str) -> None:
+    def __init__(self, error_code: str, message: str, suggestion: str | None = None) -> None:
         super().__init__(message)
         self.error_code = error_code
+        self.suggestion = suggestion
 
 
 def swift_helper_path(source: Path, binary: Path) -> Path:
@@ -38,8 +44,11 @@ def ensure_swift_helper(source: Path, binary: Path) -> Path:
     binary = _versioned_path(binary, digest)
     if binary.is_file():
         return binary
-    binary.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(prefix="." + binary.name + ".", dir=binary.parent)
+    try:
+        binary.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary_name = tempfile.mkstemp(prefix="." + binary.name + ".", dir=binary.parent)
+    except OSError as error:
+        raise NativeHelperError("HELPER_CACHE_UNAVAILABLE", f"Could not prepare helper cache at '{binary.parent}': {error}.", _CACHE_SUGGESTION) from error
     os.close(descriptor)
     temporary = Path(temporary_name)
     source_temporary = temporary.with_name(temporary.name + ".swift")
@@ -63,10 +72,19 @@ def ensure_swift_helper(source: Path, binary: Path) -> Path:
         try:
             # A hard link publishes a complete file atomically and never replaces
             # a competing compiler's complete result for this same source.
-            os.link(temporary, binary)
+            try:
+                os.link(temporary, binary)
+            except OSError as error:
+                if error.errno not in {errno.EPERM, errno.ENOTSUP, errno.EOPNOTSUPP}:
+                    raise
+                # Some supported custom cache filesystems cannot make hard links.
+                # Use the same complete-file, exclusive rename as file moves.
+                rename_without_replacement(temporary, binary)
         except FileExistsError:
             if not binary.is_file():
-                raise
+                raise NativeHelperError("HELPER_CACHE_INSTALL_FAILED", "The helper cache destination is not a regular executable.", _CACHE_SUGGESTION) from None
+        except OSError as error:
+            raise NativeHelperError("HELPER_CACHE_INSTALL_FAILED", f"Could not atomically install helper at '{binary}': {error}.", _CACHE_SUGGESTION) from error
         return binary
     finally:
         temporary.unlink(missing_ok=True)

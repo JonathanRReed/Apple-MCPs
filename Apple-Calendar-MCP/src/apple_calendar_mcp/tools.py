@@ -186,6 +186,7 @@ def calendar_health() -> HealthResponse:
     access_status = "helper_unavailable"
     can_read_events = False
     can_write_events = False
+    can_edit_existing_alarms = False
     permission_error = None
     permission_suggestion = None
     if helper_available:
@@ -194,6 +195,7 @@ def calendar_health() -> HealthResponse:
             access_status = str(access_payload.get("status", "unknown"))
             can_read_events = bool(access_payload.get("can_read_events", False))
             can_write_events = bool(access_payload.get("can_write_events", False))
+            can_edit_existing_alarms = can_read_events and can_write_events
             if not can_read_events:
                 permission_error = access_payload.get("message")
                 permission_suggestion = access_payload.get("suggestion")
@@ -221,6 +223,7 @@ def calendar_health() -> HealthResponse:
         access_status=access_status,
         can_read_events=can_read_events,
         can_write_events=can_write_events,
+        can_edit_existing_alarms=can_edit_existing_alarms,
         permission_error=permission_error,
         permission_suggestion=permission_suggestion,
     )
@@ -359,7 +362,7 @@ def calendar_create_event(
 
 @mcp.tool(
     title="Update Event",
-    description="Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged.",
+    description="Update one or more fields on an existing calendar event. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields.",
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )

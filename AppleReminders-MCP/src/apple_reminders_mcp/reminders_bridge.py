@@ -209,7 +209,7 @@ class RemindersBridge:
             self.helper_binary = helper_binary
             return helper_binary
         except NativeHelperError as exc:
-            raise RemindersBridgeError(exc.error_code, str(exc), "Confirm Xcode command line tools and Swift are available, then retry.") from exc
+            raise RemindersBridgeError(exc.error_code, str(exc), exc.suggestion or "Confirm Xcode command line tools and Swift are available, then retry.") from exc
 
     def _raise_helper_error(self, stdout_text: str, stderr_text: str) -> None:
         if stdout_text:

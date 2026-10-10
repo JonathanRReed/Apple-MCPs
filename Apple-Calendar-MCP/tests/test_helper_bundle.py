@@ -189,3 +189,29 @@ def test_execution_uses_the_path_returned_by_ensure(monkeypatch, helper):
     monkeypatch.setattr(bridge, "_ensure_helper", ensure)
     monkeypatch.setattr(subprocess, "run", run)
     assert bridge._run_helper("test") == {"ok": True}
+
+
+
+def test_public_read_reports_unsupported_cache_with_location_suggestion(monkeypatch, helper):
+    import errno
+
+    from apple_calendar_mcp import tools
+
+    bridge, _ = helper
+
+    def compile(command, **kwargs):
+        Path(command[-1]).write_bytes(Path(command[-3]).read_bytes())
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    def unsupported(*args):
+        raise OSError(errno.ENOTSUP, "filesystem operation unavailable")
+
+    monkeypatch.setattr("apple_mcp_common.native.subprocess.run", compile)
+    monkeypatch.setattr("apple_mcp_common.native.os.link", unsupported)
+    monkeypatch.setattr("apple_mcp_common.native.rename_without_replacement", unsupported)
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+    result = tools.calendar_list_calendars()
+    assert result.ok is False
+    assert result.error.error_code == "HELPER_CACHE_INSTALL_FAILED"
+    assert "helper build directory" in result.error.suggestion
+    assert not list(bridge.helper_source.parent.rglob(".*"))

@@ -36,6 +36,14 @@ on person_json(p, includeNote)
 		on error
 		end try
 		try
+			set firstName to (first name of p) as text
+		on error
+		end try
+		try
+			set lastName to (last name of p) as text
+		on error
+		end try
+		try
 			set organizationName to (organization of p) as text
 		on error
 		end try

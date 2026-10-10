@@ -47,7 +47,7 @@ dev = [
 package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
-apple_contacts_mcp = ["applescripts/*.applescript"]
+apple_contacts_mcp = ["applescripts/*.applescript", "*.swift"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

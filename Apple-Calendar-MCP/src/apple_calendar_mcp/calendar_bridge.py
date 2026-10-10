@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import unquote
 
+from apple_calendar_mcp.alarm_validation import validate_alarms
 from apple_calendar_mcp.models import CalendarInfo, EventDetail, EventSummary
 from apple_mcp_common.native import NativeHelperError, ensure_swift_helper, swift_helper_path
 
@@ -282,6 +283,7 @@ class CalendarBridge:
         location: str | None = None,
         all_day: bool = False,
         recurrence: dict[str, object] | None = None,
+        alarms: list[dict[str, object]] | None = None,
     ) -> EventDetail:
         request = {
             "title": title,
@@ -294,6 +296,9 @@ class CalendarBridge:
         }
         if recurrence is not None:
             request["recurrence"] = recurrence
+        alarms = validate_alarms(alarms)
+        if alarms is not None:
+            request["alarms"] = alarms
         try:
             payload = self._run_helper("create-calendar-event", json.dumps(request))
         except CalendarBridgeError as exc:
@@ -310,6 +315,7 @@ class CalendarBridge:
                 notes=notes,
                 location=location,
                 all_day=all_day,
+                alarms=alarms,
             )
         return self._normalize_detail(payload)
 
@@ -325,6 +331,7 @@ class CalendarBridge:
         location: str | None = None,
         all_day: bool | None = None,
         recurrence: dict[str, object] | None = None,
+        alarms: list[dict[str, object]] | None = None,
     ) -> EventDetail:
         request: dict[str, object] = {}
         if title is not None:
@@ -343,12 +350,15 @@ class CalendarBridge:
             request["all_day"] = all_day
         if recurrence is not None:
             request["recurrence"] = recurrence
+        alarms = validate_alarms(alarms)
+        if alarms is not None:
+            request["alarms"] = alarms
         if self._is_jxa_token(event_id):
             if recurrence is not None:
                 raise CalendarBridgeError("UNSUPPORTED_OPERATION", "Automation cannot apply recurrence.", None)
             return self._normalize_detail(self._fallback_update_event(
                 event_id, title=title, calendar_id=calendar_id, start_iso=start_iso, end_iso=end_iso,
-                notes=notes, location=location, all_day=all_day,
+                notes=notes, location=location, all_day=all_day, alarms=alarms,
             ))
         try:
             payload = self._run_helper("update-calendar-event", event_id, json.dumps(request))
@@ -364,6 +374,7 @@ class CalendarBridge:
                 notes=notes,
                 location=location,
                 all_day=all_day,
+                alarms=alarms,
             )
         return self._normalize_detail(payload)
 
@@ -537,7 +548,7 @@ function run(argv) {
     def _fallback_list_events(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, object]:
         start = datetime.fromisoformat(start_iso)
         end = datetime.fromisoformat(end_iso)
-        script = self._JXA_ID_HELPERS + """
+        script = self._JXA_ID_HELPERS + self._JXA_ALARM_HELPERS + """
 function isAllDay(startDate, endDate) {
   return startDate.getHours() === 0 &&
     startDate.getMinutes() === 0 &&
@@ -579,7 +590,8 @@ function run(argv) {
         start: startDate.toISOString(),
         end: endDate.toISOString(),
         all_day: isAllDay(startDate, endDate),
-        location: evt.location ? (evt.location() || null) : null
+        location: evt.location ? (evt.location() || null) : null,
+        alarms: eventAlarms(evt)
       });
     });
   });
@@ -616,6 +628,78 @@ function run(argv) {
     # Fallback IDs name their backend, calendar scope, and UID/id namespace.
     # Legacy bare IDs are resolved only when their meanings agree; metadata-only
     # composites are read-only and cannot safely identify a mutation target.
+    _JXA_ALARM_HELPERS = """
+function readAlarmCollection(evt, kind) {
+  // JXA's object-specifier proxy can stall on computed collection access.
+  // Use the scripting dictionary's concrete accessors for nested alarms.
+  switch (kind) {
+    case "displayAlarms": return evt.displayAlarms();
+    case "soundAlarms": return evt.soundAlarms();
+    case "mailAlarms": return evt.mailAlarms();
+    case "openFileAlarms": return evt.openFileAlarms();
+  }
+  throw new Error("UNSUPPORTED_ALARM_TYPE");
+}
+function eventAlarms(evt) {
+  try {
+    const alarms = [];
+    ["displayAlarms", "soundAlarms", "mailAlarms", "openFileAlarms"].forEach(function(kind) {
+      readAlarmCollection(evt, kind).forEach(function(alarm) {
+        const absolute = alarm.triggerDate();
+        if (absolute instanceof Date && Number.isFinite(absolute.getTime())) {
+          alarms.push({type: "absolute", absolute: absolute.toISOString()});
+        } else {
+          const offset = alarm.triggerInterval();
+          alarms.push({type: "relative", offset_minutes: Number.isSafeInteger(offset) ? offset : null});
+        }
+      });
+    });
+    return alarms;
+  } catch (error) {
+    // Older Calendar scripting dictionaries cannot expose every alarm type.
+    return null;
+  }
+}
+function prepareAlarmUpdate(app, evt, alarms) {
+  if (alarms === null) { return null; }
+  // Existing alarms cannot be removed reliably through Calendar automation on
+  // supported host configurations. Refuse before changing any event fields.
+  try {
+    const kinds = ["displayAlarms", "soundAlarms", "mailAlarms", "openFileAlarms"];
+    for (let index = 0; index < kinds.length; index++) {
+      const existing = readAlarmCollection(evt, kinds[index]);
+      if (!Array.isArray(existing) || existing.length > 0) {
+        return {error: "ALARM_EDIT_REQUIRES_NATIVE"};
+      }
+    }
+  } catch (_) {
+    return {error: "ALARM_EDIT_REQUIRES_NATIVE"};
+  }
+  const replacements = alarms.map(function(alarm) {
+    return alarm.minutes_before !== undefined
+      ? {triggerInterval: -alarm.minutes_before}
+      : {triggerDate: new Date(alarm.absolute_iso)};
+  });
+  return {app: app, replacements: replacements};
+}
+function applyAlarmUpdate(evt, update) {
+  if (update === null) { return; }
+  try {
+    update.replacements.forEach(function(properties) { evt.displayAlarms.push(update.app.DisplayAlarm(properties)); });
+  } catch (error) {
+    try {
+      ["displayAlarms", "soundAlarms", "mailAlarms"].forEach(function(kind) {
+        readAlarmCollection(evt, kind).reverse().forEach(function(alarm) { alarm.delete(); });
+      });
+    } catch (restoreError) {
+      throw new Error("ALARM_RESTORE_FAILED: " + String(error) + "; restore: " + String(restoreError));
+    }
+    throw error;
+  }
+}
+
+"""
+
     _JXA_ID_HELPERS = """
 function readIdentifier(obj, field) {
   try { return typeof obj[field] === "function" ? obj[field]() : null; }
@@ -708,7 +792,7 @@ function identifierMatches(calendars, field, value, strict) {
 }
 """
 
-    _JXA_FIND_EVENT = _JXA_ID_HELPERS + """
+    _JXA_FIND_EVENT = _JXA_ID_HELPERS + _JXA_ALARM_HELPERS + """
 function findEventByUid(app, identifier, calendarNameHint, requireStable) {
   if (identifier.length > 32768) { throw new Error("IDENTIFIER_LOOKUP_LIMIT"); }
   const snapshot = app.calendars();
@@ -791,7 +875,8 @@ function eventRecord(cal, evt) {
     all_day: startDate.getHours() === 0 && startDate.getMinutes() === 0 &&
       endDate.getHours() === 23 && endDate.getMinutes() === 59,
     location: evt.location ? (evt.location() || null) : null,
-    notes: evt.description ? (evt.description() || null) : null
+    notes: evt.description ? (evt.description() || null) : null,
+    alarms: eventAlarms(evt)
   };
 }
 """
@@ -819,6 +904,7 @@ function run(argv) {
         notes: str | None,
         location: str | None,
         all_day: bool,
+        alarms: list[dict[str, object]] | None = None,
     ) -> dict[str, object]:
         script = self._JXA_FIND_EVENT + """
 function run(argv) {
@@ -836,10 +922,26 @@ function run(argv) {
     description: argv[5]
   });
   cal.events.push(newEvent);
-  if (argv[6] === "true") {
-    newEvent.alldayEvent = true;
+  try {
+    if (argv[6] === "true") { newEvent.alldayEvent = true; }
+    const alarmUpdate = prepareAlarmUpdate(app, newEvent, JSON.parse(argv[7]));
+    if (alarmUpdate !== null && alarmUpdate.error) {
+      throw new Error(alarmUpdate.error);
+    }
+    applyAlarmUpdate(newEvent, alarmUpdate);
+    return JSON.stringify(eventRecord(cal, newEvent));
+  } catch (error) {
+    // Only this newly created event belongs to the failed creation attempt.
+    // Never remove inherited/default alerts individually during cleanup.
+    try { newEvent.delete(); }
+    catch (cleanupError) {
+      throw new Error("EVENT_CREATE_CLEANUP_FAILED: " + String(error) + "; cleanup: " + String(cleanupError));
+    }
+    if (error.message === "ALARM_EDIT_REQUIRES_NATIVE") {
+      return JSON.stringify({__error__: "ALARM_EDIT_REQUIRES_NATIVE"});
+    }
+    throw error;
   }
-  return JSON.stringify(eventRecord(cal, newEvent));
 }
 """
         return self._run_jxa_event(
@@ -851,6 +953,7 @@ function run(argv) {
             location or "",
             notes or "",
             "true" if all_day else "false",
+            json.dumps(alarms),
         )
 
     def _fallback_update_event(
@@ -864,6 +967,7 @@ function run(argv) {
         notes: str | None,
         location: str | None,
         all_day: bool | None,
+        alarms: list[dict[str, object]] | None = None,
     ) -> dict[str, object]:
         fields = {
             "title": title,
@@ -873,6 +977,7 @@ function run(argv) {
             "notes": notes,
             "location": location,
             "all_day": all_day,
+            "alarms": alarms,
         }
         script = self._JXA_FIND_EVENT + """
 function run(argv) {
@@ -891,7 +996,6 @@ function run(argv) {
     return JSON.stringify({__error__: "UNSUPPORTED_OPERATION"});
   }
 
-  if (fields.title !== null) { evt.summary = fields.title; }
 
   // Calendar.app validates every single assignment, so the write order matters
   // whenever both boundaries move. Writing the new start first while the old
@@ -900,6 +1004,18 @@ function run(argv) {
   // end date"). Assign whichever boundary keeps the intermediate state valid.
   const newStart = fields.start !== null ? new Date(fields.start) : null;
   const newEnd = fields.end !== null ? new Date(fields.end) : null;
+  const prospectiveStart = newStart || evt.startDate();
+  const prospectiveEnd = newEnd || evt.endDate();
+  if (!Number.isFinite(prospectiveStart.getTime()) || !Number.isFinite(prospectiveEnd.getTime()) || prospectiveEnd <= prospectiveStart) {
+    return JSON.stringify({__error__: "INVALID_INPUT"});
+  }
+  const alarmUpdate = prepareAlarmUpdate(app, evt, fields.alarms === undefined ? null : fields.alarms);
+  if (alarmUpdate !== null && alarmUpdate.error) {
+    return JSON.stringify({__error__: alarmUpdate.error});
+  }
+  applyAlarmUpdate(evt, alarmUpdate);
+  if (fields.title !== null) { evt.summary = fields.title; }
+
   if (newStart !== null && newEnd !== null && newStart >= evt.endDate()) {
     // Moving later: widen the end first, then pull the start up behind it.
     evt.endDate = newEnd;
@@ -936,6 +1052,14 @@ function run(argv) {
     def _run_jxa_event(self, script: str, *args: str) -> dict[str, object]:
         payload = self._run_jxa(script, *args, timeout=self._JXA_TIMEOUT_SECONDS)
         error_code = payload.get("__error__")
+        if error_code == "ALARM_EDIT_REQUIRES_NATIVE":
+            raise CalendarBridgeError(
+                "ALARM_EDIT_REQUIRES_NATIVE",
+                "Calendar automation cannot safely replace or clear existing alarms; no event fields were changed.",
+                "Use native EventKit access for this alarm edit, or omit alarms to preserve existing alerts.",
+            )
+        if error_code == "INVALID_INPUT":
+            raise CalendarBridgeError("INVALID_INPUT", "The prospective event time window is invalid.", "Use valid dates with end after start; no fallback fields were changed.")
         if error_code == "UNSUPPORTED_OPERATION":
             raise CalendarBridgeError(
                 "UNSUPPORTED_OPERATION",
@@ -1010,7 +1134,7 @@ function run(argv) {
             raise CalendarBridgeError(
                 "APPLESCRIPT_FALLBACK_TIMEOUT",
                 "Calendar AppleScript fallback timed out.",
-                "Retry the request with a narrower calendar scope.",
+                "Use a narrower list window. For event lookup, grant native EventKit full Calendar access, list events again for native identifiers, then retry.",
             ) from exc
         except OSError as exc:
             raise CalendarBridgeError(
@@ -1020,6 +1144,10 @@ function run(argv) {
             ) from exc
         output = completed.stdout.strip()
         if completed.returncode != 0:
+            if "EVENT_CREATE_CLEANUP_FAILED" in completed.stderr:
+                raise CalendarBridgeError("EVENT_CREATE_CLEANUP_FAILED", "Calendar could not remove the new event after fallback creation failed.", "The creation outcome is unknown. Inspect Calendar.app before retrying.")
+            if "ALARM_RESTORE_FAILED" in completed.stderr:
+                raise CalendarBridgeError("ALARM_RESTORE_FAILED", "Calendar rejected the alert change and could not remove alerts added during the attempt.", "The alert outcome is unknown. Inspect this event in Calendar.app before retrying.")
             raise CalendarBridgeError(
                 "APPLESCRIPT_FALLBACK_FAILED",
                 completed.stderr.strip() or output or "Calendar AppleScript fallback failed.",
@@ -1054,6 +1182,7 @@ function run(argv) {
             all_day=bool(raw_event.get("all_day", False)),
             location=self._optional_text(raw_event.get("location")),
             availability=None,
+            alarms=raw_event.get("alarms"),
         )
 
     def _normalize_detail(
@@ -1065,6 +1194,8 @@ function run(argv) {
             summary_dict["recurrence_rule"] = raw_event["recurrence_rule"]
         if raw_event.get("attendees") is not None:
             summary_dict["attendees"] = raw_event["attendees"]
+        if raw_event.get("alarms") is not None:
+            summary_dict["alarms"] = raw_event["alarms"]
         detail = EventDetail.model_validate(summary_dict)
         detail._identifier_provider = identifier_provider
         return detail

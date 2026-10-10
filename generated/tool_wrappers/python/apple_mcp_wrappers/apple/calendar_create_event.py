@@ -14,11 +14,12 @@ async def calendar_create_event(
     notes: str | None = None,
     location: str | None = None,
     all_day: bool | None = None,
-    recurrence: dict[str, Any] | None = None
+    recurrence: dict[str, Any] | None = None,
+    alarms: list[Any] | None = None
 ) -> Any:
     """Calendar Create Event
 
-    Delegated Apple domain tool 'calendar_create_event' exposed through Apple-Tools-MCP.
+    Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.
 
     Example:
         await calendar_create_event(client, title='example_title', start_iso='2026-04-07T18:00:00', end_iso='2026-04-07T18:00:00', calendar_id='example_calendar_id')
@@ -32,6 +33,7 @@ async def calendar_create_event(
         "location": location,
         "all_day": all_day,
         "recurrence": recurrence,
+        "alarms": alarms,
     }
     payload = {key: value for key, value in arguments.items() if value is not None}
     return await call_tool_json(client, "calendar_create_event", payload)

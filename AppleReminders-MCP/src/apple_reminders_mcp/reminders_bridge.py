@@ -4,7 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from apple_mcp_common.native import NativeHelperError, ensure_swift_helper
+from apple_mcp_common.native import NativeHelperError, ensure_swift_helper, swift_helper_path
 from apple_reminders_mcp.config import load_settings
 from apple_reminders_mcp.models import (
     DeleteReminderListResponse,
@@ -27,9 +27,11 @@ class RemindersBridge:
     def __init__(self, helper_source: Path, helper_binary: Path) -> None:
         self.helper_source = helper_source
         self.helper_binary = helper_binary
+        self._helper_base_binary = helper_binary
 
     def helper_available(self) -> tuple[bool, bool]:
-        return self.helper_source.exists(), self.helper_binary.exists()
+        source_available = self.helper_source.exists()
+        return source_available, source_available and swift_helper_path(self.helper_source, self._helper_base_binary).is_file()
 
     def list_lists(self) -> list[ReminderListInfo]:
         payload = self._run_helper("list-reminder-lists")
@@ -157,10 +159,10 @@ class RemindersBridge:
         return DeleteReminderListResponse.model_validate({**payload, "list_id": payload["object_id"]})
 
     def _run_helper(self, command: str, *args: str) -> dict[str, object]:
-        self._ensure_helper()
+        helper_binary = self._ensure_helper()
         try:
             completed = subprocess.run(
-                [str(self.helper_binary), command, *args],
+                [str(helper_binary), command, *args],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -168,7 +170,7 @@ class RemindersBridge:
         except OSError as exc:
             raise RemindersBridgeError(
                 "HELPER_UNAVAILABLE",
-                f"Could not run the native helper '{self.helper_binary}': {exc}.",
+                f"Could not run the native helper '{helper_binary}': {exc}.",
                 "This server requires macOS with the compiled Reminders helper available.",
             ) from exc
         output = completed.stdout.strip()
@@ -195,7 +197,7 @@ class RemindersBridge:
             )
         return payload
 
-    def _ensure_helper(self) -> None:
+    def _ensure_helper(self) -> Path:
         if not self.helper_source.exists():
             raise RemindersBridgeError(
                 "HELPER_SOURCE_MISSING",
@@ -203,7 +205,9 @@ class RemindersBridge:
                 "Restore the shared Swift helper and retry.",
             )
         try:
-            ensure_swift_helper(self.helper_source, self.helper_binary)
+            helper_binary = ensure_swift_helper(self.helper_source, self._helper_base_binary)
+            self.helper_binary = helper_binary
+            return helper_binary
         except NativeHelperError as exc:
             raise RemindersBridgeError(exc.error_code, str(exc), "Confirm Xcode command line tools and Swift are available, then retry.") from exc
 

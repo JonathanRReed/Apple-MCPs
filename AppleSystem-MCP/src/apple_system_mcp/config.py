@@ -30,7 +30,7 @@ def load_settings() -> Settings:
         safety_mode = "safe_readonly"
     return Settings(
         server_name="Apple System MCP",
-        version="1.0.5",
+        version="1.1.0",
         safety_mode=safety_mode,
         transport=os.environ.get("APPLE_SYSTEM_MCP_TRANSPORT", "stdio").strip().lower() or "stdio",
         host=os.environ.get("APPLE_SYSTEM_MCP_HOST", "127.0.0.1"),

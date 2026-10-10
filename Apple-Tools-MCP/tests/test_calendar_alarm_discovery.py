@@ -21,4 +21,9 @@ def test_calendar_alarm_search_and_complete_tool_schema(server):
             assert "alarms" in payload["input_schema"]["properties"]
             assert "alarms" in payload["description"].lower()
             assert "native EventKit" in payload["description"]
+            if name == "calendar_update_event":
+                for description in (entries[name]["description"], payload["description"]):
+                    assert "combining explicit alarms with other field edits" in description
+                    assert "[] or unchanged field values" in description
+                    assert "alarm-only" in description
     asyncio.run(check())

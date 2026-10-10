@@ -20,7 +20,7 @@ async def calendar_update_event(
 ) -> Any:
     """Calendar Update Event
 
-    Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them.
+    Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields.
 
     Example:
         await calendar_update_event(client, event_id='example_event_id', title='example_title')

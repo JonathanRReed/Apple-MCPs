@@ -2947,8 +2947,8 @@ def _tool_title(name: str) -> str:
 
 def _tool_description(name: str) -> str:
     calendar_descriptions = {
-        "calendar_create_event": "Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}.",
-        "calendar_update_event": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them.",
+        "calendar_create_event": "Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
+        "calendar_update_event": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields.",
         "calendar_get_event": "Read an Apple Calendar event, including relative, absolute, and location-based alarms.",
         "calendar_list_events": "List Apple Calendar events in a date range, including their alarm metadata.",
     }

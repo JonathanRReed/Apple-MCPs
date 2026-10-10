@@ -3444,7 +3444,7 @@
         "all_day: boolean (optional)",
         "recurrence: object (optional)"
       ],
-      "description": "Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}.",
+      "description": "Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3477,10 +3477,14 @@
         "absolute",
         "iso",
         "datetime",
-        "timezone"
+        "timezone",
+        "automation",
+        "can",
+        "add",
+        "initial"
       ],
       "title": "Calendar Create Event",
-      "usage_intent": "Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}."
+      "usage_intent": "Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access."
     },
     {
       "aliases": [
@@ -3500,7 +3504,7 @@
         "location: string (optional)",
         "all_day: boolean (optional)"
       ],
-      "description": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them.",
+      "description": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3530,10 +3534,15 @@
         "clear",
         "omit",
         "preserve",
-        "them"
+        "them",
+        "replacing",
+        "clearing",
+        "existing",
+        "requires",
+        "requir"
       ],
       "title": "Calendar Update Event",
-      "usage_intent": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them."
+      "usage_intent": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields."
     },
     {
       "aliases": [

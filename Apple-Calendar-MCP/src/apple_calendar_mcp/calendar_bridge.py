@@ -924,10 +924,22 @@ function run(argv) {
   cal.events.push(newEvent);
   try {
     if (argv[6] === "true") { newEvent.alldayEvent = true; }
-    applyAlarmUpdate(newEvent, prepareAlarmUpdate(app, newEvent, JSON.parse(argv[7])));
+    const alarmUpdate = prepareAlarmUpdate(app, newEvent, JSON.parse(argv[7]));
+    if (alarmUpdate !== null && alarmUpdate.error) {
+      throw new Error(alarmUpdate.error);
+    }
+    applyAlarmUpdate(newEvent, alarmUpdate);
     return JSON.stringify(eventRecord(cal, newEvent));
   } catch (error) {
-    newEvent.delete();
+    // Only this newly created event belongs to the failed creation attempt.
+    // Never remove inherited/default alerts individually during cleanup.
+    try { newEvent.delete(); }
+    catch (cleanupError) {
+      throw new Error("EVENT_CREATE_CLEANUP_FAILED: " + String(error) + "; cleanup: " + String(cleanupError));
+    }
+    if (error.message === "ALARM_EDIT_REQUIRES_NATIVE") {
+      return JSON.stringify({__error__: "ALARM_EDIT_REQUIRES_NATIVE"});
+    }
     throw error;
   }
 }
@@ -1132,6 +1144,8 @@ function run(argv) {
             ) from exc
         output = completed.stdout.strip()
         if completed.returncode != 0:
+            if "EVENT_CREATE_CLEANUP_FAILED" in completed.stderr:
+                raise CalendarBridgeError("EVENT_CREATE_CLEANUP_FAILED", "Calendar could not remove the new event after fallback creation failed.", "The creation outcome is unknown. Inspect Calendar.app before retrying.")
             if "ALARM_RESTORE_FAILED" in completed.stderr:
                 raise CalendarBridgeError("ALARM_RESTORE_FAILED", "Calendar rejected the alert change and could not remove alerts added during the attempt.", "The alert outcome is unknown. Inspect this event in Calendar.app before retrying.")
             raise CalendarBridgeError(

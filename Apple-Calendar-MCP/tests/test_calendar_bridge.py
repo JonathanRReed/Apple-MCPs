@@ -1641,3 +1641,78 @@ def test_encoded_legacy_shadow_in_any_calendar_is_unknown_and_blocks_writes(monk
         with pytest.raises(CalendarBridgeError, match="AMBIGUOUS"):
             operation()
     assert state["writes"] == []
+
+
+@pytest.mark.parametrize('alarm_state', ['displayAlarms', 'soundAlarms', 'mailAlarms', 'openFileAlarms', 'unreadable', 'unknown'])
+@pytest.mark.parametrize('alarms', [[], [{'minutes_before': 15}]])
+def test_fallback_create_refuses_inherited_or_unknown_alarms_and_deletes_only_new_event(monkeypatch, alarm_state, alarms):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    observed = []
+
+    def run(script, *args, **kwargs):
+        setup = """
+let createdEvent = null;
+const deletedEvents = [];
+let deletedAlerts = 0;
+STUB_CALENDAR.exists = function() { return true; };
+STUB_CALENDAR.events.push = function(evt) { createdEvent = evt; };
+const createApp = alarmApp;
+createApp.Event = function(properties) {
+  const evt = makeEvent("new-event", properties.summary, properties.startDate, properties.endDate);
+  evt.displayAlarms = alarmCollection([]);
+  evt.soundAlarms = alarmCollection([]);
+  evt.mailAlarms = alarmCollection([]);
+  evt.openFileAlarms = alarmCollection([]);
+  evt.delete = function() { deletedEvents.push("new-event"); };
+"""
+        if alarm_state == 'unreadable':
+            setup += 'evt.displayAlarms = function() {throw new Error("cannot read alarms");};'
+        elif alarm_state == 'unknown':
+            setup += 'evt.displayAlarms = function() {return null;};'
+        else:
+            setup += f'evt.{alarm_state} = alarmCollection([makeAlarm({{triggerInterval:-15}})]);'
+            setup += f'evt.{alarm_state}().forEach(a => a.delete = function() {{deletedAlerts++;throw new Error("must not delete inherited alert");}});'
+        setup += 'return evt;};'
+        wrapped = script + """
+const create = run;
+run = function(argv) {
+  const result = JSON.parse(create(argv));
+  result.deletedEvents = deletedEvents;
+  result.deletedAlerts = deletedAlerts;
+  result.existingTitle = STUB_EVENT.summary();
+  return JSON.stringify(result);
+};
+"""
+        node = shutil.which('node')
+        if node is None:
+            pytest.skip('node is required to execute the generated JXA create script')
+        with tempfile.TemporaryDirectory() as directory:
+            harness = Path(directory) / 'create.js'
+            harness.write_text(_JXA_CALENDAR_STUB + _ALARM_COLLECTION_STUB + setup + wrapped + '\nconsole.log(run(process.argv.slice(2)));\n')
+            completed = subprocess.run([node, str(harness), *args], capture_output=True, text=True, check=False)
+        assert completed.returncode == 0, completed.stderr
+        result = json.loads(completed.stdout)
+        observed.append(result)
+        return result
+
+    monkeypatch.setattr(bridge, '_run_jxa', run)
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge._fallback_create_event(title='New fixture', calendar_id='Work',
+            start_iso='2030-10-11T12:00:00Z', end_iso='2030-10-11T13:00:00Z',
+            notes=None, location=None, all_day=False, alarms=alarms)
+    assert error.value.error_code == 'ALARM_EDIT_REQUIRES_NATIVE'
+    assert observed[0]['deletedEvents'] == ['new-event']
+    assert observed[0]['deletedAlerts'] == 0
+    assert observed[0]['existingTitle'] == 'Standup'
+
+
+def test_fallback_create_cleanup_failure_reports_unknown_outcome(monkeypatch):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    monkeypatch.setattr(subprocess, 'run', lambda command, **kwargs: subprocess.CompletedProcess(
+        command, 1, '', 'EVENT_CREATE_CLEANUP_FAILED: ALARM_EDIT_REQUIRES_NATIVE; cleanup: failed'))
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge._fallback_create_event(title='New fixture', calendar_id='Work',
+            start_iso='2030-10-11T12:00:00Z', end_iso='2030-10-11T13:00:00Z',
+            notes=None, location=None, all_day=False, alarms=[])
+    assert error.value.error_code == 'EVENT_CREATE_CLEANUP_FAILED'
+    assert 'unknown' in error.value.suggestion

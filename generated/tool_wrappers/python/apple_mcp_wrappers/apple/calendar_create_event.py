@@ -19,7 +19,7 @@ async def calendar_create_event(
 ) -> Any:
     """Calendar Create Event
 
-    Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}.
+    Create an Apple Calendar event with optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.
 
     Example:
         await calendar_create_event(client, title='example_title', start_iso='2026-04-07T18:00:00', end_iso='2026-04-07T18:00:00', calendar_id='example_calendar_id')

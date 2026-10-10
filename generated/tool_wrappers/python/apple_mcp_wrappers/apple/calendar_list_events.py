@@ -14,7 +14,7 @@ async def calendar_list_events(
 ) -> Any:
     """Calendar List Events
 
-    List Apple Calendar events in a date range, including their alarm metadata.
+    List Apple Calendar events in a date range, including their alarm metadata. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits.
 
     Example:
         await calendar_list_events(client, start_iso='2026-04-07T18:00:00', end_iso='2026-04-07T18:00:00')

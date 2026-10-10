@@ -342,4 +342,6 @@ attaching local files to a draft or outgoing message. Attachments are disabled
 when this variable is unset. The same directory restriction applies to the
 standalone Mail server and the unified Apple Tools server.
 
+Select a calendar by its displayed name and source in `calendar_list_calendars`, then pass its returned `calendar_id` unchanged. Re-list calendars after changing Calendar permissions and restarting the MCP server. For full alarm edits, list events with a native calendar ID and use the returned native event ID; existing `applescript::` IDs continue to use automation. See [Selecting calendar and event identifiers](../Apple-Calendar-MCP/README.md#selecting-calendar-and-event-identifiers).
+
 Calendar alarm edits follow the standalone server contract: full editing and combined explicit-alarm/field updates require native EventKit. In the automation fallback, omit alarms for ordinary field edits. Alarm-only initial alerts and empty-list no-ops require every alert collection to be readable and empty. Failed insertion or an interrupted mutation can have an unknown outcome; inspect the event before retrying. See [Calendar alarm support](../Apple-Calendar-MCP/README.md).

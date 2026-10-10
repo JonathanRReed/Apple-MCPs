@@ -5,7 +5,7 @@
   "display_name": "Apple Contacts",
   "version": "1.1.0",
   "description": "Inspect and search Apple Contacts on macOS, and resolve a contact into a message-ready recipient.",
-  "long_description": "Local MCP server for Apple Contacts on macOS. Uses AppleScript to inspect contacts, search by name, phone, or email, fetch full contact details, and resolve a contact into a message-ready recipient before handing off to Apple Messages.",
+  "long_description": "Local MCP server for Apple Contacts on macOS. Uses CNContactStore by default to inspect contacts, search by name, phone, or email, fetch full contact details, and resolve a contact into a message-ready recipient before handing off to Apple Messages. Set APPLE_CONTACTS_MCP_BACKEND=applescript to select the AppleScript fallback.",
   "icon": "icon.png",
   "author": {
     "name": "Jonathan Reed"

@@ -3504,7 +3504,7 @@
         "location: string (optional)",
         "all_day: boolean (optional)"
       ],
-      "description": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields.",
+      "description": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3538,11 +3538,11 @@
         "replacing",
         "clearing",
         "existing",
-        "requires",
-        "requir"
+        "combining",
+        "explicit"
       ],
       "title": "Calendar Update Event",
-      "usage_intent": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms requires native EventKit access; automation rejects that edit before changing other fields."
+      "usage_intent": "Update an Apple Calendar event and its alarms. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty."
     },
     {
       "aliases": [

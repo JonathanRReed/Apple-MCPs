@@ -1719,7 +1719,7 @@ def test_fallback_create_cleanup_failure_reports_unknown_outcome(monkeypatch):
 
 
 @pytest.mark.parametrize('field', ['summary', 'startDate', 'endDate', 'location', 'description', 'alldayEvent', 'record'])
-def test_fallback_field_assignment_failure_does_not_add_initial_alarms(monkeypatch, field):
+def test_fallback_combined_alarm_edit_rejects_before_failing_field_or_record_operation(monkeypatch, field):
     bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
     observed = []
 
@@ -1746,8 +1746,9 @@ STUB_CALENDAR.events.whose = function(query) {
 const update = run;
 run = function(argv) {
   let failure = null;
-  try { update(argv); } catch(error) { failure = error.message; }
-  return JSON.stringify({__error__: "ASSIGNMENT_FAILED", failure: failure, alarms: eventAlarms(STUB_EVENT)});
+  let result;
+  try { result = JSON.parse(update(argv)); } catch(error) { failure = error.message; }
+  return JSON.stringify({...(result || {__error__: "ASSIGNMENT_FAILED"}), failure: failure, alarms: eventAlarms(STUB_EVENT), title: STUB_EVENT.summary()});
 };
 """
         result = _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + wrapped, args[0], args[1])
@@ -1759,5 +1760,201 @@ run = function(argv) {
         bridge._fallback_update_event('event-1', title='Updated', calendar_id=None,
             start_iso='2026-03-28T13:30:00Z', end_iso='2026-03-28T14:30:00Z',
             notes='Updated', location='Updated', all_day=True, alarms=[{'minutes_before':15}])
-    assert observed[0]['failure'] == 'Calendar rejected field assignment'
+    assert observed[0]['failure'] is None
+    assert observed[0]['__error__'] == 'ALARM_EDIT_REQUIRES_NATIVE'
+    assert observed[0]['title'] == 'Standup'
     assert observed[0]['alarms'] == []
+
+
+def test_fallback_alarm_push_failure_does_not_persist_combined_field_edit(monkeypatch):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    observed = []
+
+    def run(script, *args, **kwargs):
+        setup = """
+STUB_EVENT.displayAlarms = alarmCollection([]);
+STUB_EVENT.displayAlarms.push = function() { throw new Error("Calendar rejected alarm push"); };
+"""
+        wrapped = script + """
+const update = run;
+run = function(argv) {
+  let result;
+  try { result = JSON.parse(update(argv)); }
+  catch(error) { result = {__error__: "ALARM_PUSH_FAILED"}; }
+  result.title = STUB_EVENT.summary();
+  result.alarms = eventAlarms(STUB_EVENT);
+  return JSON.stringify(result);
+};
+"""
+        result = _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + wrapped, args[0], args[1])
+        observed.append(result)
+        return result
+
+    monkeypatch.setattr(bridge, '_run_jxa', run)
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge._fallback_update_event('event-1', title='Changed', calendar_id=None,
+            start_iso=None, end_iso=None, notes=None, location=None, all_day=None,
+            alarms=[{'minutes_before':15}])
+    assert observed[0]['title'] == 'Standup'
+    assert observed[0]['alarms'] == []
+    assert error.value.error_code == 'ALARM_EDIT_REQUIRES_NATIVE'
+
+
+@pytest.mark.parametrize('field,value', [
+    ('title', 'Standup'), ('start_iso', '2026-03-27T13:30:00Z'),
+    ('end_iso', '2026-03-27T14:30:00Z'), ('notes', ''), ('location', ''), ('all_day', False),
+])
+@pytest.mark.parametrize('alarms', [[], [{'minutes_before':15}]])
+def test_fallback_combined_noop_field_values_still_require_native(monkeypatch, field, value, alarms):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    observed = []
+
+    def run(script, *args, **kwargs):
+        wrapped = script + """
+const update = run;
+run = function(argv) {
+  const before = eventRecord(STUB_CALENDAR, STUB_EVENT);
+  const result = JSON.parse(update(argv));
+  result.before = before; result.after = eventRecord(STUB_CALENDAR, STUB_EVENT);
+  return JSON.stringify(result);
+};
+"""
+        result = _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + 'STUB_EVENT.displayAlarms = alarmCollection([]);' + wrapped, args[0], args[1])
+        observed.append(result)
+        return result
+
+    fields = dict(title=None, calendar_id=None, start_iso=None, end_iso=None, notes=None, location=None, all_day=None)
+    fields[field] = value
+    monkeypatch.setattr(bridge, '_run_jxa', run)
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge._fallback_update_event('event-1', **fields, alarms=alarms)
+    assert error.value.error_code == 'ALARM_EDIT_REQUIRES_NATIVE'
+    assert observed[0]['before'] == observed[0]['after']
+
+
+@pytest.mark.parametrize('alarms', [[], [{'minutes_before':15}]])
+def test_fallback_alarm_only_request_accepts_verified_empty_collections(monkeypatch, alarms):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    monkeypatch.setattr(bridge, '_run_jxa', lambda script, *args, **kwargs:
+        _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + 'STUB_EVENT.displayAlarms = alarmCollection([]);' + script, args[0], args[1]))
+    result = bridge._fallback_update_event('event-1', title=None, calendar_id='Work',
+        start_iso=None, end_iso=None, notes=None, location=None, all_day=None, alarms=alarms)
+    assert result['title'] == 'Standup'
+    assert len(result['alarms']) == len(alarms)
+
+
+def test_fallback_partial_alarm_insertion_preserves_unowned_alerts_and_reports_unknown(monkeypatch):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    observed = []
+
+    def run(script, *args, **kwargs):
+        setup = """
+STUB_EVENT.displayAlarms = alarmCollection([]);
+let deletes = 0; let pushes = 0;
+const pushDisplay = STUB_EVENT.displayAlarms.push;
+STUB_EVENT.displayAlarms.push = function(alarm) {
+  pushes++;
+  if (pushes === 1) {
+    pushDisplay(alarm);
+    const outsideDisplay = makeAlarm({triggerInterval:-5});
+    pushDisplay(outsideDisplay); outsideDisplay.delete = function() {deletes++;};
+    for (const kind of ["soundAlarms", "mailAlarms", "openFileAlarms"]) {
+      const outside = makeAlarm({triggerInterval:-10});
+      STUB_EVENT[kind].push(outside); outside.delete = function() {deletes++;};
+    }
+    alarm.delete = function() {deletes++;};
+  } else { throw new Error("provider rejected second display alarm"); }
+};
+"""
+        wrapped = script + """
+const update = run;
+run = function(argv) {
+  let failure = null;
+  try {update(argv);} catch(error) {failure = error.message;}
+  return JSON.stringify({failure: failure, deletes: deletes, title: STUB_EVENT.summary(),
+    counts: ["displayAlarms", "soundAlarms", "mailAlarms", "openFileAlarms"].map(k => readAlarmCollection(STUB_EVENT,k).length)});
+};
+"""
+        result = _run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + wrapped, args[0], args[1])
+        observed.append(result)
+        raise CalendarBridgeError('ALARM_INSERT_STATUS_UNKNOWN', result['failure'])
+
+    monkeypatch.setattr(bridge, '_run_jxa', run)
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge._fallback_update_event('event-1', title=None, calendar_id=None,
+            start_iso=None, end_iso=None, notes=None, location=None, all_day=None,
+            alarms=[{'minutes_before':15}, {'minutes_before':30}])
+    assert error.value.error_code == 'ALARM_INSERT_STATUS_UNKNOWN'
+    assert observed[0]['failure'].startswith('ALARM_INSERT_STATUS_UNKNOWN')
+    assert observed[0]['deletes'] == 0
+    assert observed[0]['counts'] == [2,1,1,1]
+    assert observed[0]['title'] == 'Standup'
+
+
+@pytest.mark.parametrize('failure_code', ['APPLESCRIPT_FALLBACK_TIMEOUT', 'APPLESCRIPT_FALLBACK_FAILED', 'INVALID_HELPER_OUTPUT'])
+def test_fallback_update_execution_failure_reports_unknown_outcome_before_retry(monkeypatch, failure_code):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    def fail(*args, **kwargs):
+        raise CalendarBridgeError(failure_code, 'interrupted after possible write', 'retry')
+    monkeypatch.setattr(bridge, '_run_jxa', fail)
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge._fallback_update_event('event-1', title=None, calendar_id=None,
+            start_iso=None, end_iso=None, notes=None, location=None, all_day=None,
+            alarms=[{'minutes_before':15}])
+    assert error.value.error_code == failure_code
+    assert 'unknown' in error.value.suggestion.lower()
+    assert 'inspect' in error.value.suggestion.lower()
+    assert 'before' in error.value.suggestion.lower()
+
+
+def test_alarm_only_record_read_failure_happens_before_alert_insertion(monkeypatch):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    observed = []
+    def run(script, *args, **kwargs):
+        setup = """
+STUB_EVENT.displayAlarms = alarmCollection([]);
+const unreadableEvent = new Proxy(STUB_EVENT, {
+  get: function(target,key) {
+    if (key === "description") {return function() {throw new Error("record read failed");};}
+    return Reflect.get(target,key);
+  }
+});
+STUB_CALENDAR.events.whose = function(query) {return function() {return STUB_EVENT.uid() === query.uid ? [unreadableEvent] : [];};};
+"""
+        wrapped = script + """
+const update = run;
+run = function(argv) {
+  let failure = null;
+  try {update(argv);} catch(error) {failure=error.message;}
+  return JSON.stringify({failure:failure,alarms:eventAlarms(STUB_EVENT)});
+};
+"""
+        observed.append(_run_jxa_update_in_node(_ALARM_COLLECTION_STUB + setup + wrapped, args[0], args[1]))
+        raise CalendarBridgeError('APPLESCRIPT_FALLBACK_FAILED','record read failed')
+    monkeypatch.setattr(bridge, '_run_jxa', run)
+    with pytest.raises(CalendarBridgeError):
+        bridge._fallback_update_event('event-1',title=None,calendar_id=None,start_iso=None,end_iso=None,
+            notes=None,location=None,all_day=None,alarms=[{'minutes_before':15}])
+    assert observed == [{'failure':'record read failed','alarms':[]}]
+
+
+def test_jxa_alarm_insertion_failure_returns_structured_unknown_outcome(monkeypatch):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    monkeypatch.setattr(subprocess, 'run', lambda command, **kwargs: subprocess.CompletedProcess(
+        command,1,'','ALARM_INSERT_STATUS_UNKNOWN: Calendar rejected push'))
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge._fallback_update_event('event-1',title=None,calendar_id=None,start_iso=None,end_iso=None,
+            notes=None,location=None,all_day=None,alarms=[{'minutes_before':15}])
+    assert error.value.error_code == 'ALARM_INSERT_STATUS_UNKNOWN'
+    assert 'unknown' in error.value.suggestion
+    assert 'No individual alerts were deleted' in error.value.suggestion
+
+
+def test_empty_fallback_mutation_output_reports_unknown_outcome(monkeypatch):
+    bridge = CalendarBridge(Path('/tmp/source.swift'), Path('/tmp/helper'))
+    monkeypatch.setattr(bridge, '_run_jxa', lambda *args, **kwargs: {})
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge._fallback_update_event('event-1',title=None,calendar_id=None,start_iso=None,end_iso=None,
+            notes=None,location=None,all_day=None,alarms=[{'minutes_before':15}])
+    assert error.value.error_code == 'INVALID_HELPER_OUTPUT'
+    assert 'unknown' in error.value.suggestion

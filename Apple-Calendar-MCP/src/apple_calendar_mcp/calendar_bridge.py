@@ -687,14 +687,10 @@ function applyAlarmUpdate(evt, update) {
   try {
     update.replacements.forEach(function(properties) { evt.displayAlarms.push(update.app.DisplayAlarm(properties)); });
   } catch (error) {
-    try {
-      ["displayAlarms", "soundAlarms", "mailAlarms"].forEach(function(kind) {
-        readAlarmCollection(evt, kind).reverse().forEach(function(alarm) { alarm.delete(); });
-      });
-    } catch (restoreError) {
-      throw new Error("ALARM_RESTORE_FAILED: " + String(error) + "; restore: " + String(restoreError));
-    }
-    throw error;
+    // A push can persist an alert before reporting failure, and concurrent
+    // provider-created alerts are not owned by this attempt. Never delete
+    // individual alerts without provable ownership or claim rollback.
+    throw new Error("ALARM_INSERT_STATUS_UNKNOWN: " + String(error));
   }
 }
 
@@ -940,6 +936,9 @@ function run(argv) {
     if (error.message === "ALARM_EDIT_REQUIRES_NATIVE") {
       return JSON.stringify({__error__: "ALARM_EDIT_REQUIRES_NATIVE"});
     }
+    if (String(error).includes("ALARM_INSERT_STATUS_UNKNOWN")) {
+      return JSON.stringify({__error__: "ALARM_INSERT_FAILED"});
+    }
     throw error;
   }
 }
@@ -954,6 +953,7 @@ function run(argv) {
             notes or "",
             "true" if all_day else "false",
             json.dumps(alarms),
+            mutation=True,
         )
 
     def _fallback_update_event(
@@ -1013,6 +1013,14 @@ function run(argv) {
   if (alarmUpdate !== null && alarmUpdate.error) {
     return JSON.stringify({__error__: alarmUpdate.error});
   }
+  const writesFields = ["title", "start", "end", "location", "notes", "all_day"].some(function(field) {
+    return fields[field] !== null && fields[field] !== undefined;
+  });
+  if (alarmUpdate !== null && writesFields) {
+    // Even equal values express a field write. Do not combine fallible field
+    // assignments with alert insertion when automation cannot roll them back.
+    return JSON.stringify({__error__: "ALARM_EDIT_REQUIRES_NATIVE"});
+  }
   if (fields.title !== null) { evt.summary = fields.title; }
 
   if (newStart !== null && newEnd !== null && newStart >= evt.endDate()) {
@@ -1037,7 +1045,7 @@ function run(argv) {
   return JSON.stringify(record);
 }
 """
-        return self._run_jxa_event(script, event_id, json.dumps(fields))
+        return self._run_jxa_event(script, event_id, json.dumps(fields), mutation=True)
 
     def _fallback_delete_event(self, event_id: str) -> dict[str, object]:
         script = self._JXA_FIND_EVENT + """
@@ -1051,17 +1059,29 @@ function run(argv) {
   return JSON.stringify({deleted: true});
 }
 """
-        return self._run_jxa_event(script, event_id)
+        return self._run_jxa_event(script, event_id, mutation=True)
 
-    def _run_jxa_event(self, script: str, *args: str) -> dict[str, object]:
-        payload = self._run_jxa(script, *args, timeout=self._JXA_TIMEOUT_SECONDS)
+    def _run_jxa_event(self, script: str, *args: str, mutation: bool = False) -> dict[str, object]:
+        try:
+            payload = self._run_jxa(script, *args, timeout=self._JXA_TIMEOUT_SECONDS)
+        except CalendarBridgeError as error:
+            if mutation and error.error_code in {"APPLESCRIPT_FALLBACK_FAILED", "APPLESCRIPT_FALLBACK_TIMEOUT", "INVALID_HELPER_OUTPUT"}:
+                raise CalendarBridgeError(error.error_code, error.message,
+                    "The mutation outcome is unknown. Inspect the affected event in Calendar.app before retrying.") from error
+            raise
+        if mutation and not payload:
+            raise CalendarBridgeError("INVALID_HELPER_OUTPUT", "Calendar returned no mutation result.",
+                "The mutation outcome is unknown. Inspect Calendar.app before retrying.")
         error_code = payload.get("__error__")
         if error_code == "ALARM_EDIT_REQUIRES_NATIVE":
             raise CalendarBridgeError(
                 "ALARM_EDIT_REQUIRES_NATIVE",
-                "Calendar automation cannot safely replace or clear existing alarms; no event fields were changed.",
+                "Calendar automation requires native EventKit for existing-alarm edits or combined alarm and field edits; no event fields were changed.",
                 "Use native EventKit access for this alarm edit, or omit alarms to preserve existing alerts.",
             )
+        if error_code == "ALARM_INSERT_FAILED":
+            raise CalendarBridgeError("ALARM_INSERT_FAILED", "Calendar rejected initial alerts and the newly created event was removed.",
+                "No new event remains. Use native EventKit access for this creation.")
         if error_code == "INVALID_INPUT":
             raise CalendarBridgeError("INVALID_INPUT", "The prospective event time window is invalid.", "Use valid dates with end after start; no fallback fields were changed.")
         if error_code == "UNSUPPORTED_OPERATION":
@@ -1150,6 +1170,9 @@ function run(argv) {
         if completed.returncode != 0:
             if "EVENT_CREATE_CLEANUP_FAILED" in completed.stderr:
                 raise CalendarBridgeError("EVENT_CREATE_CLEANUP_FAILED", "Calendar could not remove the new event after fallback creation failed.", "The creation outcome is unknown. Inspect Calendar.app before retrying.")
+            if "ALARM_INSERT_STATUS_UNKNOWN" in completed.stderr:
+                raise CalendarBridgeError("ALARM_INSERT_STATUS_UNKNOWN", "Calendar could not confirm completion of initial alert insertion.",
+                    "The alert outcome is unknown. No individual alerts were deleted. Inspect this event in Calendar.app before retrying.")
             if "ALARM_RESTORE_FAILED" in completed.stderr:
                 raise CalendarBridgeError("ALARM_RESTORE_FAILED", "Calendar rejected the alert change and could not remove alerts added during the attempt.", "The alert outcome is unknown. Inspect this event in Calendar.app before retrying.")
             raise CalendarBridgeError(

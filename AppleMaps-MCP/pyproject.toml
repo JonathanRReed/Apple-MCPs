@@ -24,7 +24,7 @@ classifiers = [
 ]
 dependencies = [
   "apple-mcp-common>=1.1.1,<2",
-  "mcp>=2.2.0,<3",
+  "mcp>=2.3.0,<3",
   "pydantic>=2.13.5",
 ]
 

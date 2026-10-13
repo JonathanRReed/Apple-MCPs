@@ -149,6 +149,10 @@ By default the state file is stored at `~/.apple-tools-mcp/preferences.json`. Ov
 
 Apple-Tools-MCP also stores recent assistant actions in `~/.apple-tools-mcp/actions.json` so the unified server can expose audit history and undo for reversible operations.
 
+Archive, reminder, note, and Mail follow-up previews leave saved preferences and action history unchanged, including when defaults must be discovered or a destination cannot be resolved. An explicit reminder-list or notes-folder ID uses its saved label only when it matches the default; other IDs appear directly in the preview.
+
+Archive discovery stays within the selected account. An explicit account override does not reuse another account's saved archive mailbox or replace saved defaults. If that account has no discoverable archive, pass its mailbox explicitly.
+
 ## How to Work With It
 
 - Resolve people through Contacts first, then decide between Messages or Mail based on saved defaults.

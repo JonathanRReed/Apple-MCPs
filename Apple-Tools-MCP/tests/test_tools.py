@@ -1,6 +1,8 @@
 import asyncio
 import json
+from types import SimpleNamespace
 
+import pytest
 from mcp import types
 from mcp.server.mcpserver import MCPServer
 
@@ -1053,6 +1055,245 @@ def test_apple_preview_follow_up_from_mail_reports_destinations(monkeypatch, tmp
     assert "Notes" in result.summary
 
 
+@pytest.fixture
+def workflow_services(monkeypatch, tmp_path):
+    """Keep workflow tests at mocked Apple boundaries with real temporary state."""
+    state_file = tmp_path / "state" / "prefs.json"
+    monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(state_file))
+    load_settings.cache_clear()
+    responses = {
+        "mail_list_mailboxes": SimpleNamespace(mailboxes=[
+            SimpleNamespace(account="A", name="Archive"),
+            SimpleNamespace(account="B", name="Archived Mail"),
+        ]),
+        "calendar_list_calendars": SimpleNamespace(ok=True, calendars=[
+            SimpleNamespace(calendar_id="cal-1", name="Home", writable=True),
+        ]),
+        "reminders_list_lists": SimpleNamespace(ok=True, lists=[
+            SimpleNamespace(list_id="list-default", title="Reminders"),
+            SimpleNamespace(list_id="list-work", title="Work"),
+        ]),
+        "notes_list_folders": SimpleNamespace(ok=True, folders=[
+            SimpleNamespace(folder_id="folder-default", name="Notes", account_name="iCloud"),
+            SimpleNamespace(folder_id="folder-work", name="Projects", account_name="Work"),
+        ]),
+        "notes_list_accounts": SimpleNamespace(ok=True, accounts=[SimpleNamespace(name="iCloud", upgraded=True)]),
+    }
+    for name in responses:
+        monkeypatch.setattr(tools, name, lambda *args, _name=name, **kwargs: responses[_name])
+    monkeypatch.setattr(tools, "mail_get_message", lambda message_id: SimpleNamespace(
+        message_id=message_id, subject="Project update", sender="alice@example.com", mailbox="Inbox", account="B",
+    ))
+
+    def unexpected_write(*args, **kwargs):
+        raise AssertionError("preview must not write to Apple apps")
+
+    for name in ("mail_move_message", "reminders_create_reminder", "notes_create_note"):
+        monkeypatch.setattr(tools, name, unexpected_write)
+    return state_file, responses
+
+
+def _workflow_state_snapshot(root):
+    return {str(path.relative_to(root)): path.read_bytes() if path.is_file() else None for path in root.rglob("*")}
+
+
+_READ_ONLY_PREVIEWS = [
+    ("apple_preview_archive_message", {"message_id": "msg-1"}, "mail_list_mailboxes", "mailboxes", "ARCHIVE_MAILBOX_NOT_FOUND"),
+    ("apple_preview_create_reminder_with_defaults", {"title": "Follow up"}, "reminders_list_lists", "lists", "DEFAULT_REMINDER_LIST_MISSING"),
+    ("apple_preview_create_note_with_defaults", {"title": "Reference"}, "notes_list_folders", "folders", "DEFAULT_NOTES_FOLDER_MISSING"),
+    ("apple_preview_follow_up_from_mail", {"message_id": "msg-1"}, "reminders_list_lists", "lists", "DEFAULT_REMINDER_LIST_MISSING"),
+    ("apple_preview_follow_up_from_mail", {"message_id": "msg-1"}, "notes_list_folders", "folders", "DEFAULT_NOTES_FOLDER_MISSING"),
+]
+
+
+@pytest.mark.parametrize("existing_state", [False, True])
+@pytest.mark.parametrize("missing_target", [False, True])
+@pytest.mark.parametrize("tool_name,arguments,service,collection,error_code", _READ_ONLY_PREVIEWS)
+def test_workflow_previews_leave_saved_state_unchanged(
+    workflow_services, tmp_path, existing_state, missing_target, tool_name, arguments, service, collection, error_code,
+) -> None:
+    state_file, responses = workflow_services
+    if existing_state:
+        tools.apple_update_preferences(preferred_communication_channel="mail")
+        state_file.with_name("actions.json").write_text("[]\n", encoding="utf-8")
+    if missing_target:
+        setattr(responses[service], collection, [])
+    before = _workflow_state_snapshot(tmp_path)
+
+    result = getattr(tools, tool_name)(**arguments)
+
+    assert result.ok is not missing_target
+    if missing_target:
+        assert result.error.error_code == error_code
+    assert _workflow_state_snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("existing_default", [False, True])
+@pytest.mark.parametrize("preview", [False, True])
+def test_archive_account_override_uses_its_own_mailbox(monkeypatch, workflow_services, existing_default, preview) -> None:
+    state_file, _ = workflow_services
+    if existing_default:
+        tools.apple_update_preferences(default_archive_mailbox="Archive", default_archive_account="A")
+    before = state_file.read_bytes() if state_file.exists() else None
+    monkeypatch.setattr(tools, "mail_move_message", lambda message_id, target_mailbox, target_account=None: SimpleNamespace(
+        message_id=message_id, moved=True, target_mailbox=target_mailbox, target_account=target_account,
+    ))
+
+    if preview:
+        result = tools.apple_preview_archive_message("msg-1", archive_account="B")
+        assert result.ok is True
+        assert result.summary == "Move 'Project update' from Inbox to B / Archived Mail."
+        assert result.execution_arguments == {"message_id": "msg-1", "archive_mailbox": None, "archive_account": "B"}
+    else:
+        result = tools.apple_archive_message("msg-1", archive_account="B")
+        assert (result.target_mailbox, result.target_account) == ("Archived Mail", "B")
+        assert tools.apple_list_recent_actions().count == 1
+    assert (state_file.read_bytes() if state_file.exists() else None) == before
+
+
+@pytest.mark.parametrize("preview", [False, True])
+def test_archive_account_without_archive_fails_closed(workflow_services, preview) -> None:
+    state_file, responses = workflow_services
+    tools.apple_update_preferences(default_archive_mailbox="Archive", default_archive_account="A")
+    responses["mail_list_mailboxes"].mailboxes = [SimpleNamespace(account="A", name="Archive")]
+    before = state_file.read_bytes()
+    tool = tools.apple_preview_archive_message if preview else tools.apple_archive_message
+
+    result = tool("msg-1", archive_account="B")
+
+    assert result.ok is False
+    assert result.error.error_code == "ARCHIVE_MAILBOX_NOT_FOUND"
+    assert state_file.read_bytes() == before
+    assert not state_file.with_name("actions.json").exists()
+
+
+@pytest.mark.parametrize("existing_default", [False, True])
+def test_explicit_archive_pair_preserves_defaults_and_undo(monkeypatch, workflow_services, existing_default) -> None:
+    state_file, _ = workflow_services
+    if existing_default:
+        tools.apple_update_preferences(default_archive_mailbox="Archive", default_archive_account="A")
+    before = state_file.read_bytes() if state_file.exists() else None
+    captured = []
+
+    def move_message(message_id, target_mailbox, target_account=None):
+        captured.append((message_id, target_mailbox, target_account))
+        return SimpleNamespace(message_id=message_id, moved=True, target_mailbox=target_mailbox, target_account=target_account)
+
+    monkeypatch.setattr(tools, "mail_move_message", move_message)
+    preview = tools.apple_preview_archive_message("msg-1", archive_mailbox="Keep", archive_account="B")
+    assert preview.summary == "Move 'Project update' from Inbox to B / Keep."
+
+    result = tools.apple_archive_message(**preview.execution_arguments)
+    action = tools.apple_list_recent_actions().actions[0]
+    undo = tools.apple_undo_action(action.action_id)
+
+    assert result.moved is True
+    assert undo.ok is True
+    assert undo.action.undo_status == "undone"
+    assert captured == [("msg-1", "Keep", "B"), ("msg-1", "Inbox", "B")]
+    assert (state_file.read_bytes() if state_file.exists() else None) == before
+
+
+def test_saved_archive_account_scopes_default_detection(workflow_services) -> None:
+    state_file, _ = workflow_services
+    tools.apple_update_preferences(default_archive_account="B")
+
+    result = tools.apple_detect_defaults()
+
+    assert result.ok is True
+    preferences = json.loads(state_file.read_text(encoding="utf-8"))
+    assert (preferences["default_archive_mailbox"], preferences["default_archive_account"]) == ("Archived Mail", "B")
+
+
+@pytest.mark.parametrize("target_id", ["list-work", "list-unknown"])
+def test_explicit_reminder_preview_labels_selected_id(monkeypatch, workflow_services, target_id) -> None:
+    state_file, _ = workflow_services
+    tools.apple_update_preferences(default_reminder_list_id="list-default", default_reminder_list_name="Reminders")
+    before = state_file.read_bytes()
+    monkeypatch.setattr(tools, "reminders_create_reminder", lambda **kwargs: SimpleNamespace(
+        ok=True, reminder={"reminder_id": "rem-1", "list_id": kwargs["list_id"], "title": kwargs["title"]},
+    ))
+
+    preview = tools.apple_preview_create_reminder_with_defaults("Follow up", list_id=target_id)
+
+    assert preview.ok is True
+    assert preview.summary == f"Create reminder 'Follow up' in {target_id}."
+    assert preview.execution_arguments["list_id"] == target_id
+    result = tools.apple_create_reminder_with_defaults(**preview.execution_arguments)
+    assert result.reminder["list_id"] == target_id
+    assert state_file.read_bytes() == before
+
+
+@pytest.mark.parametrize("target_id", ["folder-work", "folder-unknown"])
+def test_explicit_note_preview_labels_selected_id(monkeypatch, workflow_services, target_id) -> None:
+    state_file, _ = workflow_services
+    tools.apple_update_preferences(
+        default_notes_folder_id="folder-default", default_notes_folder_name="Notes", default_notes_account_name="iCloud",
+    )
+    before = state_file.read_bytes()
+    monkeypatch.setattr(tools, "notes_create_note", lambda **kwargs: SimpleNamespace(
+        ok=True, note={"note_id": "note-1", "folder_id": kwargs["folder_id"], "title": kwargs["title"]},
+    ))
+
+    preview = tools.apple_preview_create_note_with_defaults("Reference", body_text="hello", folder_id=target_id)
+
+    assert preview.ok is True
+    assert preview.summary == f"Create note 'Reference' in {target_id}."
+    assert preview.execution_arguments["folder_id"] == target_id
+    result = tools.apple_create_note_with_defaults(**preview.execution_arguments)
+    assert result.note["folder_id"] == target_id
+    assert state_file.read_bytes() == before
+
+
+def test_explicit_default_ids_keep_saved_destination_labels(workflow_services) -> None:
+    state_file, _ = workflow_services
+    tools.apple_update_preferences(
+        default_reminder_list_id="list-default", default_reminder_list_name="Reminders",
+        default_notes_folder_id="folder-default", default_notes_folder_name="Notes", default_notes_account_name="iCloud",
+    )
+    before = state_file.read_bytes()
+
+    reminder = tools.apple_preview_create_reminder_with_defaults("Follow up", list_id="list-default")
+    note = tools.apple_preview_create_note_with_defaults("Reference", folder_id="folder-default")
+
+    assert reminder.summary == "Create reminder 'Follow up' in Reminders."
+    assert note.summary == "Create note 'Reference' in iCloud / Notes."
+    assert state_file.read_bytes() == before
+
+
+@pytest.mark.parametrize("domain", ["reminder", "note"])
+def test_defaulted_create_after_preview_still_persists_and_undoes(monkeypatch, workflow_services, domain) -> None:
+    state_file, _ = workflow_services
+    if domain == "reminder":
+        preview = tools.apple_preview_create_reminder_with_defaults("Follow up")
+        create_service, delete_service = "reminders_create_reminder", "reminders_delete_reminder"
+        item_key, id_key, target_key, item_id, target_id = "reminder", "reminder_id", "list_id", "rem-1", "list-default"
+    else:
+        preview = tools.apple_preview_create_note_with_defaults("Reference", body_text="hello")
+        create_service, delete_service = "notes_create_note", "notes_delete_note"
+        item_key, id_key, target_key, item_id, target_id = "note", "note_id", "folder_id", "note-1", "folder-default"
+    assert preview.ok is True
+    assert not state_file.exists()
+    monkeypatch.setattr(tools, create_service, lambda **kwargs: SimpleNamespace(
+        ok=True, **{item_key: {id_key: item_id, target_key: kwargs[target_key], "title": kwargs["title"]}},
+    ))
+    monkeypatch.setattr(tools, delete_service, lambda **kwargs: SimpleNamespace(ok=True, deleted_id=kwargs[id_key]))
+
+    result = getattr(tools, preview.execution_tool)(**preview.execution_arguments)
+    action = tools.apple_list_recent_actions().actions[0]
+    undo = tools.apple_undo_action(action.action_id)
+
+    assert result.ok is True
+    assert getattr(result, item_key)[target_key] == target_id
+    preferences = json.loads(state_file.read_text(encoding="utf-8"))
+    assert preferences["default_reminder_list_id" if domain == "reminder" else "default_notes_folder_id"] == target_id
+    assert action.undo_tool == delete_service
+    assert action.undo_arguments == {id_key: item_id}
+    assert undo.ok is True
+    assert undo.undo_result["deleted_id"] == item_id
+    assert undo.action.undo_status == "undone"
+
+
 def test_apple_archive_message_uses_detected_archive(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(tmp_path / "prefs.json"))
     load_settings.cache_clear()
@@ -1099,6 +1340,8 @@ def test_apple_archive_message_uses_detected_archive(monkeypatch, tmp_path) -> N
 
     assert result.moved is True
     assert result.target_mailbox == "Archive"
+    preferences = tools.apple_get_preferences().preferences
+    assert (preferences.default_archive_mailbox, preferences.default_archive_account) == ("Archive", "iCloud")
 
 
 def test_apple_archive_message_records_undoable_action(monkeypatch, tmp_path) -> None:

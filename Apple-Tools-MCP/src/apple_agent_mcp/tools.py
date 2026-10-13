@@ -512,13 +512,15 @@ def _mail_response_ok(value: Any) -> bool:
     return not isinstance(value, MailErrorResponse)
 
 
-def _pick_archive_mailbox() -> tuple[str | None, str | None]:
-    response = mail_list_mailboxes()
+def _pick_archive_mailbox(account: str | None = None) -> tuple[str | None, str | None]:
+    response = mail_list_mailboxes(account=account)
     if not _mail_response_ok(response):
         return None, None
     exact_names = ("archive", "all archive", "archives")
     fallback: tuple[str | None, str | None] = (None, None)
     for mailbox in response.mailboxes:
+        if account is not None and mailbox.account != account:
+            continue
         normalized = mailbox.name.strip().lower()
         if normalized in exact_names:
             return mailbox.name, mailbox.account
@@ -605,7 +607,7 @@ def _detect_preferences(base: AssistantPreferences | None = None) -> tuple[Assis
     detected: list[str] = []
     updates: dict[str, Any] = {}
 
-    archive_mailbox, archive_account = _pick_archive_mailbox()
+    archive_mailbox, archive_account = _pick_archive_mailbox(account=current.default_archive_account)
     if archive_mailbox and current.default_archive_mailbox is None:
         updates["default_archive_mailbox"] = archive_mailbox
         detected.append(f"archive mailbox -> {archive_account} / {archive_mailbox}" if archive_account else f"archive mailbox -> {archive_mailbox}")
@@ -672,23 +674,29 @@ def _resolve_archive_target(
     preferences: AssistantPreferences,
     archive_mailbox: str | None = None,
     archive_account: str | None = None,
+    *,
+    persist: bool = True,
 ) -> tuple[tuple[str, str | None, AssistantPreferences], AppleErrorResponse | None]:
-    target_mailbox = archive_mailbox or preferences.default_archive_mailbox
+    # A saved mailbox belongs to its saved account, not to an account override.
+    use_default_mailbox = archive_account is None or archive_account == preferences.default_archive_account
+    target_mailbox = archive_mailbox or (preferences.default_archive_mailbox if use_default_mailbox else None)
     target_account = archive_account or preferences.default_archive_account
     updated_preferences = preferences
     if not target_mailbox:
-        detected_mailbox, detected_account = _pick_archive_mailbox()
+        detected_mailbox, detected_account = _pick_archive_mailbox(account=target_account)
         if detected_mailbox:
-            updated_preferences = _save_preferences(
-                preferences.model_copy(
+            target_mailbox = detected_mailbox
+            target_account = target_account or detected_account
+            # Explicit destinations do not replace the user's saved defaults.
+            if archive_account is None:
+                updated_preferences = preferences.model_copy(
                     update={
                         "default_archive_mailbox": detected_mailbox,
                         "default_archive_account": detected_account,
                     }
                 )
-            )
-            target_mailbox = detected_mailbox
-            target_account = target_account or detected_account
+                if persist:
+                    updated_preferences = _save_preferences(updated_preferences)
     if not target_mailbox:
         return (
             ("", target_account, updated_preferences),
@@ -704,12 +712,16 @@ def _resolve_archive_target(
 def _resolve_reminder_target(
     preferences: AssistantPreferences,
     list_id: str | None = None,
+    *,
+    persist: bool = True,
 ) -> tuple[tuple[str, AssistantPreferences], AppleErrorResponse | None]:
     effective_list_id = list_id or preferences.default_reminder_list_id
     updated_preferences = preferences
     if not effective_list_id:
         detected_preferences, detected = _detect_preferences(preferences)
-        updated_preferences = _save_preferences(detected_preferences) if detected else preferences
+        updated_preferences = detected_preferences if detected else preferences
+        if persist and detected:
+            updated_preferences = _save_preferences(updated_preferences)
         effective_list_id = updated_preferences.default_reminder_list_id
     if not effective_list_id:
         return (
@@ -727,13 +739,17 @@ def _resolve_notes_target(
     preferences: AssistantPreferences,
     folder_id: str | None = None,
     prefer_digest_folder: bool = False,
+    *,
+    persist: bool = True,
 ) -> tuple[tuple[str, AssistantPreferences], AppleErrorResponse | None]:
     preferred_folder_id = preferences.default_digest_folder_id if prefer_digest_folder else preferences.default_notes_folder_id
     effective_folder_id = folder_id or preferred_folder_id
     updated_preferences = preferences
     if not effective_folder_id:
         detected_preferences, detected = _detect_preferences(preferences)
-        updated_preferences = _save_preferences(detected_preferences) if detected else preferences
+        updated_preferences = detected_preferences if detected else preferences
+        if persist and detected:
+            updated_preferences = _save_preferences(updated_preferences)
         effective_folder_id = updated_preferences.default_digest_folder_id if prefer_digest_folder else updated_preferences.default_notes_folder_id
     if not effective_folder_id:
         return (
@@ -1653,7 +1669,7 @@ def apple_preview_archive_message(
         if isinstance(message, MailErrorResponse):
             return _apple_error_response(message.error_code, message.message, None)
         preferences = _get_preferences()
-        resolved, error = _resolve_archive_target(preferences, archive_mailbox=archive_mailbox, archive_account=archive_account)
+        resolved, error = _resolve_archive_target(preferences, archive_mailbox=archive_mailbox, archive_account=archive_account, persist=False)
         if error is not None:
             return error
         target_mailbox, target_account, _ = resolved
@@ -1688,11 +1704,13 @@ def apple_preview_create_reminder_with_defaults(
 ) -> ActionPreviewResponse | AppleErrorResponse:
     try:
         preferences = _get_preferences()
-        resolved, error = _resolve_reminder_target(preferences, list_id=list_id)
+        resolved, error = _resolve_reminder_target(preferences, list_id=list_id, persist=False)
         if error is not None:
             return error
         effective_list_id, updated_preferences = resolved
-        target_label = updated_preferences.default_reminder_list_name or effective_list_id
+        target_label = effective_list_id
+        if effective_list_id == updated_preferences.default_reminder_list_id:
+            target_label = updated_preferences.default_reminder_list_name or effective_list_id
         warnings = [] if due_date else ["Reminder preview has no due date."]
         return ActionPreviewResponse(
             action_type="create_reminder",
@@ -1727,13 +1745,15 @@ def apple_preview_create_note_with_defaults(
 ) -> ActionPreviewResponse | AppleErrorResponse:
     try:
         preferences = _get_preferences()
-        resolved, error = _resolve_notes_target(preferences, folder_id=folder_id)
+        resolved, error = _resolve_notes_target(preferences, folder_id=folder_id, persist=False)
         if error is not None:
             return error
         effective_folder_id, updated_preferences = resolved
-        folder_label = updated_preferences.default_notes_folder_name or effective_folder_id
-        account_label = updated_preferences.default_notes_account_name
-        destination = f"{account_label} / {folder_label}" if account_label else folder_label
+        destination = effective_folder_id
+        if effective_folder_id == updated_preferences.default_notes_folder_id:
+            folder_label = updated_preferences.default_notes_folder_name or effective_folder_id
+            account_label = updated_preferences.default_notes_account_name
+            destination = f"{account_label} / {folder_label}" if account_label else folder_label
         warnings = [] if (body_text or body_html) else ["Note preview has an empty body."]
         return ActionPreviewResponse(
             action_type="create_note",
@@ -1775,7 +1795,7 @@ def apple_preview_follow_up_from_mail(
         summary_parts: list[str] = [f"Capture follow-up from '{message.subject or message.message_id}'."]
         preferences = _get_preferences()
         if create_reminder:
-            reminder_resolved, reminder_error = _resolve_reminder_target(preferences)
+            reminder_resolved, reminder_error = _resolve_reminder_target(preferences, persist=False)
             if reminder_error is not None:
                 return reminder_error
             _, updated_preferences = reminder_resolved
@@ -1786,7 +1806,7 @@ def apple_preview_follow_up_from_mail(
             if not due_date:
                 warnings.append("Follow-up reminder preview has no due date.")
         if create_note:
-            note_resolved, note_error = _resolve_notes_target(preferences)
+            note_resolved, note_error = _resolve_notes_target(preferences, persist=False)
             if note_error is not None:
                 return note_error
             _, updated_preferences = note_resolved

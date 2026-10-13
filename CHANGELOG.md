@@ -6,6 +6,16 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-13
+
+### Fixed
+- Keep archive, reminder, note, and Mail follow-up previews from saving preferences or action history, including when defaults are missing or destination resolution fails. (#48)
+- Scope archive discovery to the selected account. Explicit account overrides no longer reuse another account's saved archive mailbox or replace saved defaults. (#48)
+- Show explicit reminder-list and notes-folder IDs in previews when the saved destination labels belong to different IDs. (#48)
+
+### Changed
+- Clarify Calendar tool descriptions, parameter guidance, READMEs, and generated catalogs for selecting native calendar and event identifiers for full alarm editing. Tool names, parameter types, and defaults are unchanged. (#47)
+
 ## [1.1.0] - 2026-10-10
 
 ### Added

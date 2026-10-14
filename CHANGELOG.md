@@ -7,7 +7,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [Unreleased]
 
 ### Fixed
-- Keep health and overview discovery from launching apps or requesting new permissions. Messages reports skipped or unknown automation access, Calendar health avoids AppleScript fallback, and Contacts health reads authorization status without requesting access. (#50)
+- Keep health and overview discovery from launching apps or requesting new permissions. Messages reports skipped or unknown automation access, Calendar health avoids AppleScript fallback, and Contacts health reads authorization status without requesting access. Overview also defers Shortcuts library enumeration instead of running repeated CLI commands. (#50)
 - Make live defaults discovery explicit with `apple_detect_defaults(probe_apps=true)`. The default call reads saved preferences without probing apps or saving state. Reminder and note destination discovery stays within the requested domain. (#50)
 - Bound Messages diagnostics and automation subprocesses, and distinguish authorization denial from command failure. (#50)
 

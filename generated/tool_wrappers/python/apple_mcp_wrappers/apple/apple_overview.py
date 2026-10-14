@@ -10,7 +10,7 @@ async def apple_overview(
 ) -> Any:
     """Apple Overview
 
-    Return domain health and saved preferences, deferring app data reads that can launch apps or request permissions.
+    Return domain health and saved preferences; defer permission-sensitive data reads and Shortcuts library enumeration.
 
     Example:
         await apple_overview(client)

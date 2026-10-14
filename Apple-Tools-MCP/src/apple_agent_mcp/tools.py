@@ -2773,7 +2773,7 @@ async def apple_create_event_interactive(
     "apple://overview",
     name="apple_overview",
     title="Apple Overview",
-    description="Aggregated Apple ecosystem status across the standalone Apple MCP domains.",
+    description="Aggregated domain health and saved preferences; app data and Shortcuts library enumeration are deferred.",
     mime_type="application/json",
     annotations=Annotations(audience=["assistant"], priority=1.0),
 )
@@ -2803,7 +2803,7 @@ def apple_overview_resource() -> str:
                 "messages": {"ok": False, "status": "not_probed", "message": "Read the Messages domain resource explicitly when needed."},
                 "contacts": {"ok": False, "status": "not_probed", "message": "Read the Contacts domain resource explicitly when needed."},
                 "notes": {"ok": False, "status": "not_probed", "message": "Read the Notes domain resource explicitly when needed."},
-                "shortcuts": _safe_resource_call(shortcuts_all_resource),
+                "shortcuts": {"ok": False, "status": "not_probed", "message": "Read the Shortcuts domain resource explicitly when needed."},
                 "mail": {"ok": False, "status": "not_probed", "message": "Read the Mail domain resource explicitly when needed."},
                 "maps": _safe_resource_call(maps_status_resource),
             },
@@ -2913,7 +2913,7 @@ def apple_health() -> AppleHealthResponse:
 
 @mcp.tool(
     title="Apple Overview",
-    description="Return domain health and saved preferences, deferring app data reads that can launch apps or request permissions.",
+    description="Return domain health and saved preferences; defer permission-sensitive data reads and Shortcuts library enumeration.",
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )

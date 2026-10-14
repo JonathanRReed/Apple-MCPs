@@ -2470,7 +2470,7 @@
         "apple overview"
       ],
       "argument_summary": [],
-      "description": "Return domain health and saved preferences, deferring app data reads that can launch apps or request permissions.",
+      "description": "Return domain health and saved preferences; defer permission-sensitive data reads and Shortcuts library enumeration.",
       "domain": "apple",
       "example_calls": [
         {
@@ -2492,19 +2492,18 @@
         "saved",
         "preferences",
         "preferenc",
-        "deferring",
+        "defer",
+        "permission",
+        "sensitive",
         "data",
         "reads",
-        "that",
-        "can",
-        "launch",
-        "apps",
-        "request",
-        "permissions",
-        "permission"
+        "shortcuts",
+        "shortcut",
+        "library",
+        "enumeration"
       ],
       "title": "Apple Overview",
-      "usage_intent": "Return domain health and saved preferences, deferring app data reads that can launch apps or request permissions."
+      "usage_intent": "Return domain health and saved preferences; defer permission-sensitive data reads and Shortcuts library enumeration."
     },
     {
       "aliases": [

@@ -15,12 +15,11 @@ def forbidden(*args, **kwargs):
 def test_overview_tool_and_resource_defer_permission_sensitive_data(monkeypatch):
     monkeypatch.setattr(tools, '_domain_health', lambda: {})
     monkeypatch.setattr(tools, '_get_preferences', AssistantPreferences)
-    for name in ('files_recent_resource', 'files_recent_locations_resource', 'files_icloud_status_resource', 'system_status_resource', 'system_context_resource', 'system_settings_resource', 'calendar_calendars_resource', 'reminders_lists_resource', 'messages_recent_resource', 'contacts_directory_resource', 'notes_recent_resource', '_mailboxes_resource'):
+    for name in ('files_recent_resource', 'files_recent_locations_resource', 'files_icloud_status_resource', 'system_status_resource', 'system_context_resource', 'system_settings_resource', 'calendar_calendars_resource', 'reminders_lists_resource', 'messages_recent_resource', 'contacts_directory_resource', 'notes_recent_resource', 'shortcuts_all_resource', '_mailboxes_resource'):
         monkeypatch.setattr(tools, name, forbidden, raising=False)
-    for name in ('shortcuts_all_resource', 'maps_status_resource'):
-        monkeypatch.setattr(tools, name, lambda: '{}')
+    monkeypatch.setattr(tools, 'maps_status_resource', lambda: '{}')
     for payload in (json.loads(tools.apple_overview_resource()), tools.apple_overview().overview):
-        for domain in ('files', 'files_recent_locations', 'files_icloud_status', 'system', 'system_context', 'system_settings', 'calendar', 'reminders', 'messages', 'contacts', 'notes', 'mail'):
+        for domain in ('files', 'files_recent_locations', 'files_icloud_status', 'system', 'system_context', 'system_settings', 'calendar', 'reminders', 'messages', 'contacts', 'notes', 'shortcuts', 'mail'):
             assert payload['resources'][domain]['status'] == 'not_probed'
             assert payload['resources'][domain]['ok'] is False
 
@@ -66,3 +65,30 @@ def test_automatic_target_resolution_only_probes_requested_domain(monkeypatch, d
         target, error = tools._resolve_notes_target(AssistantPreferences(), persist=False)
     assert error is None
     assert target[0] == ('list' if domain == 'reminders' else 'folder')
+
+
+@pytest.mark.parametrize('entrypoint', ['tool', 'resource'])
+def test_overview_does_not_enumerate_shortcuts(monkeypatch, entrypoint):
+    from apple_shortcuts_mcp.shortcuts_bridge import ShortcutsBridge
+
+    monkeypatch.setattr(tools, '_domain_health', lambda: {})
+    monkeypatch.setattr(tools, '_get_preferences', AssistantPreferences)
+    monkeypatch.setattr(tools, 'maps_status_resource', lambda: '{}')
+    monkeypatch.setattr(ShortcutsBridge, '_run_cli', forbidden)
+
+    payload = tools.apple_overview().overview if entrypoint == 'tool' else json.loads(tools.apple_overview_resource())
+
+    assert payload['resources']['shortcuts']['status'] == 'not_probed'
+    assert payload['resources']['shortcuts']['ok'] is False
+
+
+def test_explicit_shortcuts_resource_still_returns_library(monkeypatch):
+    from apple_shortcuts_mcp.shortcuts_bridge import ShortcutsBridge
+
+    snapshot = {'folders': [], 'shortcuts': [{'name': 'Fixture shortcut', 'identifier': 'fixture-id'}], 'count': 1}
+    monkeypatch.setattr(ShortcutsBridge, 'shortcuts_snapshot', lambda self: snapshot)
+
+    contents = list(asyncio.run(tools.mcp.read_resource('shortcuts://all')))
+
+    assert json.loads(contents[0].content) == snapshot
+    assert contents[0].mime_type == 'application/json'

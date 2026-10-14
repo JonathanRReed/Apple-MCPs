@@ -30,6 +30,8 @@ class HealthResponse(BaseModel):
     capabilities: MessagesCapabilities
     history_access: bool
     automation_access: bool
+    automation_access_status: Literal["not_probed", "unknown", "authorized", "denied", "failed"] = "unknown"
+    automation_access_error_code: str | None = None
     history_access_error: str | None = None
     history_access_suggestion: str | None = None
     automation_access_error: str | None = None

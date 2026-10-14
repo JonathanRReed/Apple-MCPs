@@ -162,6 +162,10 @@ def messages_health() -> HealthResponse:
         capabilities=caps,
         history_access=history_access,
         automation_access=automation_access,
+        automation_access_status=("authorized" if automation_access else {
+            "NOT_PROBED": "not_probed", "AUTHORIZATION_UNKNOWN": "unknown", "PERMISSION_DENIED": "denied",
+        }.get(automation_error.error_code if automation_error is not None else "", "failed")),
+        automation_access_error_code=automation_error.error_code if automation_error is not None else None,
         history_access_error=history_error.message if history_error is not None else None,
         history_access_suggestion=history_error.suggestion if history_error is not None else None,
         automation_access_error=automation_error.message if automation_error is not None else None,

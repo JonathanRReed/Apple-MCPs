@@ -287,7 +287,6 @@ def test_apple_overview_resource_includes_files_system_and_maps(monkeypatch) -> 
     )
     monkeypatch.setattr(tools, "files_recent_resource", lambda: json.dumps({"files": []}))
     monkeypatch.setattr(tools, "files_recent_locations_resource", lambda: json.dumps({"locations": []}))
-    monkeypatch.setattr(tools, "files_icloud_status_resource", lambda: json.dumps({"available": True}))
     monkeypatch.setattr(tools, "system_status_resource", lambda: json.dumps({"frontmost_app": "Mail"}))
     monkeypatch.setattr(tools, "system_context_resource", lambda: json.dumps({"focus": {"focus_supported": False}}))
     monkeypatch.setattr(tools, "system_settings_resource", lambda: json.dumps({"appearance": {"mode": "dark"}}))
@@ -305,11 +304,11 @@ def test_apple_overview_resource_includes_files_system_and_maps(monkeypatch) -> 
     assert payload["health"]["files"]["ok"] is True
     assert payload["health"]["system"]["ok"] is True
     assert payload["health"]["maps"]["ok"] is True
-    assert payload["resources"]["files"]["files"] == []
-    assert payload["resources"]["files_recent_locations"]["locations"] == []
-    assert payload["resources"]["files_icloud_status"]["available"] is True
-    assert payload["resources"]["system"]["frontmost_app"] == "Mail"
-    assert payload["resources"]["system_context"]["focus"]["focus_supported"] is False
+    assert payload["resources"]["files"]["status"] == "not_probed"
+    assert payload["resources"]["files_recent_locations"]["status"] == "not_probed"
+    assert payload["resources"]["files_icloud_status"]["status"] == "not_probed"
+    assert payload["resources"]["system"]["status"] == "not_probed"
+    assert payload["resources"]["system_context"]["status"] == "not_probed"
     assert "system_settings" in payload["resources"]
     assert payload["resources"]["maps"]["helper_available"] is True
 
@@ -820,9 +819,11 @@ def test_apple_detect_defaults_persists_preferences(monkeypatch, tmp_path) -> No
         )(),
     )
 
-    result = tools.apple_detect_defaults()
+    result = tools.apple_detect_defaults(probe_apps=True)
 
     assert result.ok is True
+    assert result.probe_status == "probed"
+    assert result.count == len(result.detected)
     assert result.preferences.default_archive_mailbox == "Archive"
     assert result.preferences.default_calendar_id == "cal-1"
     assert result.preferences.default_reminder_list_id == "list-1"
@@ -1198,9 +1199,11 @@ def test_saved_archive_account_scopes_default_detection(workflow_services) -> No
     state_file, _ = workflow_services
     tools.apple_update_preferences(default_archive_account="B")
 
-    result = tools.apple_detect_defaults()
+    result = tools.apple_detect_defaults(probe_apps=True)
 
     assert result.ok is True
+    assert result.probe_status == "probed"
+    assert result.count == len(result.detected)
     preferences = json.loads(state_file.read_text(encoding="utf-8"))
     assert (preferences["default_archive_mailbox"], preferences["default_archive_account"]) == ("Archived Mail", "B")
 

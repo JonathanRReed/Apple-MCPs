@@ -40,9 +40,26 @@ class AppleContactsBridge:
         self._native_binary: Path | None = None
 
     def permission_diagnostic(self) -> tuple[bool, ContactsBridgeError | None]:
+        if self.helper_source is None:
+            return False, ContactsBridgeError(
+                "AUTHORIZATION_UNKNOWN", "Contacts automation authorization has not been checked.",
+                "Use an explicit Contacts operation to check authorization.",
+            )
         try:
-            self._run_script("permission_check.applescript")
-            return True, None
+            payload = self._run_script("permission_check.applescript")
+            if payload.get("status") not in {"authorized", "denied", "unknown"} or not isinstance(payload.get("accessible"), bool):
+                raise ContactsBridgeError("INVALID_SCRIPT_OUTPUT", "Contacts permission check returned an invalid status.")
+            if payload["status"] == "authorized" and payload["accessible"] is True:
+                return True, None
+            if payload.get("status") == "denied":
+                return False, ContactsBridgeError(
+                    "PERMISSION_DENIED", "macOS denied Contacts access.",
+                    "Allow Contacts access in System Settings > Privacy & Security > Contacts.",
+                )
+            return False, ContactsBridgeError(
+                "AUTHORIZATION_UNKNOWN", "Contacts authorization has not been granted.",
+                "Use an explicit Contacts operation to request access.",
+            )
         except ContactsBridgeError as exc:
             return False, exc
 

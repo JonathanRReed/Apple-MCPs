@@ -43,6 +43,8 @@ class HealthResponse(BaseModel):
     transport: str = "stdio"
     capabilities: list[str]
     contacts_accessible: bool
+    permission_status: Literal["unknown", "authorized", "denied", "failed"] = "unknown"
+    permission_error_code: str | None = None
     permission_error: str | None = None
     permission_suggestion: str | None = None
 

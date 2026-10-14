@@ -143,7 +143,11 @@ Apple-Tools-MCP can persist a lightweight assistant state file with defaults for
 - preferred message target type, `phone`, `email`, or `auto`
 - per-contact preferred channel and target overrides for specific people
 
-Detect and persist sensible defaults with `apple_detect_defaults`, inspect them with `apple_get_preferences`, and override them with `apple_update_preferences`.
+`apple_detect_defaults()` returns saved preferences with `probe_status: "not_probed"` and does not write the state file. To discover and persist missing targets, call `apple_detect_defaults(probe_apps=true)` after the user requests that discovery. This explicit probe may open Mail or Notes and request macOS permissions. The tool advertises that it can write preferences. Use `apple_get_preferences` to inspect defaults and `apple_update_preferences` to set them directly.
+
+`apple_health`, `apple_recheck_permissions`, `apple_overview`, and `apple://overview` do not send Apple Events to apps or request new permissions. Overview keeps its resource keys but returns `ok: false` and `status: "not_probed"` for permission-sensitive app data. Read the named domain resource or tool when the user requests that data. Recent-file scans are also deferred because protected folders can require permission. Shortcuts and Maps metadata remain available. Explicit app operations retain their permission checks and may launch the requested app.
+
+When a reminder or note operation needs a missing destination, it discovers defaults only for that domain.
 
 By default the state file is stored at `~/.apple-tools-mcp/preferences.json`. Override it with `APPLE_AGENT_MCP_STATE_FILE`.
 

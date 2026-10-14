@@ -10,7 +10,7 @@ async def apple_overview(
 ) -> Any:
     """Apple Overview
 
-    Return an aggregated Apple ecosystem overview using the standalone domain resources.
+    Return domain health and saved preferences, deferring app data reads that can launch apps or request permissions.
 
     Example:
         await apple_overview(client)

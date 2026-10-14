@@ -76,6 +76,7 @@ class PreferencesResponse(BaseModel):
 
 class PreferencesDetectResponse(BaseModel):
     ok: Literal[True] = True
+    probe_status: Literal["not_probed", "probed"] = "not_probed"
     preferences: AssistantPreferences
     detected: list[str]
     count: int

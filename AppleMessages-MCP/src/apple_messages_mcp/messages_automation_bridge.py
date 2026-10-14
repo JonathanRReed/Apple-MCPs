@@ -18,8 +18,22 @@ class MessagesAutomationBridge:
 
     def automation_access_diagnostic(self) -> tuple[bool, MessagesAutomationBridgeError | None]:
         try:
-            self._run_script('tell application "Messages" to count of every service')
-            return True, None
+            # NSRunningApplication queries Launch Services without Apple Events.
+            running = self._run_command([
+                "osascript", "-l", "JavaScript", "-e",
+                'ObjC.import("AppKit"); $.NSRunningApplication.runningApplicationsWithBundleIdentifier("com.apple.MobileSMS").count > 0',
+            ], timeout=5)
+            if running == "false":
+                return False, MessagesAutomationBridgeError(
+                    "NOT_PROBED", "Messages is not running; automation access was not probed.",
+                    "Use an explicit Messages operation when needed.",
+                )
+            if running != "true":
+                raise MessagesAutomationBridgeError("AUTOMATION_FAILED", "Could not determine whether Messages is running.")
+            return False, MessagesAutomationBridgeError(
+                "AUTHORIZATION_UNKNOWN", "Messages is running; automation authorization has not been checked.",
+                "An explicit send or reply checks authorization and may show the macOS Automation prompt.",
+            )
         except MessagesAutomationBridgeError as exc:
             return False, exc
 
@@ -88,8 +102,16 @@ class MessagesAutomationBridge:
         }
 
     def _run_script(self, script: str) -> str:
+        return self._run_command(["osascript", "-e", script], timeout=30)
+
+    def _run_command(self, command: list[str], *, timeout: int) -> str:
         try:
-            completed = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, check=False)
+            completed = subprocess.run(command, capture_output=True, text=True, check=False, timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            raise MessagesAutomationBridgeError(
+                "AUTOMATION_TIMEOUT", "Messages automation timed out.",
+                "Check Messages history before retrying a send; its delivery status may be unknown.",
+            ) from exc
         except OSError as exc:
             raise MessagesAutomationBridgeError(
                 "OSASCRIPT_UNAVAILABLE",
@@ -99,7 +121,7 @@ class MessagesAutomationBridge:
         if completed.returncode != 0:
             message = completed.stderr.strip() or completed.stdout.strip() or "Messages automation failed."
             lowered = message.lower()
-            if "not authorized" in lowered or "automation" in lowered:
+            if "not authorized" in lowered or "-1743" in lowered:
                 raise MessagesAutomationBridgeError(
                     "PERMISSION_DENIED",
                     "macOS denied automation access to Messages.",

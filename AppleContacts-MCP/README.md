@@ -103,7 +103,7 @@ Literal control characters and complex emoji returned by Contacts are decoded on
 ## macOS Permissions
 
 - Contacts access is required
-- `contacts_health` reports whether Contacts access is currently available
+- `contacts_health` reads native authorization status without requesting access or reading contacts. `permission_status` distinguishes authorized, unknown, denied, and failed checks. The AppleScript backend reports unknown authorization without sending Apple Events. Explicit Contacts operations retain their permission checks.
 
 ## Launch Checklist
 

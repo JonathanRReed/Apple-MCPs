@@ -50,18 +50,22 @@
         "detect defaults",
         "apple detect defaults"
       ],
-      "argument_summary": [],
-      "description": "Detect sensible default mail, calendar, reminders, and notes targets, then persist them if missing.",
+      "argument_summary": [
+        "probe_apps: boolean (optional)"
+      ],
+      "description": "Read saved defaults without probing apps. Set probe_apps=true to discover and persist missing Mail, Calendar, Reminders, and Notes targets; this may open apps and request macOS permissions.",
       "domain": "apple",
       "example_calls": [
         {
-          "arguments": {},
+          "arguments": {
+            "probe_apps": false
+          },
           "tool": "apple_detect_defaults"
         }
       ],
       "name": "apple_detect_defaults",
-      "read_only": true,
-      "risk_level": "low",
+      "read_only": false,
+      "risk_level": "medium",
       "schema_ref": "apple_detect_defaults",
       "tags": [
         "assistant",
@@ -70,22 +74,23 @@
         "detect",
         "defaults",
         "default",
-        "sensible",
+        "saved",
+        "without",
+        "probing",
+        "apps",
+        "set",
+        "probe",
+        "true",
+        "discover",
+        "persist",
+        "missing",
         "mail",
         "calendar",
         "reminders",
-        "reminder",
-        "notes",
-        "not",
-        "targets",
-        "target",
-        "then",
-        "persist",
-        "them",
-        "missing"
+        "reminder"
       ],
       "title": "Apple Detect Defaults",
-      "usage_intent": "Detect sensible default mail, calendar, reminders, and notes targets, then persist them if missing."
+      "usage_intent": "Read saved defaults without probing apps. Set probe_apps=true to discover and persist missing Mail, Calendar, Reminders, and Notes targets; this may open apps and request macOS permissions."
     },
     {
       "aliases": [
@@ -2465,7 +2470,7 @@
         "apple overview"
       ],
       "argument_summary": [],
-      "description": "Return an aggregated Apple ecosystem overview using the standalone domain resources.",
+      "description": "Return domain health and saved preferences, deferring app data reads that can launch apps or request permissions.",
       "domain": "apple",
       "example_calls": [
         {
@@ -2482,16 +2487,24 @@
         "unified",
         "cross-app",
         "overview",
-        "aggregated",
-        "ecosystem",
-        "using",
-        "standalone",
         "domain",
-        "resources",
-        "resourc"
+        "health",
+        "saved",
+        "preferences",
+        "preferenc",
+        "deferring",
+        "data",
+        "reads",
+        "that",
+        "can",
+        "launch",
+        "apps",
+        "request",
+        "permissions",
+        "permission"
       ],
       "title": "Apple Overview",
-      "usage_intent": "Return an aggregated Apple ecosystem overview using the standalone domain resources."
+      "usage_intent": "Return domain health and saved preferences, deferring app data reads that can launch apps or request permissions."
     },
     {
       "aliases": [

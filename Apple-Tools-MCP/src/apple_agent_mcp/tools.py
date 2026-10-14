@@ -98,7 +98,6 @@ from apple_files_mcp.tools import (
     files_get_icloud_status,
     files_get_tags,
     files_health,
-    files_icloud_status_resource,
     files_list_allowed_roots,
     files_list_directory,
     files_list_recent_locations,
@@ -602,48 +601,52 @@ def _default_notes_account_name(preferences: AssistantPreferences) -> str | None
     return response.accounts[0].name
 
 
-def _detect_preferences(base: AssistantPreferences | None = None) -> tuple[AssistantPreferences, list[str]]:
+def _detect_preferences(base: AssistantPreferences | None = None, *, domains: tuple[str, ...] = ("mail", "calendar", "reminders", "notes")) -> tuple[AssistantPreferences, list[str]]:
     current = base or _get_preferences()
     detected: list[str] = []
     updates: dict[str, Any] = {}
 
-    archive_mailbox, archive_account = _pick_archive_mailbox(account=current.default_archive_account)
-    if archive_mailbox and current.default_archive_mailbox is None:
-        updates["default_archive_mailbox"] = archive_mailbox
-        detected.append(f"archive mailbox -> {archive_account} / {archive_mailbox}" if archive_account else f"archive mailbox -> {archive_mailbox}")
-    if archive_account and current.default_archive_account is None:
-        updates["default_archive_account"] = archive_account
-    if archive_account and current.default_mail_account is None:
-        updates["default_mail_account"] = archive_account
-        detected.append(f"default mail account -> {archive_account}")
+    if "mail" in domains:
+        archive_mailbox, archive_account = _pick_archive_mailbox(account=current.default_archive_account)
+        if archive_mailbox and current.default_archive_mailbox is None:
+            updates["default_archive_mailbox"] = archive_mailbox
+            detected.append(f"archive mailbox -> {archive_account} / {archive_mailbox}" if archive_account else f"archive mailbox -> {archive_mailbox}")
+        if archive_account and current.default_archive_account is None:
+            updates["default_archive_account"] = archive_account
+        if archive_account and current.default_mail_account is None:
+            updates["default_mail_account"] = archive_account
+            detected.append(f"default mail account -> {archive_account}")
 
-    calendar_id, calendar_name = _pick_default_calendar()
-    if calendar_id and current.default_calendar_id is None:
-        updates["default_calendar_id"] = calendar_id
-        updates["default_calendar_name"] = calendar_name
-        detected.append(f"default calendar -> {calendar_name}")
+    if "calendar" in domains:
+        calendar_id, calendar_name = _pick_default_calendar()
+        if calendar_id and current.default_calendar_id is None:
+            updates["default_calendar_id"] = calendar_id
+            updates["default_calendar_name"] = calendar_name
+            detected.append(f"default calendar -> {calendar_name}")
 
-    reminder_list_id, reminder_list_name = _pick_default_reminder_list()
-    if reminder_list_id and current.default_reminder_list_id is None:
-        updates["default_reminder_list_id"] = reminder_list_id
-        updates["default_reminder_list_name"] = reminder_list_name
-        detected.append(f"default reminders list -> {reminder_list_name}")
+    if "reminders" in domains:
+        reminder_list_id, reminder_list_name = _pick_default_reminder_list()
+        if reminder_list_id and current.default_reminder_list_id is None:
+            updates["default_reminder_list_id"] = reminder_list_id
+            updates["default_reminder_list_name"] = reminder_list_name
+            detected.append(f"default reminders list -> {reminder_list_name}")
 
-    notes_folder_id, notes_folder_name, notes_account_name = _pick_default_notes_folder()
-    if notes_folder_id and current.default_notes_folder_id is None:
-        updates["default_notes_folder_id"] = notes_folder_id
-        updates["default_notes_folder_name"] = notes_folder_name
-        updates["default_notes_account_name"] = notes_account_name
-        label = f"{notes_account_name} / {notes_folder_name}" if notes_account_name else str(notes_folder_name)
-        detected.append(f"default notes folder -> {label}")
+    if "notes" in domains:
+        notes_folder_id, notes_folder_name, notes_account_name = _pick_default_notes_folder()
+        if notes_folder_id and current.default_notes_folder_id is None:
+            updates["default_notes_folder_id"] = notes_folder_id
+            updates["default_notes_folder_name"] = notes_folder_name
+            updates["default_notes_account_name"] = notes_account_name
+            label = f"{notes_account_name} / {notes_folder_name}" if notes_account_name else str(notes_folder_name)
+            detected.append(f"default notes folder -> {label}")
 
-    digest_folder_id, digest_folder_name, digest_account_name = _pick_digest_folder()
-    if digest_folder_id and current.default_digest_folder_id is None:
-        updates["default_digest_folder_id"] = digest_folder_id
-        updates["default_digest_folder_name"] = digest_folder_name
-        updates["default_digest_account_name"] = digest_account_name
-        label = f"{digest_account_name} / {digest_folder_name}" if digest_account_name else str(digest_folder_name)
-        detected.append(f"default digest folder -> {label}")
+        digest_folder_id, digest_folder_name, digest_account_name = _pick_digest_folder()
+        if digest_folder_id and current.default_digest_folder_id is None:
+            updates["default_digest_folder_id"] = digest_folder_id
+            updates["default_digest_folder_name"] = digest_folder_name
+            updates["default_digest_account_name"] = digest_account_name
+            label = f"{digest_account_name} / {digest_folder_name}" if digest_account_name else str(digest_folder_name)
+            detected.append(f"default digest folder -> {label}")
 
     return current.model_copy(update=updates), detected
 
@@ -718,7 +721,7 @@ def _resolve_reminder_target(
     effective_list_id = list_id or preferences.default_reminder_list_id
     updated_preferences = preferences
     if not effective_list_id:
-        detected_preferences, detected = _detect_preferences(preferences)
+        detected_preferences, detected = _detect_preferences(preferences, domains=("reminders",))
         updated_preferences = detected_preferences if detected else preferences
         if persist and detected:
             updated_preferences = _save_preferences(updated_preferences)
@@ -746,7 +749,7 @@ def _resolve_notes_target(
     effective_folder_id = folder_id or preferred_folder_id
     updated_preferences = preferences
     if not effective_folder_id:
-        detected_preferences, detected = _detect_preferences(preferences)
+        detected_preferences, detected = _detect_preferences(preferences, domains=("notes",))
         updated_preferences = detected_preferences if detected else preferences
         if persist and detected:
             updated_preferences = _save_preferences(updated_preferences)
@@ -1249,15 +1252,17 @@ def apple_get_preferences() -> PreferencesResponse | AppleErrorResponse:
 
 @mcp.tool(
     title="Apple Detect Defaults",
-    description="Detect sensible default mail, calendar, reminders, and notes targets, then persist them if missing.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
+    description="Read saved defaults without probing apps. Set probe_apps=true to discover and persist missing Mail, Calendar, Reminders, and Notes targets; this may open apps and request macOS permissions.",
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False),
     structured_output=True,
 )
-def apple_detect_defaults() -> PreferencesDetectResponse | AppleErrorResponse:
+def apple_detect_defaults(probe_apps: bool = False) -> PreferencesDetectResponse | AppleErrorResponse:
     try:
+        if not probe_apps:
+            return PreferencesDetectResponse(preferences=_get_preferences(), detected=[], count=0)
         detected_preferences, detected = _detect_preferences()
         stored = _save_preferences(detected_preferences)
-        return PreferencesDetectResponse(preferences=stored, detected=detected, count=len(detected))
+        return PreferencesDetectResponse(preferences=stored, detected=detected, count=len(detected), probe_status="probed")
     except StateStoreError as exc:
         return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
 
@@ -2787,19 +2792,19 @@ def apple_overview_resource() -> str:
             "health": _domain_health(),
             "preferences": preferences_payload,
             "resources": {
-                "files": _safe_resource_call(files_recent_resource),
-                "files_recent_locations": _safe_resource_call(files_recent_locations_resource),
-                "files_icloud_status": _safe_resource_call(files_icloud_status_resource),
-                "system": _safe_resource_call(system_status_resource),
-                "system_context": _safe_resource_call(system_context_resource),
-                "system_settings": _safe_resource_call(system_settings_resource),
-                "calendar": _safe_resource_call(calendar_calendars_resource),
-                "reminders": _safe_resource_call(reminders_lists_resource),
-                "messages": _safe_resource_call(messages_recent_resource),
-                "contacts": _safe_resource_call(contacts_directory_resource),
-                "notes": _safe_resource_call(notes_recent_resource),
+                "files": {"ok": False, "status": "not_probed", "message": "Read the Files domain resource explicitly when needed."},
+                "files_recent_locations": {"ok": False, "status": "not_probed", "message": "Read the Files domain resource explicitly when needed."},
+                "files_icloud_status": {"ok": False, "status": "not_probed", "message": "Read the Files domain resource explicitly when needed."},
+                "system": {"ok": False, "status": "not_probed", "message": "Read the System domain resource explicitly when needed."},
+                "system_context": {"ok": False, "status": "not_probed", "message": "Read the System domain resource explicitly when needed."},
+                "system_settings": {"ok": False, "status": "not_probed", "message": "Read the System domain resource explicitly when needed."},
+                "calendar": {"ok": False, "status": "not_probed", "message": "Read the Calendar domain resource explicitly when needed."},
+                "reminders": {"ok": False, "status": "not_probed", "message": "Read the Reminders domain resource explicitly when needed."},
+                "messages": {"ok": False, "status": "not_probed", "message": "Read the Messages domain resource explicitly when needed."},
+                "contacts": {"ok": False, "status": "not_probed", "message": "Read the Contacts domain resource explicitly when needed."},
+                "notes": {"ok": False, "status": "not_probed", "message": "Read the Notes domain resource explicitly when needed."},
                 "shortcuts": _safe_resource_call(shortcuts_all_resource),
-                "mail": _safe_resource_call(_mailboxes_resource),
+                "mail": {"ok": False, "status": "not_probed", "message": "Read the Mail domain resource explicitly when needed."},
                 "maps": _safe_resource_call(maps_status_resource),
             },
         },
@@ -2908,7 +2913,7 @@ def apple_health() -> AppleHealthResponse:
 
 @mcp.tool(
     title="Apple Overview",
-    description="Return an aggregated Apple ecosystem overview using the standalone domain resources.",
+    description="Return domain health and saved preferences, deferring app data reads that can launch apps or request permissions.",
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
     structured_output=True,
 )

@@ -146,7 +146,7 @@ These are policies enforced by the Python MCP server, not a macOS sandbox. Direc
 ## macOS Permissions
 
 - Calendar access is required
-- `calendar_health` reports `access_status`, read access, and write access so agents can detect blocked permissions before treating an empty window as real data
+- `calendar_health` reports native `access_status`, read access, and write access without trying AppleScript fallback or requesting permissions. Explicit Calendar reads can still use the existing automation fallback.
 
 ## Launch Checklist
 

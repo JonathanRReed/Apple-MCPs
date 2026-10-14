@@ -495,3 +495,27 @@ def test_suggest_merge_candidates_filters_query(monkeypatch) -> None:
 
     assert len(groups) == 1
     assert all(contact.name == "Example Person" for contact in groups[0].contacts)
+
+
+def test_applescript_permission_diagnostic_is_passive(tmp_path, monkeypatch):
+    bridge = AppleContactsBridge(tmp_path)
+    def forbidden(*args):
+        raise AssertionError("Health must not send Apple Events")
+    monkeypatch.setattr(bridge, "_run_script", forbidden)
+    accessible, error = bridge.permission_diagnostic()
+    assert accessible is False
+    assert error.error_code == "AUTHORIZATION_UNKNOWN"
+
+
+@pytest.mark.parametrize('payload,accessible,code', [
+    ({'accessible': True, 'status': 'authorized'}, True, None),
+    ({'accessible': False, 'status': 'denied'}, False, 'PERMISSION_DENIED'),
+    ({'accessible': False, 'status': 'unknown'}, False, 'AUTHORIZATION_UNKNOWN'),
+    ({}, False, 'INVALID_SCRIPT_OUTPUT'),
+])
+def test_native_permission_diagnostic_distinguishes_states(tmp_path, monkeypatch, payload, accessible, code):
+    bridge = AppleContactsBridge(tmp_path, helper_source=tmp_path / 'helper.swift')
+    monkeypatch.setattr(bridge, '_run_script', lambda *args: payload)
+    actual, error = bridge.permission_diagnostic()
+    assert actual is accessible
+    assert (error.error_code if error else None) == code

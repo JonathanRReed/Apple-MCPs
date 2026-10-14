@@ -108,6 +108,10 @@ def contacts_health() -> HealthResponse:
         safety_mode=settings.safety_mode,
         capabilities=capabilities,
         contacts_accessible=accessible,
+        permission_status=("authorized" if accessible else {
+            "AUTHORIZATION_UNKNOWN": "unknown", "PERMISSION_DENIED": "denied",
+        }.get(error.error_code if error is not None else "", "failed")),
+        permission_error_code=error.error_code if error is not None else None,
         permission_error=error.message if error is not None else None,
         permission_suggestion=error.suggestion if error is not None else None,
     )

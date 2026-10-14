@@ -181,7 +181,7 @@ def test_calendar_get_event_exposes_attendees_and_recurrence(monkeypatch) -> Non
     assert result.event.attendees[0].status == "accepted"
 
 
-def test_calendar_health_reports_applescript_fallback(monkeypatch) -> None:
+def test_calendar_health_does_not_probe_applescript_fallback(monkeypatch) -> None:
     monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
     load_settings.cache_clear()
 
@@ -196,16 +196,16 @@ def test_calendar_health_reports_applescript_fallback(monkeypatch) -> None:
             }
 
         def list_calendars(self):
-            return []
+            raise AssertionError("Health must not launch Calendar or request Automation access")
 
     monkeypatch.setattr(tools, "_bridge", lambda: FallbackBridge())
 
     result = tools.calendar_health()
 
-    assert result.access_status == "applescript_fallback"
-    assert result.can_read_events is True
+    assert result.access_status == "not_determined"
+    assert result.can_read_events is False
     assert result.can_edit_existing_alarms is False
-    assert result.permission_error is None
+    assert result.permission_error == "Calendar access has not been granted yet."
 
 
 def teardown_function() -> None:

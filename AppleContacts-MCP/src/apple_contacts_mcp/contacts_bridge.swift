@@ -181,12 +181,16 @@ struct NativeContactsBridge {
         let arguments = Array(CommandLine.arguments.dropFirst())
         guard let command = arguments.first else { fail("Missing command.") }
         let args = Array(arguments.dropFirst())
+        if command == "permission_check" {
+            let status = CNContactStore.authorizationStatus(for: .contacts)
+            let accessible = status == .authorized || status.rawValue == 4
+            let label = accessible ? "authorized" : (status == .denied || status == .restricted ? "denied" : "unknown")
+            emit(["ok": true, "accessible": accessible, "status": label])
+            return
+        }
         requireAccess()
 
         switch command {
-        case "permission_check":
-            emit(["ok": true, "count": allContacts(keys: [CNContactIdentifierKey as CNKeyDescriptor]).count])
-
         case "list_contacts":
             let limit = max(0, intArgument(args, 0, "LIMIT"))
             let offset = max(0, intArgument(args, 1, "OFFSET"))

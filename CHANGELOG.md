@@ -6,10 +6,21 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-10-14
+
 ### Fixed
-- Keep health and overview discovery from launching apps or requesting new permissions. Messages reports skipped or unknown automation access, Calendar health avoids AppleScript fallback, and Contacts health reads authorization status without requesting access. Overview also defers Shortcuts library enumeration instead of running repeated CLI commands. (#50)
-- Make live defaults discovery explicit with `apple_detect_defaults(probe_apps=true)`. The default call reads saved preferences without probing apps or saving state. Reminder and note destination discovery stays within the requested domain. (#50)
-- Bound Messages diagnostics and automation subprocesses, and distinguish authorization denial from command failure. (#50)
+- Keep health and overview reads from launching apps or requesting new permissions. Messages reports unprobed or unknown automation access. Calendar health skips AppleScript fallback, Contacts health reads authorization status, and overview defers Shortcuts enumeration. (#50)
+- Make live defaults discovery explicit with `apple_detect_defaults(probe_apps=true)`. The default call reads saved preferences without probing apps or writing state. Reminder and note destination discovery stays within the requested domain. (#50)
+- Bound Messages diagnostic and automation subprocesses, and distinguish authorization denial from command failure. (#50)
+
+### Changed
+- Raise the MCP Python SDK minimum to 2.3.0 and align standalone requirements with package metadata. The workspace lock uses MCP/mcp-types 2.3.0 and Pydantic 2.13.5; bundles were also tested with Pydantic 2.14.1. (#51)
+
+### Compatibility and verification limits
+- Messages health keeps the existing boolean fields. Unverified automation access is false, with `not_probed` when closed and `unknown` when running. Explicit operations keep their safety and authorization checks. Probing and persisting missing defaults requires `probe_apps=true`. (#50)
+- Complete Notes CRUD, large-store Notes/search performance and Contacts AppleScript parity remain unverified. Earlier controlled Notes creation returned `NOTE_CREATE_STATUS_UNKNOWN`; a Contacts scripting get timed out. Nonempty native Contacts notes require an unavailable entitlement and are rejected before mutation. Issues #32 and #42 stay open for unresolved cases and reporter confirmation.
+- Full Calendar alarm replacement and clearing require native EventKit. Display names can still select automation, which refuses combined explicit-alarm/field updates and alert-removal edits. Strict legacy identifier checks can time out on large stores. The reporter's macOS 26.5.2/iCloud native results do not establish automation parity. Issue #41 remains partially addressed.
+- Native passive-discovery observations cover only the app state present during read-only checks. Permission denial, subprocess failures/timeouts, sends and opt-in defaults writes use mocks or isolated fixtures when native tests would request permissions or change private data. Closed apps are checked natively only when already closed; this audit does not quit apps to create that condition. Issue #50 stays open for release reporting and further confirmation.
 
 ## [1.1.1] - 2026-10-13
 

@@ -80,7 +80,8 @@ end note_json
 on date_to_epoch(dateValue)
 	-- NSDate's epoch is an absolute UTC instant, independent of local timezone.
 	set cocoaDate to current application's NSDate's dateWithTimeInterval:0 sinceDate:dateValue
-	return cocoaDate's timeIntervalSince1970() as integer
+	-- AppleScript numeric text is locale-sensitive and its integer range is too small.
+	return ((current application's NSNumber's numberWithDouble:(cocoaDate's timeIntervalSince1970()))'s stringValue()) as text
 end date_to_epoch
 
 on safe_text(valueText)

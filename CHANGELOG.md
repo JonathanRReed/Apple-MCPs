@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-10-16
+
 ### Fixed
 - Serialize Notes timestamps with locale-independent Foundation number formatting. This prevents invalid JSON with decimal-comma regions and preserves dates outside AppleScript's integer range. (#54)
 

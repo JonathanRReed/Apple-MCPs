@@ -23,6 +23,25 @@ MAX_SCRIPT_OUTPUT_BYTES = 8 * 1024 * 1024
 MAX_CONTACTS_PER_REQUEST = 1000
 MAX_DIRECTORY_CONTACTS = 100_000
 
+# ITU-T E.164 country calling codes (1 to 3 digits). A phone query that is the
+# national part of a stored number only matches when the digits in front of it
+# are one of these codes.
+COUNTRY_CALLING_CODES = frozenset(
+    "1 7 "
+    "20 27 30 31 32 33 34 36 39 40 41 43 44 45 46 47 48 49 "
+    "51 52 53 54 55 56 57 58 60 61 62 63 64 65 66 81 82 84 86 90 91 92 93 94 95 98 "
+    "211 212 213 216 218 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 "
+    "240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 "
+    "260 261 262 263 264 265 266 267 268 269 290 291 297 298 299 "
+    "350 351 352 353 354 355 356 357 358 359 370 371 372 373 374 375 376 377 378 379 "
+    "380 381 382 383 385 386 387 389 420 421 423 "
+    "500 501 502 503 504 505 506 507 508 509 590 591 592 593 594 595 596 597 598 599 "
+    "670 672 673 674 675 676 677 678 679 680 681 682 683 685 686 687 688 689 690 691 692 "
+    "800 808 850 852 853 855 856 870 878 880 881 882 883 886 888 "
+    "960 961 962 963 964 965 966 967 968 970 971 972 973 974 975 976 977 979 "
+    "991 992 993 994 995 996 998".split()
+)
+
 
 class ContactsBridgeError(Exception):
     def __init__(self, error_code: str, message: str, suggestion: str | None = None) -> None:
@@ -113,7 +132,11 @@ class AppleContactsBridge:
     def resolve_message_recipient(self, query: str, channel: str = "phone") -> ResolvedRecipientResponse:
         if channel not in {"phone", "email", "any"}:
             raise ContactsBridgeError("INVALID_INPUT", f"Unsupported channel '{channel}'.", "Use 'phone', 'email', or 'any'.")
-        matches = self.search_contacts(query, limit=10)
+        # A complete email or phone names one method: only its exact owners count,
+        # never a contact whose stored value merely contains it.
+        matches = self._exact_method_matches(query)
+        if matches is None:
+            matches = self.search_contacts(query, limit=10)
         if not matches:
             raise ContactsBridgeError("CONTACT_NOT_FOUND", f"No contact matched '{query}'.", "Search contacts first to discover a valid contact.")
 
@@ -584,7 +607,9 @@ class AppleContactsBridge:
             return True
         if contact.organization and query_text == contact.organization.lower():
             return True
-        return any(self._normalize_lookup_value(method.value) == normalized_query for method in [*contact.phones, *contact.emails])
+        if any(self._normalize_lookup_value(method.value) == normalized_query for method in [*contact.phones, *contact.emails]):
+            return True
+        return parts is not None and any(self._same_phone(query_text, method.value) for method in contact.phones)
 
     def _is_partial_match(self, contact: ContactSummary, query_text: str, normalized_query: str) -> bool:
         parts = self._phone_query_parts(query_text)
@@ -628,6 +653,53 @@ class AppleContactsBridge:
             and query_parts[1] == method_parts[1]
             and method_parts[0].endswith(query_parts[0])
         )
+
+    @staticmethod
+    def _drop_trunk_zero(digits: str) -> str:
+        """Drop the 00 international prefix, or else a single leading 0 (the national trunk prefix)."""
+        return digits[2:] if digits.startswith("00") else digits.removeprefix("0")
+
+    def _same_phone(self, query: str, value: str) -> bool:
+        """The same number and extension, allowing a missing country calling code.
+
+        The shorter number must be a 7+ digit suffix of the longer one and the
+        digits in front of it must be exactly a country calling code, or a
+        country calling code followed by a single 0 trunk digit (stored
+        "+44 (0)20 7946 0958" matches "20 7946 0958"), so a different area code
+        never passes as a country code. An area code equal to a country code
+        still matches; resolving that needs a per-country numbering plan.
+        """
+        query_parts = self._phone_query_parts(query)
+        value_parts = self._phone_query_parts(value)
+        if query_parts is None or value_parts is None or query_parts[1] != value_parts[1]:
+            return False
+        shorter, longer = sorted(
+            (self._drop_trunk_zero(query_parts[0]), self._drop_trunk_zero(value_parts[0])),
+            key=len,
+        )
+        if shorter == longer:
+            return bool(shorter)
+        if len(shorter) < 7 or not longer.endswith(shorter):
+            return False
+        prefix = longer[: len(longer) - len(shorter)]
+        return prefix in COUNTRY_CALLING_CODES or (prefix.endswith("0") and prefix[:-1] in COUNTRY_CALLING_CODES)
+
+    def _exact_method_matches(self, query: str) -> list[ContactSummary] | None:
+        """Contacts holding the complete email or phone number given, or None for other queries."""
+        query_text = query.strip()
+        parts = self._phone_query_parts(query_text)
+        is_email = re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", query_text) is not None
+        if not is_email and (parts is None or len(parts[0]) < 7):
+            return None
+        normalized_query = self._normalize_lookup_value(query_text)
+        return [
+            contact
+            for contact in self._iter_all_contacts()
+            if any(
+                self._normalize_lookup_value(method.value) == normalized_query if is_email else self._same_phone(query_text, method.value)
+                for method in (contact.emails if is_email else contact.phones)
+            )
+        ]
 
     def _normalize_lookup_value(self, value: str) -> str:
         lowered = value.strip().lower()
@@ -676,6 +748,9 @@ class AppleContactsBridge:
             return ""
         rows: list[str] = []
         for method in methods:
+            # A blank value would replace the whole method set with one empty entry.
+            if not method.value.strip():
+                raise ContactsBridgeError("INVALID_INPUT", "A phone or email value must not be empty.", "Omit the array to keep the current phones or emails, or give every entry a value.")
             label = method.label.replace(METHOD_FIELD_SEPARATOR, " ").replace(METHOD_RECORD_SEPARATOR, " ")
             value = method.value.replace(METHOD_FIELD_SEPARATOR, " ").replace(METHOD_RECORD_SEPARATOR, " ")
             rows.append(f"{label}{METHOD_FIELD_SEPARATOR}{value}")

@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Fixed
+- Resolve a complete Contacts phone number or email address only to its exact owner, never to a contact whose stored value merely contains it. A phone without its country code matches only when the leading digits are a real country calling code. Blank phone or email values are refused on create and update.
+
 ## [1.1.3] - 2026-10-16
 
 ### Fixed

@@ -2474,8 +2474,12 @@ def apple_update_system_setting(
 
 @mcp.tool(
     title="Apple Control Frontmost App",
-    description="Use the unified Apple control plane for bounded GUI fallback actions when a native app-domain tool cannot complete the task.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
+    description=(
+        "Use the unified Apple control plane for bounded GUI fallback actions when a native app-domain tool cannot complete the task. "
+        "Input actions (click, keys, type) require a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; "
+        "terminals and apps that run typed code are always refused."
+    ),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def apple_control_frontmost_app(

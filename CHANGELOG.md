@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Security
+- Require an allow-listed, frontmost, non-terminal target for System GUI input (`system_gui_click_menu_path`, `system_gui_press_keys`, `system_gui_type_text`, `system_gui_click_button`, `system_gui_choose_popup_value`). The allow-list is `APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS` (comma-separated bundle ids) and is empty by default, so these tools are disabled until configured. Terminals and script-capable apps are always refused, the input is aborted with `GUI_TARGET_NOT_FRONTMOST` unless the target is frontmost, and the tools are annotated as destructive.
+
 ## [1.1.3] - 2026-10-16
 
 ### Fixed

@@ -157,7 +157,14 @@ def test_system_health_respects_safety_mode(monkeypatch):
     manage = tools.system_health()
 
     assert "set_appearance_mode" in manage.capabilities
-    assert "gui_press_keys" in manage.capabilities
+    assert "gui_list_menu_bar_items" in manage.capabilities
+    # An empty allow-list refuses every GUI input, so none is advertised.
+    assert "gui_press_keys" not in manage.capabilities
+
+    monkeypatch.setenv("APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS", "com.apple.TextEdit")
+    tools.load_settings.cache_clear()
+
+    assert "gui_press_keys" in tools.system_health().capabilities
 
 
 def test_system_get_clipboard(monkeypatch):

@@ -50,7 +50,9 @@ class FakeBridge:
         mailbox: str | None = None,
         unread_only: bool = False,
         limit: int = 10,
+        account: str | None = None,
     ) -> list[MessageSummary]:
+        self.search_calls = [*getattr(self, "search_calls", []), {"query": query, "mailbox": mailbox, "account": account}]
         return [
             MessageSummary(
                 message_id="id-1",
@@ -177,6 +179,43 @@ def test_search_tool_bounds_limit_and_returns_results() -> None:
 
     assert result.count == 1
     assert result.results[0].subject == "match:project"
+
+
+def test_search_tool_passes_account_scope_to_bridge() -> None:
+    bridge = FakeBridge()
+
+    mail_search_messages_tool(bridge, Settings(), query="*", mailbox="Inbox", account="Work")
+
+    assert bridge.search_calls[-1] == {"query": "*", "mailbox": "Inbox", "account": "Work"}
+
+
+def test_search_tool_without_account_searches_all_accounts() -> None:
+    bridge = FakeBridge()
+
+    mail_search_messages_tool(bridge, Settings(), query="*", mailbox="Inbox")
+
+    assert bridge.search_calls[-1]["account"] is None
+
+
+def test_search_wrapper_forwards_account() -> None:
+    bridge = FakeBridge()
+
+    result = mail_search_messages(query="*", mailbox="Inbox", account="Work", bridge=bridge, settings=Settings())
+
+    assert result.count == 1
+    assert bridge.search_calls[-1]["account"] == "Work"
+
+
+def test_get_thread_scopes_candidate_search_to_anchor_account() -> None:
+    # Mailbox names repeat across accounts, so the thread search must stay in
+    # the anchor's account or archive/reply-latest could touch another account.
+    bridge = FakeBridge()
+    settings = Settings(safety_profile=SafetyProfile.SAFE_READONLY)
+
+    mail_get_thread_tool(bridge, settings, message_id="id-1", limit=10)
+
+    assert bridge.search_calls[-1]["account"] == "iCloud"
+    assert bridge.search_calls[-1]["mailbox"] == "Inbox"
 
 
 def test_get_message_tool_returns_full_message() -> None:

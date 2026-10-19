@@ -97,10 +97,11 @@ class AppleMailBridge:
         mailbox: str | None = None,
         unread_only: bool = False,
         limit: int = 10,
+        account: str | None = None,
     ) -> list[MessageSummary]:
         raw = self._run_script(
             "search_messages.applescript",
-            [query, mailbox or "", "true" if unread_only else "false", str(limit)],
+            [query, mailbox or "", "true" if unread_only else "false", str(limit), account or ""],
         )
         results: list[MessageSummary] = []
         for row in _split_records(raw):

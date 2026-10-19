@@ -46,6 +46,10 @@ on run argv
     set mailboxFilter to item 2 of argv
     set unreadOnlyText to item 3 of argv
     set limitValue to (item 4 of argv) as integer
+    set accountFilter to ""
+    if (count of argv) > 4 then
+        set accountFilter to item 5 of argv
+    end if
 
     -- Treat "*" or "%" as match-all (no filter)
     if queryText is "*" or queryText is "%" then
@@ -64,70 +68,74 @@ on run argv
         repeat with theAccount in every account
             set accountName to name of theAccount
             set targetMailboxes to {}
-
-            if mailboxFilter is "" then
-                repeat with theMailbox in every mailbox of theAccount
-                    set mbName to name of theMailbox
-                    if mbName is "INBOX" or mbName is "Inbox" then
-                        set end of targetMailboxes to theMailbox
-                    end if
-                end repeat
+            if accountFilter is not "" and accountName is not accountFilter then
+                -- Skip accounts outside the requested scope.
             else
-                repeat with theMailbox in every mailbox of theAccount
-                    if (name of theMailbox) is mailboxFilter then
-                        set end of targetMailboxes to theMailbox
-                    end if
+
+                if mailboxFilter is "" then
+                    repeat with theMailbox in every mailbox of theAccount
+                        set mbName to name of theMailbox
+                        if mbName is "INBOX" or mbName is "Inbox" then
+                            set end of targetMailboxes to theMailbox
+                        end if
+                    end repeat
+                else
+                    repeat with theMailbox in every mailbox of theAccount
+                        if (name of theMailbox) is mailboxFilter then
+                            set end of targetMailboxes to theMailbox
+                        end if
+                    end repeat
+                end if
+
+                repeat with theMailbox in targetMailboxes
+                    set mailboxLabel to name of theMailbox
+                    set matchedMessages to {}
+                    try
+                        if unreadOnly then
+                            if queryText is "" then
+                                set matchedMessages to (every message of theMailbox whose read status is false)
+                            else
+                                set matchedMessages to (every message of theMailbox whose (subject contains queryText or sender contains queryText) and read status is false)
+                            end if
+                        else
+                            if queryText is "" then
+                                set matchedMessages to (every message of theMailbox)
+                            else
+                                set matchedMessages to (every message of theMailbox whose (subject contains queryText or sender contains queryText))
+                            end if
+                        end if
+                    end try
+
+                    repeat with theMessage in matchedMessages
+                        if (count of rows) >= limitValue then exit repeat
+                        set subjectText to ""
+                        set senderText to ""
+                        set dateText to ""
+                        set appleId to ""
+                        set isRead to true
+                        try
+                            set subjectText to my sanitizeText(subject of theMessage)
+                        end try
+                        try
+                            set senderText to my sanitizeText(sender of theMessage)
+                        end try
+                        try
+                            set dateText to my sanitizeText((date received of theMessage) as string)
+                        end try
+                        try
+                            set appleId to (id of theMessage) as text
+                        end try
+                        try
+                            set isRead to read status of theMessage
+                        end try
+                        -- Use subject as preview — never read body during search to prevent hangs
+                        set previewText to subjectText
+                        set end of rows to my sanitizeText(accountName) & fieldSeparator & my sanitizeText(mailboxLabel) & fieldSeparator & my sanitizeText(appleId) & fieldSeparator & subjectText & fieldSeparator & senderText & fieldSeparator & dateText & fieldSeparator & my boolText(isRead) & fieldSeparator & previewText
+                    end repeat
+
+                    if (count of rows) >= limitValue then exit repeat
                 end repeat
             end if
-
-            repeat with theMailbox in targetMailboxes
-                set mailboxLabel to name of theMailbox
-                set matchedMessages to {}
-                try
-                    if unreadOnly then
-                        if queryText is "" then
-                            set matchedMessages to (every message of theMailbox whose read status is false)
-                        else
-                            set matchedMessages to (every message of theMailbox whose (subject contains queryText or sender contains queryText) and read status is false)
-                        end if
-                    else
-                        if queryText is "" then
-                            set matchedMessages to (every message of theMailbox)
-                        else
-                            set matchedMessages to (every message of theMailbox whose (subject contains queryText or sender contains queryText))
-                        end if
-                    end if
-                end try
-
-                repeat with theMessage in matchedMessages
-                    if (count of rows) >= limitValue then exit repeat
-                    set subjectText to ""
-                    set senderText to ""
-                    set dateText to ""
-                    set appleId to ""
-                    set isRead to true
-                    try
-                        set subjectText to my sanitizeText(subject of theMessage)
-                    end try
-                    try
-                        set senderText to my sanitizeText(sender of theMessage)
-                    end try
-                    try
-                        set dateText to my sanitizeText((date received of theMessage) as string)
-                    end try
-                    try
-                        set appleId to (id of theMessage) as text
-                    end try
-                    try
-                        set isRead to read status of theMessage
-                    end try
-                    -- Use subject as preview — never read body during search to prevent hangs
-                    set previewText to subjectText
-                    set end of rows to my sanitizeText(accountName) & fieldSeparator & my sanitizeText(mailboxLabel) & fieldSeparator & my sanitizeText(appleId) & fieldSeparator & subjectText & fieldSeparator & senderText & fieldSeparator & dateText & fieldSeparator & my boolText(isRead) & fieldSeparator & previewText
-                end repeat
-
-                if (count of rows) >= limitValue then exit repeat
-            end repeat
             if (count of rows) >= limitValue then exit repeat
         end repeat
     end tell

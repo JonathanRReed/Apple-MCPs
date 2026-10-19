@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Fixed
+- Messages returned empty `text` for most recent messages. Recent macOS versions often leave `message.text` NULL and store the body only in `attributedBody`, an NSArchiver-serialized `NSAttributedString`. The Messages server now decodes `attributedBody` when `text` is empty in conversations, single messages, search results and conversation previews. Search also matches bodies stored that way, re-checked against the decoded text so archive class names never match. Databases without an `attributedBody` column keep working.
+
 ## [1.1.3] - 2026-10-16
 
 ### Fixed

@@ -190,15 +190,22 @@ class MessagesDBBridge:
             ]
 
     def latest_service_for_chat(self, chat_id: str) -> str | None:
-        """Service ("iMessage", "SMS", "RCS") of the most recent message in a chat, if known."""
+        """Service ("iMessage", "SMS", "RCS") of the most recent successfully sent message in a chat.
+
+        Messages that failed to send (``message.error`` non-zero, shown as
+        "Not Delivered") are skipped: a failed iMessage to an SMS-only number
+        must not switch the thread's replies to iMessage.
+        """
         with self._connect() as conn:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(message)").fetchall()}
+            failed_filter = " AND COALESCE(m.error, 0) = 0" if "error" in columns else ""
             row = conn.execute(
-                """
+                f"""
                 SELECT m.service
                 FROM chat c
                 JOIN chat_message_join cmj ON cmj.chat_id = c.ROWID
                 JOIN message m ON m.ROWID = cmj.message_id
-                WHERE (c.guid = ? OR CAST(c.ROWID AS TEXT) = ?) AND COALESCE(m.service, '') != ''
+                WHERE (c.guid = ? OR CAST(c.ROWID AS TEXT) = ?) AND COALESCE(m.service, '') != ''{failed_filter}
                 ORDER BY m.date DESC
                 LIMIT 1
                 """,

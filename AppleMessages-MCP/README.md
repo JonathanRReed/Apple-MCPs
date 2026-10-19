@@ -107,7 +107,7 @@ claude mcp add --transport stdio --scope project apple-messages -- uvx apple-mes
 - `tools/list` returns the full Messages tool surface. Context-constrained clients can use `search_tools` first, then `get_tool_info` for the Messages tool they need.
 - Resolve the recipient via Contacts before any send or reply when the user names a person.
 - Confirm the intended person if Contacts returns multiple matches.
-- Omit `service_name` on iMessage sends. Passing it can trigger AppleScript error `-1728`.
+- `messages_send_message`, `messages_send_attachment` and `messages_reply_in_conversation` accept an optional `service_name` of `iMessage`, `SMS` or `RCS`. Without it, new messages go out as iMessage, and one-to-one replies use the service of the thread's latest message: SMS threads stay SMS, and RCS threads use RCS, falling back to SMS. The account is chosen as the first enabled Messages account of that service type. SMS and RCS go through the paired iPhone and need Text Message Forwarding turned on for this Mac. Without a matching account the tools return `SERVICE_UNAVAILABLE` instead of sending. The response's `service_name` reports the service actually used.
 
 ## Related
 

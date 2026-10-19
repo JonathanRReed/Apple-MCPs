@@ -189,6 +189,23 @@ class MessagesDBBridge:
                 for row in rows
             ]
 
+    def latest_service_for_chat(self, chat_id: str) -> str | None:
+        """Service ("iMessage", "SMS", "RCS") of the most recent message in a chat, if known."""
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT m.service
+                FROM chat c
+                JOIN chat_message_join cmj ON cmj.chat_id = c.ROWID
+                JOIN message m ON m.ROWID = cmj.message_id
+                WHERE (c.guid = ? OR CAST(c.ROWID AS TEXT) = ?) AND COALESCE(m.service, '') != ''
+                ORDER BY m.date DESC
+                LIMIT 1
+                """,
+                (chat_id, chat_id),
+            ).fetchone()
+            return str(row[0]) if row is not None else None
+
     def participant_addresses_for_chat(self, chat_id: str) -> list[str]:
         with self._connect() as conn:
             rows = conn.execute(

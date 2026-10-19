@@ -1225,8 +1225,9 @@ def messages_send_attachment(
     recipient: str,
     file_path: str,
     text: str | None = None,
+    service_name: str | None = None,
 ) -> SendResponse | MessagesErrorResponse:
-    return _messages_send_attachment(recipient, file_path=file_path, text=text)
+    return _messages_send_attachment(recipient, file_path=file_path, text=text, service_name=service_name)
 
 
 def reminders_create_list(title: str) -> ReminderListMutationResponse | RemindersErrorResponse:

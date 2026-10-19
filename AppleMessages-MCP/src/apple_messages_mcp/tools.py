@@ -333,14 +333,17 @@ def messages_list_attachments(chat_id: str | None = None, message_id: str | None
 
 @mcp.tool(
     title="Send Message",
-    description="Send a new iMessage through Messages.app.",
+    description=(
+        "Send a new message through Messages.app. Sends as iMessage unless service_name is set: "
+        "SMS or RCS go through the iPhone's carrier and need Text Message Forwarding enabled for this Mac."
+    ),
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def messages_send_message(recipient: str, text: str) -> SendResponse | ErrorResponse:
+def messages_send_message(recipient: str, text: str, service_name: str | None = None) -> SendResponse | ErrorResponse:
     try:
         ensure_action_allowed("messages_send_message")
-        result = _automation_bridge().send_message(recipient=recipient, text=text)
+        result = _automation_bridge().send_message(recipient=recipient, text=text, service_name=service_name)
         return SendResponse(**result)
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
@@ -350,16 +353,24 @@ def messages_send_message(recipient: str, text: str) -> SendResponse | ErrorResp
 
 @mcp.tool(
     title="Reply In Conversation",
-    description="Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats.",
+    description=(
+        "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats. "
+        "One-to-one replies use the service of the thread's latest message (SMS/RCS threads stay SMS/RCS) unless service_name is set."
+    ),
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def messages_reply_in_conversation(chat_id: str, text: str) -> SendResponse | ErrorResponse:
+def messages_reply_in_conversation(chat_id: str, text: str, service_name: str | None = None) -> SendResponse | ErrorResponse:
     try:
         ensure_action_allowed("messages_reply_in_conversation")
         participants = _db_bridge().participant_addresses_for_chat(chat_id)
         if len(participants) == 1:
-            result = _automation_bridge().send_message(recipient=participants[0], text=text)
+            result = _automation_bridge().send_message(
+                recipient=participants[0],
+                text=text,
+                service_name=service_name,
+                services=_thread_service_preference(_db_bridge().latest_service_for_chat(chat_id)),
+            )
         elif len(participants) > 1:
             result = _automation_bridge().send_to_group(chat_id=chat_id, text=text)
         else:
@@ -383,15 +394,27 @@ def messages_reply_in_conversation(chat_id: str, text: str) -> SendResponse | Er
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def messages_send_attachment(recipient: str, file_path: str, text: str | None = None) -> SendResponse | ErrorResponse:
+def messages_send_attachment(
+    recipient: str, file_path: str, text: str | None = None, service_name: str | None = None
+) -> SendResponse | ErrorResponse:
     try:
         ensure_action_allowed("messages_send_attachment")
-        result = _automation_bridge().send_attachment(recipient=recipient, file_path=file_path, text=text)
+        result = _automation_bridge().send_attachment(recipient=recipient, file_path=file_path, text=text, service_name=service_name)
         return SendResponse(**result)
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except MessagesAutomationBridgeError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+def _thread_service_preference(latest_service: str | None) -> list[str] | None:
+    """Service order for a 1:1 reply, from the service of the thread's latest message."""
+    latest = (latest_service or "").strip().lower()
+    if latest == "rcs":
+        return ["RCS", "SMS"]  # RCS threads can fall back to SMS, as the iPhone does
+    if latest == "sms":
+        return ["SMS"]
+    return None  # iMessage or unknown: keep the default
 
 
 def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:

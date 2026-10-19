@@ -73,3 +73,17 @@ def test_history_access_diagnostic_reports_missing_db(tmp_path) -> None:
     assert accessible is False
     assert error is not None
     assert error.error_code == "DB_NOT_FOUND"
+
+
+def test_latest_service_for_chat_returns_most_recent_service(tmp_path) -> None:
+    db_path = tmp_path / "chat.db"
+    _build_fixture(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("INSERT INTO message VALUES (9, 'msg-9', 1, 'later sms', NULL, 'SMS', 9, 0, 1, 0)")
+    conn.execute("INSERT INTO chat_message_join VALUES (1, 9)")
+    conn.commit()
+    conn.close()
+    bridge = MessagesDBBridge(db_path)
+
+    assert bridge.latest_service_for_chat("chat-guid-1") == "SMS"
+    assert bridge.latest_service_for_chat("missing") is None

@@ -8,6 +8,66 @@ from apple_messages_mcp.models import AttachmentRecord, ConversationRecord, Conv
 
 APPLE_EPOCH = datetime(2001, 1, 1, tzinfo=UTC)
 
+_NSSTRING_MARKER = b"NSString"
+_TYPEDSTREAM_STRING_START = b"\x01+"
+_OBJECT_REPLACEMENT_CHAR = "\ufffc"
+_BODY_MATCH_FUNCTION = "apple_messages_body_contains"
+
+
+def decode_attributed_body(blob: object) -> str | None:
+    """Return the plain text stored in a Messages ``attributedBody`` blob.
+
+    Recent macOS versions often leave ``message.text`` NULL and keep the body
+    only in ``attributedBody``: an ``NSAttributedString`` serialized with
+    NSArchiver (``typedstream``). The string follows the first ``NSString``
+    class marker as ``0x01 '+'`` and a length: one byte, or ``0x81`` plus a
+    little-endian uint16, or ``0x82`` plus a little-endian uint32, then UTF-8.
+    Attachment placeholders (U+FFFC) are dropped; a body with nothing else
+    returns None.
+    """
+    if not blob:
+        return None
+    if isinstance(blob, str):
+        data = blob.encode("utf-8", errors="ignore")
+    elif isinstance(blob, (bytes, bytearray, memoryview)):
+        data = bytes(blob)
+    else:
+        return None
+    marker = data.find(_NSSTRING_MARKER)
+    if marker < 0:
+        return None
+    start = data.find(_TYPEDSTREAM_STRING_START, marker + len(_NSSTRING_MARKER))
+    if start < 0:
+        return None
+    index = start + len(_TYPEDSTREAM_STRING_START)
+    if index >= len(data):
+        return None
+    length = data[index]
+    index += 1
+    if length == 0x81:
+        length = int.from_bytes(data[index : index + 2], "little")
+        index += 2
+    elif length == 0x82:
+        length = int.from_bytes(data[index : index + 4], "little")
+        index += 4
+    text = data[index : index + length]
+    if not text or len(text) < length:
+        return None
+    decoded = text.decode("utf-8", errors="replace").replace(_OBJECT_REPLACEMENT_CHAR, "").strip()
+    return decoded or None
+
+
+def _body_contains(blob: object, needle: str | None) -> bool:
+    """SQLite UDF: case-insensitive (Unicode-aware) match against decoded attributedBody text."""
+    if not needle:
+        return False
+    text = decode_attributed_body(blob)
+    return text is not None and needle.casefold() in text.casefold()
+
+
+def _row_text(row: sqlite3.Row) -> str | None:
+    return row["text"] or decode_attributed_body(row["attributed_body"])
+
 
 class MessagesDBBridgeError(Exception):
     def __init__(self, error_code: str, message: str, suggestion: str | None = None) -> None:
@@ -20,6 +80,14 @@ class MessagesDBBridgeError(Exception):
 class MessagesDBBridge:
     def __init__(self, db_path: Path) -> None:
         self.db_path = db_path
+        self._has_attributed_body: bool | None = None
+
+    def _body_column(self, conn: sqlite3.Connection) -> str:
+        """SQL for the attributedBody column, or NULL on databases without it."""
+        if self._has_attributed_body is None:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(message)").fetchall()}
+            self._has_attributed_body = "attributedBody" in columns
+        return "m.attributedBody" if self._has_attributed_body else "NULL"
 
     def history_accessible(self) -> bool:
         accessible, _ = self.history_access_diagnostic()
@@ -71,9 +139,10 @@ class MessagesDBBridge:
             if row is None:
                 raise MessagesDBBridgeError("CHAT_NOT_FOUND", f"No chat matched '{chat_id}'.", "List conversations first to discover valid chat ids.")
             summary = self._conversation_summary(conn, row)
+            body_col = self._body_column(conn)
             messages = conn.execute(
-                """
-                SELECT m.ROWID AS message_rowid, m.guid AS message_guid, cmj.chat_id, m.text, m.subject, m.service AS service_name, m.date,
+                f"""
+                SELECT m.ROWID AS message_rowid, m.guid AS message_guid, cmj.chat_id, m.text, {body_col} AS attributed_body, m.subject, m.service AS service_name, m.date,
                        COALESCE(m.is_from_me, 0) AS is_from_me, COALESCE(m.cache_has_attachments, 0) AS has_attachments,
                        h.id AS sender_address, h.service AS sender_service, h.uncanonicalized_id AS sender_uncanonicalized_address
                 FROM chat_message_join cmj
@@ -90,9 +159,10 @@ class MessagesDBBridge:
 
     def get_message(self, message_id: str) -> MessageRecord:
         with self._connect() as conn:
+            body_col = self._body_column(conn)
             row = conn.execute(
-                """
-                SELECT m.ROWID AS message_rowid, m.guid AS message_guid, cmj.chat_id, m.text, m.subject, m.service AS service_name, m.date,
+                f"""
+                SELECT m.ROWID AS message_rowid, m.guid AS message_guid, cmj.chat_id, m.text, {body_col} AS attributed_body, m.subject, m.service AS service_name, m.date,
                        COALESCE(m.is_from_me, 0) AS is_from_me, COALESCE(m.cache_has_attachments, 0) AS has_attachments,
                        h.id AS sender_address, h.service AS sender_service, h.uncanonicalized_id AS sender_uncanonicalized_address
                 FROM message m
@@ -119,8 +189,24 @@ class MessagesDBBridge:
         offset: int = 0,
     ) -> list[MessageRecord]:
         with self._connect() as conn:
-            clauses = ["(COALESCE(m.text, '') LIKE ? OR COALESCE(m.subject, '') LIKE ?)"]
-            params: list[object] = [f"%{query}%", f"%{query}%"]
+            # attributedBody is a binary archive whose class and attribute names
+            # ("NSString", "__kIMMessagePartAttributeName", ...) would match raw
+            # byte searches, so blob-only rows are checked against the decoded
+            # text inside the query. That keeps LIMIT/OFFSET applied to genuine
+            # matches. For ASCII queries a cheap instr() prefilter (NUL-safe,
+            # unlike LIKE) skips decoding rows that cannot match.
+            body_col = self._body_column(conn)
+            conn.create_function(_BODY_MATCH_FUNCTION, 2, _body_contains, deterministic=True)
+            body_clause = f"{_BODY_MATCH_FUNCTION}({body_col}, ?)"
+            body_params: list[object] = [query]
+            if query.isascii():
+                body_clause = f"instr(lower(CAST({body_col} AS TEXT)), lower(?)) > 0 AND {body_clause}"
+                body_params.insert(0, query)
+            clauses = [
+                "(COALESCE(m.text, '') LIKE ? OR COALESCE(m.subject, '') LIKE ?"
+                f" OR (COALESCE(m.text, '') = '' AND {body_col} IS NOT NULL AND {body_clause}))"
+            ]
+            params: list[object] = [f"%{query}%", f"%{query}%", *body_params]
             if chat_id is not None:
                 clauses.append("(c.guid = ? OR CAST(c.ROWID AS TEXT) = ?)")
                 params.extend([chat_id, chat_id])
@@ -136,7 +222,7 @@ class MessagesDBBridge:
             params.extend([limit, offset])
             rows = conn.execute(
                 f"""
-                SELECT m.ROWID AS message_rowid, m.guid AS message_guid, cmj.chat_id, m.text, m.subject, m.service AS service_name, m.date,
+                SELECT m.ROWID AS message_rowid, m.guid AS message_guid, cmj.chat_id, m.text, {body_col} AS attributed_body, m.subject, m.service AS service_name, m.date,
                        COALESCE(m.is_from_me, 0) AS is_from_me, COALESCE(m.cache_has_attachments, 0) AS has_attachments,
                        h.id AS sender_address, h.service AS sender_service, h.uncanonicalized_id AS sender_uncanonicalized_address
                 FROM message m
@@ -279,9 +365,10 @@ class MessagesDBBridge:
             """,
             (chat_rowid,),
         ).fetchone()[0]
+        body_col = self._body_column(conn)
         last_message_row = conn.execute(
-            """
-            SELECT m.text, m.subject, m.date
+            f"""
+            SELECT m.text, {body_col} AS attributed_body, m.subject, m.date
             FROM chat_message_join cmj
             JOIN message m ON m.ROWID = cmj.message_id
             WHERE cmj.chat_id = ?
@@ -293,7 +380,7 @@ class MessagesDBBridge:
         preview = None
         last_activity = None
         if last_message_row is not None:
-            preview = last_message_row["text"] or last_message_row["subject"]
+            preview = _row_text(last_message_row) or last_message_row["subject"]
             last_activity = self._messages_date_to_iso(last_message_row["date"])
         return ConversationSummary(
             chat_id=str(row["guid"] or chat_rowid),
@@ -320,7 +407,7 @@ class MessagesDBBridge:
             guid=row["message_guid"],
             chat_id=str(row["chat_id"]) if row["chat_id"] is not None else None,
             sender=sender,
-            text=row["text"],
+            text=_row_text(row),
             subject=row["subject"],
             service_name=row["service_name"],
             sent_at=self._messages_date_to_iso(row["date"]),

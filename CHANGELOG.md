@@ -14,6 +14,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Group replies reject a `service_name` that differs from the group's existing service with `INVALID_INPUT`. Messages sends group replies over the chat's own service, so the option cannot switch it. (#63)
 - RCS requires macOS 15 or later, where Messages' scripting dictionary gained the RCS service. On older macOS an explicit RCS request returns `SERVICE_UNAVAILABLE` before any AppleScript runs, and RCS threads fall back to SMS. (#63)
 
+### Fixed
+- Messages returned empty `text` for most recent messages. Recent macOS versions often leave `message.text` NULL and store the body only in `attributedBody`, an NSArchiver-serialized `NSAttributedString`. The Messages server now decodes `attributedBody` when `text` is empty in conversations, single messages, search results and conversation previews. Search also matches bodies stored that way. It checks the decoded text before paging, so archive class and attribute names never match and `limit`/`offset` count only real matches. That check is case-insensitive for non-ASCII text too. Attachment-only messages no longer return the U+FFFC placeholder as text. Databases without an `attributedBody` column keep working.
+
 ## [1.1.3] - 2026-10-16
 
 ### Fixed

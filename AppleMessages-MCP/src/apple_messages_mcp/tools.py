@@ -385,7 +385,9 @@ def messages_reply_in_conversation(chat_id: str, text: str, service_name: str | 
                 "Could not determine participants for this conversation.",
                 "Use messages_send_message with an explicit recipient.",
             )
-        return SendResponse(**result)
+        # One-to-one sends address the participant, so echo the conversation
+        # the caller replied in.
+        return SendResponse(**{**result, "chat_id": result.get("chat_id") or chat_id})
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except MessagesDBBridgeError as exc:

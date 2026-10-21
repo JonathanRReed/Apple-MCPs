@@ -2742,7 +2742,8 @@
         "query: string (required)",
         "mailbox: string (optional)",
         "unread_only: boolean (optional)",
-        "limit: integer (optional)"
+        "limit: integer (optional)",
+        "account: string (optional)"
       ],
       "description": "Delegated Apple domain tool 'mail_search_messages' exposed through Apple-Tools-MCP.",
       "domain": "apple",

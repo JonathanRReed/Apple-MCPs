@@ -1041,12 +1041,14 @@ def mail_search_messages(
     mailbox: str | None = None,
     unread_only: bool = False,
     limit: int | str = 10,
+    account: str | None = None,
 ) -> MailMessageSearchResponse | MailErrorResponse:
     return _mail_search_messages(
         query=query,
         mailbox=mailbox,
         unread_only=unread_only,
         limit=_coerce_int_arg("limit", limit, minimum=1),
+        account=account,
     )
 
 

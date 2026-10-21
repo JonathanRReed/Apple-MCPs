@@ -17,7 +17,7 @@ class Settings:
     write_allowed_calendars: tuple[str, ...]
     log_level: str
     helper_source: Path
-    helper_binary: Path
+    helper_build_dir: Path
 
 
 def _parse_allowed_calendars(value: str | None) -> tuple[str, ...]:
@@ -51,8 +51,7 @@ def load_settings() -> Settings:
         write_allowed_calendars=_parse_allowed_calendars(os.environ.get("APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS")),
         log_level=os.environ.get("APPLE_CALENDAR_MCP_LOG_LEVEL", "INFO").strip() or "INFO",
         helper_source=package_dir / "apple_pim_bridge.swift",
-        # Nested inside a bundle (Contents/MacOS/<exe> + a sibling Contents/Info.plist) so the
-        # compiled helper has real CFBundle identity instead of running as a bare CLI process.
-        # See CalendarBridge._write_bundle_info_plist for why that matters.
-        helper_binary=helper_build_dir / "apple-calendar-pim-bridge.app" / "Contents" / "MacOS" / "apple-calendar-pim-bridge",
+        # The helper is compiled into a signed app bundle under this directory.
+        # See calendar_bridge.CALENDAR_HELPER_BUNDLE for why it needs bundle identity.
+        helper_build_dir=helper_build_dir,
     )

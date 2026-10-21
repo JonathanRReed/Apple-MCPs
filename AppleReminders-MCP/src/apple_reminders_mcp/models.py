@@ -24,6 +24,13 @@ class HealthResponse(BaseModel):
     capabilities: list[str]
     helper_available: bool
     helper_compiled: bool
+    # Authorization as read by the helper, without requesting it.
+    access_status: str = "not_checked"
+    can_access_reminders: bool = False
+    # The app macOS checks for Reminders access: the app running this server, or the helper itself.
+    permission_client: str | None = None
+    permission_error: str | None = None
+    permission_suggestion: str | None = None
 
 
 class ReminderListInfo(BaseModel):

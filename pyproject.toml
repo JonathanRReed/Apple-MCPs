@@ -58,16 +58,3 @@ unsupported-operator = "ignore"
 invalid-assignment = "ignore"
 no-matching-overload = "ignore"
 invalid-method-override = "ignore"
-
-[[tool.ty.overrides]]
-# Being reworked on another branch; drop this override once that lands and
-# its remaining diagnostics are fixed. Warnings keep them visible meanwhile.
-include = [
-  "Apple-Calendar-MCP/src/apple_calendar_mcp/calendar_bridge.py",
-  "AppleContacts-MCP/src/apple_contacts_mcp/contacts_bridge.py",
-  "AppleReminders-MCP/src/apple_reminders_mcp/reminders_bridge.py",
-]
-
-[tool.ty.overrides.rules]
-invalid-argument-type = "warn"
-not-iterable = "warn"

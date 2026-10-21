@@ -30,6 +30,39 @@ to the server itself.
 - To force the prompt to reappear: `tccutil reset AppleEvents` (resets
   Automation consent for all apps, so other tools will re-prompt too).
 
+## Calendar, Reminders and Contacts: who macOS asks about
+
+These servers read your data through small Swift helpers that they compile on
+first use into `~/.apple-mcps/build` (or the directory in
+`APPLE_CALENDAR_MCP_HELPER_BUILD_DIR`, `APPLE_REMINDERS_MCP_HELPER_BUILD_DIR`,
+`APPLE_CONTACTS_MCP_HELPER_BUILD_DIR`). Each helper is a signed app bundle:
+**Apple Calendar MCP Helper**, **Apple Reminders MCP Helper** and **Apple
+Contacts MCP Helper**.
+
+macOS checks privacy access for the app that started the MCP server (Claude
+Desktop, Terminal, an editor), not for the helper. If that app already has
+access, it is used. If it does not, the helper runs itself as its own app, so
+macOS asks about the helper by name. That matters because many hosts,
+including Electron apps such as Claude Desktop, have no Contacts or Reminders
+usage description. macOS cannot prompt for those apps, and they never appear
+in System Settings.
+
+- Answer **Allow** in the prompt that names the helper. It can open behind
+  other windows.
+- If a tool returns `PERMISSION_DENIED`, open System Settings → Privacy &
+  Security → **Contacts**, **Reminders** or **Calendars** and turn on the app
+  named in the error, which is usually the helper.
+- If the helper is not listed, reset its answer and call any tool again:
+  `tccutil reset Reminders io.github.jonathanrreed.apple-mcps.reminders-pim-bridge`,
+  `tccutil reset AddressBook io.github.jonathanrreed.apple-mcps.contacts-bridge`
+  or `tccutil reset Calendar io.github.jonathanrreed.apple-mcps.calendar-pim-bridge`.
+- `reminders_health`, `calendar_health` and `contacts_health` report the
+  current status and the app macOS checks (`permission_client`), without
+  asking for access.
+- The helpers are ad-hoc signed, so macOS ties a grant to the exact build. An
+  update that changes a helper's Swift source rebuilds it, and macOS may ask
+  once more for the new build.
+
 ## Calendar: "Add Only" access behaves differently
 
 macOS offers two grant levels for Calendar (System Settings → Privacy &
@@ -67,6 +100,7 @@ server never leaves you guessing:
 | --- | --- | --- |
 | `PERMISSION_DENIED` | macOS blocked automation or data access | Call `<server>_permission_guide`, grant the permission, then `<server>_recheck_permissions` |
 | `APPLESCRIPT_TIMEOUT` | The target app stalled past the deadline | The app may be busy or syncing; verify state before retrying a mutation |
+| `HELPER_TIMEOUT` | The native Contacts helper passed its deadline | Answer any open macOS permission prompt, then retry; verify state before retrying a mutation |
 | `NOTE_CREATE_STATUS_UNKNOWN` | Create timed out and could not be verified | Check the target folder for the title before creating again |
 | `CALENDAR_NOT_FOUND` / `EVENT_NOT_FOUND` | Id did not resolve | List calendars/events first — ids change shape under Add Only access |
 | `WRITE_BLOCKED` / `SAFETY_RESTRICTION` / `SAFETY_POLICY_BLOCK` | The server's safety mode does not allow this tool | The error's `suggestion` names the setting and value. Ask the user, change it in the client's `env` block (Claude Desktop: Settings > Extensions > the extension > Configure), then restart the client |

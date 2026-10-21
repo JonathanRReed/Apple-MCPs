@@ -14,6 +14,7 @@ from pathlib import Path
 from apple_mcp_common.atomic import rename_without_replacement
 
 _CACHE_SUGGESTION = "Choose a local helper build directory that supports hard links or atomic exclusive renames, then retry."
+_SIGN_SUGGESTION = "Make sure the Xcode Command Line Tools are installed (run `xcode-select --install`), then retry. Nothing was installed, so the next call rebuilds and signs the helper again."
 
 
 class NativeHelperError(Exception):
@@ -154,17 +155,24 @@ def helper_bundle_executable(source: Path, build_dir: Path, spec: HelperBundle) 
 def sign_helper_bundle(bundle: Path, spec: HelperBundle) -> bool:
     """Ad-hoc sign ``bundle`` with a stable identifier and its Info.plist bound.
 
-    Returns False when signing is unavailable (no codesign, or not macOS). The
-    helper still runs with its linker signature in that case.
+    Returns False only when codesign does not exist (not macOS); the helper then
+    keeps its linker signature. When codesign runs but fails or times out this
+    raises HELPER_SIGN_FAILED, so a bundle without its stable identity is never
+    published to the cache, where it would be reused forever.
     """
     try:
         result = subprocess.run(
             [CODESIGN, "--force", "--sign", "-", "--identifier", spec.bundle_identifier, str(bundle)],
             capture_output=True, text=True, check=False, timeout=60,
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except FileNotFoundError:
         return False
-    return result.returncode == 0
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise NativeHelperError("HELPER_SIGN_FAILED", f"Could not sign '{bundle.name}': {error}.", _SIGN_SUGGESTION) from error
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or f"exit status {result.returncode}"
+        raise NativeHelperError("HELPER_SIGN_FAILED", f"codesign could not sign '{bundle.name}': {detail}", _SIGN_SUGGESTION)
+    return True
 
 
 def ensure_helper_bundle(source: Path, build_dir: Path, spec: HelperBundle) -> Path:

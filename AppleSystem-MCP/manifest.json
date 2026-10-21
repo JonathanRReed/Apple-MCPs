@@ -35,9 +35,16 @@
     "system_safety_mode": {
       "type": "string",
       "title": "System safety mode",
-      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read status and settings only. safe_manage: also set the clipboard, show notifications, open apps, change appearance, Finder, Dock, and accessibility settings, and drive app menus and keys. full_access: same as safe_manage. This bundle's default is safe_manage. Sets APPLE_SYSTEM_MCP_SAFETY_MODE.",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read status and settings only. safe_manage: also set the clipboard, show notifications, open apps, change appearance, Finder, Dock, and accessibility settings, and drive app menus and keys in apps listed under \"Apps that accept GUI input\". full_access: same as safe_manage. This bundle's default is safe_manage. Sets APPLE_SYSTEM_MCP_SAFETY_MODE.",
       "required": false,
       "default": "safe_manage"
+    },
+    "system_gui_allowed_apps": {
+      "type": "string",
+      "title": "Apps that accept GUI input",
+      "description": "Optional comma-separated bundle ids of apps the assistant may type into, press keys in, or click in, for example com.apple.TextEdit,com.apple.Safari. Leave empty to turn GUI input off. Terminals, script editors and automation apps are always refused. Sets APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS.",
+      "required": false,
+      "default": ""
     }
   },
   "server": {
@@ -52,7 +59,8 @@
         "server.py"
       ],
       "env": {
-        "APPLE_SYSTEM_MCP_SAFETY_MODE": "${user_config.system_safety_mode}"
+        "APPLE_SYSTEM_MCP_SAFETY_MODE": "${user_config.system_safety_mode}",
+        "APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS": "${user_config.system_gui_allowed_apps}"
       }
     }
   },

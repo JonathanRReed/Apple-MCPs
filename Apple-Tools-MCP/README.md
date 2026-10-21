@@ -174,7 +174,7 @@ Archive discovery stays within the selected account. An explicit account overrid
 - Treat Focus support as truthful best-effort. Use it when available, and do not invent a current Focus mode if the MCP reports unsupported on the local setup.
 - Use `apple_update_system_setting` for macOS preference changes and `apple_control_frontmost_app` only when a native app-domain tool cannot complete the task.
 - Prefer explicit System settings tools over generic GUI automation when the request is really a macOS preference change.
-- Use GUI fallback tools only when the native domain MCP cannot complete the task and the client has granted Accessibility access.
+- Use GUI fallback tools only when the native domain MCP cannot complete the task and the client has granted Accessibility access. Name the target app with `application` or `bundle_id`; it must be listed in `APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS` (see [GUI input](#gui-input)).
 - Use native Maps MCP tools for maps search and directions. Do not substitute shell, web, or external map providers when validating supported Maps behavior.
 - Use Shortcuts as the explicit bridge when native domain support is missing, rather than ad hoc shell or GUI work.
 - Use the dedicated digest folder helpers before saving daily or weekly briefings into Notes.
@@ -329,6 +329,7 @@ bash scripts/inspector_smoke.sh
   - Multiple Notes folders exist across accounts. Pick one default.
   - Files access is limited to APPLE_FILES_MCP_ALLOWED_ROOTS.
   - Some System actions depend on host app automation approval.
+  - GUI input needs application or bundle_id, and the app must be in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS. Terminals and script editors are always refused.
   - Maps search and directions depend on the local Swift helper and Xcode command line tools.
 </known_gotchas>
 </apple_tools>
@@ -346,6 +347,15 @@ bash scripts/inspector_smoke.sh
 - [Apple Contacts MCP](../AppleContacts-MCP/README.md)
 - [Apple Notes MCP](../AppleNotes-MCP/README.md)
 - [Apple Shortcuts MCP](../AppleShortcuts-MCP/README.md)
+
+## GUI input
+
+`apple_control_frontmost_app` and the delegated `system_gui_*` input tools send input only to apps listed in `APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS`. It is empty by default, so GUI input is off until you set it. Listing menu bar items (`list_menu_bar_items`) only reads and needs no allowlist.
+
+- Format: comma-separated bundle ids, for example `com.apple.TextEdit,com.apple.Safari`. To find an app's bundle id, run `osascript -e 'id of app "TextEdit"'`.
+- Where to set it: the `env` block of this server in your MCP client config, for example `"APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS": "com.apple.TextEdit,com.apple.Safari"`. In Claude Desktop, open Settings > Extensions, configure Apple Tools and fill in "Apps that accept GUI input". Restart the client afterwards.
+- `application` or `bundle_id` is required for every input action (`click_menu_path`, `press_keys`, `type_text`, `click_button`, `choose_popup_value`). Input is never sent to whatever app happens to be frontmost.
+- Terminals, script editors and automation apps (Terminal, iTerm2, Ghostty, Warp, Script Editor, Automator, Shortcuts, Xcode, VS Code, Cursor, JetBrains IDEs, Raycast, Alfred and similar) are always refused, even if allow-listed.
 
 ## Mail attachments
 

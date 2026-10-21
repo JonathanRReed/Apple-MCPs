@@ -20,6 +20,11 @@ Rules:
   (``+44 (0)20 7946 0958`` matches ``020 7946 0958``). A different area code
   never passes as a country code. An area code equal to a country code still
   matches; telling those apart needs each country's numbering plan.
+- A North American number written with its country code but no ``+``
+  (``1 (555) 123-4567``, ``1-555-123-4567``) counts as international: the
+  leading ``1`` must be set apart by a separator and followed by a 10-digit
+  number whose area code starts with 2-9. Unseparated 11-digit numbers that
+  start with ``1`` (such as Chinese mobile numbers) stay national.
 """
 
 from __future__ import annotations
@@ -55,6 +60,7 @@ _PHONE_PATTERN = re.compile(
     r"(?:(?:ext(?:ension|n)?\.?[:=]?|x[:=]?|#|;ext=)(?P<extension>\d+))?"
 )
 _EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+_NANP_WITH_COUNTRY_CODE = re.compile(r"(?:tel:)?1[\s.\-(]")
 
 
 def phone_parts(value: str) -> tuple[str, str | None] | None:
@@ -84,9 +90,17 @@ def is_email(value: str) -> bool:
 
 
 def has_international_prefix(value: str) -> bool:
-    """Whether the number is written with ``+`` or the ``00`` international prefix."""
+    """Whether the number is written with ``+``, the ``00`` prefix, or a separated North American ``1``."""
     compact = re.sub(r"[\s()./-]+", "", value.strip().lower()).removeprefix("tel:")
-    return compact.startswith(("+", "00"))
+    if compact.startswith(("+", "00")):
+        return True
+    parts = phone_parts(value)
+    digits = parts[0] if parts is not None else ""
+    return (
+        _NANP_WITH_COUNTRY_CODE.match(value.strip().lower()) is not None
+        and len(digits) == 11
+        and digits[1] in "23456789"
+    )
 
 
 def drop_trunk_zero(digits: str) -> str:

@@ -62,3 +62,22 @@ def test_helpers() -> None:
     assert same_email("ANN@work.com", "ann@work.com") and not same_email("", "")
     assert has_international_prefix("+44 20") and has_international_prefix("(00) 44") and not has_international_prefix("020")
     assert drop_trunk_zero("0044") == "44" and drop_trunk_zero("020") == "20"
+
+
+@pytest.mark.parametrize(
+    ("a", "b", "expected"),
+    [
+        ("1 (555) 123-4567", "5551234567", True),
+        ("1-555-123-4567", "(555) 123-4567", True),
+        ("1 555 123 4567", "+1 555 123 4567", True),
+        ("13812345678", "3812345678", False),
+        ("138 1234 5678", "3812345678", False),
+        ("1 (212) 555-1234", "555-1234", False),
+        ("1 (155) 123-4567", "1551234567", False),
+    ],
+)
+def test_separated_north_american_country_code(a, b, expected):
+    # A US number saved with its country code but no "+" still matches the
+    # 10-digit form; unseparated 11-digit numbers (Chinese mobiles) do not.
+    assert same_phone(a, b) is expected
+    assert same_phone(b, a) is expected

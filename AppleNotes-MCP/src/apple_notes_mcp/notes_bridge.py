@@ -20,6 +20,13 @@ class NotesBridgeError(Exception):
         self.suggestion = suggestion
 
 
+def _dict_items(value: object) -> list[dict[str, object]]:
+    """Return the object entries of a decoded JSON array; anything else has none."""
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
 class AppleNotesBridge:
     def __init__(self, scripts_dir: Path, script_timeout_seconds: int = 60) -> None:
         self.scripts_dir = scripts_dir
@@ -28,11 +35,11 @@ class AppleNotesBridge:
 
     def list_accounts(self) -> list[AccountInfo]:
         payload = self._run_script("list_accounts.applescript")
-        return [AccountInfo.model_validate(item) for item in payload.get("items", []) if isinstance(item, dict)]
+        return [AccountInfo.model_validate(item) for item in _dict_items(payload.get("items"))]
 
     def list_folders(self, account_name: str | None = None) -> list[FolderInfo]:
         payload = self._run_script("list_folders.applescript", account_name or "")
-        return [FolderInfo.model_validate(item) for item in payload.get("items", []) if isinstance(item, dict)]
+        return [FolderInfo.model_validate(item) for item in _dict_items(payload.get("items"))]
 
     def list_notes(
         self,
@@ -40,7 +47,7 @@ class AppleNotesBridge:
         folder_id: str | None = None,
     ) -> list[NoteSummary]:
         payload = self._run_script("list_notes.applescript", account_name or "", folder_id or "")
-        raw_notes = [item for item in payload.get("items", []) if isinstance(item, dict)]
+        raw_notes = _dict_items(payload.get("items"))
         # Native note payloads already contain their folder/account metadata.
         # Resolve incomplete payloads against one request-local snapshot, never
         # one AppleScript folder scan per note or a stale cross-request cache.
@@ -196,7 +203,7 @@ class AppleNotesBridge:
 
     def list_attachments(self, note_id: str) -> list[AttachmentInfo]:
         payload = self._run_script("list_attachments.applescript", note_id)
-        return [AttachmentInfo.model_validate(item) for item in payload.get("items", []) if isinstance(item, dict)]
+        return [AttachmentInfo.model_validate(item) for item in _dict_items(payload.get("items"))]
 
     def search_notes(
         self,
@@ -283,7 +290,7 @@ class AppleNotesBridge:
         plaintext = self._optional_text(raw_note.get("plaintext")) or ""
         body_html = self._resolved_body_html(raw_note, body_html_override=body_html_override)
         tags = self._derive_tags(plaintext)
-        attachment_count = int(raw_note.get("attachment_count", 0) or 0)
+        attachment_count = self._optional_int(raw_note.get("attachment_count")) or 0
         folder_id = self._optional_text(raw_note.get("folder_id")) or ""
         account_name = self._optional_text(raw_note.get("account_name")) or ""
         account_id = self._optional_text(raw_note.get("account_id")) or ""
@@ -313,7 +320,7 @@ class AppleNotesBridge:
 
     def _normalize_detail(self, raw_note: dict[str, object], *, body_html_override: str | None = None) -> NoteDetail:
         summary = self._normalize_summary(raw_note, body_html_override=body_html_override)
-        attachments = [AttachmentInfo.model_validate(item) for item in raw_note.get("attachments", []) if isinstance(item, dict)]
+        attachments = [AttachmentInfo.model_validate(item) for item in _dict_items(raw_note.get("attachments"))]
         return NoteDetail(
             **summary.model_dump(),
             body_html=self._resolved_body_html(raw_note, body_html_override=body_html_override),
@@ -335,7 +342,7 @@ class AppleNotesBridge:
         return text or None
 
     def _optional_int(self, value: object) -> int | None:
-        if value is None:
+        if not isinstance(value, (int, float, str)):
             return None
         try:
             return int(value)

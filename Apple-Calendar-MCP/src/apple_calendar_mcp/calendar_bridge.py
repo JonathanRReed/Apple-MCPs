@@ -3,6 +3,7 @@ import subprocess
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from urllib.parse import unquote
 
 from apple_calendar_mcp.alarm_validation import validate_alarms
@@ -112,7 +113,7 @@ class CalendarBridge:
             if isinstance(item, dict)
         ]
 
-    def calendar_access_status(self) -> dict[str, object]:
+    def calendar_access_status(self) -> dict[str, Any]:
         return self._run_helper("calendar-access-status")
 
     def list_events(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> list[EventSummary]:
@@ -472,7 +473,7 @@ class CalendarBridge:
             )
         return calendar.calendar_id
 
-    def _run_helper(self, command: str, *args: str) -> dict[str, object]:
+    def _run_helper(self, command: str, *args: str) -> dict[str, Any]:
         helper_binary = self._ensure_helper()
         try:
             completed = subprocess.run(
@@ -589,7 +590,7 @@ class CalendarBridge:
             return False
         return not bool(payload.get("can_read_events", False))
 
-    def _fallback_list_calendars(self) -> dict[str, object]:
+    def _fallback_list_calendars(self) -> dict[str, Any]:
         script = """
 function run(argv) {
   const app = Application("Calendar");
@@ -608,7 +609,7 @@ function run(argv) {
 """
         return self._run_jxa(script)
 
-    def _fallback_list_events(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, object]:
+    def _fallback_list_events(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, Any]:
         start = datetime.fromisoformat(start_iso)
         end = datetime.fromisoformat(end_iso)
         script = self._JXA_ID_HELPERS + self._JXA_ALARM_HELPERS + """
@@ -940,7 +941,7 @@ function eventRecord(cal, evt) {
 }
 """
 
-    def _fallback_get_event(self, event_id: str) -> dict[str, object]:
+    def _fallback_get_event(self, event_id: str) -> dict[str, Any]:
         script = self._JXA_FIND_EVENT + """
 function run(argv) {
   const app = Application("Calendar");
@@ -964,7 +965,7 @@ function run(argv) {
         location: str | None,
         all_day: bool,
         alarms: list[dict[str, object]] | None = None,
-    ) -> dict[str, object]:
+    ) -> dict[str, Any]:
         script = self._JXA_FIND_EVENT + """
 function run(argv) {
   const app = Application("Calendar");
@@ -1031,7 +1032,7 @@ function run(argv) {
         location: str | None,
         all_day: bool | None,
         alarms: list[dict[str, object]] | None = None,
-    ) -> dict[str, object]:
+    ) -> dict[str, Any]:
         fields = {
             "title": title,
             "calendar_id": calendar_id,
@@ -1110,7 +1111,7 @@ function run(argv) {
 """
         return self._run_jxa_event(script, event_id, json.dumps(fields), mutation=True)
 
-    def _fallback_delete_event(self, event_id: str) -> dict[str, object]:
+    def _fallback_delete_event(self, event_id: str) -> dict[str, Any]:
         script = self._JXA_FIND_EVENT + """
 function run(argv) {
   const app = Application("Calendar");
@@ -1124,7 +1125,7 @@ function run(argv) {
 """
         return self._run_jxa_event(script, event_id, mutation=True)
 
-    def _run_jxa_event(self, script: str, *args: str, mutation: bool = False) -> dict[str, object]:
+    def _run_jxa_event(self, script: str, *args: str, mutation: bool = False) -> dict[str, Any]:
         try:
             payload = self._run_jxa(script, *args, timeout=self._JXA_TIMEOUT_SECONDS)
         except CalendarBridgeError as error:
@@ -1161,12 +1162,12 @@ function run(argv) {
             )
         return payload
 
-    def _fallback_events_payload(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, object]:
+    def _fallback_events_payload(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, Any]:
         if calendar_id:
             return self._fallback_list_events(start_iso, end_iso, calendar_id=calendar_id, limit=limit)
         return self._fallback_list_events_across_calendars(start_iso, end_iso, limit=limit)
 
-    def _fallback_list_events_across_calendars(self, start_iso: str, end_iso: str, limit: int = 100) -> dict[str, object]:
+    def _fallback_list_events_across_calendars(self, start_iso: str, end_iso: str, limit: int = 100) -> dict[str, Any]:
         seen_calendar_ids: set[str] = set()
         items: list[dict[str, object]] = []
         for calendar in self.list_calendars():
@@ -1208,7 +1209,7 @@ function run(argv) {
                 break
         return unique_items
 
-    def _run_jxa(self, script: str, *args: str, timeout: int = _JXA_TIMEOUT_SECONDS) -> dict[str, object]:
+    def _run_jxa(self, script: str, *args: str, timeout: int = _JXA_TIMEOUT_SECONDS) -> dict[str, Any]:
         try:
             completed = subprocess.run(
                 ["osascript", "-l", "JavaScript", "-e", script, "--", *args],
@@ -1261,7 +1262,7 @@ function run(argv) {
             )
         return payload
 
-    def _normalize_summary(self, raw_event: dict[str, object]) -> EventSummary:
+    def _normalize_summary(self, raw_event: dict[str, Any]) -> EventSummary:
         return EventSummary(
             event_id=str(raw_event.get("event_id", "")),
             title=str(raw_event.get("title", "")),

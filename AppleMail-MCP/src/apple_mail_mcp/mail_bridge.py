@@ -24,7 +24,8 @@ def decode_message_id(message_id: str) -> tuple[str, str, str]:
     parts = message_id.split("|")
     if len(parts) != 3:
         raise MailBridgeError(f"Invalid message_id: '{message_id}'.")
-    return tuple(unquote(part) for part in parts)
+    account, mailbox, apple_id = (unquote(part) for part in parts)
+    return account, mailbox, apple_id
 
 
 def _restore_text(value: str) -> str:
@@ -186,7 +187,7 @@ class AppleMailBridge:
         if not rows or len(rows[0]) < 2:
             raise MailBridgeError("Draft payload was incomplete.")
 
-        draft_id, visible = rows[0][:2]
+        draft_id, visible_flag = rows[0][:2]
         resolved_from_account = _restore_text(rows[0][2]) if len(rows[0]) >= 3 and rows[0][2] else from_account
         return DraftRecord(
             draft_id=_restore_text(draft_id),
@@ -194,7 +195,7 @@ class AppleMailBridge:
             to=to,
             cc=cc or [],
             bcc=bcc or [],
-            visible=_parse_bool(visible),
+            visible=_parse_bool(visible_flag),
             from_account=resolved_from_account,
         )
 

@@ -9,7 +9,8 @@ from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime, timedelta
 from html import escape as html_escape
 from pathlib import Path
-from typing import Any
+from types import FunctionType
+from typing import Any, Literal
 from uuid import uuid4
 
 from mcp import types
@@ -516,13 +517,9 @@ def _update_action_record(updated_action: AssistantActionRecord) -> AssistantAct
     )
 
 
-def _mail_response_ok(value: Any) -> bool:
-    return not isinstance(value, MailErrorResponse)
-
-
 def _pick_archive_mailbox(account: str | None = None) -> tuple[str | None, str | None]:
     response = mail_list_mailboxes(account=account)
-    if not _mail_response_ok(response):
+    if isinstance(response, MailErrorResponse):
         return None, None
     exact_names = ("archive", "all archive", "archives")
     fallback: tuple[str | None, str | None] = (None, None)
@@ -539,7 +536,7 @@ def _pick_archive_mailbox(account: str | None = None) -> tuple[str | None, str |
 
 def _pick_default_calendar() -> tuple[str | None, str | None]:
     response = calendar_list_calendars()
-    if not getattr(response, "ok", False):
+    if isinstance(response, CalendarErrorResponse):
         return None, None
     preferred = []
     fallback = []
@@ -560,7 +557,7 @@ def _pick_default_calendar() -> tuple[str | None, str | None]:
 
 def _pick_default_reminder_list() -> tuple[str | None, str | None]:
     response = reminders_list_lists()
-    if not getattr(response, "ok", False):
+    if isinstance(response, RemindersErrorResponse):
         return None, None
     preferred_names = ("general", "reminders")
     for reminder_list in response.lists:
@@ -573,7 +570,7 @@ def _pick_default_reminder_list() -> tuple[str | None, str | None]:
 
 def _pick_default_notes_folder() -> tuple[str | None, str | None, str | None]:
     response = notes_list_folders(limit=100, offset=0)
-    if not getattr(response, "ok", False):
+    if isinstance(response, NotesErrorResponse):
         return None, None, None
     preferred_names = ("notes", "general")
     for folder in response.folders:
@@ -587,7 +584,7 @@ def _pick_default_notes_folder() -> tuple[str | None, str | None, str | None]:
 
 def _pick_digest_folder() -> tuple[str | None, str | None, str | None]:
     response = notes_list_folders(limit=100, offset=0)
-    if not getattr(response, "ok", False):
+    if isinstance(response, NotesErrorResponse):
         return None, None, None
     preferred_names = ("digests", "digest")
     for folder in response.folders:
@@ -602,7 +599,7 @@ def _default_notes_account_name(preferences: AssistantPreferences) -> str | None
     if preferences.default_notes_account_name:
         return preferences.default_notes_account_name
     response = notes_list_accounts()
-    if not getattr(response, "ok", False) or not response.accounts:
+    if isinstance(response, NotesErrorResponse) or not response.accounts:
         return None
     for account in response.accounts:
         if getattr(account, "upgraded", True):
@@ -775,19 +772,19 @@ def _resolve_notes_target(
     return (effective_folder_id, updated_preferences), None
 
 
-def _ensure_maps_available() -> tuple[bool, AppleErrorResponse | None]:
+def _maps_unavailable_error() -> AppleErrorResponse | None:
     health = maps_health()
     if isinstance(health, MapsErrorResponse):
-        return False, _apple_error_response(health.error.error_code, health.error.message, health.error.suggestion)
+        return _apple_error_response(health.error.error_code, health.error.message, health.error.suggestion)
     if not getattr(health, "ok", False):
-        return False, _apple_error_response("MAPS_UNAVAILABLE", "Apple Maps MCP is not available.", "Check the Maps MCP server and retry.")
+        return _apple_error_response("MAPS_UNAVAILABLE", "Apple Maps MCP is not available.", "Check the Maps MCP server and retry.")
     if not getattr(health, "helper_available", False):
-        return False, _apple_error_response(
+        return _apple_error_response(
             "MAPS_HELPER_UNAVAILABLE",
             "Apple Maps helper is unavailable, so native place search and routing cannot run.",
             "Call maps_health, fix the helper compilation issue, and retry without using non-Apple fallback data.",
         )
-    return True, None
+    return None
 
 
 def _matching_duplicate_groups(query: str, contact_ids: set[str] | None = None, merge_candidates_only: bool = False) -> DuplicateContactListResponse | ContactsErrorResponse:
@@ -864,7 +861,7 @@ def _build_note_html_from_mail(message: MailMessageRecord) -> str:
     return "".join(lines)
 
 
-def _serialize_prompt_messages(messages: list[Any]) -> list[dict[str, Any]]:
+def _serialize_prompt_messages(messages: list[types.PromptMessage]) -> list[dict[str, Any]]:
     payload: list[dict[str, Any]] = []
     for item in messages:
         content = item.content.model_dump(mode="json") if hasattr(item.content, "model_dump") else item.content
@@ -981,20 +978,9 @@ def _permission_guide(domain: str) -> PermissionGuideResponse:
             ],
             notes=["Files access is controlled by environment-scoped roots rather than a macOS privacy prompt."],
         ),
-        "system": PermissionGuideResponse(
-            domain="system",
-            can_prompt_in_app=standalone_system_permission_guide()["can_prompt_in_app"],
-            requires_manual_system_settings=standalone_system_permission_guide()["requires_manual_system_settings"],
-            steps=standalone_system_permission_guide()["steps"],
-            notes=standalone_system_permission_guide().get("notes", []),
-        ),
-        "maps": PermissionGuideResponse(
-            domain="maps",
-            can_prompt_in_app=False,
-            requires_manual_system_settings=False,
-            steps=standalone_maps_permission_guide()["steps"],
-            notes=standalone_maps_permission_guide().get("notes", []),
-        ),
+        # The standalone guides are untyped dicts; let the model validate them.
+        "system": PermissionGuideResponse.model_validate({"notes": [], **standalone_system_permission_guide(), "domain": "system"}),
+        "maps": PermissionGuideResponse.model_validate({"notes": [], **standalone_maps_permission_guide(), "domain": "maps"}),
         "all": PermissionGuideResponse(
             domain="all",
             can_prompt_in_app=True,
@@ -2117,10 +2103,8 @@ def apple_capture_follow_up_from_mail(
                 due_date=due_date,
                 notes=f"From: {message.sender}\nSubject: {message.subject}\nReceived: {message.date_received}",
             )
-            if isinstance(reminder_result, AppleErrorResponse):
+            if isinstance(reminder_result, (AppleErrorResponse, RemindersErrorResponse)):
                 warnings.append(reminder_result.error.message)
-            elif getattr(reminder_result, "ok", True) is False:
-                warnings.append(getattr(reminder_result.error, "message", "Reminder creation failed."))
             else:
                 reminder_payload = _to_jsonable(reminder_result)
 
@@ -2130,10 +2114,8 @@ def apple_capture_follow_up_from_mail(
                 title=resolved_note_title,
                 body_html=_build_note_html_from_mail(message),
             )
-            if isinstance(note_result, AppleErrorResponse):
+            if isinstance(note_result, (AppleErrorResponse, NotesErrorResponse)):
                 warnings.append(note_result.error.message)
-            elif getattr(note_result, "ok", True) is False:
-                warnings.append(getattr(note_result.error, "message", "Note creation failed."))
             else:
                 note_payload = _to_jsonable(note_result)
 
@@ -2182,8 +2164,8 @@ def apple_event_collaboration_summary(event_id: str) -> EventCollaborationRespon
     structured_output=True,
 )
 def apple_maps_search_places_strict(query: str, limit: int = 5) -> PlaceSearchResponse | AppleErrorResponse:
-    ok, error = _ensure_maps_available()
-    if not ok:
+    error = _maps_unavailable_error()
+    if error is not None:
         return error
     result = maps_search_places(query=query, limit=limit)
     if isinstance(result, MapsErrorResponse):
@@ -2198,8 +2180,8 @@ def apple_maps_search_places_strict(query: str, limit: int = 5) -> PlaceSearchRe
     structured_output=True,
 )
 def apple_maps_get_directions_strict(origin: str, destination: str, transport: str = "driving") -> DirectionsResponse | AppleErrorResponse:
-    ok, error = _ensure_maps_available()
-    if not ok:
+    error = _maps_unavailable_error()
+    if error is not None:
         return error
     result = maps_get_directions(origin=origin, destination=destination, transport=transport)
     if isinstance(result, MapsErrorResponse):
@@ -2528,28 +2510,28 @@ def apple_suggest_mailboxes(query: str | None = None, limit: int | str = 25) -> 
 
 def apple_suggest_calendars(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
     response = calendar_list_calendars()
-    values = [] if not getattr(response, "ok", False) else [f"{item.calendar_id} / {item.name}" for item in response.calendars]
+    values = [] if isinstance(response, CalendarErrorResponse) else [f"{item.calendar_id} / {item.name}" for item in response.calendars]
     suggestions = _filter_text(values, query=query, limit=_coerce_int_arg("limit", limit, minimum=1))
     return SuggestionListResponse(domain="calendar", suggestions=suggestions, count=len(suggestions))
 
 
 def apple_suggest_reminder_lists(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
     response = reminders_list_lists()
-    values = [] if not getattr(response, "ok", False) else [f"{item.list_id} / {item.title}" for item in response.lists]
+    values = [] if isinstance(response, RemindersErrorResponse) else [f"{item.list_id} / {item.title}" for item in response.lists]
     suggestions = _filter_text(values, query=query, limit=_coerce_int_arg("limit", limit, minimum=1))
     return SuggestionListResponse(domain="reminders", suggestions=suggestions, count=len(suggestions))
 
 
 def apple_suggest_shortcuts(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
     response = shortcuts_list_shortcuts()
-    values = [] if not getattr(response, "ok", False) else [item.name for item in response.shortcuts]
+    values = [] if isinstance(response, ShortcutsErrorResponse) else [item.name for item in response.shortcuts]
     suggestions = _filter_text(values, query=query, limit=_coerce_int_arg("limit", limit, minimum=1))
     return SuggestionListResponse(domain="shortcuts", suggestions=suggestions, count=len(suggestions))
 
 
 def apple_suggest_note_folders(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
     response = notes_list_folders(limit=100, offset=0)
-    values = [] if not getattr(response, "ok", False) else [f"{item.folder_id} / {item.account_name} / {item.name}" for item in response.folders]
+    values = [] if isinstance(response, NotesErrorResponse) else [f"{item.folder_id} / {item.account_name} / {item.name}" for item in response.folders]
     suggestions = _filter_text(values, query=query, limit=_coerce_int_arg("limit", limit, minimum=1))
     return SuggestionListResponse(domain="notes", suggestions=suggestions, count=len(suggestions))
 
@@ -2557,7 +2539,7 @@ def apple_suggest_note_folders(query: str | None = None, limit: int | str = 25) 
 def apple_suggest_message_conversations(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
     response = messages_list_conversations(limit=100, offset=0)
     values = []
-    if getattr(response, "ok", False):
+    if not isinstance(response, MessagesErrorResponse):
         for item in response.conversations:
             label = item.display_name or ", ".join(participant.address for participant in item.participants) or item.chat_id
             values.append(f"{item.chat_id} / {label}")
@@ -2568,7 +2550,7 @@ def apple_suggest_message_conversations(query: str | None = None, limit: int | s
 def apple_suggest_contacts(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
     response = contacts_search_contacts(query=query or "", limit=100) if query else contacts_list_contacts(limit=100, offset=0)
     values = []
-    if getattr(response, "ok", False):
+    if not isinstance(response, ContactsErrorResponse):
         for item in response.contacts:
             primary = item.phones[0].value if item.phones else (item.emails[0].value if item.emails else "")
             values.append(f"{item.contact_id} / {item.name} / {primary}")
@@ -2580,7 +2562,7 @@ def apple_suggest_files(query: str | None = None, limit: int | str = 25) -> Sugg
     normalized_limit = _coerce_int_arg("limit", limit, minimum=1)
     response = files_search_files(query=query or "", limit=normalized_limit) if query else files_recent_files(limit=normalized_limit)
     values = []
-    if getattr(response, "ok", False):
+    if not isinstance(response, FilesErrorResponse):
         values = [item.path for item in response.entries]
     suggestions = _filter_text(values, query=query, limit=normalized_limit)
     return SuggestionListResponse(domain="files", suggestions=suggestions, count=len(suggestions))
@@ -2589,7 +2571,7 @@ def apple_suggest_files(query: str | None = None, limit: int | str = 25) -> Sugg
 def apple_suggest_running_apps(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
     normalized_limit = _coerce_int_arg("limit", limit, minimum=1)
     response = system_list_running_apps()
-    values = [] if not getattr(response, "ok", False) else [f"{item.name} / {item.bundle_id or ''}".strip(" /") for item in response.apps]
+    values = [] if isinstance(response, SystemErrorResponse) else [f"{item.name} / {item.bundle_id or ''}".strip(" /") for item in response.apps]
     suggestions = _filter_text(values, query=query, limit=normalized_limit)
     return SuggestionListResponse(domain="system", suggestions=suggestions, count=len(suggestions))
 
@@ -2600,7 +2582,7 @@ def apple_suggest_places(query: str | None = None, limit: int | str = 10) -> Sug
         return SuggestionListResponse(domain="maps", suggestions=[], count=0)
     response = apple_maps_search_places_strict(query=query, limit=normalized_limit)
     values = []
-    if getattr(response, "ok", False):
+    if not isinstance(response, AppleErrorResponse):
         values = [f"{item.name} / {item.address or ''}".strip() for item in response.places]
     suggestions = _filter_text(values, query=query, limit=normalized_limit)
     return SuggestionListResponse(domain="maps", suggestions=suggestions, count=len(suggestions))
@@ -2933,21 +2915,21 @@ async def apple_completion(
         uri = str(ref.uri)
         if uri == "contacts://contact/{contact_id}" and argument.name == "contact_id":
             response = contacts_list_contacts(limit=50, offset=0)
-            values = [] if not getattr(response, "ok", False) else [item.contact_id for item in response.contacts]
-            return types.Completion(values=values, total=len(values), hasMore=False)
+            values = [] if isinstance(response, ContactsErrorResponse) else [item.contact_id for item in response.contacts]
+            return types.Completion(values=values, total=len(values), has_more=False)
         if uri == "notes://note/{note_id}" and argument.name == "note_id":
             response = notes_list_notes(limit=50, offset=0)
-            values = [] if not getattr(response, "ok", False) else [item.note_id for item in response.notes]
-            return types.Completion(values=values, total=len(values), hasMore=False)
+            values = [] if isinstance(response, NotesErrorResponse) else [item.note_id for item in response.notes]
+            return types.Completion(values=values, total=len(values), has_more=False)
         if uri == "messages://conversation/{chat_id}" and argument.name == "chat_id":
             response = messages_list_conversations(limit=50, offset=0)
-            values = [] if not getattr(response, "ok", False) else [item.chat_id for item in response.conversations]
-            return types.Completion(values=values, total=len(values), hasMore=False)
+            values = [] if isinstance(response, MessagesErrorResponse) else [item.chat_id for item in response.conversations]
+            return types.Completion(values=values, total=len(values), has_more=False)
         if uri == "shortcuts://folder/{folder_name}" and argument.name == "folder_name":
             response = shortcuts_list_folders()
-            values = [] if not getattr(response, "ok", False) else [item.name for item in response.folders]
-            return types.Completion(values=values, total=len(values), hasMore=False)
-    return types.Completion(values=[], total=0, hasMore=False)
+            values = [] if isinstance(response, ShortcutsErrorResponse) else [item.folder_name for item in response.folders]
+            return types.Completion(values=values, total=len(values), has_more=False)
+    return types.Completion(values=[], total=0, has_more=False)
 
 
 def _tool_annotations(name: str) -> ToolAnnotations:
@@ -2983,7 +2965,7 @@ def _looks_like_message_address(value: str) -> bool:
 def _summarize_mail_results(query: str, limit: int) -> list[dict[str, Any]]:
     result = mail_search_messages(query=query, limit=limit)
     if isinstance(result, MailErrorResponse):
-        return [{"error": result.error.message}]
+        return [{"error": result.message}]
     return [
         {
             "message_id": item.message_id,
@@ -2991,7 +2973,7 @@ def _summarize_mail_results(query: str, limit: int) -> list[dict[str, Any]]:
             "sender": item.sender,
             "date_received": item.date_received,
             "mailbox": item.mailbox,
-            "unread": item.unread,
+            "unread": not item.is_read,
         }
         for item in result.results
     ]
@@ -3022,7 +3004,7 @@ def _build_weekly_briefing_payload(days: int, mail_query: str, mail_limit: int) 
     mail_highlights = _summarize_mail_results(mail_query, mail_limit)
     system_context = _safe_resource_call(system_context_resource)
     calendar_payload = [] if isinstance(upcoming, CalendarErrorResponse) else [event.model_dump(mode="json") for event in upcoming.events]
-    reminders_payload = [] if getattr(reminders, "ok", False) is not True else [item.model_dump(mode="json") for item in reminders.reminders]
+    reminders_payload = [] if isinstance(reminders, RemindersErrorResponse) else [item.model_dump(mode="json") for item in reminders.reminders]
     return {
         "generated_at": datetime.now(UTC).isoformat(),
         "kind": "weekly_briefing",
@@ -3088,7 +3070,7 @@ def apple_triage_communications_task(mail_query: str = "*", mail_limit: int = 10
     return _build_triage_payload(str(mail_query or "*"), limit, conversations)
 
 
-UNIFIED_TOOL_FUNCTIONS: list[Callable[..., Any]] = [
+UNIFIED_TOOL_FUNCTIONS: list[FunctionType] = [
     mail_health,
     mail_list_mailboxes,
     mail_search_messages,
@@ -3535,6 +3517,12 @@ async def apple_get_prompt(name: str, arguments_json: str | None = None) -> dict
         prompt = await mcp.get_prompt(name, arguments)
     except Exception as exc:
         return _apple_error_response("PROMPT_LOOKUP_FAILED", str(exc), "Call apple_list_prompts first to inspect the available prompt names.")
+    if isinstance(prompt, types.InputRequiredResult):
+        return _apple_error_response(
+            "PROMPT_INPUT_REQUIRED",
+            f"Prompt '{name}' needs input from the client before it can render.",
+            "Request this prompt through prompts/get with a client that supports input requests.",
+        )
     return {
         "ok": True,
         "name": name,
@@ -3551,6 +3539,22 @@ TOOL_DISCOVERY = install_search_first_discovery(
 )
 
 
+_McpLogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+_MCP_LOG_LEVELS: dict[str, _McpLogLevel] = {
+    "DEBUG": "DEBUG",
+    "INFO": "INFO",
+    "WARN": "WARNING",
+    "WARNING": "WARNING",
+    "ERROR": "ERROR",
+    "CRITICAL": "CRITICAL",
+}
+
+
+def _mcp_log_level(value: str) -> _McpLogLevel:
+    """Map a LOG_LEVEL setting onto a level the MCP SDK accepts; unknown values fall back to INFO."""
+    return _MCP_LOG_LEVELS.get(value.strip().upper(), "INFO")
+
+
 def main() -> None:
     settings = load_settings()
     logging.basicConfig(level=getattr(logging, settings.log_level, logging.INFO))
@@ -3561,7 +3565,7 @@ def main() -> None:
     if settings.transport == "stdio":
         mcp.run(transport="stdio")
         return
-    mcp.settings.log_level = settings.log_level
+    mcp.settings.log_level = _mcp_log_level(settings.log_level)
     mcp.run(
         transport="streamable-http",
         host=require_loopback_host(settings.host),

@@ -9,6 +9,7 @@ import time
 from collections.abc import Iterator
 from contextlib import suppress
 from pathlib import Path
+from typing import Any, Literal
 
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSummary, CreateContactResponse, DeleteContactResponse, DuplicateCandidateGroup, DuplicateEvidence, ResolvedRecipientResponse
@@ -300,9 +301,9 @@ class AppleContactsBridge:
             or any(normalized_query in evidence.value.lower() for evidence in group.evidence)
         ]
 
-    def _choose_recipient(self, contact: ContactDetail, channel: str, *, query: str | None = None) -> tuple[str, ContactMethod]:
+    def _choose_recipient(self, contact: ContactDetail, channel: str, *, query: str | None = None) -> tuple[Literal["phone", "email"], ContactMethod]:
         parts = self._phone_query_parts(query) if query is not None else None
-        if channel in {"phone", "any"} and parts is not None and parts[1] is not None:
+        if channel in {"phone", "any"} and query is not None and parts is not None and parts[1] is not None:
             normalized_query = self._normalize_lookup_value(query)
             exact = [method for method in contact.phones if self._normalize_lookup_value(method.value) == normalized_query]
             matching = exact or [
@@ -399,7 +400,7 @@ class AppleContactsBridge:
             yield from items
             offset += len(items)
 
-    def _run_script(self, script_name: str, *args: str) -> dict[str, object]:
+    def _run_script(self, script_name: str, *args: str) -> dict[str, Any]:
         if self.helper_source is not None:
             command = [str(self._ensure_native_helper()), script_name.removesuffix(".applescript"), *args]
         else:
@@ -555,7 +556,7 @@ class AppleContactsBridge:
             "Inspect Contacts.app state and the AppleScript file, then retry.",
         )
 
-    def _normalize_summary(self, raw_contact: dict[str, object]) -> ContactSummary:
+    def _normalize_summary(self, raw_contact: dict[str, Any]) -> ContactSummary:
         phones = self._normalize_methods(raw_contact.get("phones"))
         emails = self._normalize_methods(raw_contact.get("emails"))
         return ContactSummary(
@@ -570,7 +571,7 @@ class AppleContactsBridge:
             emails=emails,
         )
 
-    def _normalize_detail(self, raw_contact: dict[str, object]) -> ContactDetail:
+    def _normalize_detail(self, raw_contact: dict[str, Any]) -> ContactDetail:
         summary = self._normalize_summary(raw_contact)
         return ContactDetail(**summary.model_dump(), note=self._optional_text(raw_contact.get("note")) or "")
 

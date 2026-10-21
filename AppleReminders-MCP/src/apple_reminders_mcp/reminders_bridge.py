@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from apple_mcp_common.native import HelperBundle, NativeHelperError, ensure_helper_bundle, helper_bundle_executable
 from apple_reminders_mcp.config import load_settings
@@ -47,7 +48,7 @@ class RemindersBridge:
         source_available = self.helper_source.exists()
         return source_available, source_available and helper_bundle_executable(self.helper_source, self.helper_build_dir, REMINDERS_HELPER_BUNDLE).is_file()
 
-    def access_status(self) -> dict[str, object]:
+    def access_status(self) -> dict[str, Any]:
         """Read Reminders authorization without requesting it."""
         return self._run_helper("reminders-access-status")
 
@@ -176,7 +177,7 @@ class RemindersBridge:
         payload = self._run_helper("delete-reminder-list", list_id)
         return DeleteReminderListResponse.model_validate({**payload, "list_id": payload["object_id"]})
 
-    def _run_helper(self, command: str, *args: str) -> dict[str, object]:
+    def _run_helper(self, command: str, *args: str) -> dict[str, Any]:
         helper_binary = self._ensure_helper()
         try:
             completed = subprocess.run(

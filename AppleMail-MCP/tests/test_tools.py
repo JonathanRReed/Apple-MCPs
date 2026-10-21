@@ -562,3 +562,10 @@ def test_subjectless_thread_archive_only_moves_anchor(subject):
     result = mail_archive_thread_tool(bridge, settings, 'id-1')
     assert result.affected_message_ids == ['id-1']
     assert bridge.moved == ['id-1']
+
+
+def test_create_server_falls_back_to_info_for_unknown_log_level() -> None:
+    server = create_server(settings=Settings(log_level="VERBOSE"), bridge=FakeBridge())
+
+    assert server.settings.log_level == "INFO"
+    assert create_server(settings=Settings(log_level="WARN"), bridge=FakeBridge()).settings.log_level == "WARNING"

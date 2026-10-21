@@ -65,6 +65,10 @@ on note_json(accountId, accountName, folderId, folderName, n, titleText, bodyHtm
 	-- the title, folder and body it requested; a new note has no attachments.
 	tell application "Notes" to set rawNoteId to id of n
 	set noteId to my safe_text(rawNoteId)
+	-- A title-only note's plaintext is its title; with a body the bridge
+	-- returns the follow-up update_note result instead of this one.
+	set plainText to ""
+	if bodyHtml is "" then set plainText to titleText
 	return "{" & ¬
 		quote & "note_id" & quote & ":" & my json_string(noteId) & "," & ¬
 		quote & "title" & quote & ":" & my json_string(titleText) & "," & ¬
@@ -77,7 +81,7 @@ on note_json(accountId, accountName, folderId, folderName, n, titleText, bodyHtm
 		quote & "password_protected" & quote & ":false," & ¬
 		quote & "shared" & quote & ":false," & ¬
 		quote & "attachment_count" & quote & ":0," & ¬
-		quote & "plaintext" & quote & ":" & my json_string("") & "," & ¬
+		quote & "plaintext" & quote & ":" & my json_string(plainText) & "," & ¬
 		quote & "body_html" & quote & ":" & my json_string(bodyHtml) & "," & ¬
 		quote & "attachments" & quote & ":[]}"
 end note_json

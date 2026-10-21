@@ -118,8 +118,25 @@ def test_sender_scripts_set_mail_sender_before_touching_system_events(name):
     # The GUI pop-up path is reached only from applySender, after the direct set failed.
     assert code.count("my selectSenderPopup(") == 1
     assert "my applySender(" in code
-    assert "my senderStringForAccount(senderRaw, senderEmail, my fullNameForAccount(matchedAccount))" in code
+    assert "my senderStringForAccount(senderEmail, my fullNameForAccount(matchedAccount))" in code
     assert "my emailForAccount(matchedAccount, senderRaw)" in code
+    # Without a readable account address, skip the direct set and use the pop-up.
+    assert 'if senderEmail is not "" then\n        set currentSender to ""' in code
+    assert "if my senderAddress(currentSender) is senderEmail then" in code
+    assert "my senderMatches(currentSender" not in code
+
+
+@pytest.mark.parametrize("name", SENDER_SCRIPTS)
+def test_sender_scripts_resolve_the_account_before_opening_a_compose_window(name):
+    code = (SCRIPTS / name).read_text()
+    run_handler = code[code.index("on run argv"):]
+    resolve = run_handler.index("my resolveAccountBySender(senderRaw)")
+    compose = min(
+        run_handler.index(marker)
+        for marker in ("make new outgoing message", "reply targetMessage", "forward targetMessage")
+        if marker in run_handler
+    )
+    assert resolve < compose
 
 
 @pytest.mark.parametrize("name", SENDER_SCRIPTS)
@@ -132,3 +149,54 @@ def test_sender_scripts_compile(name, tmp_path):
         capture_output=True, text=True, timeout=45, check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+@pytest.fixture(scope="module", params=SENDER_SCRIPTS)
+def compiled_sender_script(request, tmp_path_factory):
+    if sys.platform != "darwin":
+        pytest.skip("AppleScript compilation and execution require macOS")
+    destination = tmp_path_factory.mktemp("mail-sender-script") / (request.param + ".scpt")
+    # Compile only; the tests below run pure text handlers, never Mail.
+    result = subprocess.run(
+        ["osacompile", "-o", str(destination), str(SCRIPTS / request.param)],
+        capture_output=True, text=True, timeout=45, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    return destination
+
+
+@pytest.mark.parametrize(
+    ("email", "name", "expected"),
+    [
+        ("me@example.com", "Jonathan Reed", "Jonathan Reed <me@example.com>"),
+        ("me@example.com", "", "me@example.com"),
+        ("me@example.com", "Reed, Jonathan", '"Reed, Jonathan" <me@example.com>'),
+        ("me@example.com", 'Jon "JR" Reed', '"Jon \\"JR\\" Reed" <me@example.com>'),
+        # No readable address: never hand back the account name for `sender`.
+        ("", "Jonathan Reed", ""),
+    ],
+)
+def test_sender_string_quotes_display_names_and_never_uses_the_account_name(compiled_sender_script, email, name, expected):
+    result = run_pure_handler(
+        compiled_sender_script,
+        "return subjectScript's senderStringForAccount(item 2 of argv, item 3 of argv)",
+        email,
+        name,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.rstrip("\n") == expected
+
+
+@pytest.mark.parametrize(
+    ("sender", "expected"),
+    [
+        ("Jonathan Reed <me@example.com>", "me@example.com"),
+        ('"Reed, Jonathan" <me@example.com>', "me@example.com"),
+        ("  me@example.com ", "me@example.com"),
+        ("", ""),
+    ],
+)
+def test_sender_address_extracts_the_angle_bracket_address(compiled_sender_script, sender, expected):
+    result = run_pure_handler(compiled_sender_script, "return subjectScript's senderAddress(item 2 of argv)", sender)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.rstrip("\n") == expected

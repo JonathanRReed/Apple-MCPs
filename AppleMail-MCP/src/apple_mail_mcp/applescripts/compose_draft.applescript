@@ -183,32 +183,80 @@ on emailForAccount(theAccount, senderRaw)
     return ""
 end emailForAccount
 
-on senderStringForAccount(senderRaw, senderEmail, senderName)
+on quotedDisplayName(senderName)
+    -- RFC 5322: a display name with specials such as a comma or quote must be
+    -- a quoted string, or "Reed, Jonathan <a@b>" reads as two addresses.
+    set needsQuotes to false
+    repeat with specialChar in {",", "\"", ";", ":", "<", ">", "(", ")", "[", "]", "@", "\\"}
+        if senderName contains (specialChar as text) then
+            set needsQuotes to true
+            exit repeat
+        end if
+    end repeat
+    if not needsQuotes then
+        return senderName
+    end if
+    set escapedName to my replaceText(senderName, "\\", "\\\\")
+    set escapedName to my replaceText(escapedName, "\"", "\\\"")
+    return "\"" & escapedName & "\""
+end quotedDisplayName
+
+on senderStringForAccount(senderEmail, senderName)
+    -- Never fall back to the raw account name: Mail ignores it, and the
+    -- read-back could still "match" it. An empty result sends applySender
+    -- to the From pop-up instead.
     if senderEmail is "" then
-        return senderRaw
+        return ""
     end if
     if senderName is "" then
         return senderEmail
     end if
-    return senderName & " <" & senderEmail & ">"
+    return my quotedDisplayName(senderName) & " <" & senderEmail & ">"
 end senderStringForAccount
+
+on senderAddress(senderText)
+    -- "Full Name <addr>" -> "addr"; a bare address is returned unchanged.
+    set addressText to senderText as text
+    if addressText contains "<" and addressText contains ">" then
+        set previousDelimiters to AppleScript's text item delimiters
+        set AppleScript's text item delimiters to "<"
+        set addressText to last text item of addressText
+        set AppleScript's text item delimiters to ">"
+        set addressText to first text item of addressText
+        set AppleScript's text item delimiters to previousDelimiters
+    end if
+    repeat while addressText starts with " "
+        set addressText to text 2 thru -1 of addressText
+    end repeat
+    repeat while addressText ends with " "
+        set addressText to text 1 thru -2 of addressText
+    end repeat
+    return addressText
+end senderAddress
 
 on applySender(theMessage, senderRaw, senderEmail, senderString)
     -- Mail honours its own `sender` property when the address belongs to a
     -- configured account, so set it first. Only drive the From pop-up through
     -- System Events (separate Automation + Accessibility consent, and a hang
     -- while that consent is pending) when Mail did not take the value.
-    set currentSender to ""
-    tell application "Mail"
-        set sender of theMessage to senderString
-        delay 0.2
-        try
-            set currentSender to (sender of theMessage) as text
-        end try
-    end tell
-    if my senderMatches(currentSender, senderRaw, senderEmail) then
-        return currentSender
+    if senderEmail is not "" then
+        set currentSender to ""
+        tell application "Mail"
+            set sender of theMessage to senderString
+            delay 0.2
+            try
+                set currentSender to (sender of theMessage) as text
+            end try
+        end tell
+        -- Compare the whole address, not a substring: "a@x.com" must not
+        -- accept "ba@x.com". Addresses compare case-insensitively.
+        ignoring case
+            if my senderAddress(currentSender) is senderEmail then
+                return currentSender
+            end if
+        end ignoring
     end if
+    -- The account's address could not be read, or Mail did not take it.
     return my selectSenderPopup(senderRaw, senderEmail)
 end applySender
 
@@ -243,12 +291,15 @@ on run argv
         if senderRaw is not "" then
             set effectiveVisible to true
         end if
-        set newMessage to make new outgoing message with properties {visible:effectiveVisible, subject:subjectText, content:bodyText}
+        -- Resolve the sender before opening a compose window, so an unknown
+        -- account fails with ACCOUNT_NOT_FOUND without leaving a stray draft.
         if senderRaw is not "" then
             set matchedAccount to my resolveAccountBySender(senderRaw)
             set senderEmail to my emailForAccount(matchedAccount, senderRaw)
-            set senderString to my senderStringForAccount(senderRaw, senderEmail, my fullNameForAccount(matchedAccount))
+            set senderString to my senderStringForAccount(senderEmail, my fullNameForAccount(matchedAccount))
         end if
+
+        set newMessage to make new outgoing message with properties {visible:effectiveVisible, subject:subjectText, content:bodyText}
         tell newMessage
             repeat with addressText in toList
                 if (addressText as text) is not "" then

@@ -29,9 +29,10 @@ from apple_mail_mcp.models import (
     error_response,
     normalized_thread_subject,
 )
-from apple_mail_mcp.permissions import SafetyPolicyError, ensure_tool_allowed
+from apple_mail_mcp.permissions import SAFETY_ENV_VAR, SafetyPolicyError, ensure_tool_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.safety import safety_mode_warning
 
 LOGGER = logging.getLogger("apple_mail_mcp")
 SERVER_INSTRUCTIONS = (
@@ -86,6 +87,7 @@ def health_tool(settings: Settings) -> HealthResponse:
             "prompts",
         ],
         supports=["stdio", "streamable-http"],
+        safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_profile.value),
     )
 
 
@@ -496,7 +498,7 @@ def mail_compose_draft(
             from_account=from_account,
         )
     except SafetyPolicyError as exc:
-        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+        return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
     except ValueError as exc:
         return error_response("INVALID_INPUT", str(exc))
     except MailBridgeError as exc:
@@ -529,7 +531,7 @@ def mail_send_message(
             from_account=from_account,
         )
     except SafetyPolicyError as exc:
-        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+        return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
     except ValueError as exc:
         return error_response("INVALID_INPUT", str(exc))
     except MailBridgeError as exc:
@@ -556,7 +558,7 @@ def mail_reply_message(
             from_account=from_account,
         )
     except SafetyPolicyError as exc:
-        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+        return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
     except MailBridgeError as exc:
         return error_response("REPLY_FAILED", str(exc))
 
@@ -581,7 +583,7 @@ def mail_forward_message(
             from_account=from_account,
         )
     except SafetyPolicyError as exc:
-        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+        return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
     except MailBridgeError as exc:
         return error_response("FORWARD_FAILED", str(exc))
 
@@ -602,7 +604,7 @@ def mail_mark_message(
             is_read=is_read,
         )
     except SafetyPolicyError as exc:
-        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+        return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
     except MailBridgeError as exc:
         return error_response("MARK_FAILED", str(exc))
 
@@ -625,7 +627,7 @@ def mail_move_message(
             target_account=target_account,
         )
     except SafetyPolicyError as exc:
-        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+        return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
     except MailBridgeError as exc:
         return error_response("MOVE_FAILED", str(exc))
 
@@ -644,7 +646,7 @@ def mail_delete_message(
             message_id=message_id,
         )
     except SafetyPolicyError as exc:
-        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+        return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
     except MailBridgeError as exc:
         return error_response("DELETE_FAILED", str(exc))
 
@@ -663,7 +665,7 @@ def mail_get_thread(
     except ValueError as exc:
         return error_response("INVALID_INPUT", str(exc))
     except SafetyPolicyError as exc:
-        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+        return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
     except MailBridgeError as exc:
         return error_response("THREAD_LOOKUP_FAILED", str(exc))
 
@@ -693,7 +695,7 @@ def mail_reply_latest_in_thread(
     except ValueError as exc:
         return error_response("INVALID_INPUT", str(exc))
     except SafetyPolicyError as exc:
-        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+        return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
     except MailBridgeError as exc:
         return error_response("THREAD_REPLY_FAILED", str(exc))
 
@@ -721,7 +723,7 @@ def mail_archive_thread(
     except ValueError as exc:
         return error_response("INVALID_INPUT", str(exc))
     except SafetyPolicyError as exc:
-        return error_response("SAFETY_POLICY_BLOCK", str(exc))
+        return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
     except MailBridgeError as exc:
         return error_response("THREAD_ARCHIVE_FAILED", str(exc))
 

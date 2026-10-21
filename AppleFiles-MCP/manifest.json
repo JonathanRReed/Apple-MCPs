@@ -31,6 +31,22 @@
       "python": ">=3.11"
     }
   },
+  "user_config": {
+    "files_safety_mode": {
+      "type": "string",
+      "title": "Files safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: browse, search, and read files only. safe_manage: also create folders, move, open, reveal, and tag files. full_access: also delete files. This bundle's default is safe_manage. Sets APPLE_FILES_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "safe_manage"
+    },
+    "files_allowed_roots": {
+      "type": "string",
+      "title": "Folders the Files tools may access",
+      "description": "Comma-separated folder paths; ~ means your home folder. The assistant cannot see files outside these folders. Sets APPLE_FILES_MCP_ALLOWED_ROOTS.",
+      "required": false,
+      "default": "~/Desktop,~/Documents,~/Downloads,~/Library/Mobile Documents/com~apple~CloudDocs"
+    }
+  },
   "server": {
     "type": "uv",
     "entry_point": "server.py",
@@ -43,8 +59,8 @@
         "server.py"
       ],
       "env": {
-        "APPLE_FILES_MCP_ALLOWED_ROOTS": "${HOME}/Desktop,${HOME}/Documents,${HOME}/Downloads,${HOME}/Library/Mobile Documents/com~apple~CloudDocs",
-        "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage"
+        "APPLE_FILES_MCP_SAFETY_MODE": "${user_config.files_safety_mode}",
+        "APPLE_FILES_MCP_ALLOWED_ROOTS": "${user_config.files_allowed_roots}"
       }
     }
   },

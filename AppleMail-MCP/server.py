@@ -9,6 +9,9 @@ if str(SRC) not in sys.path:
 
 
 if __name__ == "__main__":
+    from apple_mcp_common.bundle import drop_unexpanded_user_config
+
+    drop_unexpanded_user_config()
     from apple_mail_mcp.tools import main
 
     main()

@@ -1650,7 +1650,7 @@ def apple_preview_archive_message(
     try:
         message = mail_get_message(message_id)
         if isinstance(message, MailErrorResponse):
-            return _apple_error_response(message.error_code, message.message, None)
+            return _apple_error_response(message.error_code, message.message, message.suggestion)
         preferences = _get_preferences()
         resolved, error = _resolve_archive_target(preferences, archive_mailbox=archive_mailbox, archive_account=archive_account, persist=False)
         if error is not None:
@@ -1773,7 +1773,7 @@ def apple_preview_follow_up_from_mail(
     try:
         message = mail_get_message(message_id)
         if isinstance(message, MailErrorResponse):
-            return _apple_error_response(message.error_code, message.message, None)
+            return _apple_error_response(message.error_code, message.message, message.suggestion)
         warnings: list[str] = []
         summary_parts: list[str] = [f"Capture follow-up from '{message.subject or message.message_id}'."]
         preferences = _get_preferences()
@@ -1865,7 +1865,7 @@ def apple_send_communication(
             from_account=effective_from_account,
         )
         if isinstance(result, MailErrorResponse):
-            return _apple_error_response(result.error_code, result.message, None)
+            return _apple_error_response(result.error_code, result.message, result.suggestion)
         action = _record_action(
             "send_communication",
             f"Sent an email to {plan.recommended_target}.",
@@ -1892,14 +1892,14 @@ def apple_archive_message(
         preferences = _get_preferences()
         message = mail_get_message(message_id)
         if isinstance(message, MailErrorResponse):
-            return _apple_error_response(message.error_code, message.message, None)
+            return _apple_error_response(message.error_code, message.message, message.suggestion)
         resolved, error = _resolve_archive_target(preferences, archive_mailbox=archive_mailbox, archive_account=archive_account)
         if error is not None:
             return error
         target_mailbox, target_account, _ = resolved
         result = mail_move_message(message_id=message_id, target_mailbox=target_mailbox, target_account=target_account)
         if isinstance(result, MailErrorResponse):
-            return _apple_error_response(result.error_code, result.message, None)
+            return _apple_error_response(result.error_code, result.message, result.suggestion)
         _record_action(
             "archive_message",
             f"Moved '{message.subject or message.message_id}' from {message.mailbox} to {target_mailbox}.",
@@ -2090,7 +2090,7 @@ def apple_capture_follow_up_from_mail(
     try:
         message = mail_get_message(message_id)
         if isinstance(message, MailErrorResponse):
-            return _apple_error_response(message.error_code, message.message, None)
+            return _apple_error_response(message.error_code, message.message, message.suggestion)
 
         reminder_payload: dict[str, Any] | None = None
         note_payload: dict[str, Any] | None = None

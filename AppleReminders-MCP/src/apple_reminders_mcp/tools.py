@@ -11,6 +11,7 @@ from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnot
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.privacy import helper_permission_guide
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.safety import safety_mode_warning
 from apple_reminders_mcp.config import load_settings
 from apple_reminders_mcp.models import (
     DeleteReminderListResponse,
@@ -23,7 +24,7 @@ from apple_reminders_mcp.models import (
     ReminderResponse,
     ToolError,
 )
-from apple_reminders_mcp.permissions import SafetyError, ensure_action_allowed
+from apple_reminders_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
 from apple_reminders_mcp.reminders_bridge import REMINDERS_HELPER_BUNDLE, RemindersBridge, RemindersBridgeError, build_bridge
 
 SERVER_INSTRUCTIONS = (
@@ -190,6 +191,7 @@ def reminders_health() -> HealthResponse:
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_mode),
         capabilities=capabilities,
         helper_available=helper_available,
         helper_compiled=helper_compiled,

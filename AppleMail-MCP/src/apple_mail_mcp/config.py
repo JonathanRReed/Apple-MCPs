@@ -39,7 +39,7 @@ def _parse_transport(value: str | None) -> str:
 
 
 def load_settings() -> Settings:
-    raw_profile = os.getenv("APPLE_MAIL_MCP_SAFETY_PROFILE", SafetyProfile.SAFE_MANAGE.value)
+    raw_profile = os.getenv("APPLE_MAIL_MCP_SAFETY_PROFILE", SafetyProfile.SAFE_MANAGE.value).strip()
     try:
         safety_profile = SafetyProfile(raw_profile)
     except ValueError:

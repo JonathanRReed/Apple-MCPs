@@ -2956,7 +2956,7 @@ async def apple_completion(
             return types.Completion(values=values, total=len(values), hasMore=False)
         if uri == "shortcuts://folder/{folder_name}" and argument.name == "folder_name":
             response = shortcuts_list_folders()
-            values = [] if not getattr(response, "ok", False) else [item.name for item in response.folders]
+            values = [] if isinstance(response, ShortcutsErrorResponse) else [item.folder_name for item in response.folders]
             return types.Completion(values=values, total=len(values), hasMore=False)
     return types.Completion(values=[], total=0, hasMore=False)
 
@@ -2994,7 +2994,7 @@ def _looks_like_message_address(value: str) -> bool:
 def _summarize_mail_results(query: str, limit: int) -> list[dict[str, Any]]:
     result = mail_search_messages(query=query, limit=limit)
     if isinstance(result, MailErrorResponse):
-        return [{"error": result.error.message}]
+        return [{"error": result.message}]
     return [
         {
             "message_id": item.message_id,
@@ -3002,7 +3002,7 @@ def _summarize_mail_results(query: str, limit: int) -> list[dict[str, Any]]:
             "sender": item.sender,
             "date_received": item.date_received,
             "mailbox": item.mailbox,
-            "unread": item.unread,
+            "unread": not item.is_read,
         }
         for item in result.results
     ]
@@ -3546,6 +3546,12 @@ async def apple_get_prompt(name: str, arguments_json: str | None = None) -> dict
         prompt = await mcp.get_prompt(name, arguments)
     except Exception as exc:
         return _apple_error_response("PROMPT_LOOKUP_FAILED", str(exc), "Call apple_list_prompts first to inspect the available prompt names.")
+    if isinstance(prompt, types.InputRequiredResult):
+        return _apple_error_response(
+            "PROMPT_INPUT_REQUIRED",
+            f"Prompt '{name}' needs input from the client before it can render.",
+            "Request this prompt through prompts/get with a client that supports input requests.",
+        )
     return {
         "ok": True,
         "name": name,

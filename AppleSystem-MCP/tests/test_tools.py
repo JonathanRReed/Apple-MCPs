@@ -306,3 +306,21 @@ def test_system_health_has_no_safety_warning_for_valid_value(monkeypatch):
     finally:
         tools.load_settings.cache_clear()
     assert result.safety_mode_warning is None
+
+
+def test_main_falls_back_to_info_for_unknown_log_level(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from apple_system_mcp import tools as server_tools
+
+    calls: list[dict[str, object]] = []
+    settings = replace(server_tools.load_settings(), transport="streamable-http", log_level="VERBOSE")
+    monkeypatch.setattr(server_tools, "load_settings", lambda: settings)
+    monkeypatch.setattr(server_tools.mcp.settings, "log_level", "INFO")
+    monkeypatch.setattr(server_tools.mcp, "run", lambda **kwargs: calls.append(kwargs))
+
+    server_tools.main()
+
+    assert calls and calls[0]["transport"] == "streamable-http"
+    assert server_tools.mcp.settings.log_level == "INFO"
+    assert server_tools._mcp_log_level(" warn ") == "WARNING"

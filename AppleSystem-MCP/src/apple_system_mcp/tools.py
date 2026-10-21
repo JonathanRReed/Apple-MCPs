@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+from typing import Literal
 
 from mcp.server.mcpserver import Context, MCPServer
-from mcp.types import Annotations, ToolAnnotations
+from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
@@ -29,7 +30,7 @@ from apple_system_mcp.models import (
     ToolError,
 )
 from apple_system_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
-from apple_system_mcp.system_bridge import SystemBridgeError, build_bridge
+from apple_system_mcp.system_bridge import SettingMutation, SystemBridgeError, build_bridge
 
 SERVER_INSTRUCTIONS = (
     "Use this server for macOS system context and control. "
@@ -51,7 +52,7 @@ def _resource_json(value: object) -> str:
     return json.dumps(value, indent=2, sort_keys=True, default=str)
 
 
-def _setting_mutation_response(section: str, setting: str, payload: dict[str, object], used_gui_fallback: bool = False) -> SettingMutationResponse:
+def _setting_mutation_response(section: str, setting: str, payload: SettingMutation, used_gui_fallback: bool = False) -> SettingMutationResponse:
     return SettingMutationResponse(
         section=section,
         setting=setting,
@@ -793,7 +794,7 @@ async def system_open_application(application: str | None = None, bundle_id: str
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 
 
-def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, object]]:
     return [
         {
             "role": getattr(message, "role", "user"),
@@ -828,6 +829,8 @@ async def system_list_prompts() -> dict[str, object]:
 async def system_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
+    if isinstance(prompt, InputRequiredResult):
+        return {"ok": False, "name": name, "error": {"error_code": "PROMPT_INPUT_REQUIRED", "message": f"Prompt '{name}' needs client input before it can render."}}
     return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
 
 
@@ -838,12 +841,28 @@ TOOL_DISCOVERY = install_search_first_discovery(
 )
 
 
+_McpLogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+_MCP_LOG_LEVELS: dict[str, _McpLogLevel] = {
+    "DEBUG": "DEBUG",
+    "INFO": "INFO",
+    "WARN": "WARNING",
+    "WARNING": "WARNING",
+    "ERROR": "ERROR",
+    "CRITICAL": "CRITICAL",
+}
+
+
+def _mcp_log_level(value: str) -> _McpLogLevel:
+    """Map a LOG_LEVEL setting onto a level the MCP SDK accepts; unknown values fall back to INFO."""
+    return _MCP_LOG_LEVELS.get(value.strip().upper(), "INFO")
+
+
 def main() -> None:
     settings = load_settings()
     if settings.transport == "stdio":
         mcp.run(transport="stdio")
         return
-    mcp.settings.log_level = settings.log_level
+    mcp.settings.log_level = _mcp_log_level(settings.log_level)
     mcp.run(
         transport="streamable-http",
         host=require_loopback_host(settings.host),

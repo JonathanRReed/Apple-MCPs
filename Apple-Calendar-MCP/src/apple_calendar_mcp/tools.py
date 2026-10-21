@@ -3,7 +3,7 @@ import os
 from typing import Annotated
 
 from mcp.server.mcpserver import Context, MCPServer
-from mcp.types import Annotations, ToolAnnotations
+from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 from pydantic import Field
 
 from apple_calendar_mcp.alarm_validation import coerce_alarm_minutes, validate_alarms
@@ -199,8 +199,8 @@ def calendar_health() -> HealthResponse:
     can_read_events = False
     can_write_events = False
     can_edit_existing_alarms = False
-    permission_error = None
-    permission_suggestion = None
+    permission_error: str | None = None
+    permission_suggestion: str | None = None
     if helper_available:
         try:
             access_payload = _bridge().calendar_access_status()
@@ -209,8 +209,10 @@ def calendar_health() -> HealthResponse:
             can_write_events = bool(access_payload.get("can_write_events", False))
             can_edit_existing_alarms = can_read_events and can_write_events
             if not can_read_events:
-                permission_error = access_payload.get("message")
-                permission_suggestion = access_payload.get("suggestion")
+                message = access_payload.get("message")
+                suggestion = access_payload.get("suggestion")
+                permission_error = message if isinstance(message, str) else None
+                permission_suggestion = suggestion if isinstance(suggestion, str) else None
         except CalendarBridgeError as exc:
             access_status = "helper_error"
             permission_error = exc.message
@@ -431,7 +433,7 @@ def calendar_delete_event(event_id: str) -> DeleteEventResponse | ErrorResponse:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 
 
-def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, object]]:
     return [
         {
             "role": getattr(message, "role", "user"),
@@ -465,6 +467,8 @@ async def calendar_list_prompts() -> dict[str, object]:
 async def calendar_get_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
+    if isinstance(prompt, InputRequiredResult):
+        return {"ok": False, "name": name, "error": {"error_code": "PROMPT_INPUT_REQUIRED", "message": f"Prompt '{name}' needs client input before it can render."}}
     return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
 
 

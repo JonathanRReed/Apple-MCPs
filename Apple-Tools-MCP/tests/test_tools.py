@@ -1658,3 +1658,77 @@ def test_apple_create_reminder_and_note_record_actions(monkeypatch, tmp_path) ->
 
 def teardown_function() -> None:
     load_settings.cache_clear()
+
+
+def test_summarize_mail_results_maps_is_read_to_unread(monkeypatch) -> None:
+    from apple_mail_mcp.models import MessageSearchResponse, MessageSummary
+
+    summary = MessageSummary(
+        message_id="m1", subject="Hi", sender="a@example.com", date_received="2026-10-21",
+        mailbox="Inbox", account="iCloud", is_read=False, preview="",
+    )
+    monkeypatch.setattr(tools, "mail_search_messages", lambda query, limit: MessageSearchResponse(results=[summary], count=1))
+
+    assert tools._summarize_mail_results("*", 5) == [
+        {"message_id": "m1", "subject": "Hi", "sender": "a@example.com", "date_received": "2026-10-21", "mailbox": "Inbox", "unread": True}
+    ]
+
+
+def test_summarize_mail_results_reports_mail_error(monkeypatch) -> None:
+    from apple_mail_mcp.models import ErrorResponse as MailErrorResponse
+
+    monkeypatch.setattr(tools, "mail_search_messages", lambda query, limit: MailErrorResponse(ok=False, error_code="MAIL_UNAVAILABLE", message="Mail is not running."))
+
+    assert tools._summarize_mail_results("*", 5) == [{"error": "Mail is not running."}]
+
+
+def test_completion_lists_shortcut_folder_names(monkeypatch) -> None:
+    from apple_shortcuts_mcp.models import ShortcutFolderInfo, ShortcutFolderListResponse
+
+    monkeypatch.setattr(
+        tools,
+        "shortcuts_list_folders",
+        lambda: ShortcutFolderListResponse(folders=[ShortcutFolderInfo(folder_name="Work", shortcut_count=2)], count=1),
+    )
+    ref = types.ResourceTemplateReference(type="ref/resource", uri="shortcuts://folder/{folder_name}")
+
+    completion = asyncio.run(tools.apple_completion(ref, types.CompletionArgument(name="folder_name", value=""), None))
+
+    assert completion is not None
+    assert completion.values == ["Work"]
+
+
+def test_apple_get_prompt_reports_input_required(monkeypatch) -> None:
+    async def fake_get_prompt(name: str, arguments: dict[str, object] | None = None):
+        return types.InputRequiredResult(
+            input_requests={
+                "user_context": types.ElicitRequest(
+                    params=types.ElicitRequestFormParams(message="Context?", requested_schema={"type": "object", "properties": {}})
+                )
+            }
+        )
+
+    monkeypatch.setattr(tools.mcp, "get_prompt", fake_get_prompt)
+
+    payload = asyncio.run(tools.apple_get_prompt("test_input_required_result_prompt"))
+
+    assert isinstance(payload, tools.AppleErrorResponse)
+    assert payload.error.error_code == "PROMPT_INPUT_REQUIRED"
+
+
+def test_main_falls_back_to_info_for_unknown_log_level(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from apple_agent_mcp import tools as server_tools
+
+    calls: list[dict[str, object]] = []
+    settings = replace(server_tools.load_settings(), transport="streamable-http", log_level="VERBOSE")
+    monkeypatch.setattr(server_tools, "load_settings", lambda: settings)
+    monkeypatch.setattr(server_tools.mcp.settings, "log_level", "INFO")
+    monkeypatch.setattr(server_tools.mcp, "run", lambda **kwargs: calls.append(kwargs))
+
+    server_tools.main()
+
+    assert calls and calls[0]["transport"] == "streamable-http"
+    assert server_tools.mcp.settings.log_level == "INFO"
+    assert server_tools._mcp_log_level(" warn ") == "WARNING"

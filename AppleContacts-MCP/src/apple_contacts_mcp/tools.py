@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+from typing import Literal
 
 from mcp.server.mcpserver import Context, MCPServer
-from mcp.types import Annotations, ToolAnnotations
+from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.contacts_bridge import AppleContactsBridge, ContactsBridgeError, build_bridge
@@ -32,6 +33,12 @@ SERVER_INSTRUCTIONS = (
 )
 
 mcp = MCPServer("Apple Contacts", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+
+
+_PERMISSION_STATUS_BY_ERROR_CODE: dict[str, Literal["unknown", "denied"]] = {
+    "AUTHORIZATION_UNKNOWN": "unknown",
+    "PERMISSION_DENIED": "denied",
+}
 
 
 def _bridge() -> AppleContactsBridge:
@@ -110,9 +117,7 @@ def contacts_health() -> HealthResponse:
         safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_mode),
         capabilities=capabilities,
         contacts_accessible=accessible,
-        permission_status=("authorized" if accessible else {
-            "AUTHORIZATION_UNKNOWN": "unknown", "PERMISSION_DENIED": "denied",
-        }.get(error.error_code if error is not None else "", "failed")),
+        permission_status=("authorized" if accessible else _PERMISSION_STATUS_BY_ERROR_CODE.get(error.error_code if error is not None else "", "failed")),
         permission_error_code=error.error_code if error is not None else None,
         permission_error=error.message if error is not None else None,
         permission_suggestion=error.suggestion if error is not None else None,
@@ -344,7 +349,7 @@ def contacts_delete_contact(contact_id: str) -> DeleteContactResponse | ErrorRes
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 
 
-def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, object]]:
     return [
         {
             "role": getattr(message, "role", "user"),
@@ -379,6 +384,8 @@ async def contacts_list_prompts() -> dict[str, object]:
 async def contacts_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
+    if isinstance(prompt, InputRequiredResult):
+        return {"ok": False, "name": name, "error": {"error_code": "PROMPT_INPUT_REQUIRED", "message": f"Prompt '{name}' needs client input before it can render."}}
     return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
 
 

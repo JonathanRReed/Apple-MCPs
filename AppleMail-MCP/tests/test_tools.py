@@ -138,8 +138,10 @@ class FakeBridge:
         to: list[str],
         body: str = "",
         from_account: str | None = None,
+        send: bool = True,
     ) -> ForwardRecord:
-        return ForwardRecord(sent=True, subject=f"Fwd:{message_id}", to=to, from_account=from_account)
+        self.forward_send = send
+        return ForwardRecord(sent=send, subject=f"Fwd:{message_id}", to=to, from_account=from_account, draft=not send)
 
     def mark_message(self, message_id: str, is_read: bool) -> MarkRecord:
         return MarkRecord(message_id=message_id, is_read=is_read)
@@ -569,3 +571,18 @@ def test_create_server_falls_back_to_info_for_unknown_log_level() -> None:
 
     assert server.settings.log_level == "INFO"
     assert create_server(settings=Settings(log_level="WARN"), bridge=FakeBridge()).settings.log_level == "WARNING"
+
+
+def test_forward_sends_only_in_full_access() -> None:
+    # A forward can reach any address, so safe_manage keeps it as an unsent
+    # draft in Mail and tells the agent how to get it sent.
+    bridge = FakeBridge()
+    full = mail_forward_message_tool(bridge, Settings(safety_profile=SafetyProfile.FULL_ACCESS), message_id="id-1", to=["x@example.com"])
+    assert bridge.forward_send is True
+    assert full.sent is True and full.draft is False and full.note is None
+
+    manage = mail_forward_message_tool(bridge, Settings(safety_profile=SafetyProfile.SAFE_MANAGE), message_id="id-1", to=["x@example.com"])
+    assert bridge.forward_send is False
+    assert manage.sent is False and manage.draft is True
+    assert "NOT sent" in manage.note
+    assert "APPLE_MAIL_MCP_SAFETY_PROFILE=full_access" in manage.note

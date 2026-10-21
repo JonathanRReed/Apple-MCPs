@@ -95,7 +95,7 @@ claude mcp add --transport stdio --scope user apple-mail -- uvx apple-mcp-mail
 Set the mode with `APPLE_MAIL_MCP_SAFETY_PROFILE`:
 
 - `safe_readonly`, read and search only
-- `safe_manage`, read, create drafts, reply/forward, mark, move, delete, and archive threads; new-message sending is blocked. Replies and forwards are sent immediately, so this mode can still send mail to people already in a thread
+- `safe_manage`, read, create drafts, reply, forward as a draft, mark, move, delete, and archive threads; new-message sending is blocked. Replies are sent immediately, so this mode can still send mail to people already in a thread. Forwards can go to any address, so they are saved as unsent drafts in Mail for the user to review; switch to `full_access` to send forwards directly
 - `full_access`, full Mail tool surface in this repo, including new-message sending
 
 Deleting or archiving does not require switching from `safe_manage` to `full_access`.

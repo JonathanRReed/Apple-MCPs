@@ -184,6 +184,8 @@ class ForwardRecord:
     subject: str
     to: list[str] = field(default_factory=list)
     from_account: str | None = None
+    draft: bool = False
+    note: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -191,6 +193,8 @@ class ForwardRecord:
             "subject": self.subject,
             "to": self.to,
             "from_account": self.from_account,
+            "draft": self.draft,
+            "note": self.note,
         }
 
 

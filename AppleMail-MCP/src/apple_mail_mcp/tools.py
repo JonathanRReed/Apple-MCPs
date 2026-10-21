@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Literal
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
@@ -724,6 +725,22 @@ def mail_archive_thread(
         return error_response("THREAD_ARCHIVE_FAILED", str(exc))
 
 
+_McpLogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+_MCP_LOG_LEVELS: dict[str, _McpLogLevel] = {
+    "DEBUG": "DEBUG",
+    "INFO": "INFO",
+    "WARN": "WARNING",
+    "WARNING": "WARNING",
+    "ERROR": "ERROR",
+    "CRITICAL": "CRITICAL",
+}
+
+
+def _mcp_log_level(value: str) -> _McpLogLevel:
+    """Map a LOG_LEVEL setting onto a level the MCP SDK accepts; unknown values fall back to INFO."""
+    return _MCP_LOG_LEVELS.get(value.strip().upper(), "INFO")
+
+
 def create_server(settings: Settings | None = None, bridge: AppleMailBridge | None = None) -> MCPServer:
     server_settings = settings or load_settings()
     configure_logging(server_settings)
@@ -732,7 +749,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         "Apple Mail MCP",
         instructions=SERVER_INSTRUCTIONS,
         version=server_settings.version,
-        log_level=server_settings.log_level,
+        log_level=_mcp_log_level(server_settings.log_level),
     )
 
     @mcp.resource(

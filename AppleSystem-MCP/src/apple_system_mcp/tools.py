@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Literal
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
@@ -836,12 +837,28 @@ TOOL_DISCOVERY = install_search_first_discovery(
 )
 
 
+_McpLogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+_MCP_LOG_LEVELS: dict[str, _McpLogLevel] = {
+    "DEBUG": "DEBUG",
+    "INFO": "INFO",
+    "WARN": "WARNING",
+    "WARNING": "WARNING",
+    "ERROR": "ERROR",
+    "CRITICAL": "CRITICAL",
+}
+
+
+def _mcp_log_level(value: str) -> _McpLogLevel:
+    """Map a LOG_LEVEL setting onto a level the MCP SDK accepts; unknown values fall back to INFO."""
+    return _MCP_LOG_LEVELS.get(value.strip().upper(), "INFO")
+
+
 def main() -> None:
     settings = load_settings()
     if settings.transport == "stdio":
         mcp.run(transport="stdio")
         return
-    mcp.settings.log_level = settings.log_level
+    mcp.settings.log_level = _mcp_log_level(settings.log_level)
     mcp.run(
         transport="streamable-http",
         host=require_loopback_host(settings.host),

@@ -168,7 +168,7 @@ def notes_cleanup_prompt() -> str:
 @mcp.tool(
     title="Notes Health",
     description="Report the active Apple Notes MCP configuration.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def notes_health() -> HealthResponse:
@@ -184,7 +184,7 @@ def notes_health() -> HealthResponse:
 @mcp.tool(
     title="Notes Permission Guide",
     description="Explain how to grant Apple Notes automation permission on macOS.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def notes_permission_guide() -> dict[str, object]:
@@ -204,7 +204,7 @@ def notes_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="Notes Recheck Permissions",
     description="Recheck Notes access after the user changes macOS permissions, and notify the client that Notes resources changed.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 async def notes_recheck_permissions(ctx: Context) -> HealthResponse:
@@ -218,7 +218,7 @@ async def notes_recheck_permissions(ctx: Context) -> HealthResponse:
 @mcp.tool(
     title="List Accounts",
     description="List Apple Notes accounts.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def notes_list_accounts() -> AccountListResponse | ErrorResponse:
@@ -233,7 +233,7 @@ def notes_list_accounts() -> AccountListResponse | ErrorResponse:
 @mcp.tool(
     title="List Folders",
     description="List Apple Notes folders.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def notes_list_folders(account_name: str | None = None, limit: int | str = 100, offset: int | str = 0) -> FolderListResponse | ErrorResponse:
@@ -255,7 +255,7 @@ def notes_list_folders(account_name: str | None = None, limit: int | str = 100, 
 @mcp.tool(
     title="List Notes",
     description="List notes, optionally scoped to a folder or account.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def notes_list_notes(account_name: str | None = None, folder_id: str | None = None, limit: int | str = 100, offset: int | str = 0) -> NoteListResponse | ErrorResponse:
@@ -279,7 +279,7 @@ def notes_list_notes(account_name: str | None = None, folder_id: str | None = No
 @mcp.tool(
     title="Get Note",
     description="Fetch full details for an Apple Notes note by note_id.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def notes_get_note(note_id: str) -> NoteResponse | ErrorResponse:
@@ -296,7 +296,7 @@ def notes_get_note(note_id: str) -> NoteResponse | ErrorResponse:
 @mcp.tool(
     title="Search Notes",
     description="Search notes by text, folder, or account.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def notes_search_notes(query: str, account_name: str | None = None, folder_id: str | None = None, limit: int | str = 25, offset: int | str = 0) -> NoteListResponse | ErrorResponse:
@@ -343,7 +343,7 @@ def notes_create_note(title: str, folder_id: str, body_html: str | None = None, 
 @mcp.tool(
     title="Update Note",
     description="Update an existing note.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def notes_update_note(note_id: str, title: str | None = None, body_html: str | None = None, folder_id: str | None = None, tags: list[str] | None = None) -> NoteResponse | ErrorResponse:
@@ -409,7 +409,7 @@ def notes_delete_note(note_id: str) -> DeleteNoteResponse | ErrorResponse:
 @mcp.tool(
     title="Move Note",
     description="Move a note to a different folder.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def notes_move_note(note_id: str, folder_id: str) -> MoveNoteResponse | ErrorResponse:
@@ -428,7 +428,7 @@ def notes_move_note(note_id: str, folder_id: str) -> MoveNoteResponse | ErrorRes
 
 
 @mcp.tool(
-    title="Create Folder",
+    title="Create Notes Folder",
     description="Create a new folder in an Apple Notes account or nested folder.",
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
@@ -454,7 +454,7 @@ def notes_create_folder(folder_name: str, account_name: str, parent_folder_id: s
 @mcp.tool(
     title="Rename Folder",
     description="Rename an existing folder.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def notes_rename_folder(folder_id: str, folder_name: str) -> FolderMutationResponse | ErrorResponse:
@@ -501,9 +501,9 @@ def notes_delete_folder(folder_id: str) -> DeleteFolderResponse | ErrorResponse:
 
 
 @mcp.tool(
-    title="List Attachments",
+    title="List Note Attachments",
     description="List attachments for a note.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def notes_list_attachments(note_id: str) -> AttachmentListResponse | ErrorResponse:
@@ -530,7 +530,7 @@ def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, 
 @mcp.tool(
     title="Notes List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def notes_list_prompts() -> dict[str, object]:
@@ -546,7 +546,7 @@ async def notes_list_prompts() -> dict[str, object]:
     name="notes_get_prompt",
     title="Notes Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def notes_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:

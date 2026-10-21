@@ -63,7 +63,7 @@ def maps_plan_route_prompt() -> str:
 @mcp.tool(
     title="Maps Health",
     description="Report the active Apple Maps MCP configuration.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def maps_health() -> HealthResponse:
@@ -90,7 +90,7 @@ def maps_health() -> HealthResponse:
 @mcp.tool(
     title="Maps Permission Guide",
     description="Explain Apple Maps MCP local helper requirements on macOS.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def maps_permission_guide() -> dict[str, object]:
@@ -110,7 +110,7 @@ def maps_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="Search Places",
     description="Search Apple Maps for matching places.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True),
     structured_output=True,
 )
 def maps_search_places(query: str, limit: int = 5) -> PlaceSearchResponse | ErrorResponse:
@@ -125,7 +125,7 @@ def maps_search_places(query: str, limit: int = 5) -> PlaceSearchResponse | Erro
 @mcp.tool(
     title="Get Directions",
     description="Get Apple Maps route details between an origin and destination.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True),
     structured_output=True,
 )
 def maps_get_directions(origin: str, destination: str, transport: str = "driving") -> DirectionsResponse | ErrorResponse:
@@ -147,7 +147,7 @@ def maps_get_directions(origin: str, destination: str, transport: str = "driving
 @mcp.tool(
     title="Build Maps Link",
     description="Build an Apple Maps URL for a destination or route.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def maps_build_maps_link(destination: str, origin: str | None = None, transport: str = "driving") -> MapsLinkResponse:
@@ -186,7 +186,7 @@ def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, 
 @mcp.tool(
     title="Maps List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def maps_list_prompts() -> dict[str, object]:
@@ -202,7 +202,7 @@ async def maps_list_prompts() -> dict[str, object]:
     name="maps_get_prompt",
     title="Maps Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def maps_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:

@@ -90,7 +90,7 @@ def contacts_prepare_message_recipient_prompt() -> str:
 @mcp.tool(
     title="Contacts Health",
     description="Report the active Apple Contacts MCP configuration.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def contacts_health() -> HealthResponse:
@@ -126,7 +126,7 @@ def contacts_health() -> HealthResponse:
 @mcp.tool(
     title="Contacts Permission Guide",
     description="Explain how to grant Apple Contacts permission on macOS.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def contacts_permission_guide() -> dict[str, object]:
@@ -146,7 +146,7 @@ def contacts_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="Contacts Recheck Permissions",
     description="Recheck Contacts access after the user changes macOS permissions, and notify the client that Contacts resources changed.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 async def contacts_recheck_permissions(ctx: Context) -> HealthResponse:
@@ -160,7 +160,7 @@ async def contacts_recheck_permissions(ctx: Context) -> HealthResponse:
 @mcp.tool(
     title="List Contacts",
     description="List Apple Contacts entries.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def contacts_list_contacts(limit: int = 100, offset: int = 0) -> ContactListResponse | ErrorResponse:
@@ -185,7 +185,7 @@ def contacts_list_contacts(limit: int = 100, offset: int = 0) -> ContactListResp
 @mcp.tool(
     title="Search Contacts",
     description="Search Apple Contacts by name, phone number, or email address.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def contacts_search_contacts(query: str, limit: int = 25) -> ContactListResponse | ErrorResponse:
@@ -206,7 +206,7 @@ def contacts_search_contacts(query: str, limit: int = 25) -> ContactListResponse
 @mcp.tool(
     title="Get Contact",
     description="Fetch full details for an Apple Contacts record by contact_id.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def contacts_get_contact(contact_id: str) -> ContactResponse | ErrorResponse:
@@ -222,7 +222,7 @@ def contacts_get_contact(contact_id: str) -> ContactResponse | ErrorResponse:
 @mcp.tool(
     title="Resolve Message Recipient",
     description="Resolve a contact into a message-ready phone number or email address.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def contacts_resolve_message_recipient(query: str, channel: str = "phone") -> ResolvedRecipientResponse | ErrorResponse:
@@ -238,7 +238,7 @@ def contacts_resolve_message_recipient(query: str, channel: str = "phone") -> Re
 @mcp.tool(
     title="Find Duplicate Contacts",
     description="Find likely duplicate Apple Contacts records using names, nicknames, phone numbers, and email addresses.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def contacts_find_duplicates() -> DuplicateContactListResponse | ErrorResponse:
@@ -255,7 +255,7 @@ def contacts_find_duplicates() -> DuplicateContactListResponse | ErrorResponse:
 @mcp.tool(
     title="Suggest Merge Candidates",
     description="Return likely duplicate Apple Contacts groups that are strong candidates for cleanup review.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def contacts_suggest_merge_candidates(query: str | None = None) -> DuplicateContactListResponse | ErrorResponse:
@@ -302,7 +302,7 @@ def contacts_create_contact(
 @mcp.tool(
     title="Update Contact",
     description="Update an existing contact's information. Only the fields you provide will be changed.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def contacts_update_contact(
@@ -361,7 +361,7 @@ def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, 
 @mcp.tool(
     title="Contacts List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def contacts_list_prompts() -> dict[str, object]:
@@ -377,7 +377,7 @@ async def contacts_list_prompts() -> dict[str, object]:
     name="contacts_get_prompt",
     title="Contacts Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def contacts_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:

@@ -745,7 +745,6 @@ def _mcp_log_level(value: str) -> _McpLogLevel:
 
 def create_server(settings: Settings | None = None, bridge: AppleMailBridge | None = None) -> AppleMCPServer:
     server_settings = settings or load_settings()
-    configure_logging(server_settings)
     mail_bridge = bridge or AppleMailBridge()
     mcp = AppleMCPServer(
         "Apple Mail MCP",
@@ -777,7 +776,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_health",
         title="Mail Health",
         description="Report the active Apple Mail MCP configuration.",
-        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     def health() -> HealthResponse:
@@ -787,7 +786,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_permission_guide",
         title="Mail Permission Guide",
         description="Explain how to grant Apple Mail automation permission on macOS.",
-        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     def mail_permission_guide_registered() -> dict[str, object]:
@@ -797,7 +796,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_recheck_permissions",
         title="Mail Recheck Permissions",
         description="Recheck Mail access after the user changes macOS permissions, and notify the client that Mail resources changed.",
-        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False, open_world_hint=False),
         structured_output=True,
     )
     async def mail_recheck_permissions_registered(ctx: Context) -> HealthResponse:
@@ -807,7 +806,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_list_mailboxes",
         title="List Mailboxes",
         description="List Apple Mail mailboxes, optionally filtered by account.",
-        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     def mail_list_mailboxes_registered(account: str | None = None) -> MailboxListResponse | ErrorResponse:
@@ -815,13 +814,13 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
 
     @mcp.tool(
         name="mail_search_messages",
-        title="Search Messages",
+        title="Search Mail",
         description=(
             "Search Apple Mail messages by query with optional account, mailbox and unread filters. "
             "Without account, accounts are searched in Mail's order and the limit can be filled by the first one; "
             "pass account (as returned by mail_list_mailboxes) to search a specific account."
         ),
-        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     def mail_search_messages_registered(
@@ -843,9 +842,9 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
 
     @mcp.tool(
         name="mail_get_message",
-        title="Get Message",
+        title="Get Email",
         description="Fetch a single Apple Mail message by message_id.",
-        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     def mail_get_message_registered(message_id: str) -> MessageRecord | ErrorResponse:
@@ -855,7 +854,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_get_thread",
         title="Get Thread",
         description="Find related messages in the same mailbox thread by normalized subject, anchored on a message_id.",
-        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     def mail_get_thread_registered(message_id: str, limit: int | str = 25) -> ThreadRecord | ErrorResponse:
@@ -891,7 +890,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
 
     @mcp.tool(
         name="mail_send_message",
-        title="Send Message",
+        title="Send Email",
         description="Send an email immediately via Apple Mail. Optionally specify from_account as an email address or account name to set the sender.",
         annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
         structured_output=True,
@@ -921,7 +920,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_reply_message",
         title="Reply to Message",
         description="Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account.",
-        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
+        annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
         structured_output=True,
     )
     def mail_reply_message_registered(
@@ -943,7 +942,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_forward_message",
         title="Forward Message",
         description="Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account.",
-        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
+        annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
         structured_output=True,
     )
     def mail_forward_message_registered(
@@ -965,7 +964,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_mark_message",
         title="Mark Message Read/Unread",
         description="Set the read status of an email message. Pass is_read=true to mark as read, is_read=false to mark as unread.",
-        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=True, open_world_hint=False),
+        annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     def mail_mark_message_registered(
@@ -983,7 +982,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_move_message",
         title="Move Message",
         description="Move an email message to a different mailbox. Optionally specify target_account if the mailbox is in a different account.",
-        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=True, open_world_hint=False),
+        annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     def mail_move_message_registered(
@@ -1019,7 +1018,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_reply_latest_in_thread",
         title="Reply To Latest In Thread",
         description="Find the latest related message in the same mailbox thread and reply to that message.",
-        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
+        annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
         structured_output=True,
     )
     def mail_reply_latest_in_thread_registered(
@@ -1043,7 +1042,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_archive_thread",
         title="Archive Thread",
         description="Move related messages in the same mailbox thread to the target archive mailbox.",
-        annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+        annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
         structured_output=True,
     )
     def mail_archive_thread_registered(
@@ -1074,7 +1073,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_list_prompts",
         title="Mail List Prompts",
         description="Fallback prompt discovery tool for tool-only MCP clients.",
-        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     async def mail_list_prompts() -> dict[str, object]:
@@ -1089,7 +1088,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         name="mail_get_prompt",
         title="Mail Get Prompt",
         description="Fallback prompt rendering tool for tool-only MCP clients.",
-        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
     async def mail_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
@@ -1107,6 +1106,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
 
 def main() -> None:
     settings = load_settings()
+    configure_logging(settings)
     server = create_server(settings=settings)
     if settings.transport == "streamable-http":
         server.run(

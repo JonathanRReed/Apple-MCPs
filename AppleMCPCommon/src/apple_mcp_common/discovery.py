@@ -136,7 +136,7 @@ class SearchFirstDiscovery:
             name=self.discovery_tool_names[0],
             title="Search Tools",
             description="Search this server's tool catalog by keyword, alias, or domain tag.",
-            annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+            annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
             structured_output=True,
         )
         self.mcp.add_tool(
@@ -144,7 +144,7 @@ class SearchFirstDiscovery:
             name=self.discovery_tool_names[1],
             title="Get Tool Info",
             description="Load the full schema, examples, and metadata for one tool from this server.",
-            annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+            annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
             structured_output=True,
         )
 

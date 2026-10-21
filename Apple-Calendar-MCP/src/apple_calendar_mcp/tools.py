@@ -189,7 +189,7 @@ def calendar_prepare_agenda_prompt() -> str:
 @mcp.tool(
     title="Calendar Health",
     description="Report the active Apple Calendar server configuration.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def calendar_health() -> HealthResponse:
@@ -237,7 +237,7 @@ def calendar_health() -> HealthResponse:
 @mcp.tool(
     title="Calendar Permission Guide",
     description="Explain how to grant Apple Calendar permission on macOS.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def calendar_permission_guide() -> dict[str, object]:
@@ -257,7 +257,7 @@ def calendar_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="Calendar Recheck Permissions",
     description="Recheck Calendar access after the user changes macOS permissions, and notify the client that Calendar resources changed.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 async def calendar_recheck_permissions(ctx: Context) -> HealthResponse:
@@ -271,7 +271,7 @@ async def calendar_recheck_permissions(ctx: Context) -> HealthResponse:
 @mcp.tool(
     title="List Calendars",
     description="List available Apple Calendar calendars. Select by name and source, then pass the returned calendar_id unchanged. Re-list after Calendar access changes to refresh identifiers.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def calendar_list_calendars() -> CalendarListResponse | ErrorResponse:
@@ -286,7 +286,7 @@ def calendar_list_calendars() -> CalendarListResponse | ErrorResponse:
 @mcp.tool(
     title="List Events",
     description="List calendar events in a time window, optionally filtered to one calendar. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def calendar_list_events(start_iso: str, end_iso: str, calendar_id: Annotated[str | None, Field(description=_CALENDAR_ID_DESCRIPTION)] = None, limit: int | str = 100) -> EventListResponse | ErrorResponse:
@@ -307,7 +307,7 @@ def calendar_list_events(start_iso: str, end_iso: str, calendar_id: Annotated[st
 @mcp.tool(
     title="Get Event",
     description="Fetch full details for a calendar event by event_id.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def calendar_get_event(event_id: str) -> EventResponse | ErrorResponse:
@@ -368,7 +368,7 @@ def calendar_create_event(
 @mcp.tool(
     title="Update Event",
     description="Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def calendar_update_event(
@@ -445,7 +445,7 @@ def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, 
 @mcp.tool(
     title="Calendar List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def calendar_list_prompts() -> dict[str, object]:
@@ -460,7 +460,7 @@ async def calendar_list_prompts() -> dict[str, object]:
 @mcp.tool(
     title="Calendar Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def calendar_get_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:

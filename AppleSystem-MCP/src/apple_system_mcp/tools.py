@@ -151,7 +151,7 @@ def system_capture_context_prompt() -> str:
 @mcp.tool(
     title="System Health",
     description="Report the active Apple System MCP configuration.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_health() -> HealthResponse:
@@ -211,7 +211,7 @@ def system_health() -> HealthResponse:
 @mcp.tool(
     title="System Permission Guide",
     description="Explain what system access this MCP may need on macOS.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_permission_guide() -> dict[str, object]:
@@ -239,7 +239,7 @@ def system_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="System Status",
     description="Return current battery, frontmost app, and running app count.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_status() -> StatusResponse | ErrorResponse:
@@ -261,7 +261,7 @@ def system_status() -> StatusResponse | ErrorResponse:
 @mcp.tool(
     title="Get Battery",
     description="Get the current battery state from macOS.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_get_battery() -> dict[str, object] | ErrorResponse:
@@ -275,7 +275,7 @@ def system_get_battery() -> dict[str, object] | ErrorResponse:
 @mcp.tool(
     title="Get Frontmost App",
     description="Get the name of the current frontmost application.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_get_frontmost_app() -> dict[str, object] | ErrorResponse:
@@ -290,7 +290,7 @@ def system_get_frontmost_app() -> dict[str, object] | ErrorResponse:
 @mcp.tool(
     title="List Running Apps",
     description="List currently running foreground applications.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_list_running_apps() -> RunningAppsResponse | ErrorResponse:
@@ -305,7 +305,7 @@ def system_list_running_apps() -> RunningAppsResponse | ErrorResponse:
 @mcp.tool(
     title="Get Clipboard",
     description="Read the current text clipboard contents.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_get_clipboard() -> ClipboardResponse | ErrorResponse:
@@ -319,7 +319,7 @@ def system_get_clipboard() -> ClipboardResponse | ErrorResponse:
 @mcp.tool(
     title="List Settings Domains",
     description="List the common macOS preference domains exposed by Apple System MCP.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_list_settings_domains() -> SettingsDomainsResponse | ErrorResponse:
@@ -334,7 +334,7 @@ def system_list_settings_domains() -> SettingsDomainsResponse | ErrorResponse:
 @mcp.tool(
     title="Get Appearance Settings",
     description="Read current macOS appearance settings such as light or dark mode and accent color.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_get_appearance_settings() -> SettingsSectionResponse | ErrorResponse:
@@ -348,7 +348,7 @@ def system_get_appearance_settings() -> SettingsSectionResponse | ErrorResponse:
 @mcp.tool(
     title="Get Accessibility Settings",
     description="Read common macOS accessibility settings such as reduce motion and increase contrast.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_get_accessibility_settings() -> SettingsSectionResponse | ErrorResponse:
@@ -362,7 +362,7 @@ def system_get_accessibility_settings() -> SettingsSectionResponse | ErrorRespon
 @mcp.tool(
     title="Get Dock Settings",
     description="Read common macOS Dock settings such as autohide, magnification, and orientation.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_get_dock_settings() -> SettingsSectionResponse | ErrorResponse:
@@ -376,7 +376,7 @@ def system_get_dock_settings() -> SettingsSectionResponse | ErrorResponse:
 @mcp.tool(
     title="Get Finder Settings",
     description="Read common macOS Finder settings such as path bar, status bar, and preferred view style.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_get_finder_settings() -> SettingsSectionResponse | ErrorResponse:
@@ -390,7 +390,7 @@ def system_get_finder_settings() -> SettingsSectionResponse | ErrorResponse:
 @mcp.tool(
     title="Get Settings Snapshot",
     description="Return a combined read-only snapshot of appearance, accessibility, Dock, and Finder settings.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_get_settings_snapshot() -> SettingsSnapshotResponse | ErrorResponse:
@@ -410,7 +410,7 @@ def system_get_settings_snapshot() -> SettingsSnapshotResponse | ErrorResponse:
 @mcp.tool(
     title="Get Focus Status",
     description="Return truthful Focus support metadata and the best available current Focus state.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_get_focus_status() -> FocusStatusResponse | ErrorResponse:
@@ -424,7 +424,7 @@ def system_get_focus_status() -> FocusStatusResponse | ErrorResponse:
 @mcp.tool(
     title="Get System Context Snapshot",
     description="Return a richer macOS context snapshot, including battery, frontmost app, and Focus metadata.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_get_context_snapshot() -> SystemContextResponse | ErrorResponse:
@@ -438,7 +438,7 @@ def system_get_context_snapshot() -> SystemContextResponse | ErrorResponse:
 @mcp.tool(
     title="Read Preference Domain",
     description="Read a macOS preference domain through defaults export for a production-safe, structured settings view.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def system_read_preference_domain(domain: str, current_host: bool = False) -> PreferenceDomainResponse | ErrorResponse:
@@ -456,7 +456,7 @@ def system_read_preference_domain(domain: str, current_host: bool = False) -> Pr
 @mcp.tool(
     title="Set Appearance Mode",
     description="Set macOS appearance mode to light or dark.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def system_set_appearance_mode(mode: str) -> SettingMutationResponse | ErrorResponse:
@@ -470,7 +470,7 @@ def system_set_appearance_mode(mode: str) -> SettingMutationResponse | ErrorResp
 @mcp.tool(
     title="Set Show All Extensions",
     description="Show or hide filename extensions in macOS.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def system_set_show_all_extensions(enabled: bool) -> SettingMutationResponse | ErrorResponse:
@@ -484,7 +484,7 @@ def system_set_show_all_extensions(enabled: bool) -> SettingMutationResponse | E
 @mcp.tool(
     title="Set Show Hidden Files",
     description="Show or hide hidden files in Finder.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def system_set_show_hidden_files(enabled: bool) -> SettingMutationResponse | ErrorResponse:
@@ -498,7 +498,7 @@ def system_set_show_hidden_files(enabled: bool) -> SettingMutationResponse | Err
 @mcp.tool(
     title="Set Finder Path Bar",
     description="Show or hide the Finder path bar.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def system_set_finder_path_bar(enabled: bool) -> SettingMutationResponse | ErrorResponse:
@@ -512,7 +512,7 @@ def system_set_finder_path_bar(enabled: bool) -> SettingMutationResponse | Error
 @mcp.tool(
     title="Set Finder Status Bar",
     description="Show or hide the Finder status bar.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def system_set_finder_status_bar(enabled: bool) -> SettingMutationResponse | ErrorResponse:
@@ -526,7 +526,7 @@ def system_set_finder_status_bar(enabled: bool) -> SettingMutationResponse | Err
 @mcp.tool(
     title="Set Dock Autohide",
     description="Enable or disable Dock autohide.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def system_set_dock_autohide(enabled: bool) -> SettingMutationResponse | ErrorResponse:
@@ -540,7 +540,7 @@ def system_set_dock_autohide(enabled: bool) -> SettingMutationResponse | ErrorRe
 @mcp.tool(
     title="Set Dock Show Recents",
     description="Enable or disable recent applications in the Dock.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def system_set_dock_show_recents(enabled: bool) -> SettingMutationResponse | ErrorResponse:
@@ -554,7 +554,7 @@ def system_set_dock_show_recents(enabled: bool) -> SettingMutationResponse | Err
 @mcp.tool(
     title="Set Reduce Motion",
     description="Enable or disable macOS reduce motion accessibility mode.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def system_set_reduce_motion(enabled: bool) -> SettingMutationResponse | ErrorResponse:
@@ -568,7 +568,7 @@ def system_set_reduce_motion(enabled: bool) -> SettingMutationResponse | ErrorRe
 @mcp.tool(
     title="Set Increase Contrast",
     description="Enable or disable macOS increase contrast accessibility mode.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def system_set_increase_contrast(enabled: bool) -> SettingMutationResponse | ErrorResponse:
@@ -582,7 +582,7 @@ def system_set_increase_contrast(enabled: bool) -> SettingMutationResponse | Err
 @mcp.tool(
     title="Set Reduce Transparency",
     description="Enable or disable macOS reduce transparency accessibility mode.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def system_set_reduce_transparency(enabled: bool) -> SettingMutationResponse | ErrorResponse:
@@ -617,7 +617,7 @@ def system_gui_list_menu_bar_items(application: str | None = None, bundle_id: st
 @mcp.tool(
     title="Click Menu Path",
     description="Click a menu path in an application, for example ['File', 'New Window']. This is a GUI fallback tool.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def system_gui_click_menu_path(menu_path: list[str], application: str | None = None, bundle_id: str | None = None) -> GuiActionResponse | ErrorResponse:
@@ -640,7 +640,7 @@ def system_gui_click_menu_path(menu_path: list[str], application: str | None = N
 @mcp.tool(
     title="Press Keys",
     description="Press a key or key chord in the target application. This is a GUI fallback tool.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def system_gui_press_keys(key: str, modifiers: list[str] | None = None, application: str | None = None, bundle_id: str | None = None) -> GuiActionResponse | ErrorResponse:
@@ -666,7 +666,7 @@ def system_gui_press_keys(key: str, modifiers: list[str] | None = None, applicat
 @mcp.tool(
     title="Type Text",
     description="Type text into the frontmost focused control. This is a GUI fallback tool.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def system_gui_type_text(text: str, application: str | None = None, bundle_id: str | None = None) -> GuiActionResponse | ErrorResponse:
@@ -688,7 +688,7 @@ def system_gui_type_text(text: str, application: str | None = None, bundle_id: s
 @mcp.tool(
     title="Click Button",
     description="Click a named button in the frontmost window. This is a GUI fallback tool.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def system_gui_click_button(
@@ -719,7 +719,7 @@ def system_gui_click_button(
 @mcp.tool(
     title="Choose Pop-Up Value",
     description="Choose a value from a named pop-up button in the frontmost window. This is a GUI fallback tool.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def system_gui_choose_popup_value(
@@ -749,7 +749,7 @@ def system_gui_choose_popup_value(
 @mcp.tool(
     title="Set Clipboard",
     description="Write text into the macOS clipboard.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def system_set_clipboard(text: str) -> ClipboardResponse | ErrorResponse:
@@ -806,7 +806,7 @@ def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, 
 @mcp.tool(
     title="System List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def system_list_prompts() -> dict[str, object]:
@@ -822,7 +822,7 @@ async def system_list_prompts() -> dict[str, object]:
     name="system_get_prompt",
     title="System Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def system_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:

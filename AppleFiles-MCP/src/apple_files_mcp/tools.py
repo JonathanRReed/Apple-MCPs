@@ -118,7 +118,7 @@ def files_organize_workspace_prompt() -> str:
 @mcp.tool(
     title="Files Health",
     description="Report the active Apple Files MCP configuration.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def files_health() -> HealthResponse:
@@ -154,7 +154,7 @@ def files_health() -> HealthResponse:
 @mcp.tool(
     title="Files Permission Guide",
     description="Explain how Apple Files MCP access is scoped on this machine.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def files_permission_guide() -> dict[str, object]:
@@ -180,7 +180,7 @@ def files_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="List Allowed Roots",
     description="List the file system roots the server may access.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def files_list_allowed_roots() -> RootsResponse:
@@ -191,7 +191,7 @@ def files_list_allowed_roots() -> RootsResponse:
 @mcp.tool(
     title="List Directory",
     description="List files and folders inside an allowed directory path.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def files_list_directory(path: str) -> FileListResponse | ErrorResponse:
@@ -206,7 +206,7 @@ def files_list_directory(path: str) -> FileListResponse | ErrorResponse:
 @mcp.tool(
     title="Search Files",
     description="Search file and folder names inside the allowed roots.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def files_search_files(query: str, base_path: str | None = None, limit: int = 25) -> FileListResponse | ErrorResponse:
@@ -221,7 +221,7 @@ def files_search_files(query: str, base_path: str | None = None, limit: int = 25
 @mcp.tool(
     title="Get File Info",
     description="Get metadata for a file or folder inside the allowed roots.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def files_get_file_info(path: str) -> FileResponse | ErrorResponse:
@@ -235,7 +235,7 @@ def files_get_file_info(path: str) -> FileResponse | ErrorResponse:
 @mcp.tool(
     title="Read Text File",
     description="Read a UTF-8 text file inside the allowed roots.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def files_read_text_file(path: str, max_bytes: int = 100_000) -> FileTextResponse | ErrorResponse:
@@ -250,7 +250,7 @@ def files_read_text_file(path: str, max_bytes: int = 100_000) -> FileTextRespons
 @mcp.tool(
     title="Recent Files",
     description="List recently modified files inside the allowed roots.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def files_recent_files(limit: int = 25) -> FileListResponse | ErrorResponse:
@@ -297,7 +297,7 @@ def files_reveal_in_finder(path: str) -> FileActionResponse | ErrorResponse:
 @mcp.tool(
     title="Get Tags",
     description="Read Finder tags for a file or folder inside the allowed roots.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def files_get_tags(path: str) -> FileTagsResponse | ErrorResponse:
@@ -312,7 +312,7 @@ def files_get_tags(path: str) -> FileTagsResponse | ErrorResponse:
 @mcp.tool(
     title="Set Tags",
     description="Replace Finder tags for a file or folder. Requires safe_manage or full_access safety mode.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def files_set_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorResponse:
@@ -342,7 +342,7 @@ def files_add_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorRespon
 @mcp.tool(
     title="Remove Tags",
     description="Remove Finder tags from a file or folder. Requires safe_manage or full_access safety mode.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def files_remove_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorResponse:
@@ -357,7 +357,7 @@ def files_remove_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorRes
 @mcp.tool(
     title="List Recent Locations",
     description="List recently active parent folders across the allowed roots, including iCloud-aware metadata.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def files_list_recent_locations(limit: int = 15) -> RecentLocationsResponse | ErrorResponse:
@@ -372,7 +372,7 @@ def files_list_recent_locations(limit: int = 15) -> RecentLocationsResponse | Er
 @mcp.tool(
     title="Get iCloud Status",
     description="Report whether local iCloud Drive is available and whether it is part of the current allowed roots.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def files_get_icloud_status() -> ICloudStatusResponse | ErrorResponse:
@@ -402,7 +402,7 @@ async def files_create_folder(path: str, ctx: Context) -> FileMutationResponse |
 @mcp.tool(
     title="Move Path",
     description="Move or rename a file or folder inside the allowed roots.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 async def files_move_path(source: str, destination: str, ctx: Context) -> FileMutationResponse | ErrorResponse:
@@ -444,7 +444,7 @@ def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, 
 @mcp.tool(
     title="Files List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def files_list_prompts() -> dict[str, object]:
@@ -460,7 +460,7 @@ async def files_list_prompts() -> dict[str, object]:
     name="files_get_prompt",
     title="Files Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def files_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:

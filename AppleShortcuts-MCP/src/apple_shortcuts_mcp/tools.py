@@ -147,7 +147,7 @@ def shortcuts_follow_up_prompt() -> str:
 @mcp.tool(
     title="Shortcuts Health",
     description="Report the active Apple Shortcuts MCP configuration.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def shortcuts_health() -> HealthResponse:
@@ -157,7 +157,7 @@ def shortcuts_health() -> HealthResponse:
 @mcp.tool(
     title="Shortcuts Permission Guide",
     description="Explain the runtime requirements for Apple Shortcuts on macOS.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def shortcuts_permission_guide() -> dict[str, object]:
@@ -176,7 +176,7 @@ def shortcuts_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="Shortcuts Refresh State",
     description="Refresh Shortcuts resources and notify the client that the shortcut catalog may have changed.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 async def shortcuts_refresh_state(ctx: Context) -> HealthResponse:
@@ -190,7 +190,7 @@ async def shortcuts_refresh_state(ctx: Context) -> HealthResponse:
 @mcp.tool(
     title="List Shortcuts",
     description="List Apple Shortcuts, optionally restricted to one folder.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def shortcuts_list_shortcuts(folder_name: str | None = None) -> ShortcutListResponse | ErrorResponse:
@@ -204,7 +204,7 @@ def shortcuts_list_shortcuts(folder_name: str | None = None) -> ShortcutListResp
 @mcp.tool(
     title="List Shortcut Folders",
     description="List Apple Shortcuts folders.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def shortcuts_list_folders() -> ShortcutFolderListResponse | ErrorResponse:
@@ -218,7 +218,7 @@ def shortcuts_list_folders() -> ShortcutFolderListResponse | ErrorResponse:
 @mcp.tool(
     title="View Shortcut",
     description="Open a shortcut in the Shortcuts app by name or identifier and return its metadata.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def shortcuts_view_shortcut(shortcut_name_or_identifier: str) -> ViewShortcutResponse | ErrorResponse:
@@ -232,7 +232,7 @@ def shortcuts_view_shortcut(shortcut_name_or_identifier: str) -> ViewShortcutRes
 @mcp.tool(
     title="Run Shortcut",
     description="Run a shortcut by name or identifier with optional input and output arguments.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def shortcuts_run_shortcut(
@@ -268,7 +268,7 @@ def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, 
 @mcp.tool(
     title="Shortcuts List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def shortcuts_list_prompts() -> dict[str, object]:
@@ -284,7 +284,7 @@ async def shortcuts_list_prompts() -> dict[str, object]:
     name="shortcuts_get_prompt",
     title="Shortcuts Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def shortcuts_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:

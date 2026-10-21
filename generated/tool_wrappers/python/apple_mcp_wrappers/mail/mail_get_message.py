@@ -9,7 +9,7 @@ async def mail_get_message(
     client: MCPToolCaller,
     message_id: str
 ) -> Any:
-    """Get Message
+    """Get Email
 
     Fetch a single Apple Mail message by message_id.
 

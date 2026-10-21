@@ -1,4 +1,7 @@
+from apple_mcp_common.safety import safety_block_suggestion
 from apple_shortcuts_mcp.config import load_settings
+
+SAFETY_ENV_VAR = "APPLE_SHORTCUTS_MCP_SAFETY_MODE"
 
 READ_ACTIONS = frozenset({"shortcuts_health", "shortcuts_list_shortcuts", "shortcuts_list_folders", "shortcuts_view_shortcut"})
 MANAGE_ACTIONS = frozenset({"shortcuts_run_shortcut"})
@@ -22,8 +25,8 @@ def ensure_action_allowed(action: str) -> None:
         if settings.safety_mode == "safe_readonly":
             raise SafetyError(
                 "WRITE_BLOCKED",
-                f"Action '{action}' is blocked in safety mode '{settings.safety_mode}'.",
-                "Switch to safe_manage or full_access to run shortcuts.",
+                f"Action '{action}' is blocked because {SAFETY_ENV_VAR} is '{settings.safety_mode}'.",
+                safety_block_suggestion(SAFETY_ENV_VAR, "safe_manage", settings.safety_mode),
             )
         return
 

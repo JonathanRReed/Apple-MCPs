@@ -6,11 +6,12 @@ import re
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from mcp import types
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 STOPWORDS = {
     "a",
@@ -84,10 +85,14 @@ class SearchFirstDiscovery:
 
     def register(self) -> SearchFirstDiscovery:
         async def search_tools(
-            query: str,
-            limit: int = 10,
-            domain_tags: list[str] | None = None,
-            mode: str = "compact",
+            query: Annotated[str, Field(description="Keywords describing the task, such as 'send text' or 'list events'.")],
+            limit: Annotated[int, Field(description="Maximum number of matching tools to return.")] = 10,
+            domain_tags: Annotated[
+                list[str] | None, Field(description="Only return tools whose domain or tags include one of these, such as ['mail'].")
+            ] = None,
+            mode: Annotated[
+                str, Field(description="Result detail: 'compact' (default), 'detail' adds usage intent and aliases, 'full' adds examples.")
+            ] = "compact",
         ) -> dict[str, Any]:
             catalog = await self.catalog_entries()
             results = self.search_catalog(query=query, catalog=catalog, limit=limit, domain_tags=domain_tags, mode=mode)
@@ -101,9 +106,9 @@ class SearchFirstDiscovery:
             }
 
         async def get_tool_info(
-            name: str,
-            include_schema: bool = True,
-            include_examples: bool = True,
+            name: Annotated[str, Field(description="Exact tool name, as returned by search_tools.")],
+            include_schema: Annotated[bool, Field(description="Include the tool's input and output JSON schemas.")] = True,
+            include_examples: Annotated[bool, Field(description="Include example calls.")] = True,
         ) -> dict[str, Any]:
             catalog = await self.catalog_entries()
             tools_by_name = await self.tools_by_name()
@@ -136,7 +141,7 @@ class SearchFirstDiscovery:
             name=self.discovery_tool_names[0],
             title="Search Tools",
             description="Search this server's tool catalog by keyword, alias, or domain tag.",
-            annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+            annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
             structured_output=True,
         )
         self.mcp.add_tool(
@@ -144,7 +149,7 @@ class SearchFirstDiscovery:
             name=self.discovery_tool_names[1],
             title="Get Tool Info",
             description="Load the full schema, examples, and metadata for one tool from this server.",
-            annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+            annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
             structured_output=True,
         )
 

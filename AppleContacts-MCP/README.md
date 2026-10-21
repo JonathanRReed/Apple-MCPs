@@ -79,8 +79,10 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/AppleContacts-MCP/start.s
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-contacts -- uvx apple-contacts-mcp
+claude mcp add --transport stdio --scope user apple-contacts -- uvx apple-contacts-mcp
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 </details>
 
@@ -128,10 +130,10 @@ Literal control characters and complex emoji returned by Contacts are decoded on
 
 ### Native Contacts access
 
-Contacts uses `CNContactStore` by default, so reads and writes do not wait for Contacts.app. First use compiles the packaged Swift helper with Xcode Command Line Tools and caches an application bundle under `~/.apple-mcps/build`. Set `APPLE_CONTACTS_MCP_HELPER_BUILD_DIR` to choose another build directory. Grant Contacts access to your MCP host when macOS asks.
+Contacts uses `CNContactStore` by default, so reads and writes do not wait for Contacts.app. First use compiles the packaged Swift helper with Xcode Command Line Tools and caches a signed application bundle, **Apple Contacts MCP Helper**, under `~/.apple-mcps/build`. Set `APPLE_CONTACTS_MCP_HELPER_BUILD_DIR` to choose another build directory. If the app running the MCP server already has Contacts access, it is used. Otherwise macOS asks whether Apple Contacts MCP Helper may access Contacts. See [Calendar, Reminders and Contacts: who macOS asks about](../docs/troubleshooting.md#calendar-reminders-and-contacts-who-macos-asks-about).
 
 Set `APPLE_CONTACTS_MCP_BACKEND=applescript` to use the previous backend. The native backend returns first and last names directly and preserves phone/email update semantics: omit a collection to keep it, or pass `[]` to clear it. Contact notes require a separate macOS entitlement; a nonempty `note` is rejected before a native write. The AppleScript backend remains available for notes.
 
-The native helper compiles an immutable source snapshot into a bundle named by its full SHA-256 hash. A source change during compilation is rejected, and a concurrent build cannot replace an installed bundle. Different source versions keep separate executables with the same Contacts permission identity.
+The native helper compiles an immutable source snapshot into a bundle named by its full SHA-256 hash. A source change during compilation is rejected, and a concurrent build cannot replace an installed bundle. Different source versions keep separate executables with the same bundle identifier. The helper is ad-hoc signed, so macOS may ask once more after an update that changes its source.
 
 The native helper is adapted from Jaume Puig's work in [JaumeAP/Apple-MCPs](https://github.com/JaumeAP/Apple-MCPs).

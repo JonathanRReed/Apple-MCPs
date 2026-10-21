@@ -7,6 +7,8 @@ from pathlib import Path
 from apple_mail_mcp.models import SafetyProfile
 
 SUPPORTED_TRANSPORTS = {"stdio", "streamable-http"}
+DEFAULT_SCRIPT_TIMEOUT_SECONDS = 120
+MIN_SCRIPT_TIMEOUT_SECONDS = 5
 
 
 @dataclass(slots=True)
@@ -21,6 +23,7 @@ class Settings:
     allowed_attachment_root: Path | None = None
     default_search_limit: int = 10
     visible_drafts: bool = True
+    script_timeout_seconds: int = DEFAULT_SCRIPT_TIMEOUT_SECONDS
 
 
 def _parse_bool(value: str | None, default: bool) -> bool:
@@ -38,8 +41,20 @@ def _parse_transport(value: str | None) -> str:
     return "stdio"
 
 
+def _parse_script_timeout(value: str | None) -> int:
+    if value is None:
+        return DEFAULT_SCRIPT_TIMEOUT_SECONDS
+    try:
+        parsed = int(value.strip())
+    except ValueError:
+        return DEFAULT_SCRIPT_TIMEOUT_SECONDS
+    if parsed < MIN_SCRIPT_TIMEOUT_SECONDS:
+        return DEFAULT_SCRIPT_TIMEOUT_SECONDS
+    return parsed
+
+
 def load_settings() -> Settings:
-    raw_profile = os.getenv("APPLE_MAIL_MCP_SAFETY_PROFILE", SafetyProfile.SAFE_MANAGE.value)
+    raw_profile = os.getenv("APPLE_MAIL_MCP_SAFETY_PROFILE", SafetyProfile.SAFE_MANAGE.value).strip()
     try:
         safety_profile = SafetyProfile(raw_profile)
     except ValueError:
@@ -71,4 +86,5 @@ def load_settings() -> Settings:
         allowed_attachment_root=allowed_attachment_root,
         default_search_limit=default_search_limit,
         visible_drafts=_parse_bool(os.getenv("APPLE_MAIL_MCP_VISIBLE_DRAFTS"), True),
+        script_timeout_seconds=_parse_script_timeout(os.getenv("APPLE_MAIL_MCP_SCRIPT_TIMEOUT_SECONDS")),
     )

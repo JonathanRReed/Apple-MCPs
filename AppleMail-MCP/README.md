@@ -83,18 +83,33 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/AppleMail-MCP/start.sh` a
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-mail -- uvx apple-mcp-mail
+claude mcp add --transport stdio --scope user apple-mail -- uvx apple-mcp-mail
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 </details>
 
 ## Safety Modes
 
+Set the mode with `APPLE_MAIL_MCP_SAFETY_PROFILE`:
+
 - `safe_readonly`, read and search only
-- `safe_manage`, read, create drafts, reply/forward, mark, move, delete, and archive threads; new-message sending is blocked
+- `safe_manage`, read, create drafts, reply, forward as a draft, mark, move, delete, and archive threads; new-message sending is blocked. Replies are sent immediately, so this mode can still send mail to people already in a thread. Forwards can go to any address, so they are saved as unsent drafts in Mail for the user to review; switch to `full_access` to send forwards directly
 - `full_access`, full Mail tool surface in this repo, including new-message sending
 
-These are the existing policy rules. Deleting or archiving does not require switching from `safe_manage` to `full_access`.
+Deleting or archiving does not require switching from `safe_manage` to `full_access`.
+
+Defaults depend on how you installed the server:
+
+| Install | Default | Why |
+| --- | --- | --- |
+| `uvx`, `pip`, or a clone | `safe_manage` | Code default |
+| Claude Desktop bundle (`.mcpb`) | `full_access` | Bundles have always shipped with `full_access`; keeping it means upgrades don't remove sending |
+
+To change it in Claude Desktop, open Settings > Extensions, choose Apple Mail, click Configure, and set "Mail safety mode". In other clients, set `APPLE_MAIL_MCP_SAFETY_PROFILE` in the server's `env` block and restart the client. If a tool is blocked, its error names the setting and the value to use. An invalid or blank value selects `safe_readonly`, and `mail_health` explains it in `safety_mode_warning`.
+
+Attachments are off until you set `APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT` (bundle setting: "Mail attachment folder") to a dedicated folder.
 
 ## Transport
 
@@ -129,12 +144,16 @@ Restart the MCP client after upgrading. A fix merged on GitHub is not available 
 - Run Contacts before any send or reply when the user identifies a person rather than an email address.
 - `tools/list` returns the full Mail tool surface. Context-constrained clients can call `search_tools` first, then `get_tool_info` for the exact Mail tool they plan to call.
 - `mail_search_messages` requires a query string. Use a sender, a subject fragment, or `*` as a wildcard.
+- Pass `account` (an account name from `mail_list_mailboxes`) to search one account. Without it, accounts are searched in Mail's order and stop once `limit` results are collected, so a busy first account can fill the whole result set and hide mailboxes with the same name in other accounts.
 - There is no list-all recent-mail endpoint.
 - Use `mail_get_thread` when the user means a conversation, not a single message.
 - Use `mail_reply_latest_in_thread` when the agent should reply to the newest message in the conversation.
 - Use `mail_archive_thread` when the user wants thread-level cleanup and Archive is the intended mailbox.
 - If the user could mean text or email, ask once before choosing Messages or Mail.
 - When Mail must send from a specific identity, pass the exact sender email in `from_account`.
+- `from_account` is applied through Mail's own `sender` property (`Full Name <address>`, with the name quoted when it contains a comma or quote), which needs no extra macOS permissions. Only if Mail does not accept it does the server fall back to picking the From pop-up via System Events, which additionally needs Automation consent for System Events and Accessibility for the process running the server.
+- Every AppleScript call is bounded by `APPLE_MAIL_MCP_SCRIPT_TIMEOUT_SECONDS` (whole seconds, default `120`, minimum `5`; an invalid or smaller value uses the default) so a pending macOS consent prompt surfaces as an error instead of a hung request. The default leaves room for slow but legitimate searches: a subject/sender search of a 4,900-message Exchange mailbox took about 56 seconds.
+- If `mail_send_message`, `mail_reply_message`, `mail_reply_latest_in_thread` or a sending `mail_forward_message` times out, the result is `SEND_STATUS_UNKNOWN`, not a failure: Mail may already have sent it. Check the account's Sent mailbox (`mail_search_messages` with `mailbox` set to `Sent Messages`, or the name `mail_list_mailboxes` shows, such as `Sent Items`) before retrying, or the message can go out twice.
 
 ## Related
 

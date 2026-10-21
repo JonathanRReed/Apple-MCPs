@@ -17,8 +17,10 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then regi
 Claude Code:
 
 ```bash
-claude mcp add --transport stdio --scope project apple-tools -- uvx apple-tools-mcp
+claude mcp add --transport stdio --scope user apple-tools -- uvx apple-tools-mcp
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 Codex:
 
@@ -43,9 +45,9 @@ Run `uvx apple-tools-mcp` to start the server directly. Standalone servers use t
 
 Restart your client after installing or upgrading. Call `search_tools` with `calendar health` to check discovery without reading app data.
 
-For Claude Desktop, download a server's `.mcpb` bundle from [Releases](https://github.com/JonathanRReed/Apple-MCPs/releases) and double-click it.
+For Claude Desktop, download a server's `.mcpb` bundle from [Releases](https://github.com/JonathanRReed/Apple-MCPs/releases) and double-click it. To change its safety modes or folders later, open Settings > Extensions, choose the extension, and click Configure.
 
-Set app-specific safety modes and directories in your client's `env` settings. An explicitly invalid or blank safety setting selects `safe_readonly`; unset settings retain each domain's documented default. The [configuration guide](Apple-Tools-MCP/README.md) lists defaults and options. Mail attachments are disabled until you set `APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT` to a dedicated directory. Files tools only access `APPLE_FILES_MCP_ALLOWED_ROOTS`; macOS may impose further restrictions.
+For other clients, set app-specific safety modes and directories in the server's `env` settings, then restart the client. An explicitly invalid or blank safety setting selects `safe_readonly`; the domain's health tool reports this in `safety_mode_warning`, and blocked tools name the exact setting to change. Unset settings keep each domain's documented default. One default differs by install method: Mail is `safe_manage` for `uvx` and `pip` installs, but `full_access` in the Claude Desktop bundles, which have always shipped that way. Set `APPLE_MAIL_MCP_SAFETY_PROFILE` (or the bundle's "Mail safety mode" setting) to choose. The [configuration guide](Apple-Tools-MCP/README.md) lists defaults and options. Mail attachments are disabled until you set `APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT` to a dedicated directory. Files tools only access `APPLE_FILES_MCP_ALLOWED_ROOTS`; macOS may impose further restrictions.
 
 ## Choose a server
 
@@ -74,7 +76,7 @@ MCP `tools/list` returns each tool's schemas and read or write annotations. Use 
 
 Resolve recipients through Contacts before sending, unless you have the exact address. For Mail conversations, use `mail_get_thread`, `mail_reply_latest_in_thread`, or `mail_archive_thread`. Pass an exact sender email in `from_account` when the sending identity matters.
 
-Mail search requires a query: a sender, subject fragment, or `*`. Reminders `due_date` requires a timezone offset, such as `yyyy-MM-ddTHH:mm:ss-08:00`. Omit `service_name` when sending iMessages.
+Mail search requires a query: a sender, subject fragment, or `*`. Reminders `due_date` requires a timezone offset, such as `yyyy-MM-ddTHH:mm:ss-08:00`. Messages sends default to iMessage. Pass `service_name` (`SMS` or `RCS`) to send through the paired iPhone; replies in SMS/RCS threads follow the thread's service automatically.
 
 The unified server also provides `apple_generate_daily_briefing`, `apple_generate_weekly_briefing`, and `apple_triage_communications_task`. Clients without prompt support can use `apple_list_prompts`, `apple_get_prompt`, and their per-server equivalents.
 

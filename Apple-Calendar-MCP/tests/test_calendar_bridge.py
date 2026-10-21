@@ -24,6 +24,10 @@ def _capture_bridge(monkeypatch, captured: dict[str, object], response: dict[str
     bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
 
     def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        if command == "calendar-access-status":
+            return {"status": "authorized", "can_read_events": True, "can_write_events": True}
+        if command == "list-calendar-calendars":
+            return {"items": [{"calendar_id": "calendar-1", "title": "Work", "allows_content_modifications": True}]}
         captured["command"] = command
         captured["request"] = json.loads(args[-1])
         return {**_EVENT_PAYLOAD, **(response or {})}
@@ -170,6 +174,72 @@ def test_delete_event_falls_back_on_event_not_found(monkeypatch) -> None:
     monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
 
     assert bridge.delete_event("applescript-uid-1") is True
+
+
+def test_not_found_skips_jxa_fallback_with_full_read_access(monkeypatch) -> None:
+    # Live repro: with full Calendar access, getting or deleting an event that
+    # no longer exists retried through JXA, which scanned every calendar and
+    # returned APPLESCRIPT_FALLBACK_TIMEOUT instead of EVENT_NOT_FOUND.
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        if command == "calendar-access-status":
+            return {"status": "full_access", "can_read_events": True, "can_write_events": True}
+        raise CalendarBridgeError("EVENT_NOT_FOUND", "missing")
+
+    def fail_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        raise AssertionError("JXA fallback must not run when native read access is confirmed")
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fail_jxa)
+
+    for call in (lambda: bridge.get_event("E99452A7-8023-4A72-9813-CAA34AE1FF75"),
+                 lambda: bridge.delete_event("E99452A7-8023-4A72-9813-CAA34AE1FF75")):
+        try:
+            call()
+        except CalendarBridgeError as exc:
+            assert exc.error_code == "EVENT_NOT_FOUND"
+        else:
+            raise AssertionError("Expected EVENT_NOT_FOUND")
+
+
+def test_legacy_and_ambiguous_ids_keep_jxa_fallback_with_full_read_access(monkeypatch) -> None:
+    # Older releases issued "applescript::<calendar>::<uid>" ids; they are not
+    # v2 tokens and EventKit can never resolve them, so automation must still
+    # handle them after full access is granted. A Calendar.app UID that the
+    # helper reports as shared by several events also needs automation.
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    native_errors = {
+        "applescript::Work::uid-1": "EVENT_NOT_FOUND",
+        "shared-uid": "EVENT_ID_AMBIGUOUS",
+    }
+    jxa_calls: list[str] = []
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        if command == "calendar-access-status":
+            return {"status": "full_access", "can_read_events": True, "can_write_events": True}
+        raise CalendarBridgeError(native_errors[args[0]], "native miss")
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        jxa_calls.append(args[0] if args else "")
+        return {
+            "event_id": args[0],
+            "title": "Legacy",
+            "calendar_id": "Work",
+            "calendar_name": "Work",
+            "start": "2026-03-27T15:00:00+00:00",
+            "end": "2026-03-27T15:30:00+00:00",
+            "all_day": False,
+            "location": None,
+            "notes": None,
+        }
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    for event_id in native_errors:
+        assert bridge.get_event(event_id).title == "Legacy"
+    assert len(jxa_calls) == 2
 
 
 def test_calendar_access_status_reads_helper_payload(monkeypatch) -> None:
@@ -1958,3 +2028,163 @@ def test_empty_fallback_mutation_output_reports_unknown_outcome(monkeypatch):
             notes=None,location=None,all_day=None,alarms=[{'minutes_before':15}])
     assert error.value.error_code == 'INVALID_HELPER_OUTPUT'
     assert 'unknown' in error.value.suggestion
+
+
+# Issue #41: calendar names must resolve to native EventKit identifiers.
+_NATIVE_CALENDARS = [
+    {"calendar_id": "native-termine", "title": "Termine", "source_title": "iCloud", "allows_content_modifications": True},
+    {"calendar_id": "native-work-icloud", "title": "Work", "source_title": "iCloud", "allows_content_modifications": True},
+    {"calendar_id": "native-work-google", "title": "Work", "source_title": "Google", "allows_content_modifications": True},
+    {"calendar_id": "native-holidays", "title": "Holidays", "source_title": "Subscribed", "allows_content_modifications": False},
+]
+
+
+def _native_name_bridge(monkeypatch, calls: list[tuple[str, dict[str, object] | None]]) -> CalendarBridge:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        request = json.loads(args[-1]) if args and args[-1].startswith("{") else None
+        calls.append((command, request))
+        if command == "calendar-access-status":
+            return {"status": "authorized", "can_read_events": True, "can_write_events": True}
+        if command == "list-calendar-calendars":
+            return {"items": _NATIVE_CALENDARS}
+        target = (request or {}).get("calendar_id")
+        if target is not None and target not in {item["calendar_id"] for item in _NATIVE_CALENDARS}:
+            raise CalendarBridgeError("CALENDAR_NOT_FOUND", f"No calendar matched '{target}'.")
+        return {**_EVENT_PAYLOAD, "event_id": "native-event-1", "calendar_id": target or "native-termine",
+                "calendar_name": "Termine", "alarms": [
+                    {"type": "relative", "offset_minutes": -alarm["minutes_before"]}
+                    for alarm in (request or {}).get("alarms", [])
+                ]}
+
+    def unexpected_jxa(*args, **kwargs):
+        raise AssertionError("Calendar automation must not run when EventKit can resolve the name")
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", unexpected_jxa)
+    return bridge
+
+
+@pytest.mark.parametrize("name", ["Termine", "  termine ", "TERMINE"])
+def test_create_event_resolves_calendar_name_to_native_identifier(monkeypatch, name) -> None:
+    calls: list[tuple[str, dict[str, object] | None]] = []
+    bridge = _native_name_bridge(monkeypatch, calls)
+
+    event = bridge.create_event(
+        title="Apple-MCPs test", calendar_id=name,
+        start_iso="2028-06-01T09:00:00+00:00", end_iso="2028-06-01T09:30:00+00:00",
+        alarms=[{"minutes_before": 15}],
+    )
+
+    creates = [request for command, request in calls if command == "create-calendar-event"]
+    assert creates == [{**creates[0], "calendar_id": "native-termine"}]
+    assert creates[0]["alarms"] == [{"minutes_before": 15}]
+    assert event.event_id == "native-event-1"
+
+
+def test_update_event_resolves_destination_name_and_replaces_or_clears_alarms_natively(monkeypatch) -> None:
+    calls: list[tuple[str, dict[str, object] | None]] = []
+    bridge = _native_name_bridge(monkeypatch, calls)
+
+    replaced = bridge.update_event("native-event-1", calendar_id="termine", alarms=[{"minutes_before": 30}])
+    cleared = bridge.update_event("native-event-1", calendar_id="Termine", alarms=[])
+
+    updates = [request for command, request in calls if command == "update-calendar-event"]
+    assert [request["calendar_id"] for request in updates] == ["native-termine", "native-termine"]
+    assert [request["alarms"] for request in updates] == [[{"minutes_before": 30}], []]
+    assert [(alarm.type, alarm.offset_minutes) for alarm in replaced.alarms] == [("relative", -30)]
+    assert cleared.alarms == []
+
+
+def test_native_calendar_identifier_still_wins_over_titles(monkeypatch) -> None:
+    calls: list[tuple[str, dict[str, object] | None]] = []
+    bridge = _native_name_bridge(monkeypatch, calls)
+
+    bridge.create_event(title="x", calendar_id="native-work-google",
+                        start_iso="2028-06-01T09:00:00+00:00", end_iso="2028-06-01T09:30:00+00:00")
+
+    assert [request["calendar_id"] for command, request in calls if command == "create-calendar-event"] == ["native-work-google"]
+
+
+def test_exact_title_wins_over_case_insensitive_match() -> None:
+    from apple_calendar_mcp.calendar_bridge import match_calendar
+    from apple_calendar_mcp.models import CalendarInfo
+
+    calendars = [CalendarInfo(calendar_id="a", name="Work"), CalendarInfo(calendar_id="b", name="work")]
+
+    assert match_calendar(calendars, "work").calendar_id == "b"
+    with pytest.raises(CalendarBridgeError) as excinfo:
+        match_calendar(calendars, "WORK")
+    assert excinfo.value.error_code == "AMBIGUOUS_CALENDAR"
+
+
+@pytest.mark.parametrize("operation", ["create", "update"])
+def test_ambiguous_calendar_name_is_rejected_before_any_write(monkeypatch, operation) -> None:
+    calls: list[tuple[str, dict[str, object] | None]] = []
+    bridge = _native_name_bridge(monkeypatch, calls)
+
+    with pytest.raises(CalendarBridgeError) as excinfo:
+        if operation == "create":
+            bridge.create_event(title="x", calendar_id="work",
+                                start_iso="2028-06-01T09:00:00+00:00", end_iso="2028-06-01T09:30:00+00:00")
+        else:
+            bridge.update_event("native-event-1", calendar_id="Work", alarms=[])
+
+    assert excinfo.value.error_code == "AMBIGUOUS_CALENDAR"
+    assert "native-work-icloud" in excinfo.value.message and "native-work-google" in excinfo.value.message
+    assert "iCloud" in excinfo.value.message and "Google" in excinfo.value.message
+    assert "calendar_id" in (excinfo.value.suggestion or "")
+    assert {command for command, _ in calls} == {"calendar-access-status", "list-calendar-calendars"}
+
+
+def test_unknown_calendar_name_points_to_calendar_list_without_automation(monkeypatch) -> None:
+    calls: list[tuple[str, dict[str, object] | None]] = []
+    bridge = _native_name_bridge(monkeypatch, calls)
+
+    with pytest.raises(CalendarBridgeError) as excinfo:
+        bridge.create_event(title="x", calendar_id="Nonexistent",
+                            start_iso="2028-06-01T09:00:00+00:00", end_iso="2028-06-01T09:30:00+00:00")
+
+    assert excinfo.value.error_code == "CALENDAR_NOT_FOUND"
+    assert "calendar_list_calendars" in (excinfo.value.suggestion or "")
+    assert "create-calendar-event" not in {command for command, _ in calls}
+
+
+def test_read_only_calendar_name_is_rejected_before_any_write(monkeypatch) -> None:
+    calls: list[tuple[str, dict[str, object] | None]] = []
+    bridge = _native_name_bridge(monkeypatch, calls)
+
+    with pytest.raises(CalendarBridgeError) as excinfo:
+        bridge.create_event(title="x", calendar_id="holidays",
+                            start_iso="2028-06-01T09:00:00+00:00", end_iso="2028-06-01T09:30:00+00:00")
+
+    assert excinfo.value.error_code == "CALENDAR_READ_ONLY"
+    assert "create-calendar-event" not in {command for command, _ in calls}
+
+
+def test_calendar_name_uses_automation_when_eventkit_cannot_read_calendars(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    commands: list[str] = []
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        commands.append(command)
+        if command == "calendar-access-status":
+            return {"status": "write_only", "can_read_events": False, "can_write_events": True}
+        raise CalendarBridgeError("CALENDAR_NOT_FOUND", "No calendar matched 'Termine'.")
+
+    jxa_args: list[tuple[str, ...]] = []
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        jxa_args.append(args)
+        return {**_EVENT_PAYLOAD, "event_id": "applescript-uid-1", "calendar_id": args[0], "calendar_name": args[0]}
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    event = bridge.create_event(title="x", calendar_id="Termine",
+                                start_iso="2028-06-01T09:00:00+00:00", end_iso="2028-06-01T09:30:00+00:00")
+
+    assert "list-calendar-calendars" not in commands
+    assert jxa_args[0][0] == "Termine"
+    assert event.event_id == "applescript-uid-1"

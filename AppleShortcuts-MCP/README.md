@@ -76,8 +76,10 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/AppleShortcuts-MCP/start.
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-shortcuts -- uvx apple-shortcuts-mcp
+claude mcp add --transport stdio --scope user apple-shortcuts -- uvx apple-shortcuts-mcp
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 </details>
 

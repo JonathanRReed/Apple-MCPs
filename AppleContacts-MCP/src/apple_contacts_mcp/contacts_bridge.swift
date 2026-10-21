@@ -21,7 +21,137 @@
 //
 // Adapted from JaumeAP/Apple-MCPs by Jaume Puig (MIT).
 import Contacts
+import Darwin
 import Foundation
+
+// BEGIN SHARED HELPER RESPONSIBILITY
+// Keep this block identical in apple_pim_bridge.swift and contacts_bridge.swift;
+// scripts/check_bridge_sync.sh compares the copies.
+//
+// macOS privacy (TCC) decides access for the *responsible* process, not for this
+// helper. A helper spawned by an MCP server inherits the app that started the
+// server (Claude, Terminal, an Electron editor), so that app's grant and its
+// Info.plist usage descriptions decide. An app without a Contacts or Reminders
+// usage description can never be prompted and never appears in System Settings.
+// When the launching app has no grant, the helper re-runs itself with
+// responsibility disclaimed, so macOS evaluates this signed helper bundle and its
+// own usage descriptions instead. Apps that already have access keep working
+// unchanged because the helper only relaunches when access is missing.
+let selfResponsibleEnvironmentKey = "APPLE_MCPS_HELPER_SELF_RESPONSIBLE"
+var selfResponsibleChild: pid_t = 0
+
+func responsibleProcessID() -> pid_t? {
+    typealias ResponsibleFor = @convention(c) (pid_t) -> pid_t
+    guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "responsibility_get_pid_responsible_for_pid") else {
+        return nil
+    }
+    let pid = unsafeBitCast(symbol, to: ResponsibleFor.self)(getpid())
+    return pid > 0 ? pid : nil
+}
+
+/// True when macOS attributes privacy requests to this helper itself.
+func helperIsSelfResponsible() -> Bool {
+    guard let responsible = responsibleProcessID() else {
+        return getenv(selfResponsibleEnvironmentKey) != nil
+    }
+    return responsible == getpid()
+}
+
+func helperDisplayName() -> String {
+    let info = Bundle.main.infoDictionary ?? [:]
+    return (info["CFBundleDisplayName"] as? String) ?? (info["CFBundleName"] as? String) ?? ProcessInfo.processInfo.processName
+}
+
+func helperBundleIdentifier() -> String {
+    Bundle.main.bundleIdentifier ?? ProcessInfo.processInfo.processName
+}
+
+/// The name System Settings shows for the app macOS holds responsible, for messages.
+func responsibleAppName() -> String {
+    if helperIsSelfResponsible() {
+        return helperDisplayName()
+    }
+    guard let pid = responsibleProcessID() else {
+        return "the app that started this MCP server"
+    }
+    var buffer = [CChar](repeating: 0, count: 4096)
+    guard proc_pidpath(pid, &buffer, UInt32(buffer.count)) > 0 else {
+        return "the app that started this MCP server"
+    }
+    let path = String(cString: buffer)
+    if let range = path.range(of: ".app/", options: .backwards) {
+        let bundlePath = String(path[..<range.lowerBound])
+        return (bundlePath as NSString).lastPathComponent
+    }
+    return (path as NSString).lastPathComponent
+}
+
+/// Where to grant access, written for a person or an agent relaying it.
+func privacyGuidance(pane: String, tccService: String) -> String {
+    let helper = helperDisplayName()
+    if helperIsSelfResponsible() {
+        return "Open System Settings > Privacy & Security > \(pane) and turn on '\(helper)'. "
+            + "If '\(helper)' is not listed, run `tccutil reset \(tccService) \(helperBundleIdentifier())` in Terminal, "
+            + "then retry this tool and choose Allow in the macOS prompt."
+    }
+    let host = responsibleAppName()
+    return "Open System Settings > Privacy & Security > \(pane) and turn on '\(host)', the app macOS holds responsible for this MCP server. "
+        + "If '\(host)' is not listed, it cannot ask for \(pane) access (its Info.plist has no \(pane) usage description) "
+        + "and this macOS version did not let the helper ask for itself; start the MCP server from an app that can, then retry."
+}
+
+/// Re-runs this helper as its own responsible process and exits with its status.
+/// Returns only when that is impossible (already self-responsible, or the
+/// private responsibility API is unavailable), so callers fall back to the
+/// launching app's permission.
+func relaunchAsSelfResponsible() {
+    guard getenv(selfResponsibleEnvironmentKey) == nil, !helperIsSelfResponsible() else {
+        return
+    }
+    typealias SetDisclaim = @convention(c) (UnsafeMutablePointer<posix_spawnattr_t?>, Bool) -> Int32
+    guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "responsibility_spawnattrs_setdisclaim"),
+          let executable = Bundle.main.executablePath ?? CommandLine.arguments.first else {
+        return
+    }
+    var attributes: posix_spawnattr_t?
+    guard posix_spawnattr_init(&attributes) == 0 else {
+        return
+    }
+    defer { posix_spawnattr_destroy(&attributes) }
+    guard unsafeBitCast(symbol, to: SetDisclaim.self)(&attributes, true) == 0 else {
+        return
+    }
+    var environment = ProcessInfo.processInfo.environment
+    environment[selfResponsibleEnvironmentKey] = "1"
+    let argv: [UnsafeMutablePointer<CChar>?] = ([executable] + CommandLine.arguments.dropFirst()).map { strdup($0) } + [nil]
+    let envp: [UnsafeMutablePointer<CChar>?] = environment.map { strdup("\($0.key)=\($0.value)") } + [nil]
+    defer {
+        argv.forEach { free($0) }
+        envp.forEach { free($0) }
+    }
+    var child: pid_t = 0
+    // The child inherits stdin, stdout and stderr, so callers see its output unchanged.
+    guard posix_spawn(&child, executable, nil, &attributes, argv, envp) == 0 else {
+        return
+    }
+    selfResponsibleChild = child
+    for signalNumber in [SIGTERM, SIGINT, SIGHUP] {
+        signal(signalNumber) { received in
+            if selfResponsibleChild > 0 {
+                kill(selfResponsibleChild, received)
+            }
+        }
+    }
+    var status: Int32 = 0
+    while waitpid(child, &status, 0) == -1 {
+        if errno != EINTR {
+            Foundation.exit(70)
+        }
+    }
+    let terminatingSignal = status & 0x7f
+    Foundation.exit(terminatingSignal == 0 ? (status >> 8) & 0xff : 128 + terminatingSignal)
+}
+// END SHARED HELPER RESPONSIBILITY
 
 let fieldSeparator: Character = "\u{1F}"
 let recordSeparator: Character = "\u{1E}"
@@ -42,18 +172,44 @@ func emit(_ object: [String: Any]) {
 
 let store = CNContactStore()
 
-func requireAccess() {
-    let status = CNContactStore.authorizationStatus(for: .contacts)
+/// Writes a structured error to stderr and exits; the server reads its code and suggestion.
+func failPermission(_ code: String, _ message: String, _ suggestion: String) -> Never {
+    let object: [String: Any] = ["ok": false, "error_code": code, "message": message, "suggestion": suggestion]
+    if let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) {
+        FileHandle.standardError.write(data)
+        FileHandle.standardError.write("\n".data(using: .utf8)!)
+    }
+    exit(1)
+}
+
+func contactsAccessGranted(_ status: CNAuthorizationStatus) -> Bool {
     // Limited access is raw value 4; older macOS SDKs do not name this case.
     // Honor the selected-contact grant without requiring a newer SDK symbol.
-    if status.rawValue == 4 { return }
+    status == .authorized || status.rawValue == 4
+}
+
+/// Hands the command to a self-responsible copy of the helper when the
+/// launching app has no grant. Never returns when the relaunch happens.
+func relaunchIfContactsAccessMissing() {
+    let status = CNContactStore.authorizationStatus(for: .contacts)
+    if status == .notDetermined || status == .denied {
+        relaunchAsSelfResponsible()
+    }
+}
+
+func requireAccess() {
+    let status = CNContactStore.authorizationStatus(for: .contacts)
+    if contactsAccessGranted(status) { return }
     switch status {
-    case .authorized:
-        return
-    case .denied, .restricted:
-        fail("Not authorized to access Contacts. Allow it in System Settings > Privacy & Security > Contacts.")
+    case .restricted:
+        failPermission("PERMISSION_DENIED", "macOS restricts Contacts access on this Mac.",
+                       "A configuration profile or Screen Time setting blocks Contacts access. Ask the Mac's administrator to allow it.")
+    case .denied:
+        relaunchIfContactsAccessMissing()
+        failPermission("PERMISSION_DENIED", "macOS denied Contacts access to '\(responsibleAppName())'.",
+                       privacyGuidance(pane: "Contacts", tccService: "AddressBook"))
     default:
-        break
+        relaunchIfContactsAccessMissing()
     }
     let semaphore = DispatchSemaphore(value: 0)
     var granted = false
@@ -62,10 +218,16 @@ func requireAccess() {
         semaphore.signal()
     }
     guard semaphore.wait(timeout: .now() + 25) == .success else {
-        fail("Contacts permission request timed out. Allow Contacts access and retry.")
+        failPermission("PERMISSION_TIMEOUT", "Timed out waiting for an answer to the macOS Contacts prompt.",
+                       "Retry and choose Allow in the macOS prompt for '\(responsibleAppName())'.")
     }
     if !granted {
-        fail("Not authorized to access Contacts. Allow it in System Settings > Privacy & Security > Contacts.")
+        // Still undetermined after a refused request means macOS never showed a prompt.
+        let prompted = CNContactStore.authorizationStatus(for: .contacts) != .notDetermined
+        failPermission("PERMISSION_DENIED",
+                       prompted ? "macOS denied Contacts access to '\(responsibleAppName())'."
+                                : "macOS refused to show a Contacts permission prompt for '\(responsibleAppName())'.",
+                       privacyGuidance(pane: "Contacts", tccService: "AddressBook"))
     }
 }
 
@@ -182,10 +344,20 @@ struct NativeContactsBridge {
         guard let command = arguments.first else { fail("Missing command.") }
         let args = Array(arguments.dropFirst())
         if command == "permission_check" {
+            relaunchIfContactsAccessMissing()
             let status = CNContactStore.authorizationStatus(for: .contacts)
-            let accessible = status == .authorized || status.rawValue == 4
+            let accessible = contactsAccessGranted(status)
             let label = accessible ? "authorized" : (status == .denied || status == .restricted ? "denied" : "unknown")
-            emit(["ok": true, "accessible": accessible, "status": label])
+            var result: [String: Any] = [
+                "ok": true, "accessible": accessible, "status": label,
+                "tcc_client": responsibleAppName(), "helper_is_responsible": helperIsSelfResponsible(),
+            ]
+            if !accessible {
+                result["suggestion"] = status == .notDetermined
+                    ? "Run a Contacts tool and choose Allow in the macOS prompt for '\(responsibleAppName())'."
+                    : privacyGuidance(pane: "Contacts", tccService: "AddressBook")
+            }
+            emit(result)
             return
         }
         requireAccess()

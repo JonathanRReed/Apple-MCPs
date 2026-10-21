@@ -10,7 +10,7 @@ async def files_health(
 ) -> Any:
     """Files Health
 
-    Delegated Apple domain tool 'files_health' exposed through Apple-Tools-MCP.
+    Report the active Apple Files MCP configuration.
 
     Example:
         await files_health(client)

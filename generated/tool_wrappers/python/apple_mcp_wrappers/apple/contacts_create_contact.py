@@ -14,9 +14,9 @@ async def contacts_create_contact(
     emails: list[Any] | None = None,
     note: str | None = None
 ) -> Any:
-    """Contacts Create Contact
+    """Create Contact
 
-    Delegated Apple domain tool 'contacts_create_contact' exposed through Apple-Tools-MCP.
+    Create a new contact in Apple Contacts with a first name (required) and optional last name, organization, and note.
 
     Example:
         await contacts_create_contact(client, first_name='example_first_name', last_name='example_last_name')

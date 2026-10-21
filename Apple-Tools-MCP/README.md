@@ -81,7 +81,7 @@ This builds one uv workspace environment with the unified entrypoint at `.venv/b
       "command": "uvx",
       "args": ["apple-tools-mcp"],
       "env": {
-        "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
+        "APPLE_MAIL_MCP_SAFETY_PROFILE": "safe_manage",
         "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage",
         "APPLE_FILES_MCP_ALLOWED_ROOTS": "/Users/you/Desktop,/Users/you/Documents,/Users/you/Downloads,/Users/you/Library/Mobile Documents/com~apple~CloudDocs",
@@ -97,6 +97,8 @@ This builds one uv workspace environment with the unified entrypoint at `.venv/b
 }
 ```
 
+These values are the defaults for `uvx` and `pip` installs, so you only need the lines you want to change. To let the assistant send new emails (not just replies and forwards), set `APPLE_MAIL_MCP_SAFETY_PROFILE` to `full_access`. The Claude Desktop bundle defaults Mail to `full_access`, as earlier bundles did; change it under Settings > Extensions > Apple Tools > Configure. Restart the client after changing `env`.
+
 Running from a clone instead? Use `/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh` as the command with empty `args`.
 
 </details>
@@ -105,8 +107,10 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh`
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-tools -- uvx apple-tools-mcp
+claude mcp add --transport stdio --scope user apple-tools -- uvx apple-tools-mcp
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 </details>
 

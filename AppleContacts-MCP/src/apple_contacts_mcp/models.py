@@ -40,6 +40,7 @@ class HealthResponse(BaseModel):
     server_name: str
     version: str
     safety_mode: str
+    safety_mode_warning: str | None = Field(default=None, description="Set when the configured safety value was invalid or blank and the server fell back to a safer mode")
     transport: str = "stdio"
     capabilities: list[str]
     contacts_accessible: bool
@@ -47,6 +48,8 @@ class HealthResponse(BaseModel):
     permission_error_code: str | None = None
     permission_error: str | None = None
     permission_suggestion: str | None = None
+    # The app macOS checks for Contacts access: the app running this server, or the helper itself.
+    permission_client: str | None = None
 
 
 class ContactListResponse(BaseModel):

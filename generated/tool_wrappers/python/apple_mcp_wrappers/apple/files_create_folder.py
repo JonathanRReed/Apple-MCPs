@@ -9,9 +9,9 @@ async def files_create_folder(
     client: MCPToolCaller,
     path: str
 ) -> Any:
-    """Files Create Folder
+    """Create Folder
 
-    Delegated Apple domain tool 'files_create_folder' exposed through Apple-Tools-MCP.
+    Create a folder inside the allowed roots.
 
     Example:
         await files_create_folder(client, path='/path/to/item')

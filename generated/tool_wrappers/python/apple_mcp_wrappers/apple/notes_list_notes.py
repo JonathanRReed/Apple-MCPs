@@ -12,9 +12,9 @@ async def notes_list_notes(
     limit: int | None = None,
     offset: int | None = None
 ) -> Any:
-    """Notes List Notes
+    """List Notes
 
-    Delegated Apple domain tool 'notes_list_notes' exposed through Apple-Tools-MCP.
+    List notes, optionally scoped to a folder or account.
 
     Example:
         await notes_list_notes(client, account_name='example_account_name', folder_id='example_folder_id')

@@ -77,8 +77,10 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/AppleNotes-MCP/start.sh` 
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-notes -- uvx apple-mcp-notes
+claude mcp add --transport stdio --scope user apple-notes -- uvx apple-mcp-notes
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 </details>
 

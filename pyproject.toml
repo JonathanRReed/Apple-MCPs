@@ -13,3 +13,48 @@ members = [
   "AppleShortcuts-MCP",
   "AppleSystem-MCP",
 ]
+
+[tool.pytest.ini_options]
+# Package test suites reuse module names (test_tools.py, ...); importlib mode
+# lets `uv run pytest */tests` collect every package in one run.
+addopts = "--import-mode=importlib"
+
+[dependency-groups]
+# Workspace-level tooling; `uv sync` installs the dev group by default.
+dev = [
+  "ty==0.0.90",
+]
+
+[tool.ty.environment]
+# Lowest supported version (packages declare requires-python >=3.11), and the
+# platform the servers run on, so local and Linux CI runs agree.
+python-version = "3.11"
+python-platform = "darwin"
+
+[tool.ty.terminal]
+# Fail on errors only; the warn-level override below stays visible but does
+# not block CI.
+error-on-warning = false
+
+[tool.ty.src]
+include = [
+  "*/src",
+  "*/tests",
+  "scripts",
+]
+
+[[tool.ty.overrides]]
+# Tests assert on a known response variant of `X | ErrorResponse` unions and
+# patch in duck-typed fakes, which these rules flag without narrowing. Tests
+# stay checked for unresolved imports/names and bad call signatures.
+include = ["*/tests/**", "scripts/tests/**"]
+
+[tool.ty.overrides.rules]
+unresolved-attribute = "ignore"
+invalid-argument-type = "ignore"
+not-subscriptable = "ignore"
+not-iterable = "ignore"
+unsupported-operator = "ignore"
+invalid-assignment = "ignore"
+no-matching-overload = "ignore"
+invalid-method-override = "ignore"

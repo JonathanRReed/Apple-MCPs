@@ -11,7 +11,7 @@ async def notes_create_folder(
     account_name: str,
     parent_folder_id: str | None = None
 ) -> Any:
-    """Create Folder
+    """Create Notes Folder
 
     Create a new folder in an Apple Notes account or nested folder.
 

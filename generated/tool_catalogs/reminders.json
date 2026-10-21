@@ -419,7 +419,7 @@
       ],
       "name": "reminders_update_reminder",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "reminders_update_reminder",
       "tags": [
         "reminders",
@@ -462,7 +462,7 @@
       ],
       "name": "reminders_complete_reminder",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "reminders_complete_reminder",
       "tags": [
         "reminders",
@@ -502,7 +502,7 @@
       ],
       "name": "reminders_uncomplete_reminder",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "reminders_uncomplete_reminder",
       "tags": [
         "reminders",

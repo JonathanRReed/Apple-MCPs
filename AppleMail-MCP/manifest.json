@@ -30,6 +30,28 @@
       "python": ">=3.11"
     }
   },
+  "user_config": {
+    "mail_safety_mode": {
+      "type": "string",
+      "title": "Mail safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read and search only. safe_manage: also drafts, replies and forwards (these send immediately), mark, move, delete, and archive. full_access: also sends new messages. This bundle's default is full_access, matching earlier bundle releases (uvx and pip installs default to safe_manage). Sets APPLE_MAIL_MCP_SAFETY_PROFILE.",
+      "required": false,
+      "default": "full_access"
+    },
+    "mail_allowed_attachment_root": {
+      "type": "directory",
+      "title": "Mail attachment folder",
+      "description": "Optional. Mail drafts and sends can attach files only from this folder; pick a dedicated folder, not your home folder. Leave empty to keep attachments turned off. Sets APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT.",
+      "required": false
+    },
+    "mail_visible_drafts": {
+      "type": "boolean",
+      "title": "Show Mail drafts on screen",
+      "description": "Open new drafts in a visible Mail window so you can review them. Sets APPLE_MAIL_MCP_VISIBLE_DRAFTS.",
+      "required": false,
+      "default": true
+    }
+  },
   "server": {
     "type": "uv",
     "entry_point": "server.py",
@@ -42,8 +64,9 @@
         "server.py"
       ],
       "env": {
-        "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
-        "APPLE_MAIL_MCP_VISIBLE_DRAFTS": "true"
+        "APPLE_MAIL_MCP_SAFETY_PROFILE": "${user_config.mail_safety_mode}",
+        "APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT": "${user_config.mail_allowed_attachment_root}",
+        "APPLE_MAIL_MCP_VISIBLE_DRAFTS": "${user_config.mail_visible_drafts}"
       }
     }
   },

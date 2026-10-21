@@ -10,9 +10,9 @@ async def files_move_path(
     source: str,
     destination: str
 ) -> Any:
-    """Files Move Path
+    """Move Path
 
-    Delegated Apple domain tool 'files_move_path' exposed through Apple-Tools-MCP.
+    Move or rename a file or folder inside the allowed roots.
 
     Example:
         await files_move_path(client, source='example_source', destination='example_destination')

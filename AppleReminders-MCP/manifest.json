@@ -31,6 +31,22 @@
       "python": ">=3.11"
     }
   },
+  "user_config": {
+    "reminders_safety_mode": {
+      "type": "string",
+      "title": "Reminders safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read lists and reminders only. safe_manage: also create, update, and complete reminders and create lists. full_access: also delete reminders and lists. This bundle's default is safe_manage. Sets APPLE_REMINDERS_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "safe_manage"
+    },
+    "reminders_allowed_lists": {
+      "type": "string",
+      "title": "Allowed reminder lists",
+      "description": "Optional comma-separated reminder list names the assistant may use. Leave empty for all lists. Sets APPLE_REMINDERS_MCP_ALLOWED_LISTS.",
+      "required": false,
+      "default": ""
+    }
+  },
   "server": {
     "type": "uv",
     "entry_point": "server.py",
@@ -43,7 +59,8 @@
         "server.py"
       ],
       "env": {
-        "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage"
+        "APPLE_REMINDERS_MCP_SAFETY_MODE": "${user_config.reminders_safety_mode}",
+        "APPLE_REMINDERS_MCP_ALLOWED_LISTS": "${user_config.reminders_allowed_lists}"
       }
     }
   },

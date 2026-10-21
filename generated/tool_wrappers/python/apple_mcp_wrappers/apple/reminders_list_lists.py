@@ -8,9 +8,9 @@ from .client import MCPToolCaller, call_tool_json
 async def reminders_list_lists(
     client: MCPToolCaller
 ) -> Any:
-    """Reminders List Lists
+    """List Reminder Lists
 
-    Delegated Apple domain tool 'reminders_list_lists' exposed through Apple-Tools-MCP.
+    List available Apple Reminders lists.
 
     Example:
         await reminders_list_lists(client)

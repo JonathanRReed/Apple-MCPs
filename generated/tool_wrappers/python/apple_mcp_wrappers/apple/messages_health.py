@@ -10,7 +10,7 @@ async def messages_health(
 ) -> Any:
     """Messages Health
 
-    Delegated Apple domain tool 'messages_health' exposed through Apple-Tools-MCP.
+    Report Messages server configuration and capability status.
 
     Example:
         await messages_health(client)

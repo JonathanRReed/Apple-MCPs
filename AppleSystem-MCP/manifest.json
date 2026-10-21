@@ -31,6 +31,15 @@
       "python": ">=3.11"
     }
   },
+  "user_config": {
+    "system_safety_mode": {
+      "type": "string",
+      "title": "System safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read status and settings only. safe_manage: also set the clipboard, show notifications, open apps, change appearance, Finder, Dock, and accessibility settings, and drive app menus and keys. full_access: same as safe_manage. This bundle's default is safe_manage. Sets APPLE_SYSTEM_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "safe_manage"
+    }
+  },
   "server": {
     "type": "uv",
     "entry_point": "server.py",
@@ -43,7 +52,7 @@
         "server.py"
       ],
       "env": {
-        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_manage"
+        "APPLE_SYSTEM_MCP_SAFETY_MODE": "${user_config.system_safety_mode}"
       }
     }
   },

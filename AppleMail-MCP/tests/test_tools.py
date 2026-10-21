@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from apple_mail_mcp.config import Settings
+from apple_mail_mcp.mail_bridge import AppleMailBridge, MailBridgeError
 from apple_mail_mcp.models import (
     AttachmentRecord,
     DeleteRecord,
@@ -50,7 +51,9 @@ class FakeBridge:
         mailbox: str | None = None,
         unread_only: bool = False,
         limit: int = 10,
+        account: str | None = None,
     ) -> list[MessageSummary]:
+        self.search_calls = [*getattr(self, "search_calls", []), {"query": query, "mailbox": mailbox, "account": account}]
         return [
             MessageSummary(
                 message_id="id-1",
@@ -135,8 +138,10 @@ class FakeBridge:
         to: list[str],
         body: str = "",
         from_account: str | None = None,
+        send: bool = True,
     ) -> ForwardRecord:
-        return ForwardRecord(sent=True, subject=f"Fwd:{message_id}", to=to, from_account=from_account)
+        self.forward_send = send
+        return ForwardRecord(sent=send, subject=f"Fwd:{message_id}", to=to, from_account=from_account, draft=not send)
 
     def mark_message(self, message_id: str, is_read: bool) -> MarkRecord:
         return MarkRecord(message_id=message_id, is_read=is_read)
@@ -177,6 +182,59 @@ def test_search_tool_bounds_limit_and_returns_results() -> None:
 
     assert result.count == 1
     assert result.results[0].subject == "match:project"
+
+
+def test_search_tool_passes_account_scope_to_bridge() -> None:
+    bridge = FakeBridge()
+
+    mail_search_messages_tool(bridge, Settings(), query="*", mailbox="Inbox", account="Work")
+
+    assert bridge.search_calls[-1] == {"query": "*", "mailbox": "Inbox", "account": "Work"}
+
+
+def test_search_tool_without_account_searches_all_accounts() -> None:
+    bridge = FakeBridge()
+
+    mail_search_messages_tool(bridge, Settings(), query="*", mailbox="Inbox")
+
+    assert bridge.search_calls[-1]["account"] is None
+
+
+def test_search_wrapper_forwards_account() -> None:
+    bridge = FakeBridge()
+
+    result = mail_search_messages(query="*", mailbox="Inbox", account="Work", bridge=bridge, settings=Settings())
+
+    assert result.count == 1
+    assert bridge.search_calls[-1]["account"] == "Work"
+
+
+def test_search_wrapper_reports_unknown_account_instead_of_empty_results(monkeypatch) -> None:
+    bridge = AppleMailBridge()
+
+    def fake_run_script(script_name: str, args: list[str]) -> str:
+        raise MailBridgeError("search_messages.applescript: execution error: ACCOUNT_NOT_FOUND (-2700)")
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+
+    result = mail_search_messages(query="*", account="Nope", bridge=bridge, settings=Settings())
+
+    assert result.ok is False
+    assert result.error_code == "MESSAGE_SEARCH_FAILED"
+    assert result.message.startswith("ACCOUNT_NOT_FOUND:")
+    assert "mail_list_mailboxes" in result.message
+
+
+def test_get_thread_scopes_candidate_search_to_anchor_account() -> None:
+    # Mailbox names repeat across accounts, so the thread search must stay in
+    # the anchor's account or archive/reply-latest could touch another account.
+    bridge = FakeBridge()
+    settings = Settings(safety_profile=SafetyProfile.SAFE_READONLY)
+
+    mail_get_thread_tool(bridge, settings, message_id="id-1", limit=10)
+
+    assert bridge.search_calls[-1]["account"] == "iCloud"
+    assert bridge.search_calls[-1]["mailbox"] == "Inbox"
 
 
 def test_get_message_tool_returns_full_message() -> None:
@@ -506,3 +564,25 @@ def test_subjectless_thread_archive_only_moves_anchor(subject):
     result = mail_archive_thread_tool(bridge, settings, 'id-1')
     assert result.affected_message_ids == ['id-1']
     assert bridge.moved == ['id-1']
+
+
+def test_create_server_falls_back_to_info_for_unknown_log_level() -> None:
+    server = create_server(settings=Settings(log_level="VERBOSE"), bridge=FakeBridge())
+
+    assert server.settings.log_level == "INFO"
+    assert create_server(settings=Settings(log_level="WARN"), bridge=FakeBridge()).settings.log_level == "WARNING"
+
+
+def test_forward_sends_only_in_full_access() -> None:
+    # A forward can reach any address, so safe_manage keeps it as an unsent
+    # draft in Mail and tells the agent how to get it sent.
+    bridge = FakeBridge()
+    full = mail_forward_message_tool(bridge, Settings(safety_profile=SafetyProfile.FULL_ACCESS), message_id="id-1", to=["x@example.com"])
+    assert bridge.forward_send is True
+    assert full.sent is True and full.draft is False and full.note is None
+
+    manage = mail_forward_message_tool(bridge, Settings(safety_profile=SafetyProfile.SAFE_MANAGE), message_id="id-1", to=["x@example.com"])
+    assert bridge.forward_send is False
+    assert manage.sent is False and manage.draft is True
+    assert "NOT sent" in manage.note
+    assert "APPLE_MAIL_MCP_SAFETY_PROFILE=full_access" in manage.note

@@ -11,9 +11,9 @@ async def mail_move_message(
     target_mailbox: str,
     target_account: str | None = None
 ) -> Any:
-    """Mail Move Message
+    """Move Message
 
-    Delegated Apple domain tool 'mail_move_message' exposed through Apple-Tools-MCP.
+    Move an email message to a different mailbox. Optionally specify target_account if the mailbox is in a different account.
 
     Example:
         await mail_move_message(client, message_id='example_message_id', target_mailbox='example_target_mailbox')

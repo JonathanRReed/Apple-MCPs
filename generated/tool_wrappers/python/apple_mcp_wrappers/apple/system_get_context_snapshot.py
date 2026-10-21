@@ -8,9 +8,9 @@ from .client import MCPToolCaller, call_tool_json
 async def system_get_context_snapshot(
     client: MCPToolCaller
 ) -> Any:
-    """System Get Context Snapshot
+    """Get System Context Snapshot
 
-    Delegated Apple domain tool 'system_get_context_snapshot' exposed through Apple-Tools-MCP.
+    Return a richer macOS context snapshot, including battery, frontmost app, and Focus metadata.
 
     Example:
         await system_get_context_snapshot(client)

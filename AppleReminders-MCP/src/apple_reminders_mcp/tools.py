@@ -3,12 +3,17 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime
+from typing import Annotated, Any
 
-from mcp.server.mcpserver import Context, MCPServer
-from mcp.types import Annotations, ToolAnnotations
+from mcp.server.mcpserver import Context
+from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
+from pydantic import Field
 
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.privacy import helper_permission_guide
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.safety import safety_mode_warning
+from apple_mcp_common.server import AppleMCPServer
 from apple_reminders_mcp.config import load_settings
 from apple_reminders_mcp.models import (
     DeleteReminderListResponse,
@@ -21,8 +26,8 @@ from apple_reminders_mcp.models import (
     ReminderResponse,
     ToolError,
 )
-from apple_reminders_mcp.permissions import SafetyError, ensure_action_allowed
-from apple_reminders_mcp.reminders_bridge import RemindersBridge, RemindersBridgeError, build_bridge
+from apple_reminders_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
+from apple_reminders_mcp.reminders_bridge import REMINDERS_HELPER_BUNDLE, RemindersBridge, RemindersBridgeError, build_bridge
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Reminders task management on macOS. "
@@ -30,7 +35,20 @@ SERVER_INSTRUCTIONS = (
     "Prefer list and get tools before mutation tools when ids are unknown."
 )
 
-mcp = MCPServer("Apple Reminders MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+_LIST_ID_DESCRIPTION = "Reminder list ID returned by reminders_list_lists; pass it unchanged."
+_REMINDER_ID_DESCRIPTION = "Reminder ID returned by reminders_list_reminders or reminders_get_reminder; pass it unchanged."
+_DATE_FORMAT = "ISO 8601 datetime with Z or an offset (2026-10-22T09:00:00-05:00), or a date YYYY-MM-DD in the Mac's local time zone."
+_DUE_DATE_DESCRIPTION = f"When the reminder is due. {_DATE_FORMAT}"
+_DUE_ALL_DAY_DESCRIPTION = "True to keep only the date of due_date (no due time)."
+_REMIND_AT_DESCRIPTION = f"When to show a notification; sets the reminder's single alert. {_DATE_FORMAT}"
+_PRIORITY_DESCRIPTION = "Apple Reminders priority: 0 none, 1 high, 5 medium, 9 low."
+_TAGS_DESCRIPTION = "Tags appended to the notes as #hashtags (leading # optional)."
+_PARENT_DESCRIPTION = "Not supported: subtasks are unavailable through public APIs, so any value returns SUBTASKS_UNSUPPORTED. Omit it."
+_OMIT_UNCHANGED = "Omit to leave unchanged."
+_PROMPT_NAME_DESCRIPTION = "Prompt name from reminders_list_prompts."
+_PROMPT_ARGUMENTS_DESCRIPTION = "Prompt arguments as a JSON object string; omit when the prompt takes none."
+
+mcp = AppleMCPServer("Apple Reminders MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def _bridge() -> RemindersBridge:
@@ -165,46 +183,51 @@ def reminders_inbox_triage_prompt() -> str:
 @mcp.tool(
     title="Reminders Health",
     description="Report the active Apple Reminders MCP server configuration.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def reminders_health() -> HealthResponse:
     settings = load_settings()
     capabilities, helper_available, helper_compiled = _capabilities()
+    access: dict[str, Any] = {}
+    if helper_available:
+        try:
+            payload = _bridge().access_status()
+            access = {
+                "access_status": str(payload.get("status", "unknown")),
+                "can_access_reminders": bool(payload.get("can_read_events", False)),
+                "permission_client": str(payload["tcc_client"]) if payload.get("tcc_client") else None,
+                "permission_error": payload.get("message"),
+                "permission_suggestion": payload.get("suggestion"),
+            }
+        except RemindersBridgeError as exc:
+            access = {"access_status": "helper_error", "permission_error": exc.message, "permission_suggestion": exc.suggestion}
     return HealthResponse(
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_mode),
         capabilities=capabilities,
         helper_available=helper_available,
         helper_compiled=helper_compiled,
+        **access,
     )
 
 
 @mcp.tool(
     title="Reminders Permission Guide",
     description="Explain how to grant Apple Reminders permission on macOS.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def reminders_permission_guide() -> dict[str, object]:
-    return {
-        "ok": True,
-        "domain": "reminders",
-        "can_prompt_in_app": True,
-        "requires_manual_system_settings": False,
-        "steps": [
-            "Call a Reminders tool from this MCP server.",
-            "Approve the macOS Reminders access prompt when it appears.",
-            "If access was denied before, re-enable it in System Settings > Privacy & Security > Reminders.",
-        ],
-    }
+    return helper_permission_guide("reminders", "Reminders", "Reminders", REMINDERS_HELPER_BUNDLE)
 
 
 @mcp.tool(
     title="Reminders Recheck Permissions",
     description="Recheck Reminders access after the user changes macOS permissions, and notify the client that Reminders resources changed.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 async def reminders_recheck_permissions(ctx: Context) -> HealthResponse:
@@ -218,7 +241,7 @@ async def reminders_recheck_permissions(ctx: Context) -> HealthResponse:
 @mcp.tool(
     title="List Reminder Lists",
     description="List available Apple Reminders lists.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def reminders_list_lists() -> ReminderListResponse | ErrorResponse:
@@ -236,7 +259,7 @@ def reminders_list_lists() -> ReminderListResponse | ErrorResponse:
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def reminders_create_list(title: str) -> ReminderListMutationResponse | ErrorResponse:
+def reminders_create_list(title: Annotated[str, Field(description="Name of the new reminder list.")]) -> ReminderListMutationResponse | ErrorResponse:
     if not title.strip():
         return _error_response("INVALID_INPUT", "title must not be empty", "Provide a non-empty title.")
     try:
@@ -254,7 +277,7 @@ def reminders_create_list(title: str) -> ReminderListMutationResponse | ErrorRes
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def reminders_delete_list(list_id: str) -> DeleteReminderListResponse | ErrorResponse:
+def reminders_delete_list(list_id: Annotated[str, Field(description=f"{_LIST_ID_DESCRIPTION} Deletes the list and all its reminders.")]) -> DeleteReminderListResponse | ErrorResponse:
     try:
         ensure_action_allowed("reminders_delete_list")
         try:
@@ -274,16 +297,20 @@ def reminders_delete_list(list_id: str) -> DeleteReminderListResponse | ErrorRes
 @mcp.tool(
     title="List Reminders",
     description="List reminders with optional list and due-date filters.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def reminders_list_reminders(
-    list_id: str | None = None,
-    include_completed: bool = True,
-    limit: int | str = 100,
-    search: str | None = None,
-    due_after: str | None = None,
-    due_before: str | None = None,
+    list_id: Annotated[str | None, Field(description=f"{_LIST_ID_DESCRIPTION} Omit to search every visible list.")] = None,
+    include_completed: Annotated[bool, Field(description="Include completed reminders; false returns only open ones.")] = True,
+    limit: Annotated[int | str, Field(description="Maximum number of reminders to return (1 or more).")] = 100,
+    search: Annotated[str | None, Field(description="Case-insensitive text matched against reminder titles and notes.")] = None,
+    due_after: Annotated[
+        str | None, Field(description=f"Only reminders due at or after this time; undated reminders are excluded. {_DATE_FORMAT}")
+    ] = None,
+    due_before: Annotated[
+        str | None, Field(description=f"Only reminders due at or before this time; undated reminders are excluded. {_DATE_FORMAT}")
+    ] = None,
 ) -> ReminderListItemsResponse | ErrorResponse:
     try:
         limit_value = _coerce_int_arg("limit", limit, minimum=1)
@@ -308,10 +335,10 @@ def reminders_list_reminders(
 @mcp.tool(
     title="Get Reminder",
     description="Fetch full details for a reminder by reminder_id.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def reminders_get_reminder(reminder_id: str) -> ReminderResponse | ErrorResponse:
+def reminders_get_reminder(reminder_id: Annotated[str, Field(description=_REMINDER_ID_DESCRIPTION)]) -> ReminderResponse | ErrorResponse:
     try:
         detail = _bridge().get_reminder(reminder_id)
         ensure_action_allowed("reminders_get_reminder", detail.list_name)
@@ -329,15 +356,15 @@ def reminders_get_reminder(reminder_id: str) -> ReminderResponse | ErrorResponse
     structured_output=True,
 )
 def reminders_create_reminder(
-    title: str,
-    list_id: str,
-    notes: str | None = None,
-    due_date: str | None = None,
-    due_all_day: bool = False,
-    remind_at: str | None = None,
-    priority: int | str = 0,
-    parent_reminder_id: str | None = None,
-    tags: list[str] | None = None,
+    title: Annotated[str, Field(description="Reminder title.")],
+    list_id: Annotated[str, Field(description=_LIST_ID_DESCRIPTION)],
+    notes: Annotated[str | None, Field(description="Plain-text notes.")] = None,
+    due_date: Annotated[str | None, Field(description=_DUE_DATE_DESCRIPTION)] = None,
+    due_all_day: Annotated[bool, Field(description=_DUE_ALL_DAY_DESCRIPTION)] = False,
+    remind_at: Annotated[str | None, Field(description=_REMIND_AT_DESCRIPTION)] = None,
+    priority: Annotated[int | str, Field(description=_PRIORITY_DESCRIPTION)] = 0,
+    parent_reminder_id: Annotated[str | None, Field(description=_PARENT_DESCRIPTION)] = None,
+    tags: Annotated[list[str] | None, Field(description=_TAGS_DESCRIPTION)] = None,
 ) -> ReminderResponse | ErrorResponse:
     try:
         if not title.strip():
@@ -374,20 +401,23 @@ def reminders_create_reminder(
 @mcp.tool(
     title="Update Reminder",
     description="Update one or more fields on an existing reminder.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def reminders_update_reminder(
-    reminder_id: str,
-    title: str | None = None,
-    list_id: str | None = None,
-    notes: str | None = None,
-    due_date: str | None = None,
-    due_all_day: bool | None = None,
-    remind_at: str | None = None,
-    priority: int | str | None = None,
-    parent_reminder_id: str | None = None,
-    tags: list[str] | None = None,
+    reminder_id: Annotated[str, Field(description=_REMINDER_ID_DESCRIPTION)],
+    title: Annotated[str | None, Field(description=f"New title. {_OMIT_UNCHANGED}")] = None,
+    list_id: Annotated[str | None, Field(description=f"Destination list to move the reminder to. {_LIST_ID_DESCRIPTION} {_OMIT_UNCHANGED}")] = None,
+    notes: Annotated[str | None, Field(description=f"Replacement notes; overwrites the existing notes. {_OMIT_UNCHANGED}")] = None,
+    due_date: Annotated[str | None, Field(description=f"New due date. {_DATE_FORMAT} {_OMIT_UNCHANGED}")] = None,
+    due_all_day: Annotated[bool | None, Field(description=f"{_DUE_ALL_DAY_DESCRIPTION} Use together with due_date.")] = None,
+    remind_at: Annotated[str | None, Field(description=f"New alert time; replaces the reminder's alerts. {_DATE_FORMAT} {_OMIT_UNCHANGED}")] = None,
+    priority: Annotated[int | str | None, Field(description=f"{_PRIORITY_DESCRIPTION} {_OMIT_UNCHANGED}")] = None,
+    parent_reminder_id: Annotated[str | None, Field(description=_PARENT_DESCRIPTION)] = None,
+    tags: Annotated[
+        list[str] | None,
+        Field(description=f"{_TAGS_DESCRIPTION} Added to the existing notes (or to notes, if given); existing tags are not removed."),
+    ] = None,
 ) -> ReminderResponse | ErrorResponse:
     try:
         if parent_reminder_id is not None:
@@ -422,10 +452,10 @@ def reminders_update_reminder(
 @mcp.tool(
     title="Complete Reminder",
     description="Mark a reminder as completed.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=True, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def reminders_complete_reminder(reminder_id: str) -> ReminderResponse | ErrorResponse:
+def reminders_complete_reminder(reminder_id: Annotated[str, Field(description=_REMINDER_ID_DESCRIPTION)]) -> ReminderResponse | ErrorResponse:
     try:
         ensure_action_allowed("reminders_complete_reminder", _reminder_owner_list(reminder_id))
         detail = _bridge().set_completed(reminder_id, True)
@@ -439,10 +469,10 @@ def reminders_complete_reminder(reminder_id: str) -> ReminderResponse | ErrorRes
 @mcp.tool(
     title="Uncomplete Reminder",
     description="Mark a reminder as not completed.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=True, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def reminders_uncomplete_reminder(reminder_id: str) -> ReminderResponse | ErrorResponse:
+def reminders_uncomplete_reminder(reminder_id: Annotated[str, Field(description=_REMINDER_ID_DESCRIPTION)]) -> ReminderResponse | ErrorResponse:
     try:
         ensure_action_allowed("reminders_uncomplete_reminder", _reminder_owner_list(reminder_id))
         detail = _bridge().set_completed(reminder_id, False)
@@ -459,7 +489,7 @@ def reminders_uncomplete_reminder(reminder_id: str) -> ReminderResponse | ErrorR
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def reminders_delete_reminder(reminder_id: str) -> DeleteReminderResponse | ErrorResponse:
+def reminders_delete_reminder(reminder_id: Annotated[str, Field(description=_REMINDER_ID_DESCRIPTION)]) -> DeleteReminderResponse | ErrorResponse:
     try:
         ensure_action_allowed("reminders_delete_reminder", _reminder_owner_list(reminder_id))
         deleted = _bridge().delete_reminder(reminder_id)
@@ -470,7 +500,7 @@ def reminders_delete_reminder(reminder_id: str) -> DeleteReminderResponse | Erro
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 
 
-def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, object]]:
     return [
         {
             "role": getattr(message, "role", "user"),
@@ -483,7 +513,7 @@ def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]
 @mcp.tool(
     title="Reminders List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def reminders_list_prompts() -> dict[str, object]:
@@ -498,12 +528,17 @@ async def reminders_list_prompts() -> dict[str, object]:
 @mcp.tool(
     title="Reminders Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-async def reminders_get_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+async def reminders_get_prompt(
+    name: Annotated[str, Field(description=_PROMPT_NAME_DESCRIPTION)],
+    arguments_json: Annotated[str | None, Field(description=_PROMPT_ARGUMENTS_DESCRIPTION)] = None,
+) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
+    if isinstance(prompt, InputRequiredResult):
+        return {"ok": False, "name": name, "error": {"error_code": "PROMPT_INPUT_REQUIRED", "message": f"Prompt '{name}' needs client input before it can render."}}
     return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
 
 

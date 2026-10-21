@@ -261,7 +261,7 @@
       ],
       "name": "shortcuts_run_shortcut",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "shortcuts_run_shortcut",
       "tags": [
         "shortcuts",

@@ -384,7 +384,7 @@
       ],
       "name": "notes_update_note",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "notes_update_note",
       "tags": [
         "notes",
@@ -507,7 +507,7 @@
       ],
       "name": "notes_move_note",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "notes_move_note",
       "tags": [
         "notes",
@@ -560,7 +560,7 @@
         "account",
         "nested"
       ],
-      "title": "Create Folder",
+      "title": "Create Notes Folder",
       "usage_intent": "Create a new folder in an Apple Notes account or nested folder."
     },
     {
@@ -588,7 +588,7 @@
       ],
       "name": "notes_rename_folder",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "notes_rename_folder",
       "tags": [
         "notes",
@@ -671,7 +671,7 @@
         "attachments",
         "attachment"
       ],
-      "title": "List Attachments",
+      "title": "List Note Attachments",
       "usage_intent": "List attachments for a note."
     },
     {

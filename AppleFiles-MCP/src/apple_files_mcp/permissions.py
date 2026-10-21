@@ -3,6 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from apple_files_mcp.config import load_settings
+from apple_mcp_common.safety import safety_block_suggestion
+
+SAFETY_ENV_VAR = "APPLE_FILES_MCP_SAFETY_MODE"
 
 
 @dataclass(frozen=True)
@@ -48,8 +51,9 @@ def ensure_action_allowed(action: str) -> None:
         return
     if action in FULL_ACCESS_ACTIONS and safety_mode == "full_access":
         return
+    required_mode = "full_access" if action in FULL_ACCESS_ACTIONS else "safe_manage"
     raise SafetyError(
         error_code="SAFETY_RESTRICTION",
-        message=f"{action} is not allowed while APPLE_FILES_MCP_SAFETY_MODE={safety_mode}.",
-        suggestion="Use safe_manage for folder creation and moves, or full_access for deletes.",
+        message=f"{action} is not allowed while {SAFETY_ENV_VAR}={safety_mode}.",
+        suggestion=safety_block_suggestion(SAFETY_ENV_VAR, required_mode, safety_mode),
     )

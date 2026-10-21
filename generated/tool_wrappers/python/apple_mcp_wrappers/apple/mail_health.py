@@ -10,7 +10,7 @@ async def mail_health(
 ) -> Any:
     """Mail Health
 
-    Delegated Apple domain tool 'mail_health' exposed through Apple-Tools-MCP.
+    Report the active Apple Mail MCP configuration.
 
     Example:
         await mail_health(client)

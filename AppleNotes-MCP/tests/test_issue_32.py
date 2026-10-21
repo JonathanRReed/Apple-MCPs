@@ -142,7 +142,7 @@ def test_run_script_still_rejects_invalid_json_or_non_objects(monkeypatch, outpu
     assert exc_info.value.error_code == "INVALID_SCRIPT_OUTPUT"
 
 
-@pytest.mark.parametrize("script_name", ["get_note", "list_notes", "create_note", "update_note"])
+@pytest.mark.parametrize("script_name", ["get_note", "list_notes", "update_note"])
 def test_note_json_fetches_values_in_explicit_notes_context(script_name) -> None:
     source = (SCRIPTS_DIR / f"{script_name}.applescript").read_text()
     handler = source.split("on note_json(", 1)[1].split("end note_json", 1)[0]
@@ -159,6 +159,41 @@ def test_note_json_fetches_values_in_explicit_notes_context(script_name) -> None
     if script_name in {"get_note", "list_notes"}:
         assert 'tell application "Notes" to set rawCreatedDate to creation date of n' in handler
         assert 'tell application "Notes" to set rawModifiedDate to modification date of n' in handler
+
+
+def test_create_note_reads_only_the_new_note_id() -> None:
+    # Live macOS 27.2/iCloud: name, body and plaintext reads on a just-created
+    # note each blocked for their full 10-second Apple Event timeout, so the
+    # post-create readback could outlast the script deadline after the note
+    # existed and turn a successful create into NOTE_CREATE_STATUS_UNKNOWN.
+    source = (SCRIPTS_DIR / "create_note.applescript").read_text()
+    handler = source.split("on note_json(", 1)[1].split("end note_json", 1)[0]
+    assert 'tell application "Notes" to set rawNoteId to id of n' in handler
+    for property_name in ("name", "body", "plaintext", "attachments"):
+        assert f" {property_name} of n" not in handler
+    assert "with timeout" not in handler
+    assert 'my note_json(accountId, accountName, folderId, folderName, newNote, titleText, noteBody)' in source
+
+
+def test_create_note_without_body_returns_script_identity_without_readback(monkeypatch) -> None:
+    bridge = AppleNotesBridge(SCRIPTS_DIR)
+    calls: list[str] = []
+
+    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+        calls.append(script_name)
+        assert script_name == "create_note.applescript"
+        assert args[0] == "Disposable \u00fc title"
+        return {"note": note_item("note-new", title=args[0], plaintext="", body_html="", attachment_count=0)}
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+
+    detail = bridge.create_note(title="Disposable \u00fc title", folder_id="folder-1")
+
+    assert calls == ["create_note.applescript"]
+    assert detail.note_id == "note-new"
+    assert detail.title == "Disposable \u00fc title"
+    assert detail.folder_id == "folder-1"
+    assert detail.account_name == "iCloud"
 
 
 @pytest.mark.skipif(

@@ -8,9 +8,9 @@ from .client import MCPToolCaller, call_tool_json
 async def system_get_accessibility_settings(
     client: MCPToolCaller
 ) -> Any:
-    """System Get Accessibility Settings
+    """Get Accessibility Settings
 
-    Delegated Apple domain tool 'system_get_accessibility_settings' exposed through Apple-Tools-MCP.
+    Read common macOS accessibility settings such as reduce motion and increase contrast.
 
     Example:
         await system_get_accessibility_settings(client)

@@ -424,18 +424,10 @@ class AppleContactsBridge:
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         self._stop_process(process)
-                        raise ContactsBridgeError(
-                            "APPLESCRIPT_TIMEOUT",
-                            f"AppleScript exceeded the {SCRIPT_TIMEOUT_SECONDS}-second timeout.",
-                            "Ensure Contacts.app is responsive and try again.",
-                        )
+                        raise self._timeout_error()
                     if stdout_file.tell() > MAX_SCRIPT_OUTPUT_BYTES or stderr_file.tell() > MAX_SCRIPT_OUTPUT_BYTES:
                         self._stop_process(process)
-                        raise ContactsBridgeError(
-                            "APPLESCRIPT_OUTPUT_TOO_LARGE",
-                            "AppleScript output exceeded the allowed size.",
-                            "Request fewer contacts and try again.",
-                        )
+                        raise self._output_too_large_error()
                     with suppress(subprocess.TimeoutExpired):
                         process.wait(timeout=min(0.05, remaining))
 
@@ -444,11 +436,7 @@ class AppleContactsBridge:
                 stdout = stdout_file.read(MAX_SCRIPT_OUTPUT_BYTES + 1)
                 stderr = stderr_file.read(MAX_SCRIPT_OUTPUT_BYTES + 1)
                 if len(stdout) > MAX_SCRIPT_OUTPUT_BYTES or len(stderr) > MAX_SCRIPT_OUTPUT_BYTES:
-                    raise ContactsBridgeError(
-                        "APPLESCRIPT_OUTPUT_TOO_LARGE",
-                        "AppleScript output exceeded the allowed size.",
-                        "Request fewer contacts and try again.",
-                    )
+                    raise self._output_too_large_error()
                 returncode = process.returncode
         except OSError as exc:
             raise ContactsBridgeError(
@@ -482,6 +470,27 @@ class AppleContactsBridge:
                 "Inspect the AppleScript output and ensure it returns an object.",
             )
         return payload
+
+    def _timeout_error(self) -> ContactsBridgeError:
+        if self.helper_source is None:
+            return ContactsBridgeError(
+                "APPLESCRIPT_TIMEOUT",
+                f"AppleScript exceeded the {SCRIPT_TIMEOUT_SECONDS}-second timeout.",
+                "Ensure Contacts.app is responsive and try again.",
+            )
+        return ContactsBridgeError(
+            "HELPER_TIMEOUT",
+            f"The native Contacts helper exceeded the {SCRIPT_TIMEOUT_SECONDS}-second timeout.",
+            "If a macOS Contacts permission prompt is open, answer it and retry. Otherwise retry with a smaller limit.",
+        )
+
+    def _output_too_large_error(self) -> ContactsBridgeError:
+        source = "AppleScript" if self.helper_source is None else "The native Contacts helper"
+        return ContactsBridgeError(
+            "APPLESCRIPT_OUTPUT_TOO_LARGE" if self.helper_source is None else "HELPER_OUTPUT_TOO_LARGE",
+            f"{source} output exceeded the allowed size.",
+            "Request fewer contacts and try again.",
+        )
 
     def _ensure_native_helper(self) -> Path:
         assert self.helper_source is not None and self.helper_build_dir is not None

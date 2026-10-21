@@ -202,6 +202,50 @@ def test_native_build_is_a_signed_bundle_with_contacts_usage_description(tmp_pat
     assert signed[0][-1].endswith('/' + app.parent.name + '/Apple Contacts MCP Helper.app')
 
 
+def _slow_bridge(tmp_path, monkeypatch, *, native):
+    from apple_contacts_mcp import contacts_bridge
+
+    monkeypatch.setattr(contacts_bridge, 'SCRIPT_TIMEOUT_SECONDS', 0)
+    script = tmp_path / 'slow.applescript'
+    script.write_text('')
+    bridge = AppleContactsBridge(tmp_path, helper_source=tmp_path / 'bridge.swift' if native else None, helper_build_dir=tmp_path)
+    monkeypatch.setattr(bridge, '_ensure_native_helper', lambda: Path('/bin/sleep'))
+
+    class SlowProcess:
+        returncode = None
+
+        def __init__(self, command, **kwargs):
+            self.command = command
+
+        def poll(self):
+            return None
+
+        def wait(self, timeout=None):
+            return 0
+
+        def terminate(self):
+            pass
+
+    monkeypatch.setattr(subprocess, 'Popen', SlowProcess)
+    return bridge
+
+
+def test_native_helper_timeout_is_not_labelled_applescript(tmp_path, monkeypatch):
+    bridge = _slow_bridge(tmp_path, monkeypatch, native=True)
+    with pytest.raises(ContactsBridgeError) as error:
+        bridge._run_script('slow.applescript')
+    assert error.value.error_code == 'HELPER_TIMEOUT'
+    assert 'AppleScript' not in error.value.message
+    assert 'permission prompt' in error.value.suggestion
+
+
+def test_applescript_backend_timeout_keeps_its_label(tmp_path, monkeypatch):
+    bridge = _slow_bridge(tmp_path, monkeypatch, native=False)
+    with pytest.raises(ContactsBridgeError) as error:
+        bridge._run_script('slow.applescript')
+    assert error.value.error_code == 'APPLESCRIPT_TIMEOUT'
+
+
 def test_native_permission_error_keeps_helper_guidance():
     bridge = AppleContactsBridge(Path('/tmp/scripts'), helper_source=Path('/tmp/bridge.swift'), helper_build_dir=Path('/tmp/build'))
     error = bridge._map_script_error(

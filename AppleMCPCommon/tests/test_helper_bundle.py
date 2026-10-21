@@ -92,25 +92,50 @@ def test_source_or_recipe_change_builds_new_version_and_keeps_old(monkeypatch, t
     assert third.read_text() == "second"
 
 
-@pytest.mark.parametrize("failure", ["exit", "missing"])
-def test_signing_failure_is_not_fatal(monkeypatch, tmp_path, source, failure):
+def test_missing_codesign_is_not_fatal(monkeypatch, tmp_path, source):
+    # Without codesign (not macOS) the helper keeps its linker signature.
     calls = []
-    if failure == "exit":
-        build_fixture(monkeypatch, calls, sign_result=1)
-    else:
-        build_fixture(monkeypatch, calls)
-        real_run = subprocess.run
+    build_fixture(monkeypatch, calls)
+    real_run = subprocess.run
 
-        def no_codesign(command, **kwargs):
-            if command[0] == CODESIGN:
-                raise FileNotFoundError(CODESIGN)
-            return real_run(command, **kwargs)
+    def no_codesign(command, **kwargs):
+        if command[0] == CODESIGN:
+            raise FileNotFoundError(CODESIGN)
+        return real_run(command, **kwargs)
 
-        monkeypatch.setattr(subprocess, "run", no_codesign)
+    monkeypatch.setattr(subprocess, "run", no_codesign)
 
     executable = ensure_helper_bundle(source, tmp_path, SPEC)
 
     assert executable.is_file()
+
+
+@pytest.mark.parametrize("failure", ["exit", "timeout"])
+def test_signing_failure_publishes_nothing_and_retries(monkeypatch, tmp_path, source, failure):
+    # Review follow-up: a failed signature used to be published and then reused
+    # forever, leaving the helper without its stable identity.
+    calls = []
+    build_fixture(monkeypatch, calls, sign_result=1)
+    if failure == "timeout":
+        real_run = subprocess.run
+
+        def slow_codesign(command, **kwargs):
+            if command[0] == CODESIGN:
+                raise subprocess.TimeoutExpired(command, 60)
+            return real_run(command, **kwargs)
+
+        monkeypatch.setattr(subprocess, "run", slow_codesign)
+
+    with pytest.raises(NativeHelperError) as raised:
+        ensure_helper_bundle(source, tmp_path, SPEC)
+
+    assert raised.value.error_code == "HELPER_SIGN_FAILED"
+    assert "xcode-select" in (raised.value.suggestion or "")
+    assert not helper_bundle_executable(source, tmp_path, SPEC).exists()
+    assert not any(path.name.startswith(".") for path in tmp_path.iterdir())
+
+    build_fixture(monkeypatch, calls)
+    assert ensure_helper_bundle(source, tmp_path, SPEC).is_file()
 
 
 @pytest.mark.parametrize(

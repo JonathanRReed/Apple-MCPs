@@ -1,9 +1,19 @@
 from __future__ import annotations
 
 import ipaddress
+import logging
 from typing import Any
 
 from mcp_types.version import MODERN_PROTOCOL_VERSIONS
+
+
+def python_log_level(value: str | None) -> int:
+    """Map a LOG_LEVEL setting to a logging level; unknown names fall back to INFO.
+
+    Only real level names count. ``getattr(logging, value)`` would also accept
+    module attributes such as ``BASIC_FORMAT`` and crash ``basicConfig``.
+    """
+    return logging.getLevelNamesMapping().get((value or "").strip().upper(), logging.INFO)
 
 
 def require_loopback_host(host: str) -> str:

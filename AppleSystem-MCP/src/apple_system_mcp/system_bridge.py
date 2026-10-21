@@ -5,9 +5,17 @@ import re
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
-from typing import ClassVar
+from typing import ClassVar, TypedDict
 
 from apple_system_mcp.models import AppRecord, BatteryStatus
+
+
+class SettingMutation(TypedDict):
+    """Result of a settings write; validated into models.SettingMutationResponse."""
+
+    requested_value: bool | str
+    observed_value: bool | str | None
+    restarted_processes: list[str]
 
 
 @dataclass(frozen=True)
@@ -302,7 +310,7 @@ class SystemBridge:
             "finder": self.finder_settings(),
         }
 
-    def set_appearance_mode(self, mode: str) -> dict[str, object]:
+    def set_appearance_mode(self, mode: str) -> SettingMutation:
         normalized_mode = mode.strip().lower()
         if normalized_mode not in {"light", "dark"}:
             raise SystemBridgeError("INVALID_INPUT", "Appearance mode must be 'light' or 'dark'.", "Use light or dark.")
@@ -319,55 +327,55 @@ class SystemBridge:
                 "end run",
             ]
         )
-        observed_mode = self.appearance_settings()["mode"]
+        observed_mode = str(self.appearance_settings()["mode"])
         return {"requested_value": normalized_mode, "observed_value": observed_mode, "restarted_processes": []}
 
-    def set_show_all_extensions(self, enabled: bool) -> dict[str, object]:
+    def set_show_all_extensions(self, enabled: bool) -> SettingMutation:
         self._write_defaults("NSGlobalDomain", "AppleShowAllExtensions", "-bool", "true" if enabled else "false")
         observed_value = self.appearance_settings()["show_all_extensions"]
         return {"requested_value": enabled, "observed_value": bool(observed_value), "restarted_processes": []}
 
-    def set_show_hidden_files(self, enabled: bool) -> dict[str, object]:
+    def set_show_hidden_files(self, enabled: bool) -> SettingMutation:
         self._write_defaults("com.apple.finder", "AppleShowAllFiles", "-bool", "true" if enabled else "false")
         self._restart_process("Finder")
         observed_value = self.finder_settings()["show_hidden_files"]
         return {"requested_value": enabled, "observed_value": bool(observed_value), "restarted_processes": ["Finder"]}
 
-    def set_finder_path_bar(self, enabled: bool) -> dict[str, object]:
+    def set_finder_path_bar(self, enabled: bool) -> SettingMutation:
         self._write_defaults("com.apple.finder", "ShowPathbar", "-bool", "true" if enabled else "false")
         self._restart_process("Finder")
         observed_value = self.finder_settings()["show_path_bar"]
         return {"requested_value": enabled, "observed_value": bool(observed_value), "restarted_processes": ["Finder"]}
 
-    def set_finder_status_bar(self, enabled: bool) -> dict[str, object]:
+    def set_finder_status_bar(self, enabled: bool) -> SettingMutation:
         self._write_defaults("com.apple.finder", "ShowStatusBar", "-bool", "true" if enabled else "false")
         self._restart_process("Finder")
         observed_value = self.finder_settings()["show_status_bar"]
         return {"requested_value": enabled, "observed_value": bool(observed_value), "restarted_processes": ["Finder"]}
 
-    def set_dock_autohide(self, enabled: bool) -> dict[str, object]:
+    def set_dock_autohide(self, enabled: bool) -> SettingMutation:
         self._write_defaults("com.apple.dock", "autohide", "-bool", "true" if enabled else "false")
         self._restart_process("Dock")
         observed_value = self.dock_settings()["autohide"]
         return {"requested_value": enabled, "observed_value": bool(observed_value), "restarted_processes": ["Dock"]}
 
-    def set_dock_show_recents(self, enabled: bool) -> dict[str, object]:
+    def set_dock_show_recents(self, enabled: bool) -> SettingMutation:
         self._write_defaults("com.apple.dock", "show-recents", "-bool", "true" if enabled else "false")
         self._restart_process("Dock")
         observed_value = self.dock_settings()["show_recents"]
         return {"requested_value": enabled, "observed_value": bool(observed_value), "restarted_processes": ["Dock"]}
 
-    def set_reduce_motion(self, enabled: bool) -> dict[str, object]:
+    def set_reduce_motion(self, enabled: bool) -> SettingMutation:
         self._write_defaults("com.apple.universalaccess", "reduceMotion", "-bool", "true" if enabled else "false")
         observed_value = self.accessibility_settings()["reduce_motion"]
         return {"requested_value": enabled, "observed_value": bool(observed_value), "restarted_processes": []}
 
-    def set_increase_contrast(self, enabled: bool) -> dict[str, object]:
+    def set_increase_contrast(self, enabled: bool) -> SettingMutation:
         self._write_defaults("com.apple.universalaccess", "increaseContrast", "-bool", "true" if enabled else "false")
         observed_value = self.accessibility_settings()["increase_contrast"]
         return {"requested_value": enabled, "observed_value": bool(observed_value), "restarted_processes": []}
 
-    def set_reduce_transparency(self, enabled: bool) -> dict[str, object]:
+    def set_reduce_transparency(self, enabled: bool) -> SettingMutation:
         self._write_defaults("com.apple.universalaccess", "reduceTransparency", "-bool", "true" if enabled else "false")
         observed_value = self.accessibility_settings()["reduce_transparency"]
         return {"requested_value": enabled, "observed_value": bool(observed_value), "restarted_processes": []}
@@ -670,7 +678,7 @@ class SystemBridge:
                 f"Preference domain '{normalized_domain}' did not export as a dictionary.",
                 "Retry the request or inspect the domain manually.",
             )
-        return self._json_safe(payload)
+        return {str(key): self._json_safe(item) for key, item in payload.items()}
 
     def _json_safe(self, value: object) -> object:
         if isinstance(value, dict):

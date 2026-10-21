@@ -4,6 +4,7 @@ import json
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 from urllib.parse import quote_plus, urlencode
 
 from apple_maps_mcp.config import load_settings
@@ -63,7 +64,8 @@ class AppleMapsBridge:
                 "Install Xcode command line tools and retry.",
             ) from exc
 
-    def _run_helper(self, command: str, payload: dict[str, object]) -> dict[str, object]:
+    def _run_helper(self, command: str, payload: dict[str, object]) -> dict[str, Any]:
+        # Decoded helper JSON; callers validate the shape with the response models.
         self._ensure_helper()
         try:
             result = subprocess.run(
@@ -93,10 +95,10 @@ class AppleMapsBridge:
         except json.JSONDecodeError as exc:
             raise MapsBridgeError("INVALID_RESPONSE", "Apple Maps helper returned invalid JSON.", "Retry the request.") from exc
 
-    def search_places(self, query: str, limit: int = 5) -> dict[str, object]:
+    def search_places(self, query: str, limit: int = 5) -> dict[str, Any]:
         return self._run_helper("search-places", {"query": query, "limit": limit})
 
-    def directions(self, origin: str, destination: str, transport: str = "driving") -> dict[str, object]:
+    def directions(self, origin: str, destination: str, transport: str = "driving") -> dict[str, Any]:
         payload = self._run_helper("directions", {"origin": origin, "destination": destination, "transport": transport})
         payload["maps_url"] = self.maps_url(destination=destination, origin=origin, transport=transport)
         return payload

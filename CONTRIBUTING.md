@@ -25,10 +25,11 @@ uv sync --all-packages
 
 Run any server from the workspace venv (`.venv/bin/apple-tools-mcp`, `.venv/bin/apple-mail-mcp`, ...) or via its `start.sh`, which prefers uv and falls back to a plain venv bootstrap.
 
-Most development work uses (config lives in the root `ruff.toml`):
+Most development work uses lint and type checks (Ruff config lives in the root `ruff.toml`; ty config and its pinned version live in the root `pyproject.toml`):
 
 ```bash
 uv run ruff check .
+uv run ty check
 ```
 
 and server-local tests:
@@ -45,7 +46,7 @@ The Swift bridge sources are vendored per package (`Apple-Calendar-MCP` and `App
 Run the checks that match your change:
 
 - Docs-only changes: verify links, commands, and server names by reading the affected README files.
-- Python changes: run `ruff check .` from the repo root.
+- Python changes: run `ruff check .` and `ty check` from the repo root.
 - Server behavior changes: run `pytest tests` in each affected server package.
 - Unified server changes: run `pytest tests` in `Apple-Tools-MCP`.
 - Published-surface changes: run the repo-wide Inspector smoke check:

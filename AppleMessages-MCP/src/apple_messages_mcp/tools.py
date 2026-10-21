@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+from typing import Literal
 
 from mcp.server.mcpserver import Context, MCPServer
-from mcp.types import Annotations, ToolAnnotations
+from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
@@ -36,6 +37,13 @@ SERVER_INSTRUCTIONS = (
 )
 
 mcp = MCPServer("Apple Messages MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+
+
+_AUTOMATION_STATUS_BY_ERROR_CODE: dict[str, Literal["not_probed", "unknown", "denied"]] = {
+    "NOT_PROBED": "not_probed",
+    "AUTHORIZATION_UNKNOWN": "unknown",
+    "PERMISSION_DENIED": "denied",
+}
 
 
 def _db_bridge() -> MessagesDBBridge:
@@ -166,9 +174,9 @@ def messages_health() -> HealthResponse:
         capabilities=caps,
         history_access=history_access,
         automation_access=automation_access,
-        automation_access_status=("authorized" if automation_access else {
-            "NOT_PROBED": "not_probed", "AUTHORIZATION_UNKNOWN": "unknown", "PERMISSION_DENIED": "denied",
-        }.get(automation_error.error_code if automation_error is not None else "", "failed")),
+        automation_access_status=("authorized" if automation_access else _AUTOMATION_STATUS_BY_ERROR_CODE.get(
+            automation_error.error_code if automation_error is not None else "", "failed"
+        )),
         automation_access_error_code=automation_error.error_code if automation_error is not None else None,
         history_access_error=history_error.message if history_error is not None else None,
         history_access_suggestion=history_error.suggestion if history_error is not None else None,
@@ -387,7 +395,9 @@ def messages_reply_in_conversation(chat_id: str, text: str, service_name: str | 
             )
         # One-to-one sends address the participant, so echo the conversation
         # the caller replied in.
-        return SendResponse(**{**result, "chat_id": result.get("chat_id") or chat_id})
+        response = SendResponse(**result)
+        response.chat_id = response.chat_id or chat_id
+        return response
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except MessagesDBBridgeError as exc:
@@ -443,7 +453,7 @@ def _thread_service_preference(latest_service: str | None) -> list[str] | None:
     return None  # iMessage or unknown: keep the default
 
 
-def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, object]]:
     return [
         {
             "role": getattr(message, "role", "user"),
@@ -478,6 +488,8 @@ async def messages_list_prompts() -> dict[str, object]:
 async def messages_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
+    if isinstance(prompt, InputRequiredResult):
+        return {"ok": False, "name": name, "error": {"error_code": "PROMPT_INPUT_REQUIRED", "message": f"Prompt '{name}' needs client input before it can render."}}
     return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
 
 

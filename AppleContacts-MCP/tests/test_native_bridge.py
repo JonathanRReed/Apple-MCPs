@@ -290,3 +290,21 @@ def test_permission_guide_names_the_helper():
     guide = tools.contacts_permission_guide()
     assert guide['helper_name'] == 'Apple Contacts MCP Helper'
     assert 'tccutil reset AddressBook io.github.jonathanrreed.apple-mcps.contacts-bridge' in ' '.join(guide['steps'])
+
+
+def test_permission_guide_matches_applescript_backend(monkeypatch):
+    # The AppleScript backend never launches the helper, so its guide must point
+    # at the host app's Automation and Contacts access instead.
+    from apple_contacts_mcp import tools
+    from apple_contacts_mcp.config import load_settings
+
+    monkeypatch.setenv('APPLE_CONTACTS_MCP_BACKEND', 'applescript')
+    load_settings.cache_clear()
+    try:
+        guide = tools.contacts_permission_guide()
+    finally:
+        monkeypatch.delenv('APPLE_CONTACTS_MCP_BACKEND')
+        load_settings.cache_clear()
+    assert guide['backend'] == 'applescript'
+    assert 'helper_name' not in guide
+    assert 'Automation' in ' '.join(guide['steps'])

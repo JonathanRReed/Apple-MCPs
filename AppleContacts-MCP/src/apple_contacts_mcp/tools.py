@@ -127,6 +127,22 @@ def contacts_health() -> HealthResponse:
     structured_output=True,
 )
 def contacts_permission_guide() -> dict[str, object]:
+    if load_settings().backend == "applescript":
+        # The AppleScript backend never launches the native helper: osascript
+        # drives Contacts.app, so access belongs to the app running this server.
+        return {
+            "ok": True,
+            "domain": "contacts",
+            "backend": "applescript",
+            "can_prompt_in_app": True,
+            "requires_manual_system_settings": False,
+            "steps": [
+                "Call a Contacts tool from this MCP server.",
+                "Approve the macOS prompts to let the app running this server control Contacts and access your contacts.",
+                "If access was denied before, re-enable that app in System Settings > Privacy & Security > Automation (Contacts) and > Contacts.",
+                "Or unset APPLE_CONTACTS_MCP_BACKEND to use the native helper, which can ask for access in its own name.",
+            ],
+        }
     return helper_permission_guide("contacts", "Contacts", "AddressBook", CONTACTS_HELPER_BUNDLE)
 
 

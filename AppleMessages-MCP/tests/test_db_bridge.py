@@ -225,3 +225,33 @@ def test_search_attributed_body_is_case_insensitive_for_non_ascii(tmp_path) -> N
 
     assert [message.message_id for message in bridge.search_messages(query="été")] == ["msg-5"]
     assert [message.message_id for message in bridge.search_messages(query="CAFÉ")] == ["msg-5"]
+
+
+def test_latest_service_for_chat_returns_most_recent_service(tmp_path) -> None:
+    db_path = tmp_path / "chat.db"
+    _build_fixture(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("INSERT INTO message VALUES (9, 'msg-9', 1, 'later sms', NULL, 'SMS', 9, 0, 1, 0)")
+    conn.execute("INSERT INTO chat_message_join VALUES (1, 9)")
+    conn.commit()
+    conn.close()
+    bridge = MessagesDBBridge(db_path)
+
+    assert bridge.latest_service_for_chat("chat-guid-1") == "SMS"
+    assert bridge.latest_service_for_chat("missing") is None
+
+def test_latest_service_for_chat_skips_failed_sends(tmp_path) -> None:
+    db_path = tmp_path / "chat.db"
+    _build_fixture(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("ALTER TABLE message ADD COLUMN error INTEGER DEFAULT 0")
+    conn.execute("INSERT INTO message (ROWID, guid, handle_id, text, service, date, is_from_me, is_read, cache_has_attachments, error)"
+                 " VALUES (8, 'msg-8', 1, 'old sms', 'SMS', 8, 1, 1, 0, 0)")
+    # A newer iMessage that was never delivered must not decide the thread's service.
+    conn.execute("INSERT INTO message (ROWID, guid, handle_id, text, service, date, is_from_me, is_read, cache_has_attachments, error)"
+                 " VALUES (9, 'msg-9', 1, 'Hi', 'iMessage', 9, 1, 1, 0, 22)")
+    conn.executemany("INSERT INTO chat_message_join VALUES (1, ?)", [(8,), (9,)])
+    conn.commit()
+    conn.close()
+
+    assert MessagesDBBridge(db_path).latest_service_for_chat("chat-guid-1") == "SMS"

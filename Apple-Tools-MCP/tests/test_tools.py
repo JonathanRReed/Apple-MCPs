@@ -1491,17 +1491,18 @@ def test_notes_append_wrapper_passes_body_text(monkeypatch) -> None:
 def test_messages_send_attachment_wrapper_passes_text(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
-    def fake_send_attachment(recipient, file_path, text=None):
+    def fake_send_attachment(recipient, file_path, text=None, service_name=None):
         captured["recipient"] = recipient
         captured["file_path"] = file_path
         captured["text"] = text
+        captured["service_name"] = service_name
         return {"ok": True}
 
     monkeypatch.setattr(tools, "_messages_send_attachment", fake_send_attachment)
 
-    tools.messages_send_attachment("+15551234567", "/tmp/test.png", text="hello")
+    tools.messages_send_attachment("+15551234567", "/tmp/test.png", text="hello", service_name="SMS")
 
-    assert captured == {"recipient": "+15551234567", "file_path": "/tmp/test.png", "text": "hello"}
+    assert captured == {"recipient": "+15551234567", "file_path": "/tmp/test.png", "text": "hello", "service_name": "SMS"}
 
 
 def test_main_uses_streamable_http_settings(monkeypatch, tmp_path) -> None:

@@ -74,7 +74,7 @@ MCP `tools/list` returns each tool's schemas and read or write annotations. Use 
 
 Resolve recipients through Contacts before sending, unless you have the exact address. For Mail conversations, use `mail_get_thread`, `mail_reply_latest_in_thread`, or `mail_archive_thread`. Pass an exact sender email in `from_account` when the sending identity matters.
 
-Mail search requires a query: a sender, subject fragment, or `*`. Reminders `due_date` requires a timezone offset, such as `yyyy-MM-ddTHH:mm:ss-08:00`. Omit `service_name` when sending iMessages.
+Mail search requires a query: a sender, subject fragment, or `*`. Reminders `due_date` requires a timezone offset, such as `yyyy-MM-ddTHH:mm:ss-08:00`. Messages sends default to iMessage. Pass `service_name` (`SMS` or `RCS`) to send through the paired iPhone; replies in SMS/RCS threads follow the thread's service automatically.
 
 The unified server also provides `apple_generate_daily_briefing`, `apple_generate_weekly_briefing`, and `apple_triage_communications_task`. Clients without prompt support can use `apple_list_prompts`, `apple_get_prompt`, and their per-server equivalents.
 

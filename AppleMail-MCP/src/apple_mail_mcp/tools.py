@@ -10,7 +10,7 @@ from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnot
 from pydantic import Field
 
 from apple_mail_mcp.config import Settings, load_settings
-from apple_mail_mcp.mail_bridge import AppleMailBridge, MailBridgeError
+from apple_mail_mcp.mail_bridge import AppleMailBridge, MailBridgeError, MailSendStatusUnknownError
 from apple_mail_mcp.models import (
     DeleteRecord,
     DraftRecord,
@@ -562,6 +562,8 @@ def mail_send_message(
         return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
     except ValueError as exc:
         return error_response("INVALID_INPUT", str(exc))
+    except MailSendStatusUnknownError as exc:
+        return error_response("SEND_STATUS_UNKNOWN", str(exc), exc.suggestion)
     except MailBridgeError as exc:
         return error_response("SEND_FAILED", str(exc))
 
@@ -587,6 +589,8 @@ def mail_reply_message(
         )
     except SafetyPolicyError as exc:
         return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
+    except MailSendStatusUnknownError as exc:
+        return error_response("SEND_STATUS_UNKNOWN", str(exc), exc.suggestion)
     except MailBridgeError as exc:
         return error_response("REPLY_FAILED", str(exc))
 
@@ -612,6 +616,8 @@ def mail_forward_message(
         )
     except SafetyPolicyError as exc:
         return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
+    except MailSendStatusUnknownError as exc:
+        return error_response("SEND_STATUS_UNKNOWN", str(exc), exc.suggestion)
     except MailBridgeError as exc:
         return error_response("FORWARD_FAILED", str(exc))
 
@@ -724,6 +730,8 @@ def mail_reply_latest_in_thread(
         return error_response("INVALID_INPUT", str(exc))
     except SafetyPolicyError as exc:
         return error_response("SAFETY_POLICY_BLOCK", str(exc), exc.suggestion)
+    except MailSendStatusUnknownError as exc:
+        return error_response("SEND_STATUS_UNKNOWN", str(exc), exc.suggestion)
     except MailBridgeError as exc:
         return error_response("THREAD_REPLY_FAILED", str(exc))
 
@@ -774,7 +782,7 @@ def _mcp_log_level(value: str) -> _McpLogLevel:
 
 def create_server(settings: Settings | None = None, bridge: AppleMailBridge | None = None) -> AppleMCPServer:
     server_settings = settings or load_settings()
-    mail_bridge = bridge or AppleMailBridge()
+    mail_bridge = bridge or AppleMailBridge(script_timeout=server_settings.script_timeout_seconds)
     mcp = AppleMCPServer(
         "Apple Mail MCP",
         instructions=SERVER_INSTRUCTIONS,

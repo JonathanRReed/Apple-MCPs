@@ -266,3 +266,33 @@ def test_short_code_matching_only_part_of_a_number_is_ambiguous(monkeypatch) -> 
         bridge.resolve_message_recipient("1234")
 
     assert error.value.error_code == "AMBIGUOUS_PHONE_NUMBER"
+
+
+def test_national_number_matching_two_international_numbers_is_ambiguous(monkeypatch) -> None:
+    # Review follow-up: same_phone is not transitive. The national form matches
+    # both international numbers, which are different numbers, so this must not
+    # collapse to one of them.
+    bridge = bridge_with(monkeypatch, [ann(phones=[
+        {"label": "home", "value": "6123456789"},
+        {"label": "US", "value": "+1 6123456789"},
+        {"label": "UK", "value": "+44 6123456789"},
+    ])])
+
+    with pytest.raises(ContactsBridgeError) as error:
+        bridge.resolve_message_recipient("6123456789")
+
+    assert error.value.error_code == "AMBIGUOUS_PHONE_NUMBER"
+
+
+def test_two_owners_of_a_number_with_extension_are_ambiguous(monkeypatch) -> None:
+    # Review follow-up: extension queries used plain digit equality to decide
+    # exactness, so only one of two matching owners counted and won silently.
+    bridge = bridge_with(monkeypatch, [
+        contact_item("a", phone="555-123-4567 x5"),
+        contact_item("b", phone="+1 555-123-4567 x5"),
+    ])
+
+    with pytest.raises(ContactsBridgeError) as error:
+        bridge.resolve_message_recipient("555-123-4567 x5")
+
+    assert error.value.error_code == "AMBIGUOUS_CONTACT"

@@ -358,17 +358,16 @@ class AppleContactsBridge:
             (method for method in contact.phones if same_phone(query, method.value)),
             key=lambda method: normalize_phone(method.value) != normalized_query,
         )
-        distinct: list[ContactMethod] = []
-        for method in matching:
-            if not any(same_phone(method.value, kept.value) for kept in distinct):
-                distinct.append(method)
-        if len(distinct) > 1:
+        # same_phone is not transitive (a national number can match two different
+        # international ones), so the matches only count as one number when every
+        # pair of them is the same number.
+        if any(not same_phone(a.value, b.value) for index, a in enumerate(matching) for b in matching[index + 1:]):
             raise ContactsBridgeError(
                 "AMBIGUOUS_PHONE_NUMBER", f"Multiple phone numbers of '{contact.name}' match '{query.strip()}'.",
                 "Provide the complete phone number, including the country code and any extension.",
             )
-        if distinct:
-            return "phone", distinct[0]
+        if matching:
+            return "phone", matching[0]
         if parts[1] is not None:
             raise ContactsBridgeError(
                 "NO_PHONE_NUMBER_MATCH", "No phone method matches the requested extension.",
@@ -609,7 +608,9 @@ class AppleContactsBridge:
     def _is_exact_match(self, contact: ContactSummary, query_text: str, normalized_query: str) -> bool:
         parts = self._phone_query_parts(query_text)
         if parts is not None and parts[1] is not None:
-            return any(self._normalize_lookup_value(method.value) == normalized_query for method in contact.phones)
+            # Same rule as every other phone lookup, so two owners of one number
+            # with an extension are both exact and the result is ambiguous.
+            return any(same_phone(query_text, method.value) for method in contact.phones)
         if query_text in {contact.name.lower(), contact.first_name.lower(), contact.last_name.lower()}:
             return True
         if contact.organization and query_text == contact.organization.lower():

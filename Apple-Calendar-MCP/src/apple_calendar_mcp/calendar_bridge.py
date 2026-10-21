@@ -157,7 +157,7 @@ class CalendarBridge:
         try:
             payload = self._run_helper("get-calendar-event", event_id)
         except CalendarBridgeError as exc:
-            if not self._should_use_fallback(exc):
+            if not self._should_use_fallback(exc, event_id):
                 raise
             payload = self._fallback_get_event(event_id)
             provider = "jxa"
@@ -407,7 +407,7 @@ class CalendarBridge:
         try:
             payload = self._run_helper("update-calendar-event", event_id, json.dumps(request))
         except CalendarBridgeError as exc:
-            if not self._should_use_fallback(exc):
+            if not self._should_use_fallback(exc, event_id):
                 raise
             payload = self._fallback_update_event(
                 event_id,
@@ -428,7 +428,7 @@ class CalendarBridge:
         try:
             payload = self._run_helper("delete-calendar-event", event_id)
         except CalendarBridgeError as exc:
-            if not self._should_use_fallback(exc):
+            if not self._should_use_fallback(exc, event_id):
                 raise
             payload = self._fallback_delete_event(event_id)
         return bool(payload.get("deleted", False))
@@ -573,7 +573,7 @@ class CalendarBridge:
             "HELPER_EXECUTION_FAILED",
         }
 
-    def _should_use_fallback(self, error: CalendarBridgeError) -> bool:
+    def _should_use_fallback(self, error: CalendarBridgeError, event_id: str | None = None) -> bool:
         # CALENDAR_NOT_FOUND / EVENT_NOT_FOUND on top of the read-fallback
         # codes: when the native EventKit helper only has write-only access
         # (no can_read_events), every id the caller ever saw came from the
@@ -583,11 +583,17 @@ class CalendarBridge:
         # how valid the id is, so the same request has to be retried through
         # the JXA fallback instead of surfacing a confusing "not found".
         # When the helper confirms full read access, the native "not found" is
-        # authoritative: retrying through JXA would only scan every calendar
-        # and time out.
-        if self._should_use_read_fallback(error):
+        # authoritative for native ids and Calendar.app UIDs (the helper also
+        # resolves EventKit external identifiers), so retrying through JXA would
+        # only scan every calendar and time out. Legacy "applescript::" ids and
+        # UIDs shared by several events still need automation.
+        if self._should_use_read_fallback(error) or error.error_code == "EVENT_ID_AMBIGUOUS":
             return True
-        return error.error_code in {"CALENDAR_NOT_FOUND", "EVENT_NOT_FOUND"} and not self._helper_read_confirmed()
+        if error.error_code not in {"CALENDAR_NOT_FOUND", "EVENT_NOT_FOUND"}:
+            return False
+        if event_id is not None and event_id.startswith("applescript::"):
+            return True
+        return not self._helper_read_confirmed()
 
     def _helper_read_confirmed(self) -> bool:
         try:

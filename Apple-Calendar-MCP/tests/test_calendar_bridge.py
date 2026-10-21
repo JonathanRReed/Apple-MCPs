@@ -203,6 +203,45 @@ def test_not_found_skips_jxa_fallback_with_full_read_access(monkeypatch) -> None
             raise AssertionError("Expected EVENT_NOT_FOUND")
 
 
+def test_legacy_and_ambiguous_ids_keep_jxa_fallback_with_full_read_access(monkeypatch) -> None:
+    # Older releases issued "applescript::<calendar>::<uid>" ids; they are not
+    # v2 tokens and EventKit can never resolve them, so automation must still
+    # handle them after full access is granted. A Calendar.app UID that the
+    # helper reports as shared by several events also needs automation.
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    native_errors = {
+        "applescript::Work::uid-1": "EVENT_NOT_FOUND",
+        "shared-uid": "EVENT_ID_AMBIGUOUS",
+    }
+    jxa_calls: list[str] = []
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        if command == "calendar-access-status":
+            return {"status": "full_access", "can_read_events": True, "can_write_events": True}
+        raise CalendarBridgeError(native_errors[args[0]], "native miss")
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        jxa_calls.append(args[0] if args else "")
+        return {
+            "event_id": args[0],
+            "title": "Legacy",
+            "calendar_id": "Work",
+            "calendar_name": "Work",
+            "start": "2026-03-27T15:00:00+00:00",
+            "end": "2026-03-27T15:30:00+00:00",
+            "all_day": False,
+            "location": None,
+            "notes": None,
+        }
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    for event_id in native_errors:
+        assert bridge.get_event(event_id).title == "Legacy"
+    assert len(jxa_calls) == 2
+
+
 def test_calendar_access_status_reads_helper_payload(monkeypatch) -> None:
     bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
 

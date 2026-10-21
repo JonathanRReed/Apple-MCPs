@@ -427,14 +427,40 @@ struct ApplePIMBridge {
         return Array(events)
     }
 
-    static func getEvent(store: EKEventStore, eventID: String) throws -> EventRecord {
-        guard let event = store.event(withIdentifier: eventID) else {
-            throw BridgeFailure(
-                errorCode: "EVENT_NOT_FOUND",
-                message: "No event matched '\(eventID)'.",
-                suggestion: "List calendar events first to discover valid ids."
-            )
+    // Native identifiers first, then Calendar.app UIDs, which EventKit exposes as
+    // external identifiers. Earlier releases handed out bare UIDs as event ids
+    // under write-only access, so they must keep resolving once full access is
+    // granted. A UID shared by several events (detached recurrence occurrences)
+    // is reported as ambiguous so the caller can fall back to automation.
+    static func resolveEvent(store: EKEventStore, eventID: String) throws -> EKEvent {
+        if let event = store.event(withIdentifier: eventID) {
+            return event
         }
+        if !eventID.hasPrefix("applescript::") {
+            var seen = Set<String>()
+            let matches = store.calendarItems(withExternalIdentifier: eventID)
+                .compactMap { $0 as? EKEvent }
+                .filter { seen.insert($0.eventIdentifier ?? $0.calendarItemIdentifier).inserted }
+            if matches.count == 1 {
+                return matches[0]
+            }
+            if matches.count > 1 {
+                throw BridgeFailure(
+                    errorCode: "EVENT_ID_AMBIGUOUS",
+                    message: "Calendar UID '\(eventID)' matches \(matches.count) events.",
+                    suggestion: "List calendar events and use the returned event_id."
+                )
+            }
+        }
+        throw BridgeFailure(
+            errorCode: "EVENT_NOT_FOUND",
+            message: "No event matched '\(eventID)'.",
+            suggestion: "List calendar events first to discover valid ids."
+        )
+    }
+
+    static func getEvent(store: EKEventStore, eventID: String) throws -> EventRecord {
+        let event = try resolveEvent(store: store, eventID: eventID)
         return eventRecord(event)
     }
 
@@ -488,13 +514,7 @@ struct ApplePIMBridge {
     }
 
     static func updateEvent(store: EKEventStore, eventID: String, payload: [String: Any]) throws -> EventRecord {
-        guard let event = store.event(withIdentifier: eventID) else {
-            throw BridgeFailure(
-                errorCode: "EVENT_NOT_FOUND",
-                message: "No event matched '\(eventID)'.",
-                suggestion: "List calendar events first to discover valid ids."
-            )
-        }
+        let event = try resolveEvent(store: store, eventID: eventID)
         try applyEventFields(store: store, event: event, payload: payload, isCreate: false)
         guard event.endDate > event.startDate else {
             throw BridgeFailure(
@@ -508,13 +528,7 @@ struct ApplePIMBridge {
     }
 
     static func deleteEvent(store: EKEventStore, eventID: String) throws -> BooleanMutationPayload {
-        guard let event = store.event(withIdentifier: eventID) else {
-            throw BridgeFailure(
-                errorCode: "EVENT_NOT_FOUND",
-                message: "No event matched '\(eventID)'.",
-                suggestion: "List calendar events first to discover valid ids."
-            )
-        }
+        let event = try resolveEvent(store: store, eventID: eventID)
         try store.remove(event, span: .thisEvent, commit: true)
         return BooleanMutationPayload(deleted: true, object_id: eventID)
     }

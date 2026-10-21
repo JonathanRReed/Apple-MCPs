@@ -69,6 +69,12 @@ server never leaves you guessing:
 | `APPLESCRIPT_TIMEOUT` | The target app stalled past the deadline | The app may be busy or syncing; verify state before retrying a mutation |
 | `NOTE_CREATE_STATUS_UNKNOWN` | Create timed out and could not be verified | Check the target folder for the title before creating again |
 | `CALENDAR_NOT_FOUND` / `EVENT_NOT_FOUND` | Id did not resolve | List calendars/events first — ids change shape under Add Only access |
+| `WRITE_BLOCKED` / `SAFETY_RESTRICTION` / `SAFETY_POLICY_BLOCK` | The server's safety mode does not allow this tool | The error's `suggestion` names the setting and value. Ask the user, change it in the client's `env` block (Claude Desktop: Settings > Extensions > the extension > Configure), then restart the client |
+| `*_BLOCKED` (calendar, list, account, folder) | The target is outside a configured allowlist | The `suggestion` names the allowlist setting; use an allowed target or ask the user to change the setting |
+
+If a health tool returns `safety_mode_warning`, the safety value is mistyped or
+blank and the server is running read-only. Fix the value it names and restart
+the client.
 
 ## Still stuck?
 

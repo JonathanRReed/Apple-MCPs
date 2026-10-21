@@ -74,8 +74,10 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/AppleFiles-MCP/start.sh` 
 Claude Code:
 
 ```bash
-claude mcp add --transport stdio --scope project apple-files -- uvx apple-files-mcp
+claude mcp add --transport stdio --scope user apple-files -- uvx apple-files-mcp
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 ## Transport
 

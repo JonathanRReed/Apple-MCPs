@@ -77,8 +77,10 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/Apple-Calendar-MCP/start.
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-calendar -- uvx apple-calendar-mcp
+claude mcp add --transport stdio --scope user apple-calendar -- uvx apple-calendar-mcp
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 </details>
 

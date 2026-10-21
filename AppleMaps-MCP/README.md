@@ -61,8 +61,10 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/AppleMaps-MCP/start.sh` a
 Claude Code:
 
 ```bash
-claude mcp add --transport stdio --scope project apple-maps -- uvx apple-maps-mcp
+claude mcp add --transport stdio --scope user apple-maps -- uvx apple-maps-mcp
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 ## Transport
 

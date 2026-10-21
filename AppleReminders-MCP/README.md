@@ -77,8 +77,10 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/AppleReminders-MCP/start.
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-reminders -- uvx apple-mcp-reminders
+claude mcp add --transport stdio --scope user apple-reminders -- uvx apple-mcp-reminders
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 </details>
 

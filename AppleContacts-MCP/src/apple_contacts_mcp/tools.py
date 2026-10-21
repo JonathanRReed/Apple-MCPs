@@ -4,7 +4,7 @@ import json
 import os
 from typing import Literal
 
-from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 
 from apple_contacts_mcp.config import load_settings
@@ -24,6 +24,7 @@ from apple_contacts_mcp.models import (
 from apple_contacts_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.server import AppleMCPServer
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Contacts on macOS. "
@@ -31,7 +32,7 @@ SERVER_INSTRUCTIONS = (
     "or resolve a contact into a message-ready recipient before using Apple Messages."
 )
 
-mcp = MCPServer("Apple Contacts", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+mcp = AppleMCPServer("Apple Contacts", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 _PERMISSION_STATUS_BY_ERROR_CODE: dict[str, Literal["unknown", "denied"]] = {

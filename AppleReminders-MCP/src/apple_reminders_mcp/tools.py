@@ -4,11 +4,12 @@ import json
 import os
 from datetime import datetime
 
-from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.server import AppleMCPServer
 from apple_reminders_mcp.config import load_settings
 from apple_reminders_mcp.models import (
     DeleteReminderListResponse,
@@ -30,7 +31,7 @@ SERVER_INSTRUCTIONS = (
     "Prefer list and get tools before mutation tools when ids are unknown."
 )
 
-mcp = MCPServer("Apple Reminders MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+mcp = AppleMCPServer("Apple Reminders MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def _bridge() -> RemindersBridge:

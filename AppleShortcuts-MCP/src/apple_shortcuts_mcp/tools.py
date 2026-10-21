@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 import logging
 
-from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.server import AppleMCPServer
 from apple_shortcuts_mcp.config import Settings, load_settings
 from apple_shortcuts_mcp.models import ErrorResponse, HealthResponse, ShortcutFolderListResponse, ShortcutListResponse, ShortcutPermissionStatus, ShortcutRunResponse, ToolError, ViewShortcutResponse
 from apple_shortcuts_mcp.permissions import SafetyError, ensure_action_allowed
@@ -19,7 +20,7 @@ SERVER_INSTRUCTIONS = (
     "Prefer list and view before run when shortcut identity is uncertain."
 )
 
-mcp = MCPServer("Apple Shortcuts MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+mcp = AppleMCPServer("Apple Shortcuts MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def configure_logging(settings: Settings) -> None:

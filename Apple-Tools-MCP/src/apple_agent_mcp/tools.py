@@ -14,7 +14,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from mcp import types
-from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver import Context
 from mcp.types import Annotations, ToolAnnotations
 from pydantic import BaseModel
 
@@ -46,6 +46,7 @@ from apple_agent_mcp.models import (
 from apple_agent_mcp.state import StateStoreError, load_action_history, load_preferences, save_action_history, save_preferences
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resource_updated, notify_resources_changed, require_loopback_host
+from apple_mcp_common.server import AppleMCPServer
 
 ensure_domain_paths()
 
@@ -372,7 +373,7 @@ SERVER_INSTRUCTIONS = (
     "Some clients defer tool schemas, so batch tool discovery on first use when needed."
 )
 
-mcp = MCPServer("Apple Tools MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+mcp = AppleMCPServer("Apple Tools MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 LOGGER = logging.getLogger("apple_agent_mcp")
 

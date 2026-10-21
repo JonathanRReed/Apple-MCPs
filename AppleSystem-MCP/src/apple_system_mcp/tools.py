@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 from typing import Literal
 
-from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.server import AppleMCPServer
 from apple_system_mcp.config import load_settings
 from apple_system_mcp.models import (
     ClipboardResponse,
@@ -36,7 +37,7 @@ SERVER_INSTRUCTIONS = (
     "Search here when the user wants battery state, the frontmost app, running applications, clipboard access, local notifications, truthful Focus support metadata, application launch, assistant-relevant macOS settings reads or writes, or bounded GUI fallback automation for the frontmost app."
 )
 
-mcp = MCPServer("Apple System MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+mcp = AppleMCPServer("Apple System MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def _bridge():

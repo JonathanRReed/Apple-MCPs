@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import Literal
 
-from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 
 from apple_mail_mcp.config import Settings, load_settings
@@ -32,6 +32,7 @@ from apple_mail_mcp.models import (
 from apple_mail_mcp.permissions import SafetyPolicyError, ensure_tool_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.server import AppleMCPServer
 
 LOGGER = logging.getLogger("apple_mail_mcp")
 SERVER_INSTRUCTIONS = (
@@ -742,11 +743,11 @@ def _mcp_log_level(value: str) -> _McpLogLevel:
     return _MCP_LOG_LEVELS.get(value.strip().upper(), "INFO")
 
 
-def create_server(settings: Settings | None = None, bridge: AppleMailBridge | None = None) -> MCPServer:
+def create_server(settings: Settings | None = None, bridge: AppleMailBridge | None = None) -> AppleMCPServer:
     server_settings = settings or load_settings()
     configure_logging(server_settings)
     mail_bridge = bridge or AppleMailBridge()
-    mcp = MCPServer(
+    mcp = AppleMCPServer(
         "Apple Mail MCP",
         instructions=SERVER_INSTRUCTIONS,
         version=server_settings.version,

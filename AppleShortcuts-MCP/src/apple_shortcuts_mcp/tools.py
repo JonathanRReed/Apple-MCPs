@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import Annotated
 
 from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
+from pydantic import Field
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
@@ -19,6 +21,14 @@ SERVER_INSTRUCTIONS = (
     "Search here when the user wants to discover shortcuts, inspect shortcut metadata, browse folders, or run a shortcut. "
     "Prefer list and view before run when shortcut identity is uncertain."
 )
+
+_SHORTCUT_DESCRIPTION = (
+    "Exact shortcut name (case-insensitive when unambiguous) or its identifier (UUID) from shortcuts_list_shortcuts. "
+    "Use the identifier when several shortcuts share a name."
+)
+_FOLDER_NAME_DESCRIPTION = "Optional Shortcuts folder name from shortcuts_list_folders. Omit to list every shortcut."
+_PROMPT_NAME_DESCRIPTION = "Prompt name from shortcuts_list_prompts."
+_PROMPT_ARGUMENTS_DESCRIPTION = "Optional JSON object string of prompt arguments, for example '{\"topic\": \"work\"}'."
 
 mcp = AppleMCPServer("Apple Shortcuts MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
@@ -193,7 +203,9 @@ async def shortcuts_refresh_state(ctx: Context) -> HealthResponse:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def shortcuts_list_shortcuts(folder_name: str | None = None) -> ShortcutListResponse | ErrorResponse:
+def shortcuts_list_shortcuts(
+    folder_name: Annotated[str | None, Field(description=_FOLDER_NAME_DESCRIPTION)] = None,
+) -> ShortcutListResponse | ErrorResponse:
     try:
         ensure_action_allowed("shortcuts_list_shortcuts")
         return shortcuts_list_shortcuts_tool(folder_name=folder_name)
@@ -221,7 +233,9 @@ def shortcuts_list_folders() -> ShortcutFolderListResponse | ErrorResponse:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def shortcuts_view_shortcut(shortcut_name_or_identifier: str) -> ViewShortcutResponse | ErrorResponse:
+def shortcuts_view_shortcut(
+    shortcut_name_or_identifier: Annotated[str, Field(description=_SHORTCUT_DESCRIPTION)],
+) -> ViewShortcutResponse | ErrorResponse:
     try:
         ensure_action_allowed("shortcuts_view_shortcut")
         return shortcuts_view_shortcut_tool(shortcut_name_or_identifier)
@@ -236,11 +250,23 @@ def shortcuts_view_shortcut(shortcut_name_or_identifier: str) -> ViewShortcutRes
     structured_output=True,
 )
 def shortcuts_run_shortcut(
-    shortcut_name_or_identifier: str,
-    input_paths: list[str] | None = None,
-    output_path: str | None = None,
-    output_type: str | None = None,
-    input_text: str | None = None,
+    shortcut_name_or_identifier: Annotated[str, Field(description=_SHORTCUT_DESCRIPTION)],
+    input_paths: Annotated[
+        list[str] | None,
+        Field(description="Optional absolute paths of files to pass to the shortcut as input, in order."),
+    ] = None,
+    output_path: Annotated[
+        str | None,
+        Field(description="Optional absolute file path where the shortcut's output is written. Omit to get the output as text."),
+    ] = None,
+    output_type: Annotated[
+        str | None,
+        Field(description="Optional Uniform Type Identifier for the output, such as public.plain-text or public.png."),
+    ] = None,
+    input_text: Annotated[
+        str | None,
+        Field(description="Optional text passed to the shortcut as its input."),
+    ] = None,
 ) -> ShortcutRunResponse | ErrorResponse:
     try:
         ensure_action_allowed("shortcuts_run_shortcut")
@@ -287,7 +313,10 @@ async def shortcuts_list_prompts() -> dict[str, object]:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-async def shortcuts_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+async def shortcuts_get_prompt_prompt(
+    name: Annotated[str, Field(description=_PROMPT_NAME_DESCRIPTION)],
+    arguments_json: Annotated[str | None, Field(description=_PROMPT_ARGUMENTS_DESCRIPTION)] = None,
+) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
     if isinstance(prompt, InputRequiredResult):

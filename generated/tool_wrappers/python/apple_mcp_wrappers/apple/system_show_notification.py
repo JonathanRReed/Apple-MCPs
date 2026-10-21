@@ -11,9 +11,9 @@ async def system_show_notification(
     body: str,
     subtitle: str | None = None
 ) -> Any:
-    """System Show Notification
+    """Show Notification
 
-    Delegated Apple domain tool 'system_show_notification' exposed through Apple-Tools-MCP.
+    Display a local macOS notification.
 
     Example:
         await system_show_notification(client, title='example_title', body='example_body')

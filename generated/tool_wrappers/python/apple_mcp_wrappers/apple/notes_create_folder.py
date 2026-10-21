@@ -11,9 +11,9 @@ async def notes_create_folder(
     account_name: str,
     parent_folder_id: str | None = None
 ) -> Any:
-    """Notes Create Folder
+    """Create Notes Folder
 
-    Delegated Apple domain tool 'notes_create_folder' exposed through Apple-Tools-MCP.
+    Create a new folder in an Apple Notes account or nested folder.
 
     Example:
         await notes_create_folder(client, folder_name='example_folder_name', account_name='example_account_name')

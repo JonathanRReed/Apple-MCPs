@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Literal
+from typing import Annotated, Literal
 
 from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
+from pydantic import Field
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
@@ -36,6 +37,20 @@ SERVER_INSTRUCTIONS = (
     "Search here when the user wants to inspect message history, summarize conversations, search what someone said, or send and reply through Messages. "
     "History features require Full Disk Access, while send features require Messages automation permission."
 )
+
+_CHAT_ID = "Conversation id: the chat_id returned by messages_list_conversations or messages_search_messages. Pass it unchanged."
+_MESSAGE_ID = "Message id: the message_id returned by messages_get_conversation or messages_search_messages."
+_LIMIT = "Maximum number of results to return; must be 1 or more."
+_OFFSET = "Number of results to skip, for paging; 0 or more."
+_RECIPIENT = (
+    "Who to send to: a phone number (E.164 such as +15551234567 is safest) or an email address registered with iMessage. "
+    "Resolve names to an address first with contacts_resolve_message_recipient."
+)
+_SERVICE_NAME = (
+    "Service to send over: iMessage, SMS or RCS (case-insensitive). Omit to send as iMessage. "
+    "SMS and RCS go through the paired iPhone and need Text Message Forwarding enabled for this Mac."
+)
+_ISO_BOUND = "ISO 8601 datetime, e.g. 2026-04-07T18:00:00-05:00; without an offset it is read as local time."
 
 mcp = AppleMCPServer("Apple Messages MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
@@ -231,7 +246,11 @@ async def messages_recheck_permissions(ctx: Context) -> HealthResponse:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def messages_list_conversations(limit: int | str = 25, offset: int | str = 0, unread_only: bool = False) -> ConversationListResponse | ErrorResponse:
+def messages_list_conversations(
+    limit: Annotated[int | str, Field(description=_LIMIT)] = 25,
+    offset: Annotated[int | str, Field(description=_OFFSET)] = 0,
+    unread_only: Annotated[bool, Field(description="Only return conversations that have unread incoming messages.")] = False,
+) -> ConversationListResponse | ErrorResponse:
     try:
         ensure_action_allowed("messages_list_conversations")
         limit_value = _coerce_int_arg("limit", limit, minimum=1)
@@ -252,7 +271,11 @@ def messages_list_conversations(limit: int | str = 25, offset: int | str = 0, un
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def messages_get_conversation(chat_id: str, limit: int | str = 50, offset: int | str = 0) -> ConversationResponse | ErrorResponse:
+def messages_get_conversation(
+    chat_id: Annotated[str, Field(description=_CHAT_ID)],
+    limit: Annotated[int | str, Field(description="Maximum number of messages to return, newest first; must be 1 or more.")] = 50,
+    offset: Annotated[int | str, Field(description="Number of newest messages to skip, for paging back through history; 0 or more.")] = 0,
+) -> ConversationResponse | ErrorResponse:
     try:
         ensure_action_allowed("messages_get_conversation")
         limit_value = _coerce_int_arg("limit", limit, minimum=1)
@@ -274,13 +297,16 @@ def messages_get_conversation(chat_id: str, limit: int | str = 50, offset: int |
     structured_output=True,
 )
 def messages_search_messages(
-    query: str,
-    chat_id: str | None = None,
-    sender: str | None = None,
-    start_iso: str | None = None,
-    end_iso: str | None = None,
-    limit: int | str = 50,
-    offset: int | str = 0,
+    query: Annotated[str, Field(description="Text to find in message bodies and subjects (case-insensitive substring); must not be empty.")],
+    chat_id: Annotated[str | None, Field(description="Only search this conversation. " + _CHAT_ID)] = None,
+    sender: Annotated[
+        str | None,
+        Field(description="Only messages from this sender handle, matched exactly as stored (e.g. +15551234567 or person@example.com)."),
+    ] = None,
+    start_iso: Annotated[str | None, Field(description="Only messages sent at or after this time. " + _ISO_BOUND)] = None,
+    end_iso: Annotated[str | None, Field(description="Only messages sent at or before this time. " + _ISO_BOUND)] = None,
+    limit: Annotated[int | str, Field(description=_LIMIT)] = 50,
+    offset: Annotated[int | str, Field(description=_OFFSET)] = 0,
 ) -> MessageSearchResponse | ErrorResponse:
     try:
         ensure_action_allowed("messages_search_messages")
@@ -312,7 +338,7 @@ def messages_search_messages(
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def messages_get_message(message_id: str) -> MessageResponse | ErrorResponse:
+def messages_get_message(message_id: Annotated[str, Field(description=_MESSAGE_ID)]) -> MessageResponse | ErrorResponse:
     try:
         ensure_action_allowed("messages_get_message")
         message = _db_bridge().get_message(message_id)
@@ -329,7 +355,12 @@ def messages_get_message(message_id: str) -> MessageResponse | ErrorResponse:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def messages_list_attachments(chat_id: str | None = None, message_id: str | None = None, limit: int | str = 50, offset: int | str = 0) -> AttachmentListResponse | ErrorResponse:
+def messages_list_attachments(
+    chat_id: Annotated[str | None, Field(description="Only attachments in this conversation. " + _CHAT_ID)] = None,
+    message_id: Annotated[str | None, Field(description="Only attachments of this message. " + _MESSAGE_ID)] = None,
+    limit: Annotated[int | str, Field(description=_LIMIT)] = 50,
+    offset: Annotated[int | str, Field(description=_OFFSET)] = 0,
+) -> AttachmentListResponse | ErrorResponse:
     try:
         ensure_action_allowed("messages_list_attachments")
         limit_value = _coerce_int_arg("limit", limit, minimum=1)
@@ -353,7 +384,11 @@ def messages_list_attachments(chat_id: str | None = None, message_id: str | None
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def messages_send_message(recipient: str, text: str, service_name: str | None = None) -> SendResponse | ErrorResponse:
+def messages_send_message(
+    recipient: Annotated[str, Field(description=_RECIPIENT)],
+    text: Annotated[str, Field(description="Message text to send; must not be empty.")],
+    service_name: Annotated[str | None, Field(description=_SERVICE_NAME)] = None,
+) -> SendResponse | ErrorResponse:
     try:
         ensure_action_allowed("messages_send_message")
         result = _automation_bridge().send_message(recipient=recipient, text=text, service_name=service_name)
@@ -374,7 +409,19 @@ def messages_send_message(recipient: str, text: str, service_name: str | None = 
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def messages_reply_in_conversation(chat_id: str, text: str, service_name: str | None = None) -> SendResponse | ErrorResponse:
+def messages_reply_in_conversation(
+    chat_id: Annotated[str, Field(description=_CHAT_ID)],
+    text: Annotated[str, Field(description="Reply text to send; must not be empty.")],
+    service_name: Annotated[
+        str | None,
+        Field(
+            description=(
+                "iMessage, SMS or RCS (case-insensitive). Omit to keep the thread's current service. "
+                "Group chats always reply over their existing service, so a different value is rejected."
+            )
+        ),
+    ] = None,
+) -> SendResponse | ErrorResponse:
     try:
         ensure_action_allowed("messages_reply_in_conversation")
         participants = _db_bridge().participant_addresses_for_chat(chat_id)
@@ -414,7 +461,10 @@ def messages_reply_in_conversation(chat_id: str, text: str, service_name: str | 
     structured_output=True,
 )
 def messages_send_attachment(
-    recipient: str, file_path: str, text: str | None = None, service_name: str | None = None
+    recipient: Annotated[str, Field(description=_RECIPIENT)],
+    file_path: Annotated[str, Field(description="Absolute path of the local file to send.")],
+    text: Annotated[str | None, Field(description="Optional message text sent after the file.")] = None,
+    service_name: Annotated[str | None, Field(description=_SERVICE_NAME)] = None,
 ) -> SendResponse | ErrorResponse:
     try:
         ensure_action_allowed("messages_send_attachment")
@@ -486,7 +536,10 @@ async def messages_list_prompts() -> dict[str, object]:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-async def messages_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+async def messages_get_prompt_prompt(
+    name: Annotated[str, Field(description="Prompt name from messages_list_prompts.")],
+    arguments_json: Annotated[str | None, Field(description="Prompt arguments as a JSON object string; omit when the prompt takes none.")] = None,
+) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
     if isinstance(prompt, InputRequiredResult):

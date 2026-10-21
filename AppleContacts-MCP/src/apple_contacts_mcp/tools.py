@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Literal
+from typing import Annotated, Literal
 
 from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
+from pydantic import Field
 
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.contacts_bridge import AppleContactsBridge, ContactsBridgeError, build_bridge
@@ -31,6 +32,13 @@ SERVER_INSTRUCTIONS = (
     "Search here when the user wants to inspect contacts, find a phone number or email address, "
     "or resolve a contact into a message-ready recipient before using Apple Messages."
 )
+
+_CONTACT_ID = "Contact id: the contact_id returned by contacts_search_contacts or contacts_list_contacts."
+_LOOKUP_QUERY = "A name, phone number, or email address to look up."
+_PHONES = "Phone numbers as {label, value} objects, e.g. {\"label\": \"mobile\", \"value\": \"+15551234567\"}."
+_EMAILS = "Email addresses as {label, value} objects, e.g. {\"label\": \"work\", \"value\": \"person@example.com\"}."
+_UNCHANGED = "Empty keeps the current value."
+_REPLACES = "When given, replaces all existing entries; [] removes them all. Omit to keep them."
 
 mcp = AppleMCPServer("Apple Contacts", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
@@ -163,7 +171,10 @@ async def contacts_recheck_permissions(ctx: Context) -> HealthResponse:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def contacts_list_contacts(limit: int = 100, offset: int = 0) -> ContactListResponse | ErrorResponse:
+def contacts_list_contacts(
+    limit: Annotated[int, Field(description="Maximum number of contacts to return, from 1 to 100.")] = 100,
+    offset: Annotated[int, Field(description="Number of contacts to skip, for paging; 0 or more.")] = 0,
+) -> ContactListResponse | ErrorResponse:
     try:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
@@ -188,7 +199,10 @@ def contacts_list_contacts(limit: int = 100, offset: int = 0) -> ContactListResp
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def contacts_search_contacts(query: str, limit: int = 25) -> ContactListResponse | ErrorResponse:
+def contacts_search_contacts(
+    query: Annotated[str, Field(description=_LOOKUP_QUERY + " Must not be empty.")],
+    limit: Annotated[int, Field(description="Maximum number of matches to return; 1 or more, capped at 100.")] = 25,
+) -> ContactListResponse | ErrorResponse:
     try:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
@@ -209,7 +223,7 @@ def contacts_search_contacts(query: str, limit: int = 25) -> ContactListResponse
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def contacts_get_contact(contact_id: str) -> ContactResponse | ErrorResponse:
+def contacts_get_contact(contact_id: Annotated[str, Field(description=_CONTACT_ID)]) -> ContactResponse | ErrorResponse:
     try:
         ensure_action_allowed("contacts_get_contact")
         return ContactResponse(contact=_bridge().get_contact(contact_id))
@@ -225,7 +239,10 @@ def contacts_get_contact(contact_id: str) -> ContactResponse | ErrorResponse:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def contacts_resolve_message_recipient(query: str, channel: str = "phone") -> ResolvedRecipientResponse | ErrorResponse:
+def contacts_resolve_message_recipient(
+    query: Annotated[str, Field(description=_LOOKUP_QUERY + " Several matches return AMBIGUOUS_CONTACT; then pick a contact_id with contacts_search_contacts.")],
+    channel: Annotated[str, Field(description="Which contact method to return: phone, email, or any.")] = "phone",
+) -> ResolvedRecipientResponse | ErrorResponse:
     try:
         ensure_action_allowed("contacts_resolve_message_recipient")
         return _bridge().resolve_message_recipient(query=query, channel=channel)
@@ -258,7 +275,9 @@ def contacts_find_duplicates() -> DuplicateContactListResponse | ErrorResponse:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def contacts_suggest_merge_candidates(query: str | None = None) -> DuplicateContactListResponse | ErrorResponse:
+def contacts_suggest_merge_candidates(
+    query: Annotated[str | None, Field(description="Only groups whose names or matching phone/email contain this text; omit for all.")] = None,
+) -> DuplicateContactListResponse | ErrorResponse:
     try:
         ensure_action_allowed("contacts_suggest_merge_candidates")
         groups = _bridge().suggest_merge_candidates(query=query)
@@ -276,12 +295,12 @@ def contacts_suggest_merge_candidates(query: str | None = None) -> DuplicateCont
     structured_output=True,
 )
 def contacts_create_contact(
-    first_name: str,
-    last_name: str = "",
-    organization: str = "",
-    phones: list[ContactMethod] | None = None,
-    emails: list[ContactMethod] | None = None,
-    note: str = "",
+    first_name: Annotated[str, Field(description="Given name of the new contact.")],
+    last_name: Annotated[str, Field(description="Family name.")] = "",
+    organization: Annotated[str, Field(description="Company or organization.")] = "",
+    phones: Annotated[list[ContactMethod] | None, Field(description=_PHONES)] = None,
+    emails: Annotated[list[ContactMethod] | None, Field(description=_EMAILS)] = None,
+    note: Annotated[str, Field(description="Free-text note stored on the contact.")] = "",
 ) -> CreateContactResponse | ErrorResponse:
     try:
         ensure_action_allowed("contacts_create_contact")
@@ -306,13 +325,13 @@ def contacts_create_contact(
     structured_output=True,
 )
 def contacts_update_contact(
-    contact_id: str,
-    first_name: str = "",
-    last_name: str = "",
-    organization: str = "",
-    phones: list[ContactMethod] | None = None,
-    emails: list[ContactMethod] | None = None,
-    note: str = "",
+    contact_id: Annotated[str, Field(description=_CONTACT_ID)],
+    first_name: Annotated[str, Field(description="New given name. " + _UNCHANGED)] = "",
+    last_name: Annotated[str, Field(description="New family name. " + _UNCHANGED)] = "",
+    organization: Annotated[str, Field(description="New company or organization. " + _UNCHANGED)] = "",
+    phones: Annotated[list[ContactMethod] | None, Field(description=_PHONES + " " + _REPLACES)] = None,
+    emails: Annotated[list[ContactMethod] | None, Field(description=_EMAILS + " " + _REPLACES)] = None,
+    note: Annotated[str, Field(description="New note, replacing the current one. " + _UNCHANGED)] = "",
 ) -> ContactResponse | ErrorResponse:
     try:
         ensure_action_allowed("contacts_update_contact")
@@ -338,7 +357,7 @@ def contacts_update_contact(
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def contacts_delete_contact(contact_id: str) -> DeleteContactResponse | ErrorResponse:
+def contacts_delete_contact(contact_id: Annotated[str, Field(description=_CONTACT_ID + " Deletion is permanent.")]) -> DeleteContactResponse | ErrorResponse:
     try:
         ensure_action_allowed("contacts_delete_contact")
         return _bridge().delete_contact(contact_id)
@@ -380,7 +399,10 @@ async def contacts_list_prompts() -> dict[str, object]:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-async def contacts_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+async def contacts_get_prompt_prompt(
+    name: Annotated[str, Field(description="Prompt name from contacts_list_prompts.")],
+    arguments_json: Annotated[str | None, Field(description="Prompt arguments as a JSON object string; omit when the prompt takes none.")] = None,
+) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
     if isinstance(prompt, InputRequiredResult):

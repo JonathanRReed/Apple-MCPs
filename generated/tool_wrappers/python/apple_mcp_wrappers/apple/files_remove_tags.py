@@ -10,9 +10,9 @@ async def files_remove_tags(
     path: str,
     tags: list[Any]
 ) -> Any:
-    """Files Remove Tags
+    """Remove Tags
 
-    Delegated Apple domain tool 'files_remove_tags' exposed through Apple-Tools-MCP.
+    Remove Finder tags from a file or folder. Requires safe_manage or full_access safety mode.
 
     Example:
         await files_remove_tags(client, path='/path/to/item', tags=[])

@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime
+from typing import Annotated
 
 from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
+from pydantic import Field
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
@@ -30,6 +32,19 @@ SERVER_INSTRUCTIONS = (
     "Search here when the user wants to inspect reminder lists, review upcoming tasks, create tasks, edit task details, complete tasks, or delete tasks. "
     "Prefer list and get tools before mutation tools when ids are unknown."
 )
+
+_LIST_ID_DESCRIPTION = "Reminder list ID returned by reminders_list_lists; pass it unchanged."
+_REMINDER_ID_DESCRIPTION = "Reminder ID returned by reminders_list_reminders or reminders_get_reminder; pass it unchanged."
+_DATE_FORMAT = "ISO 8601 datetime with Z or an offset (2026-10-22T09:00:00-05:00), or a date YYYY-MM-DD in the Mac's local time zone."
+_DUE_DATE_DESCRIPTION = f"When the reminder is due. {_DATE_FORMAT}"
+_DUE_ALL_DAY_DESCRIPTION = "True to keep only the date of due_date (no due time)."
+_REMIND_AT_DESCRIPTION = f"When to show a notification; sets the reminder's single alert. {_DATE_FORMAT}"
+_PRIORITY_DESCRIPTION = "Apple Reminders priority: 0 none, 1 high, 5 medium, 9 low."
+_TAGS_DESCRIPTION = "Tags appended to the notes as #hashtags (leading # optional)."
+_PARENT_DESCRIPTION = "Not supported: subtasks are unavailable through public APIs, so any value returns SUBTASKS_UNSUPPORTED. Omit it."
+_OMIT_UNCHANGED = "Omit to leave unchanged."
+_PROMPT_NAME_DESCRIPTION = "Prompt name from reminders_list_prompts."
+_PROMPT_ARGUMENTS_DESCRIPTION = "Prompt arguments as a JSON object string; omit when the prompt takes none."
 
 mcp = AppleMCPServer("Apple Reminders MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
@@ -237,7 +252,7 @@ def reminders_list_lists() -> ReminderListResponse | ErrorResponse:
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def reminders_create_list(title: str) -> ReminderListMutationResponse | ErrorResponse:
+def reminders_create_list(title: Annotated[str, Field(description="Name of the new reminder list.")]) -> ReminderListMutationResponse | ErrorResponse:
     if not title.strip():
         return _error_response("INVALID_INPUT", "title must not be empty", "Provide a non-empty title.")
     try:
@@ -255,7 +270,7 @@ def reminders_create_list(title: str) -> ReminderListMutationResponse | ErrorRes
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def reminders_delete_list(list_id: str) -> DeleteReminderListResponse | ErrorResponse:
+def reminders_delete_list(list_id: Annotated[str, Field(description=f"{_LIST_ID_DESCRIPTION} Deletes the list and all its reminders.")]) -> DeleteReminderListResponse | ErrorResponse:
     try:
         ensure_action_allowed("reminders_delete_list")
         try:
@@ -279,12 +294,16 @@ def reminders_delete_list(list_id: str) -> DeleteReminderListResponse | ErrorRes
     structured_output=True,
 )
 def reminders_list_reminders(
-    list_id: str | None = None,
-    include_completed: bool = True,
-    limit: int | str = 100,
-    search: str | None = None,
-    due_after: str | None = None,
-    due_before: str | None = None,
+    list_id: Annotated[str | None, Field(description=f"{_LIST_ID_DESCRIPTION} Omit to search every visible list.")] = None,
+    include_completed: Annotated[bool, Field(description="Include completed reminders; false returns only open ones.")] = True,
+    limit: Annotated[int | str, Field(description="Maximum number of reminders to return (1 or more).")] = 100,
+    search: Annotated[str | None, Field(description="Case-insensitive text matched against reminder titles and notes.")] = None,
+    due_after: Annotated[
+        str | None, Field(description=f"Only reminders due at or after this time; undated reminders are excluded. {_DATE_FORMAT}")
+    ] = None,
+    due_before: Annotated[
+        str | None, Field(description=f"Only reminders due at or before this time; undated reminders are excluded. {_DATE_FORMAT}")
+    ] = None,
 ) -> ReminderListItemsResponse | ErrorResponse:
     try:
         limit_value = _coerce_int_arg("limit", limit, minimum=1)
@@ -312,7 +331,7 @@ def reminders_list_reminders(
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def reminders_get_reminder(reminder_id: str) -> ReminderResponse | ErrorResponse:
+def reminders_get_reminder(reminder_id: Annotated[str, Field(description=_REMINDER_ID_DESCRIPTION)]) -> ReminderResponse | ErrorResponse:
     try:
         detail = _bridge().get_reminder(reminder_id)
         ensure_action_allowed("reminders_get_reminder", detail.list_name)
@@ -330,15 +349,15 @@ def reminders_get_reminder(reminder_id: str) -> ReminderResponse | ErrorResponse
     structured_output=True,
 )
 def reminders_create_reminder(
-    title: str,
-    list_id: str,
-    notes: str | None = None,
-    due_date: str | None = None,
-    due_all_day: bool = False,
-    remind_at: str | None = None,
-    priority: int | str = 0,
-    parent_reminder_id: str | None = None,
-    tags: list[str] | None = None,
+    title: Annotated[str, Field(description="Reminder title.")],
+    list_id: Annotated[str, Field(description=_LIST_ID_DESCRIPTION)],
+    notes: Annotated[str | None, Field(description="Plain-text notes.")] = None,
+    due_date: Annotated[str | None, Field(description=_DUE_DATE_DESCRIPTION)] = None,
+    due_all_day: Annotated[bool, Field(description=_DUE_ALL_DAY_DESCRIPTION)] = False,
+    remind_at: Annotated[str | None, Field(description=_REMIND_AT_DESCRIPTION)] = None,
+    priority: Annotated[int | str, Field(description=_PRIORITY_DESCRIPTION)] = 0,
+    parent_reminder_id: Annotated[str | None, Field(description=_PARENT_DESCRIPTION)] = None,
+    tags: Annotated[list[str] | None, Field(description=_TAGS_DESCRIPTION)] = None,
 ) -> ReminderResponse | ErrorResponse:
     try:
         if not title.strip():
@@ -379,16 +398,19 @@ def reminders_create_reminder(
     structured_output=True,
 )
 def reminders_update_reminder(
-    reminder_id: str,
-    title: str | None = None,
-    list_id: str | None = None,
-    notes: str | None = None,
-    due_date: str | None = None,
-    due_all_day: bool | None = None,
-    remind_at: str | None = None,
-    priority: int | str | None = None,
-    parent_reminder_id: str | None = None,
-    tags: list[str] | None = None,
+    reminder_id: Annotated[str, Field(description=_REMINDER_ID_DESCRIPTION)],
+    title: Annotated[str | None, Field(description=f"New title. {_OMIT_UNCHANGED}")] = None,
+    list_id: Annotated[str | None, Field(description=f"Destination list to move the reminder to. {_LIST_ID_DESCRIPTION} {_OMIT_UNCHANGED}")] = None,
+    notes: Annotated[str | None, Field(description=f"Replacement notes; overwrites the existing notes. {_OMIT_UNCHANGED}")] = None,
+    due_date: Annotated[str | None, Field(description=f"New due date. {_DATE_FORMAT} {_OMIT_UNCHANGED}")] = None,
+    due_all_day: Annotated[bool | None, Field(description=f"{_DUE_ALL_DAY_DESCRIPTION} Use together with due_date.")] = None,
+    remind_at: Annotated[str | None, Field(description=f"New alert time; replaces the reminder's alerts. {_DATE_FORMAT} {_OMIT_UNCHANGED}")] = None,
+    priority: Annotated[int | str | None, Field(description=f"{_PRIORITY_DESCRIPTION} {_OMIT_UNCHANGED}")] = None,
+    parent_reminder_id: Annotated[str | None, Field(description=_PARENT_DESCRIPTION)] = None,
+    tags: Annotated[
+        list[str] | None,
+        Field(description=f"{_TAGS_DESCRIPTION} Added to the existing notes (or to notes, if given); existing tags are not removed."),
+    ] = None,
 ) -> ReminderResponse | ErrorResponse:
     try:
         if parent_reminder_id is not None:
@@ -426,7 +448,7 @@ def reminders_update_reminder(
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def reminders_complete_reminder(reminder_id: str) -> ReminderResponse | ErrorResponse:
+def reminders_complete_reminder(reminder_id: Annotated[str, Field(description=_REMINDER_ID_DESCRIPTION)]) -> ReminderResponse | ErrorResponse:
     try:
         ensure_action_allowed("reminders_complete_reminder", _reminder_owner_list(reminder_id))
         detail = _bridge().set_completed(reminder_id, True)
@@ -443,7 +465,7 @@ def reminders_complete_reminder(reminder_id: str) -> ReminderResponse | ErrorRes
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def reminders_uncomplete_reminder(reminder_id: str) -> ReminderResponse | ErrorResponse:
+def reminders_uncomplete_reminder(reminder_id: Annotated[str, Field(description=_REMINDER_ID_DESCRIPTION)]) -> ReminderResponse | ErrorResponse:
     try:
         ensure_action_allowed("reminders_uncomplete_reminder", _reminder_owner_list(reminder_id))
         detail = _bridge().set_completed(reminder_id, False)
@@ -460,7 +482,7 @@ def reminders_uncomplete_reminder(reminder_id: str) -> ReminderResponse | ErrorR
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def reminders_delete_reminder(reminder_id: str) -> DeleteReminderResponse | ErrorResponse:
+def reminders_delete_reminder(reminder_id: Annotated[str, Field(description=_REMINDER_ID_DESCRIPTION)]) -> DeleteReminderResponse | ErrorResponse:
     try:
         ensure_action_allowed("reminders_delete_reminder", _reminder_owner_list(reminder_id))
         deleted = _bridge().delete_reminder(reminder_id)
@@ -502,7 +524,10 @@ async def reminders_list_prompts() -> dict[str, object]:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-async def reminders_get_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+async def reminders_get_prompt(
+    name: Annotated[str, Field(description=_PROMPT_NAME_DESCRIPTION)],
+    arguments_json: Annotated[str | None, Field(description=_PROMPT_ARGUMENTS_DESCRIPTION)] = None,
+) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
     if isinstance(prompt, InputRequiredResult):

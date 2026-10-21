@@ -8,9 +8,9 @@ from .client import MCPToolCaller, call_tool_json
 async def system_get_frontmost_app(
     client: MCPToolCaller
 ) -> Any:
-    """System Get Frontmost App
+    """Get Frontmost App
 
-    Delegated Apple domain tool 'system_get_frontmost_app' exposed through Apple-Tools-MCP.
+    Get the name of the current frontmost application.
 
     Example:
         await system_get_frontmost_app(client)

@@ -13,7 +13,7 @@ async def mail_search_messages(
     limit: int | None = None,
     account: str | None = None
 ) -> Any:
-    """Search Messages
+    """Search Mail
 
     Search Apple Mail messages by query with optional account, mailbox and unread filters. Without account, accounts are searched in Mail's order and the limit can be filled by the first one; pass account (as returned by mail_list_mailboxes) to search a specific account.
 

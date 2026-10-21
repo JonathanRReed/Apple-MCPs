@@ -9,9 +9,9 @@ async def contacts_delete_contact(
     client: MCPToolCaller,
     contact_id: str
 ) -> Any:
-    """Contacts Delete Contact
+    """Delete Contact
 
-    Delegated Apple domain tool 'contacts_delete_contact' exposed through Apple-Tools-MCP.
+    Permanently delete a contact by contact_id. Requires full_access safety mode.
 
     Example:
         await contacts_delete_contact(client, contact_id='example_contact_id')

@@ -10,7 +10,7 @@ async def contacts_health(
 ) -> Any:
     """Contacts Health
 
-    Delegated Apple domain tool 'contacts_health' exposed through Apple-Tools-MCP.
+    Report the active Apple Contacts MCP configuration.
 
     Example:
         await contacts_health(client)

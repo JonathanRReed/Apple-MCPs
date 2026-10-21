@@ -102,3 +102,10 @@ def test_annotations_follow_spec_rules(item: tuple[str, types.Tool]) -> None:
         assert annotations.open_world_hint is True, tool.name
     if len(tokens) > 1 and tokens[1] in READ_ONLY_ACTIONS:
         assert annotations.read_only_hint is True, tool.name
+
+
+@pytest.mark.parametrize("item", ALL_TOOLS, ids=[_id(item) for item in ALL_TOOLS])
+def test_every_parameter_is_described(item: tuple[str, types.Tool]) -> None:
+    _domain, tool = item
+    undescribed = [name for name, schema in tool.input_schema.get("properties", {}).items() if not schema.get("description")]
+    assert undescribed == [], tool.name

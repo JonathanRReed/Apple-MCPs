@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
+from pydantic import Field
 
 from apple_mail_mcp.config import Settings, load_settings
 from apple_mail_mcp.mail_bridge import AppleMailBridge, MailBridgeError
@@ -40,6 +41,20 @@ SERVER_INSTRUCTIONS = (
     "Search here when the user wants to inspect mailboxes, search messages, read a specific message, create drafts, or send email. "
     "Prefer list and read tools before drafting or sending."
 )
+
+
+_MESSAGE_ID = "Message ID exactly as returned by mail_search_messages, mail_get_thread or mail_get_message; it encodes the account, mailbox and message."
+_ACCOUNT_FILTER = "Mail account name as returned by mail_list_mailboxes. Omit to cover all accounts."
+_FROM_ACCOUNT = "Sender: an account email address or account name from mail_list_mailboxes. Omit to use Mail's default account."
+_RECIPIENTS = "Recipient email addresses, one per item."
+_ATTACHMENTS = (
+    "Absolute paths of files to attach. Each must be a regular file under the configured "
+    "APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT; attachments are rejected when no root is configured."
+)
+_THREAD_LIMIT = "Maximum number of thread messages to consider (1 or more); the thread is matched by normalized subject in the anchor message's mailbox."
+_REPLY_ALL = "True to reply to the sender and all other recipients; false (default) replies to the sender only."
+_PROMPT_NAME = "Prompt name as returned by mail_list_prompts."
+_PROMPT_ARGUMENTS = "Optional prompt arguments as a JSON object string, for example '{\"topic\": \"invoices\"}'."
 
 
 def configure_logging(settings: Settings) -> None:
@@ -809,7 +824,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
-    def mail_list_mailboxes_registered(account: str | None = None) -> MailboxListResponse | ErrorResponse:
+    def mail_list_mailboxes_registered(account: Annotated[str | None, Field(description=_ACCOUNT_FILTER)] = None) -> MailboxListResponse | ErrorResponse:
         return mail_list_mailboxes(account=account, bridge=mail_bridge)
 
     @mcp.tool(
@@ -824,11 +839,11 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         structured_output=True,
     )
     def mail_search_messages_registered(
-        query: str,
-        mailbox: str | None = None,
-        unread_only: bool = False,
-        limit: int | str = 10,
-        account: str | None = None,
+        query: Annotated[str, Field(description='Text matched against message subject or sender (case-insensitive contains). Use "*" to match every message.')],
+        mailbox: Annotated[str | None, Field(description='Mailbox name to search, such as "INBOX" or "Archive", as returned by mail_list_mailboxes. Omit to search all mailboxes.')] = None,
+        unread_only: Annotated[bool, Field(description="True to return only unread messages.")] = False,
+        limit: Annotated[int | str, Field(description="Maximum number of messages to return, 1 to 100.")] = 10,
+        account: Annotated[str | None, Field(description=_ACCOUNT_FILTER)] = None,
     ) -> MessageSearchResponse | ErrorResponse:
         return mail_search_messages(
             query=query,
@@ -847,7 +862,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
-    def mail_get_message_registered(message_id: str) -> MessageRecord | ErrorResponse:
+    def mail_get_message_registered(message_id: Annotated[str, Field(description=_MESSAGE_ID)]) -> MessageRecord | ErrorResponse:
         return mail_get_message(message_id=message_id, bridge=mail_bridge)
 
     @mcp.tool(
@@ -857,7 +872,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
-    def mail_get_thread_registered(message_id: str, limit: int | str = 25) -> ThreadRecord | ErrorResponse:
+    def mail_get_thread_registered(
+        message_id: Annotated[str, Field(description=_MESSAGE_ID)],
+        limit: Annotated[int | str, Field(description=_THREAD_LIMIT)] = 25,
+    ) -> ThreadRecord | ErrorResponse:
         return mail_get_thread(message_id=message_id, limit=limit, bridge=mail_bridge, settings=server_settings)
 
     @mcp.tool(
@@ -868,13 +886,13 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         structured_output=True,
     )
     def mail_compose_draft_registered(
-        to: list[str],
-        cc: list[str] | None = None,
-        bcc: list[str] | None = None,
-        subject: str = "",
-        body: str = "",
-        attachments: list[str] | None = None,
-        from_account: str | None = None,
+        to: Annotated[list[str], Field(description=_RECIPIENTS)],
+        cc: Annotated[list[str] | None, Field(description="Carbon-copy email addresses, one per item.")] = None,
+        bcc: Annotated[list[str] | None, Field(description="Blind carbon-copy email addresses, one per item.")] = None,
+        subject: Annotated[str, Field(description="Subject line.")] = "",
+        body: Annotated[str, Field(description="Plain-text message body.")] = "",
+        attachments: Annotated[list[str] | None, Field(description=_ATTACHMENTS)] = None,
+        from_account: Annotated[str | None, Field(description=_FROM_ACCOUNT)] = None,
     ) -> DraftRecord | ErrorResponse:
         return mail_compose_draft(
             to=to,
@@ -896,13 +914,13 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         structured_output=True,
     )
     def mail_send_message_registered(
-        to: list[str],
-        cc: list[str] | None = None,
-        bcc: list[str] | None = None,
-        subject: str = "",
-        body: str = "",
-        attachments: list[str] | None = None,
-        from_account: str | None = None,
+        to: Annotated[list[str], Field(description=_RECIPIENTS)],
+        cc: Annotated[list[str] | None, Field(description="Carbon-copy email addresses, one per item.")] = None,
+        bcc: Annotated[list[str] | None, Field(description="Blind carbon-copy email addresses, one per item.")] = None,
+        subject: Annotated[str, Field(description="Subject line.")] = "",
+        body: Annotated[str, Field(description="Plain-text message body.")] = "",
+        attachments: Annotated[list[str] | None, Field(description=_ATTACHMENTS)] = None,
+        from_account: Annotated[str | None, Field(description=_FROM_ACCOUNT)] = None,
     ) -> SendRecord | ErrorResponse:
         return mail_send_message(
             to=to,
@@ -924,10 +942,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         structured_output=True,
     )
     def mail_reply_message_registered(
-        message_id: str,
-        body: str,
-        reply_all: bool = False,
-        from_account: str | None = None,
+        message_id: Annotated[str, Field(description=_MESSAGE_ID + " This is the message being replied to.")],
+        body: Annotated[str, Field(description="Plain-text reply body, placed above the quoted original.")],
+        reply_all: Annotated[bool, Field(description=_REPLY_ALL)] = False,
+        from_account: Annotated[str | None, Field(description=_FROM_ACCOUNT)] = None,
     ) -> ReplyRecord | ErrorResponse:
         return mail_reply_message(
             message_id=message_id,
@@ -946,10 +964,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         structured_output=True,
     )
     def mail_forward_message_registered(
-        message_id: str,
-        to: list[str],
-        body: str = "",
-        from_account: str | None = None,
+        message_id: Annotated[str, Field(description=_MESSAGE_ID + " This is the message being forwarded.")],
+        to: Annotated[list[str], Field(description=_RECIPIENTS)],
+        body: Annotated[str, Field(description="Optional plain-text note placed above the forwarded message.")] = "",
+        from_account: Annotated[str | None, Field(description=_FROM_ACCOUNT)] = None,
     ) -> ForwardRecord | ErrorResponse:
         return mail_forward_message(
             message_id=message_id,
@@ -968,8 +986,8 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         structured_output=True,
     )
     def mail_mark_message_registered(
-        message_id: str,
-        is_read: bool,
+        message_id: Annotated[str, Field(description=_MESSAGE_ID)],
+        is_read: Annotated[bool, Field(description="True to mark the message read, false to mark it unread.")],
     ) -> MarkRecord | ErrorResponse:
         return mail_mark_message(
             message_id=message_id,
@@ -986,9 +1004,9 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         structured_output=True,
     )
     def mail_move_message_registered(
-        message_id: str,
-        target_mailbox: str,
-        target_account: str | None = None,
+        message_id: Annotated[str, Field(description=_MESSAGE_ID)],
+        target_mailbox: Annotated[str, Field(description="Exact name of the destination mailbox, as returned by mail_list_mailboxes.")],
+        target_account: Annotated[str | None, Field(description="Account that owns target_mailbox. Omit to use the message's own account.")] = None,
     ) -> MoveRecord | ErrorResponse:
         return mail_move_message(
             message_id=message_id,
@@ -1006,7 +1024,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         structured_output=True,
     )
     def mail_delete_message_registered(
-        message_id: str,
+        message_id: Annotated[str, Field(description=_MESSAGE_ID + " The message is moved to the account's Trash.")],
     ) -> DeleteRecord | ErrorResponse:
         return mail_delete_message(
             message_id=message_id,
@@ -1022,11 +1040,11 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         structured_output=True,
     )
     def mail_reply_latest_in_thread_registered(
-        message_id: str,
-        body: str,
-        reply_all: bool = False,
-        from_account: str | None = None,
-        limit: int | str = 25,
+        message_id: Annotated[str, Field(description=_MESSAGE_ID + " Any message in the thread; the reply goes to the latest one.")],
+        body: Annotated[str, Field(description="Plain-text reply body, placed above the quoted original.")],
+        reply_all: Annotated[bool, Field(description=_REPLY_ALL)] = False,
+        from_account: Annotated[str | None, Field(description=_FROM_ACCOUNT)] = None,
+        limit: Annotated[int | str, Field(description=_THREAD_LIMIT)] = 25,
     ) -> ReplyRecord | ErrorResponse:
         return mail_reply_latest_in_thread(
             message_id=message_id,
@@ -1046,10 +1064,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         structured_output=True,
     )
     def mail_archive_thread_registered(
-        message_id: str,
-        archive_mailbox: str = "Archive",
-        archive_account: str | None = None,
-        limit: int | str = 25,
+        message_id: Annotated[str, Field(description=_MESSAGE_ID + " Any message in the thread to archive.")],
+        archive_mailbox: Annotated[str, Field(description='Exact name of the destination mailbox (default "Archive"), as returned by mail_list_mailboxes.')] = "Archive",
+        archive_account: Annotated[str | None, Field(description="Account that owns archive_mailbox. Omit to use each message's own account.")] = None,
+        limit: Annotated[int | str, Field(description="Maximum number of thread messages to move (1 or more); the thread is matched by normalized subject in the anchor message's mailbox.")] = 25,
     ) -> ThreadMutationRecord | ErrorResponse:
         return mail_archive_thread(
             message_id=message_id,
@@ -1091,7 +1109,10 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
         structured_output=True,
     )
-    async def mail_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+    async def mail_get_prompt_prompt(
+        name: Annotated[str, Field(description=_PROMPT_NAME)],
+        arguments_json: Annotated[str | None, Field(description=_PROMPT_ARGUMENTS)] = None,
+    ) -> dict[str, object]:
         arguments = json.loads(arguments_json) if arguments_json else None
         prompt = await mcp.get_prompt(name, arguments)
         if isinstance(prompt, InputRequiredResult):

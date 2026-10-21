@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
-from typing import Literal
+from typing import Annotated, Literal
 
 from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
+from pydantic import Field
 
 from apple_files_mcp.config import load_settings
 from apple_files_mcp.files_bridge import FilesBridgeError, build_bridge
@@ -32,6 +33,15 @@ SERVER_INSTRUCTIONS = (
     "Search here when the user wants to inspect Downloads, Desktop, Documents, iCloud Drive, or other allowed folders, "
     "read a text file, prepare an attachment, create a folder, move a file, open or reveal a path, manage Finder tags, or delete a path."
 )
+
+_PATH_DESCRIPTION = (
+    "Absolute path (~ is expanded) to an existing file or folder inside the allowed roots; "
+    "call files_list_allowed_roots to see them."
+)
+_FOLDER_PATH_DESCRIPTION = "Absolute path (~ is expanded) to an existing folder inside the allowed roots."
+_PROMPT_NAME_DESCRIPTION = "Prompt name from files_list_prompts."
+_PROMPT_ARGUMENTS_DESCRIPTION = "Optional JSON object string of prompt arguments, for example '{\"topic\": \"taxes\"}'."
+
 
 mcp = AppleMCPServer("Apple Files MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
@@ -194,7 +204,7 @@ def files_list_allowed_roots() -> RootsResponse:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def files_list_directory(path: str) -> FileListResponse | ErrorResponse:
+def files_list_directory(path: Annotated[str, Field(description=_FOLDER_PATH_DESCRIPTION)]) -> FileListResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_list_directory")
         entries = _bridge().list_directory(path)
@@ -209,7 +219,11 @@ def files_list_directory(path: str) -> FileListResponse | ErrorResponse:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def files_search_files(query: str, base_path: str | None = None, limit: int = 25) -> FileListResponse | ErrorResponse:
+def files_search_files(
+    query: Annotated[str, Field(description="Case-insensitive text to match anywhere in file and folder names (not file contents).")],
+    base_path: Annotated[str | None, Field(description="Optional folder inside the allowed roots to search under. Omit to search every allowed root.")] = None,
+    limit: Annotated[int, Field(description="Maximum number of matches to return.")] = 25,
+) -> FileListResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_search_files")
         entries = _bridge().search_files(query=query, base_path=base_path, limit=limit)
@@ -224,7 +238,7 @@ def files_search_files(query: str, base_path: str | None = None, limit: int = 25
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def files_get_file_info(path: str) -> FileResponse | ErrorResponse:
+def files_get_file_info(path: Annotated[str, Field(description=_PATH_DESCRIPTION)]) -> FileResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_get_file_info")
         return FileResponse(entry=_bridge().file_info(path))
@@ -238,7 +252,10 @@ def files_get_file_info(path: str) -> FileResponse | ErrorResponse:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def files_read_text_file(path: str, max_bytes: int = 100_000) -> FileTextResponse | ErrorResponse:
+def files_read_text_file(
+    path: Annotated[str, Field(description=_PATH_DESCRIPTION)],
+    max_bytes: Annotated[int, Field(description="Maximum bytes to read, 1 to 10485760. Longer files are cut off and returned with truncated=true.")] = 100_000,
+) -> FileTextResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_read_text_file")
         text, truncated = _bridge().read_text_file(path=path, max_bytes=max_bytes)
@@ -253,7 +270,7 @@ def files_read_text_file(path: str, max_bytes: int = 100_000) -> FileTextRespons
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def files_recent_files(limit: int = 25) -> FileListResponse | ErrorResponse:
+def files_recent_files(limit: Annotated[int, Field(description="Maximum number of recently modified files to return, newest first.")] = 25) -> FileListResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_recent_files")
         entries = _bridge().recent_files(limit=limit)
@@ -268,7 +285,7 @@ def files_recent_files(limit: int = 25) -> FileListResponse | ErrorResponse:
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def files_open_path(path: str) -> FileActionResponse | ErrorResponse:
+def files_open_path(path: Annotated[str, Field(description=_PATH_DESCRIPTION)]) -> FileActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_open_path")
         opened = _bridge().open_path(path)
@@ -284,7 +301,7 @@ def files_open_path(path: str) -> FileActionResponse | ErrorResponse:
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def files_reveal_in_finder(path: str) -> FileActionResponse | ErrorResponse:
+def files_reveal_in_finder(path: Annotated[str, Field(description=_PATH_DESCRIPTION)]) -> FileActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_reveal_in_finder")
         revealed = _bridge().reveal_in_finder(path)
@@ -300,7 +317,7 @@ def files_reveal_in_finder(path: str) -> FileActionResponse | ErrorResponse:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def files_get_tags(path: str) -> FileTagsResponse | ErrorResponse:
+def files_get_tags(path: Annotated[str, Field(description=_PATH_DESCRIPTION)]) -> FileTagsResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_get_tags")
         resolved_path, tags, is_icloud = _bridge().get_tags(path)
@@ -315,7 +332,10 @@ def files_get_tags(path: str) -> FileTagsResponse | ErrorResponse:
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def files_set_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorResponse:
+def files_set_tags(
+    path: Annotated[str, Field(description=_PATH_DESCRIPTION)],
+    tags: Annotated[list[str], Field(description="The complete new set of Finder tag names. Replaces all existing tags; pass [] to clear them.")],
+) -> FileTagsResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_set_tags")
         resolved_path, current_tags, is_icloud = _bridge().set_tags(path, tags)
@@ -330,7 +350,10 @@ def files_set_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorRespon
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def files_add_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorResponse:
+def files_add_tags(
+    path: Annotated[str, Field(description=_PATH_DESCRIPTION)],
+    tags: Annotated[list[str], Field(description="Finder tag names to add. Existing tags are kept.")],
+) -> FileTagsResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_add_tags")
         resolved_path, current_tags, is_icloud = _bridge().add_tags(path, tags)
@@ -345,7 +368,10 @@ def files_add_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorRespon
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def files_remove_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorResponse:
+def files_remove_tags(
+    path: Annotated[str, Field(description=_PATH_DESCRIPTION)],
+    tags: Annotated[list[str], Field(description="Finder tag names to remove. Other tags are kept.")],
+) -> FileTagsResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_remove_tags")
         resolved_path, current_tags, is_icloud = _bridge().remove_tags(path, tags)
@@ -360,7 +386,7 @@ def files_remove_tags(path: str, tags: list[str]) -> FileTagsResponse | ErrorRes
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def files_list_recent_locations(limit: int = 15) -> RecentLocationsResponse | ErrorResponse:
+def files_list_recent_locations(limit: Annotated[int, Field(description="Maximum number of recently active folders to return.")] = 15) -> RecentLocationsResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_list_recent_locations")
         entries = _bridge().list_recent_locations(limit=limit)
@@ -389,7 +415,10 @@ def files_get_icloud_status() -> ICloudStatusResponse | ErrorResponse:
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-async def files_create_folder(path: str, ctx: Context) -> FileMutationResponse | ErrorResponse:
+async def files_create_folder(
+    path: Annotated[str, Field(description="Absolute path (~ is expanded) of the folder to create inside the allowed roots. Its parent folder must already exist; an existing folder is left as is.")],
+    ctx: Context,
+) -> FileMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_create_folder")
         created = _bridge().create_folder(path)
@@ -405,7 +434,11 @@ async def files_create_folder(path: str, ctx: Context) -> FileMutationResponse |
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-async def files_move_path(source: str, destination: str, ctx: Context) -> FileMutationResponse | ErrorResponse:
+async def files_move_path(
+    source: Annotated[str, Field(description="Absolute path (~ is expanded) of the existing file or folder to move, inside the allowed roots.")],
+    destination: Annotated[str, Field(description="Full new path, including the file or folder name, inside the allowed roots. Its parent folder must exist and the path must not exist yet; nothing is overwritten.")],
+    ctx: Context,
+) -> FileMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_move_path")
         original, moved = _bridge().move_path(source=source, destination=destination)
@@ -421,7 +454,10 @@ async def files_move_path(source: str, destination: str, ctx: Context) -> FileMu
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-async def files_delete_path(path: str, ctx: Context) -> FileMutationResponse | ErrorResponse:
+async def files_delete_path(
+    path: Annotated[str, Field(description="Absolute path (~ is expanded) of the file or empty folder to delete inside the allowed roots. Deletion is permanent; it does not go to the Trash.")],
+    ctx: Context,
+) -> FileMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("files_delete_path")
         deleted = _bridge().delete_path(path)
@@ -463,7 +499,10 @@ async def files_list_prompts() -> dict[str, object]:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-async def files_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+async def files_get_prompt_prompt(
+    name: Annotated[str, Field(description=_PROMPT_NAME_DESCRIPTION)],
+    arguments_json: Annotated[str | None, Field(description=_PROMPT_ARGUMENTS_DESCRIPTION)] = None,
+) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
     if isinstance(prompt, InputRequiredResult):

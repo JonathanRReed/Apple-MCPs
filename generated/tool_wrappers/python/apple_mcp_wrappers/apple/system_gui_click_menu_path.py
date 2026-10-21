@@ -11,9 +11,9 @@ async def system_gui_click_menu_path(
     application: str | None = None,
     bundle_id: str | None = None
 ) -> Any:
-    """System Gui Click Menu Path
+    """Click Menu Path
 
-    Delegated Apple domain tool 'system_gui_click_menu_path' exposed through Apple-Tools-MCP.
+    Click a menu path in an application, for example ['File', 'New Window']. This is a GUI fallback tool.
 
     Example:
         await system_gui_click_menu_path(client, menu_path=[], application='example_application')

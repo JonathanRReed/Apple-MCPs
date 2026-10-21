@@ -9,9 +9,9 @@ async def mail_delete_message(
     client: MCPToolCaller,
     message_id: str
 ) -> Any:
-    """Mail Delete Message
+    """Delete Message
 
-    Delegated Apple domain tool 'mail_delete_message' exposed through Apple-Tools-MCP.
+    Delete (trash) an email message by its message_id.
 
     Example:
         await mail_delete_message(client, message_id='example_message_id')

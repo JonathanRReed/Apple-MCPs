@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
-from typing import Literal
+from typing import Annotated, Literal
 
 from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
+from pydantic import Field
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
@@ -31,6 +32,9 @@ from apple_system_mcp.models import (
 )
 from apple_system_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_system_mcp.system_bridge import SettingMutation, SystemBridgeError, build_bridge
+
+_GUI_APPLICATION_DESCRIPTION = "Name of a running application to target, for example Safari. Omit both application and bundle_id to target the frontmost app."
+_GUI_BUNDLE_ID_DESCRIPTION = "Bundle identifier of a running application, for example com.apple.Safari. Takes precedence over application."
 
 SERVER_INSTRUCTIONS = (
     "Use this server for macOS system context and control. "
@@ -441,7 +445,10 @@ def system_get_context_snapshot() -> SystemContextResponse | ErrorResponse:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def system_read_preference_domain(domain: str, current_host: bool = False) -> PreferenceDomainResponse | ErrorResponse:
+def system_read_preference_domain(
+    domain: Annotated[str, Field(description="Preference domain name, for example com.apple.finder or NSGlobalDomain (-g also works). File paths and command options are rejected.")],
+    current_host: Annotated[bool, Field(description="True to read the per-host (defaults -currentHost) variant of the domain.")] = False,
+) -> PreferenceDomainResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_read_preference_domain")
         return PreferenceDomainResponse(
@@ -459,7 +466,7 @@ def system_read_preference_domain(domain: str, current_host: bool = False) -> Pr
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def system_set_appearance_mode(mode: str) -> SettingMutationResponse | ErrorResponse:
+def system_set_appearance_mode(mode: Annotated[str, Field(description="light or dark (case-insensitive).")]) -> SettingMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_set_appearance_mode")
         return _setting_mutation_response("appearance", "mode", _bridge().set_appearance_mode(mode))
@@ -473,7 +480,7 @@ def system_set_appearance_mode(mode: str) -> SettingMutationResponse | ErrorResp
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def system_set_show_all_extensions(enabled: bool) -> SettingMutationResponse | ErrorResponse:
+def system_set_show_all_extensions(enabled: Annotated[bool, Field(description="True to show all filename extensions in Finder, false to hide them.")]) -> SettingMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_set_show_all_extensions")
         return _setting_mutation_response("appearance", "show_all_extensions", _bridge().set_show_all_extensions(enabled))
@@ -487,7 +494,7 @@ def system_set_show_all_extensions(enabled: bool) -> SettingMutationResponse | E
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def system_set_show_hidden_files(enabled: bool) -> SettingMutationResponse | ErrorResponse:
+def system_set_show_hidden_files(enabled: Annotated[bool, Field(description="True to show hidden files in Finder, false to hide them.")]) -> SettingMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_set_show_hidden_files")
         return _setting_mutation_response("finder", "show_hidden_files", _bridge().set_show_hidden_files(enabled))
@@ -501,7 +508,7 @@ def system_set_show_hidden_files(enabled: bool) -> SettingMutationResponse | Err
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def system_set_finder_path_bar(enabled: bool) -> SettingMutationResponse | ErrorResponse:
+def system_set_finder_path_bar(enabled: Annotated[bool, Field(description="True to show the Finder path bar, false to hide it.")]) -> SettingMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_set_finder_path_bar")
         return _setting_mutation_response("finder", "show_path_bar", _bridge().set_finder_path_bar(enabled))
@@ -515,7 +522,7 @@ def system_set_finder_path_bar(enabled: bool) -> SettingMutationResponse | Error
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def system_set_finder_status_bar(enabled: bool) -> SettingMutationResponse | ErrorResponse:
+def system_set_finder_status_bar(enabled: Annotated[bool, Field(description="True to show the Finder status bar, false to hide it.")]) -> SettingMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_set_finder_status_bar")
         return _setting_mutation_response("finder", "show_status_bar", _bridge().set_finder_status_bar(enabled))
@@ -529,7 +536,7 @@ def system_set_finder_status_bar(enabled: bool) -> SettingMutationResponse | Err
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def system_set_dock_autohide(enabled: bool) -> SettingMutationResponse | ErrorResponse:
+def system_set_dock_autohide(enabled: Annotated[bool, Field(description="True to hide the Dock automatically, false to keep it visible.")]) -> SettingMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_set_dock_autohide")
         return _setting_mutation_response("dock", "autohide", _bridge().set_dock_autohide(enabled))
@@ -543,7 +550,7 @@ def system_set_dock_autohide(enabled: bool) -> SettingMutationResponse | ErrorRe
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def system_set_dock_show_recents(enabled: bool) -> SettingMutationResponse | ErrorResponse:
+def system_set_dock_show_recents(enabled: Annotated[bool, Field(description="True to show recent apps in the Dock, false to hide them.")]) -> SettingMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_set_dock_show_recents")
         return _setting_mutation_response("dock", "show_recents", _bridge().set_dock_show_recents(enabled))
@@ -557,7 +564,7 @@ def system_set_dock_show_recents(enabled: bool) -> SettingMutationResponse | Err
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def system_set_reduce_motion(enabled: bool) -> SettingMutationResponse | ErrorResponse:
+def system_set_reduce_motion(enabled: Annotated[bool, Field(description="True to turn on Reduce Motion, false to turn it off.")]) -> SettingMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_set_reduce_motion")
         return _setting_mutation_response("accessibility", "reduce_motion", _bridge().set_reduce_motion(enabled))
@@ -571,7 +578,7 @@ def system_set_reduce_motion(enabled: bool) -> SettingMutationResponse | ErrorRe
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def system_set_increase_contrast(enabled: bool) -> SettingMutationResponse | ErrorResponse:
+def system_set_increase_contrast(enabled: Annotated[bool, Field(description="True to turn on Increase Contrast, false to turn it off.")]) -> SettingMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_set_increase_contrast")
         return _setting_mutation_response("accessibility", "increase_contrast", _bridge().set_increase_contrast(enabled))
@@ -585,7 +592,7 @@ def system_set_increase_contrast(enabled: bool) -> SettingMutationResponse | Err
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def system_set_reduce_transparency(enabled: bool) -> SettingMutationResponse | ErrorResponse:
+def system_set_reduce_transparency(enabled: Annotated[bool, Field(description="True to turn on Reduce Transparency, false to turn it off.")]) -> SettingMutationResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_set_reduce_transparency")
         return _setting_mutation_response("accessibility", "reduce_transparency", _bridge().set_reduce_transparency(enabled))
@@ -599,7 +606,10 @@ def system_set_reduce_transparency(enabled: bool) -> SettingMutationResponse | E
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=True, open_world_hint=True),
     structured_output=True,
 )
-def system_gui_list_menu_bar_items(application: str | None = None, bundle_id: str | None = None) -> GuiMenuItemsResponse | ErrorResponse:
+def system_gui_list_menu_bar_items(
+    application: Annotated[str | None, Field(description=_GUI_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_GUI_BUNDLE_ID_DESCRIPTION)] = None,
+) -> GuiMenuItemsResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_list_menu_bar_items")
         target_app, items = _bridge().gui_list_menu_bar_items(application=application, bundle_id=bundle_id)
@@ -620,7 +630,11 @@ def system_gui_list_menu_bar_items(application: str | None = None, bundle_id: st
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def system_gui_click_menu_path(menu_path: list[str], application: str | None = None, bundle_id: str | None = None) -> GuiActionResponse | ErrorResponse:
+def system_gui_click_menu_path(
+    menu_path: Annotated[list[str], Field(description="Menu titles from the menu bar item down to the item to click, at least two entries, for example [\"File\", \"New Window\"]. Titles must match exactly.")],
+    application: Annotated[str | None, Field(description=_GUI_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_GUI_BUNDLE_ID_DESCRIPTION)] = None,
+) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_click_menu_path")
         target_app = _bridge().gui_click_menu_path(menu_path=menu_path, application=application, bundle_id=bundle_id)
@@ -643,7 +657,12 @@ def system_gui_click_menu_path(menu_path: list[str], application: str | None = N
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def system_gui_press_keys(key: str, modifiers: list[str] | None = None, application: str | None = None, bundle_id: str | None = None) -> GuiActionResponse | ErrorResponse:
+def system_gui_press_keys(
+    key: Annotated[str, Field(description="A printable character such as n, or a special key: return, enter, tab, space, escape, delete, forward_delete, left, right, up, down.")],
+    modifiers: Annotated[list[str] | None, Field(description="Modifier keys held during the press: command, control, option, shift. Omit for none.")] = None,
+    application: Annotated[str | None, Field(description=_GUI_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_GUI_BUNDLE_ID_DESCRIPTION)] = None,
+) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_press_keys")
         target_app = _bridge().gui_press_keys(key=key, modifiers=modifiers, application=application, bundle_id=bundle_id)
@@ -669,7 +688,11 @@ def system_gui_press_keys(key: str, modifiers: list[str] | None = None, applicat
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def system_gui_type_text(text: str, application: str | None = None, bundle_id: str | None = None) -> GuiActionResponse | ErrorResponse:
+def system_gui_type_text(
+    text: Annotated[str, Field(description="Text typed as keystrokes into the focused control of the target application.")],
+    application: Annotated[str | None, Field(description=_GUI_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_GUI_BUNDLE_ID_DESCRIPTION)] = None,
+) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_type_text")
         target_app = _bridge().gui_type_text(text=text, application=application, bundle_id=bundle_id)
@@ -692,11 +715,11 @@ def system_gui_type_text(text: str, application: str | None = None, bundle_id: s
     structured_output=True,
 )
 def system_gui_click_button(
-    label: str | None = None,
-    description: str | None = None,
-    index: int = 1,
-    application: str | None = None,
-    bundle_id: str | None = None,
+    label: Annotated[str | None, Field(description="Exact button name in the front window. Provide label or description.")] = None,
+    description: Annotated[str | None, Field(description="Accessibility description of the button, used when label is omitted.")] = None,
+    index: Annotated[int, Field(description="Which matching button to click when several match, starting at 1.")] = 1,
+    application: Annotated[str | None, Field(description=_GUI_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_GUI_BUNDLE_ID_DESCRIPTION)] = None,
 ) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_click_button")
@@ -723,11 +746,11 @@ def system_gui_click_button(
     structured_output=True,
 )
 def system_gui_choose_popup_value(
-    label: str | None,
-    value: str,
-    description: str | None = None,
-    application: str | None = None,
-    bundle_id: str | None = None,
+    label: Annotated[str | None, Field(description="Exact name of the pop-up button in the front window, or null to match by description.")],
+    value: Annotated[str, Field(description="Exact title of the menu item to choose from the pop-up.")],
+    description: Annotated[str | None, Field(description="Accessibility description of the pop-up button, used when label is null.")] = None,
+    application: Annotated[str | None, Field(description=_GUI_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_GUI_BUNDLE_ID_DESCRIPTION)] = None,
 ) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_choose_popup_value")
@@ -752,7 +775,7 @@ def system_gui_choose_popup_value(
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def system_set_clipboard(text: str) -> ClipboardResponse | ErrorResponse:
+def system_set_clipboard(text: Annotated[str, Field(description="Text to place on the clipboard; replaces the current clipboard contents.")]) -> ClipboardResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_set_clipboard")
         _bridge().set_clipboard(text)
@@ -767,7 +790,11 @@ def system_set_clipboard(text: str) -> ClipboardResponse | ErrorResponse:
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def system_show_notification(title: str, body: str, subtitle: str | None = None) -> NotificationResponse | ErrorResponse:
+def system_show_notification(
+    title: Annotated[str, Field(description="Notification title.")],
+    body: Annotated[str, Field(description="Main notification text.")],
+    subtitle: Annotated[str | None, Field(description="Optional line shown under the title.")] = None,
+) -> NotificationResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_show_notification")
         _bridge().show_notification(title=title, body=body, subtitle=subtitle)
@@ -782,7 +809,11 @@ def system_show_notification(title: str, body: str, subtitle: str | None = None)
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-async def system_open_application(application: str | None = None, bundle_id: str | None = None, ctx: Context | None = None) -> OpenAppResponse | ErrorResponse:
+async def system_open_application(
+    application: Annotated[str | None, Field(description="Application name to open, for example Safari. Provide application or bundle_id.")] = None,
+    bundle_id: Annotated[str | None, Field(description="Application bundle identifier, for example com.apple.Safari. Takes precedence over application.")] = None,
+    ctx: Context | None = None,
+) -> OpenAppResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_open_application")
         opened_application = _bridge().open_application(application=application, bundle_id=bundle_id)
@@ -825,7 +856,10 @@ async def system_list_prompts() -> dict[str, object]:
     annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-async def system_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+async def system_get_prompt_prompt(
+    name: Annotated[str, Field(description="Prompt name from system_list_prompts.")],
+    arguments_json: Annotated[str | None, Field(description="Optional prompt arguments as a JSON object string.")] = None,
+) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
     if isinstance(prompt, InputRequiredResult):

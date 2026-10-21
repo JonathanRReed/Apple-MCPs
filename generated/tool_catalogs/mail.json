@@ -225,7 +225,7 @@
         "searched",
         "order"
       ],
-      "title": "Search Messages",
+      "title": "Search Mail",
       "usage_intent": "Search Apple Mail messages by query with optional account, mailbox and unread filters. Without account, accounts are searched in Mail's order and the limit can be filled by the first one; pass account (as returned by mail_list_mailboxes) to search a specific account."
     },
     {
@@ -265,7 +265,7 @@
         "fetch",
         "single"
       ],
-      "title": "Get Message",
+      "title": "Get Email",
       "usage_intent": "Fetch a single Apple Mail message by message_id."
     },
     {
@@ -428,7 +428,7 @@
         "set",
         "sender"
       ],
-      "title": "Send Message",
+      "title": "Send Email",
       "usage_intent": "Send an email immediately via Apple Mail. Optionally specify from_account as an email address or account name to set the sender."
     },
     {
@@ -460,7 +460,7 @@
       ],
       "name": "mail_reply_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_reply_message",
       "tags": [
         "mail",
@@ -515,7 +515,7 @@
       ],
       "name": "mail_forward_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_forward_message",
       "tags": [
         "mail",
@@ -567,7 +567,7 @@
       ],
       "name": "mail_mark_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_mark_message",
       "tags": [
         "mail",
@@ -617,7 +617,7 @@
       ],
       "name": "mail_move_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_move_message",
       "tags": [
         "mail",
@@ -708,7 +708,7 @@
       ],
       "name": "mail_reply_latest_in_thread",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_reply_latest_in_thread",
       "tags": [
         "mail",
@@ -757,7 +757,7 @@
       ],
       "name": "mail_archive_thread",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_archive_thread",
       "tags": [
         "mail",

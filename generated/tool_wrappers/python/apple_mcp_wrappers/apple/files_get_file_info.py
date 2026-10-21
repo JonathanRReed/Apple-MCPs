@@ -9,9 +9,9 @@ async def files_get_file_info(
     client: MCPToolCaller,
     path: str
 ) -> Any:
-    """Files Get File Info
+    """Get File Info
 
-    Delegated Apple domain tool 'files_get_file_info' exposed through Apple-Tools-MCP.
+    Get metadata for a file or folder inside the allowed roots.
 
     Example:
         await files_get_file_info(client, path='/path/to/item')

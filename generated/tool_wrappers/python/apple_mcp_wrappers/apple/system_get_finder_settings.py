@@ -8,9 +8,9 @@ from .client import MCPToolCaller, call_tool_json
 async def system_get_finder_settings(
     client: MCPToolCaller
 ) -> Any:
-    """System Get Finder Settings
+    """Get Finder Settings
 
-    Delegated Apple domain tool 'system_get_finder_settings' exposed through Apple-Tools-MCP.
+    Read common macOS Finder settings such as path bar, status bar, and preferred view style.
 
     Example:
         await system_get_finder_settings(client)

@@ -2,6 +2,18 @@ from __future__ import annotations
 
 import platform
 import subprocess
+from typing import Required, TypedDict
+
+
+class SendResult(TypedDict, total=False):
+    """Fields a send reports back; validated into models.SendResponse."""
+
+    sent: Required[bool]
+    recipient: str
+    chat_id: str
+    file_path: str
+    text: str | None
+    service_name: str | None
 
 
 class MessagesAutomationBridgeError(Exception):
@@ -83,7 +95,7 @@ class MessagesAutomationBridge:
 
     def send_message(
         self, recipient: str, text: str, service_name: str | None = None, *, services: list[str] | None = None
-    ) -> dict[str, str | bool | None]:
+    ) -> SendResult:
         """Send to one recipient over the first available of ``services``.
 
         ``service_name`` picks one service explicitly (iMessage, SMS or RCS);
@@ -112,7 +124,7 @@ class MessagesAutomationBridge:
             "service_name": used,
         }
 
-    def send_to_group(self, chat_id: str, text: str) -> dict[str, str | bool | None]:
+    def send_to_group(self, chat_id: str, text: str) -> SendResult:
         if not chat_id.strip():
             raise MessagesAutomationBridgeError("INVALID_INPUT", "chat_id must not be empty", "Provide a valid chat_id from conversation history.")
         if not text.strip():
@@ -133,7 +145,7 @@ class MessagesAutomationBridge:
 
     def send_attachment(
         self, recipient: str, file_path: str, text: str | None = None, service_name: str | None = None
-    ) -> dict[str, str | bool | None]:
+    ) -> SendResult:
         if not recipient.strip():
             raise MessagesAutomationBridgeError("INVALID_INPUT", "recipient must not be empty", "Provide an explicit iMessage address or phone number.")
         if not file_path.strip():

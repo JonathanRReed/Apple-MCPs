@@ -4,7 +4,7 @@ import json
 from typing import Literal
 
 from mcp.server.mcpserver import Context, MCPServer
-from mcp.types import Annotations, ToolAnnotations
+from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 
 from apple_files_mcp.config import load_settings
 from apple_files_mcp.files_bridge import FilesBridgeError, build_bridge
@@ -430,7 +430,7 @@ async def files_delete_path(path: str, ctx: Context) -> FileMutationResponse | E
         return _error_response(exc.error_code, exc.message, getattr(exc, "suggestion", None))
 
 
-def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, object]]:
     return [
         {
             "role": getattr(message, "role", "user"),
@@ -465,6 +465,8 @@ async def files_list_prompts() -> dict[str, object]:
 async def files_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
+    if isinstance(prompt, InputRequiredResult):
+        return {"ok": False, "name": name, "error": {"error_code": "PROMPT_INPUT_REQUIRED", "message": f"Prompt '{name}' needs client input before it can render."}}
     return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
 
 

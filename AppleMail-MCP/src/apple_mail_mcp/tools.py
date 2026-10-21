@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 from mcp.server.mcpserver import Context, MCPServer
-from mcp.types import Annotations, ToolAnnotations
+from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 
 from apple_mail_mcp.config import Settings, load_settings
 from apple_mail_mcp.mail_bridge import AppleMailBridge, MailBridgeError
@@ -20,6 +20,7 @@ from apple_mail_mcp.models import (
     MarkRecord,
     MessageRecord,
     MessageSearchResponse,
+    MessageSummary,
     MoveRecord,
     ReplyRecord,
     SendRecord,
@@ -346,7 +347,7 @@ def mail_get_thread_tool(
             # and archive/reply-latest would act on it.
             account=anchor.account or None,
         )
-    matched: list[object] = []
+    matched: list[MessageSummary] = []
     seen: set[str] = set()
     for candidate in [*candidates, anchor]:
         candidate_subject = normalized_thread_subject(candidate.subject)
@@ -1059,7 +1060,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
             settings=server_settings,
         )
 
-    def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+    def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, object]]:
         return [
             {
                 "role": getattr(message, "role", "user"),
@@ -1093,9 +1094,12 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
     async def mail_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
         arguments = json.loads(arguments_json) if arguments_json else None
         prompt = await mcp.get_prompt(name, arguments)
+        if isinstance(prompt, InputRequiredResult):
+            return {"ok": False, "name": name, "error": {"error_code": "PROMPT_INPUT_REQUIRED", "message": f"Prompt '{name}' needs client input before it can render."}}
         return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
 
-    mcp._tool_discovery = install_search_first_discovery(mcp, server_name="Apple Mail MCP", domain="mail")
+    # scripts/generate_tool_search_artifacts.py reads this back from the server instance.
+    mcp._tool_discovery = install_search_first_discovery(mcp, server_name="Apple Mail MCP", domain="mail")  # ty: ignore[unresolved-attribute]
 
     return mcp
 

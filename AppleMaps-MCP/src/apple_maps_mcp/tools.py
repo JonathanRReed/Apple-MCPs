@@ -5,7 +5,7 @@ import subprocess
 from typing import Literal
 
 from mcp.server.mcpserver import MCPServer
-from mcp.types import Annotations, ToolAnnotations
+from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 
 from apple_maps_mcp.config import load_settings
 from apple_maps_mcp.maps_bridge import AppleMapsBridge, MapsBridgeError, build_bridge
@@ -173,7 +173,7 @@ def maps_open_directions_in_maps(destination: str, origin: str | None = None, tr
         return _error_response("OPEN_UNAVAILABLE", "Could not run the 'open' command.", "This server requires macOS with the 'open' command available.")
 
 
-def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, object]]:
     return [
         {
             "role": getattr(message, "role", "user"),
@@ -208,6 +208,8 @@ async def maps_list_prompts() -> dict[str, object]:
 async def maps_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
+    if isinstance(prompt, InputRequiredResult):
+        return {"ok": False, "name": name, "error": {"error_code": "PROMPT_INPUT_REQUIRED", "message": f"Prompt '{name}' needs client input before it can render."}}
     return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
 
 

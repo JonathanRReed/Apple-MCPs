@@ -415,7 +415,7 @@ class MessagesDBBridge:
             has_attachments=bool(row["has_attachments"]),
         )
 
-    def _messages_date_to_iso(self, raw_value: object) -> str | None:
+    def _messages_date_to_iso(self, raw_value: int | float | str | None) -> str | None:
         if raw_value is None:
             return None
         numeric = int(raw_value)

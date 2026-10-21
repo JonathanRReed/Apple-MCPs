@@ -11,7 +11,7 @@ from mcp import types
 from mcp.server.caching import CacheHint
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.prompts import Prompt
-from mcp.server.mcpserver.prompts.base import UserMessage
+from mcp.server.mcpserver.prompts.base import Message, UserMessage
 from mcp.shared.exceptions import MCPError
 
 PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+XlN0AAAAASUVORK5CYII="
@@ -117,7 +117,7 @@ def enable_conformance_mode(mcp: MCPServer) -> None:
         title="Conformance Simple Prompt",
         description="Simple prompt used by official MCP conformance tests.",
     )
-    def conformance_simple_prompt() -> list[types.PromptMessage]:
+    def conformance_simple_prompt() -> list[Message]:
         return [
             UserMessage(types.TextContent(type="text", text="This is a simple prompt for testing."))
         ]
@@ -127,7 +127,7 @@ def enable_conformance_mode(mcp: MCPServer) -> None:
         title="Conformance Prompt With Arguments",
         description="Parameterized prompt used by official MCP conformance tests.",
     )
-    def conformance_prompt_with_arguments(arg1: str, arg2: str) -> list[types.PromptMessage]:
+    def conformance_prompt_with_arguments(arg1: str, arg2: str) -> list[Message]:
         return [
             UserMessage(
                 types.TextContent(
@@ -142,7 +142,7 @@ def enable_conformance_mode(mcp: MCPServer) -> None:
         title="Conformance Prompt With Embedded Resource",
         description="Prompt with embedded resource content used by official MCP conformance tests.",
     )
-    def conformance_prompt_with_embedded_resource(resourceUri: str) -> list[types.PromptMessage]:
+    def conformance_prompt_with_embedded_resource(resourceUri: str) -> list[Message]:
         return [
             UserMessage(
                 _embedded_resource(
@@ -159,7 +159,7 @@ def enable_conformance_mode(mcp: MCPServer) -> None:
         title="Conformance Prompt With Image",
         description="Prompt with image content used by official MCP conformance tests.",
     )
-    def conformance_prompt_with_image() -> list[types.PromptMessage]:
+    def conformance_prompt_with_image() -> list[Message]:
         return [
             UserMessage(types.ImageContent(type="image", data=PNG_BASE64, mime_type="image/png")),
             UserMessage(types.TextContent(type="text", text="Please analyze the image above.")),
@@ -362,7 +362,7 @@ def enable_conformance_mode(mcp: MCPServer) -> None:
         return types.InputRequiredResult(input_requests=requests, request_state="capability-gated")
 
     @mcp.prompt(name="test_input_required_result_prompt", description="Request context before rendering a prompt.")
-    async def conformance_input_required_prompt(ctx: Context) -> list[types.PromptMessage] | types.InputRequiredResult:
+    async def conformance_input_required_prompt(ctx: Context) -> list[Message] | types.InputRequiredResult:
         responses = ctx.input_responses
         if responses and "user_context" in responses:
             answer = responses["user_context"]

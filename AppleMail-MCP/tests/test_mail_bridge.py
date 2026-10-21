@@ -1,3 +1,5 @@
+import pytest
+
 from apple_mail_mcp.mail_bridge import AppleMailBridge, MailBridgeError, decode_message_id, encode_message_id
 
 
@@ -43,3 +45,35 @@ def test_send_message_returns_resolved_from_account(monkeypatch) -> None:
 
     assert result.sent is True
     assert result.from_account == "iCloud Account"
+
+
+def test_search_messages_reports_unknown_account(monkeypatch) -> None:
+    bridge = AppleMailBridge()
+
+    def fake_run_script(script_name: str, args: list[str]) -> str:
+        assert script_name == "search_messages.applescript"
+        assert args[-1] == "Nope"
+        raise MailBridgeError("search_messages.applescript: execution error: ACCOUNT_NOT_FOUND (-2700)")
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+
+    with pytest.raises(MailBridgeError) as excinfo:
+        bridge.search_messages("*", account="Nope")
+
+    assert str(excinfo.value).startswith("ACCOUNT_NOT_FOUND:")
+    assert "'Nope'" in str(excinfo.value)
+    assert "mail_list_mailboxes" in str(excinfo.value)
+
+
+def test_search_messages_without_account_searches_all_accounts(monkeypatch) -> None:
+    bridge = AppleMailBridge()
+
+    def fake_run_script(script_name: str, args: list[str]) -> str:
+        assert args[-1] == ""
+        return "Work\x1fInbox\x1f42\x1fHello\x1fa@example.com\x1fdate\x1ffalse\x1fHello\x1e"
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+
+    results = bridge.search_messages("*")
+
+    assert [(item.account, item.subject) for item in results] == [("Work", "Hello")]

@@ -1041,12 +1041,14 @@ def mail_search_messages(
     mailbox: str | None = None,
     unread_only: bool = False,
     limit: int | str = 10,
+    account: str | None = None,
 ) -> MailMessageSearchResponse | MailErrorResponse:
     return _mail_search_messages(
         query=query,
         mailbox=mailbox,
         unread_only=unread_only,
         limit=_coerce_int_arg("limit", limit, minimum=1),
+        account=account,
     )
 
 
@@ -1225,8 +1227,9 @@ def messages_send_attachment(
     recipient: str,
     file_path: str,
     text: str | None = None,
+    service_name: str | None = None,
 ) -> SendResponse | MessagesErrorResponse:
-    return _messages_send_attachment(recipient, file_path=file_path, text=text)
+    return _messages_send_attachment(recipient, file_path=file_path, text=text, service_name=service_name)
 
 
 def reminders_create_list(title: str) -> ReminderListMutationResponse | RemindersErrorResponse:

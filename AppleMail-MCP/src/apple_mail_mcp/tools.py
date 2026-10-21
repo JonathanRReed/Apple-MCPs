@@ -144,6 +144,7 @@ def mail_search_messages_tool(
     mailbox: str | None = None,
     unread_only: bool = False,
     limit: int = 10,
+    account: str | None = None,
 ) -> MessageSearchResponse:
     bounded_limit = max(1, min(limit or settings.default_search_limit, 100))
     results = bridge.search_messages(
@@ -151,6 +152,7 @@ def mail_search_messages_tool(
         mailbox=mailbox,
         unread_only=unread_only,
         limit=bounded_limit,
+        account=account or None,
     )
     return MessageSearchResponse(results=results, count=len(results))
 
@@ -338,6 +340,10 @@ def mail_get_thread_tool(
             mailbox=anchor.mailbox,
             unread_only=False,
             limit=max(25, min(limit * 4, 100)),
+            # Mailbox names repeat across accounts ("Inbox"); without this a
+            # same-subject message in another account could join the thread,
+            # and archive/reply-latest would act on it.
+            account=anchor.account or None,
         )
     matched: list[object] = []
     seen: set[str] = set()
@@ -429,6 +435,7 @@ def mail_search_messages(
     mailbox: str | None = None,
     unread_only: bool = False,
     limit: int | str = 10,
+    account: str | None = None,
     *,
     bridge: AppleMailBridge | None = None,
     settings: Settings | None = None,
@@ -442,6 +449,7 @@ def mail_search_messages(
             mailbox=mailbox,
             unread_only=unread_only,
             limit=limit_value,
+            account=account,
         )
     except ValueError as exc:
         return error_response("INVALID_INPUT", str(exc))
@@ -789,7 +797,11 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
     @mcp.tool(
         name="mail_search_messages",
         title="Search Messages",
-        description="Search Apple Mail messages by query with optional mailbox and unread filters.",
+        description=(
+            "Search Apple Mail messages by query with optional account, mailbox and unread filters. "
+            "Without account, accounts are searched in Mail's order and the limit can be filled by the first one; "
+            "pass account (as returned by mail_list_mailboxes) to search a specific account."
+        ),
         annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
         structured_output=True,
     )
@@ -798,12 +810,14 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         mailbox: str | None = None,
         unread_only: bool = False,
         limit: int | str = 10,
+        account: str | None = None,
     ) -> MessageSearchResponse | ErrorResponse:
         return mail_search_messages(
             query=query,
             mailbox=mailbox,
             unread_only=unread_only,
             limit=limit,
+            account=account,
             bridge=mail_bridge,
             settings=server_settings,
         )

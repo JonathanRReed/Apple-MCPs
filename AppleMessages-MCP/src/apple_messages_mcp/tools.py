@@ -63,12 +63,6 @@ _AUTOMATION_STATUS_BY_ERROR_CODE: dict[str, Literal["not_probed", "unknown", "de
 }
 
 
-_AUTOMATION_STATUS_BY_ERROR_CODE: dict[str, Literal["not_probed", "unknown", "denied"]] = {
-    "NOT_PROBED": "not_probed",
-    "AUTHORIZATION_UNKNOWN": "unknown",
-    "PERMISSION_DENIED": "denied",
-}
-
 
 def _db_bridge() -> MessagesDBBridge:
     return MessagesDBBridge(load_settings().db_path)
@@ -282,7 +276,7 @@ def messages_list_conversations(
 )
 def messages_get_conversation(
     chat_id: Annotated[str, Field(description=_CHAT_ID)],
-    limit: Annotated[int | str, Field(description="Maximum number of messages to return, newest first; must be 1 or more.")] = 50,
+    limit: Annotated[int | str, Field(description="Maximum number of the latest messages to select; must be 1 or more. The selected page is returned oldest first, so the last item is the most recent.")] = 50,
     offset: Annotated[int | str, Field(description="Number of newest messages to skip, for paging back through history; 0 or more.")] = 0,
 ) -> ConversationResponse | ErrorResponse:
     try:

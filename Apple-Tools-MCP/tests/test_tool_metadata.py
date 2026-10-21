@@ -109,3 +109,11 @@ def test_every_parameter_is_described(item: tuple[str, types.Tool]) -> None:
     _domain, tool = item
     undescribed = [name for name, schema in tool.input_schema.get("properties", {}).items() if not schema.get("description")]
     assert undescribed == [], tool.name
+
+
+def test_tools_that_save_preferences_are_not_read_only() -> None:
+    # Review follow-up: these tools persist detected defaults, so clients must
+    # not treat them as read-only.
+    tools_by_name = {tool.name: tool for tool in _list(unified.mcp)}
+    for name in ("apple_detect_defaults", "apple_detect_digest_folder"):
+        assert tools_by_name[name].annotations.read_only_hint is False, name

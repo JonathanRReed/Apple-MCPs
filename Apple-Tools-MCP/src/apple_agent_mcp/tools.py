@@ -1352,7 +1352,7 @@ def apple_update_preferences(
 @mcp.tool(
     title="Apple Detect Digest Folder",
     description="Detect the preferred Notes folder for daily and weekly digests, and persist it if found.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def apple_detect_digest_folder() -> DigestFolderResponse | AppleErrorResponse:

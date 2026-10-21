@@ -51,11 +51,6 @@ _PERMISSION_STATUS_BY_ERROR_CODE: dict[str, Literal["unknown", "denied"]] = {
 }
 
 
-_PERMISSION_STATUS_BY_ERROR_CODE: dict[str, Literal["unknown", "denied"]] = {
-    "AUTHORIZATION_UNKNOWN": "unknown",
-    "PERMISSION_DENIED": "denied",
-}
-
 
 def _bridge() -> AppleContactsBridge:
     return build_bridge()

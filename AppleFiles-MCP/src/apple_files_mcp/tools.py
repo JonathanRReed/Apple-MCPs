@@ -418,7 +418,7 @@ def files_get_icloud_status() -> ICloudStatusResponse | ErrorResponse:
     structured_output=True,
 )
 async def files_create_folder(
-    path: Annotated[str, Field(description="Absolute path (~ is expanded) of the folder to create inside the allowed roots. Its parent folder must already exist; an existing folder is left as is.")],
+    path: Annotated[str, Field(description="Absolute path (~ is expanded) of the folder to create inside the allowed roots. Missing parent folders are created; an existing folder is left as is.")],
     ctx: Context,
 ) -> FileMutationResponse | ErrorResponse:
     try:

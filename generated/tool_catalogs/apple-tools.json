@@ -170,8 +170,8 @@
         }
       ],
       "name": "apple_detect_digest_folder",
-      "read_only": true,
-      "risk_level": "low",
+      "read_only": false,
+      "risk_level": "high",
       "schema_ref": "apple_detect_digest_folder",
       "tags": [
         "assistant",

@@ -31,6 +31,29 @@
       "python": ">=3.11"
     }
   },
+  "user_config": {
+    "calendar_safety_mode": {
+      "type": "string",
+      "title": "Calendar safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read calendars and events only. safe_manage: also create, update, and delete events. full_access: same as safe_manage. This bundle's default is safe_manage. Sets APPLE_CALENDAR_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "safe_manage"
+    },
+    "calendar_allowed_calendars": {
+      "type": "string",
+      "title": "Allowed calendars",
+      "description": "Optional comma-separated calendar names the assistant may read or change (exact, case-sensitive). Leave empty for all calendars. Sets APPLE_CALENDAR_MCP_ALLOWED_CALENDARS.",
+      "required": false,
+      "default": ""
+    },
+    "calendar_write_allowed_calendars": {
+      "type": "string",
+      "title": "Calendars the assistant may change",
+      "description": "Optional comma-separated calendar names the assistant may create, update, or delete events in; it can still read the others. Leave empty for no extra write limit. Sets APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS.",
+      "required": false,
+      "default": ""
+    }
+  },
   "server": {
     "type": "uv",
     "entry_point": "server.py",
@@ -43,7 +66,9 @@
         "server.py"
       ],
       "env": {
-        "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage"
+        "APPLE_CALENDAR_MCP_SAFETY_MODE": "${user_config.calendar_safety_mode}",
+        "APPLE_CALENDAR_MCP_ALLOWED_CALENDARS": "${user_config.calendar_allowed_calendars}",
+        "APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS": "${user_config.calendar_write_allowed_calendars}"
       }
     }
   },

@@ -26,7 +26,17 @@ async def main() -> None:
             manifest = json.loads((destination / "manifest.json").read_text())
             config = manifest["server"]["mcp_config"]
 
-            def expand(value: str, directory: Path = destination) -> str:
+            # Substitute settings the way the MCPB reference client does when the
+            # user changed nothing: declared defaults only (booleans as "true"/"false").
+            defaults = {
+                f"${{user_config.{key}}}": (("true" if spec["default"] else "false") if isinstance(spec["default"], bool) else str(spec["default"]))
+                for key, spec in manifest.get("user_config", {}).items()
+                if "default" in spec
+            }
+
+            def expand(value: str, directory: Path = destination, defaults: dict[str, str] = defaults) -> str:
+                for placeholder, default in defaults.items():
+                    value = value.replace(placeholder, default)
                 return value.replace("${__dirname}", str(directory)).replace("${HOME}", str(Path.home()))
 
             parameters = StdioServerParameters(

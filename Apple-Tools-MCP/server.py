@@ -8,6 +8,9 @@ if str(SRC_DIR) not in sys.path:
 
 
 def main() -> None:
+    from apple_mcp_common.bundle import drop_unexpanded_user_config
+
+    drop_unexpanded_user_config()
     from apple_agent_mcp.tools import main as run_main
 
     run_main()

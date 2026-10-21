@@ -38,6 +38,126 @@
       "python": ">=3.11"
     }
   },
+  "user_config": {
+    "mail_safety_mode": {
+      "type": "string",
+      "title": "Mail safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read and search only. safe_manage: also drafts, replies and forwards (these send immediately), mark, move, delete, and archive. full_access: also sends new messages. This bundle's default is full_access, matching earlier bundle releases (uvx and pip installs default to safe_manage). Sets APPLE_MAIL_MCP_SAFETY_PROFILE.",
+      "required": false,
+      "default": "full_access"
+    },
+    "calendar_safety_mode": {
+      "type": "string",
+      "title": "Calendar safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read calendars and events only. safe_manage: also create, update, and delete events. full_access: same as safe_manage. This bundle's default is safe_manage. Sets APPLE_CALENDAR_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "safe_manage"
+    },
+    "reminders_safety_mode": {
+      "type": "string",
+      "title": "Reminders safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read lists and reminders only. safe_manage: also create, update, and complete reminders and create lists. full_access: also delete reminders and lists. This bundle's default is safe_manage. Sets APPLE_REMINDERS_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "safe_manage"
+    },
+    "files_safety_mode": {
+      "type": "string",
+      "title": "Files safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: browse, search, and read files only. safe_manage: also create folders, move, open, reveal, and tag files. full_access: also delete files. This bundle's default is safe_manage. Sets APPLE_FILES_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "safe_manage"
+    },
+    "system_safety_mode": {
+      "type": "string",
+      "title": "System safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read status and settings only. safe_manage: also set the clipboard, show notifications, open apps, change appearance, Finder, Dock, and accessibility settings, and drive app menus and keys. full_access: same as safe_manage. This bundle's default is safe_manage. Sets APPLE_SYSTEM_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "safe_manage"
+    },
+    "contacts_safety_mode": {
+      "type": "string",
+      "title": "Contacts safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read and search contacts only. safe_manage: also create and update contacts. full_access: also delete contacts. This bundle's default is safe_manage. Sets APPLE_CONTACTS_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "safe_manage"
+    },
+    "notes_safety_mode": {
+      "type": "string",
+      "title": "Notes safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read and search notes only. safe_manage: also create, edit, move, and delete notes and folders. full_access: same as safe_manage. This bundle's default is full_access. Sets APPLE_NOTES_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "full_access"
+    },
+    "messages_safety_mode": {
+      "type": "string",
+      "title": "Messages safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read conversations only. safe_manage: also send messages, replies, and attachments. full_access: same as safe_manage. This bundle's default is full_access. Sets APPLE_MESSAGES_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "full_access"
+    },
+    "shortcuts_safety_mode": {
+      "type": "string",
+      "title": "Shortcuts safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: list and view shortcuts only. safe_manage: also run shortcuts. full_access: same as safe_manage. This bundle's default is full_access. Sets APPLE_SHORTCUTS_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "full_access"
+    },
+    "files_allowed_roots": {
+      "type": "string",
+      "title": "Folders the Files tools may access",
+      "description": "Comma-separated folder paths; ~ means your home folder. The assistant cannot see files outside these folders. Sets APPLE_FILES_MCP_ALLOWED_ROOTS.",
+      "required": false,
+      "default": "~/Desktop,~/Documents,~/Downloads,~/Library/Mobile Documents/com~apple~CloudDocs"
+    },
+    "mail_allowed_attachment_root": {
+      "type": "directory",
+      "title": "Mail attachment folder",
+      "description": "Optional. Mail drafts and sends can attach files only from this folder; pick a dedicated folder, not your home folder. Leave empty to keep attachments turned off. Sets APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT.",
+      "required": false
+    },
+    "mail_visible_drafts": {
+      "type": "boolean",
+      "title": "Show Mail drafts on screen",
+      "description": "Open new drafts in a visible Mail window so you can review them. Sets APPLE_MAIL_MCP_VISIBLE_DRAFTS.",
+      "required": false,
+      "default": true
+    },
+    "calendar_allowed_calendars": {
+      "type": "string",
+      "title": "Allowed calendars",
+      "description": "Optional comma-separated calendar names the assistant may read or change (exact, case-sensitive). Leave empty for all calendars. Sets APPLE_CALENDAR_MCP_ALLOWED_CALENDARS.",
+      "required": false,
+      "default": ""
+    },
+    "calendar_write_allowed_calendars": {
+      "type": "string",
+      "title": "Calendars the assistant may change",
+      "description": "Optional comma-separated calendar names the assistant may create, update, or delete events in; it can still read the others. Leave empty for no extra write limit. Sets APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS.",
+      "required": false,
+      "default": ""
+    },
+    "reminders_allowed_lists": {
+      "type": "string",
+      "title": "Allowed reminder lists",
+      "description": "Optional comma-separated reminder list names the assistant may use. Leave empty for all lists. Sets APPLE_REMINDERS_MCP_ALLOWED_LISTS.",
+      "required": false,
+      "default": ""
+    },
+    "notes_allowed_accounts": {
+      "type": "string",
+      "title": "Allowed Notes accounts",
+      "description": "Optional comma-separated Notes account names the assistant may use. Leave empty for all accounts. Sets APPLE_NOTES_MCP_ALLOWED_ACCOUNTS.",
+      "required": false,
+      "default": ""
+    },
+    "notes_allowed_folders": {
+      "type": "string",
+      "title": "Allowed Notes folders",
+      "description": "Optional comma-separated Notes folder names the assistant may use. Leave empty for all folders. Sets APPLE_NOTES_MCP_ALLOWED_FOLDERS.",
+      "required": false,
+      "default": ""
+    }
+  },
   "server": {
     "type": "uv",
     "entry_point": "server.py",
@@ -50,16 +170,23 @@
         "server.py"
       ],
       "env": {
-        "APPLE_MAIL_MCP_SAFETY_PROFILE": "full_access",
-        "APPLE_CALENDAR_MCP_SAFETY_MODE": "safe_manage",
-        "APPLE_REMINDERS_MCP_SAFETY_MODE": "safe_manage",
-        "APPLE_FILES_MCP_ALLOWED_ROOTS": "${HOME}/Desktop,${HOME}/Documents,${HOME}/Downloads,${HOME}/Library/Mobile Documents/com~apple~CloudDocs",
-        "APPLE_FILES_MCP_SAFETY_MODE": "safe_manage",
-        "APPLE_SYSTEM_MCP_SAFETY_MODE": "safe_manage",
-        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_manage",
-        "APPLE_NOTES_MCP_SAFETY_MODE": "full_access",
-        "APPLE_MESSAGES_MCP_SAFETY_MODE": "full_access",
-        "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "full_access"
+        "APPLE_MAIL_MCP_SAFETY_PROFILE": "${user_config.mail_safety_mode}",
+        "APPLE_CALENDAR_MCP_SAFETY_MODE": "${user_config.calendar_safety_mode}",
+        "APPLE_REMINDERS_MCP_SAFETY_MODE": "${user_config.reminders_safety_mode}",
+        "APPLE_FILES_MCP_SAFETY_MODE": "${user_config.files_safety_mode}",
+        "APPLE_SYSTEM_MCP_SAFETY_MODE": "${user_config.system_safety_mode}",
+        "APPLE_CONTACTS_MCP_SAFETY_MODE": "${user_config.contacts_safety_mode}",
+        "APPLE_NOTES_MCP_SAFETY_MODE": "${user_config.notes_safety_mode}",
+        "APPLE_MESSAGES_MCP_SAFETY_MODE": "${user_config.messages_safety_mode}",
+        "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "${user_config.shortcuts_safety_mode}",
+        "APPLE_FILES_MCP_ALLOWED_ROOTS": "${user_config.files_allowed_roots}",
+        "APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT": "${user_config.mail_allowed_attachment_root}",
+        "APPLE_MAIL_MCP_VISIBLE_DRAFTS": "${user_config.mail_visible_drafts}",
+        "APPLE_CALENDAR_MCP_ALLOWED_CALENDARS": "${user_config.calendar_allowed_calendars}",
+        "APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS": "${user_config.calendar_write_allowed_calendars}",
+        "APPLE_REMINDERS_MCP_ALLOWED_LISTS": "${user_config.reminders_allowed_lists}",
+        "APPLE_NOTES_MCP_ALLOWED_ACCOUNTS": "${user_config.notes_allowed_accounts}",
+        "APPLE_NOTES_MCP_ALLOWED_FOLDERS": "${user_config.notes_allowed_folders}"
       }
     }
   },

@@ -31,6 +31,15 @@
       "python": ">=3.11"
     }
   },
+  "user_config": {
+    "shortcuts_safety_mode": {
+      "type": "string",
+      "title": "Shortcuts safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: list and view shortcuts only. safe_manage: also run shortcuts. full_access: same as safe_manage. This bundle's default is full_access. Sets APPLE_SHORTCUTS_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "full_access"
+    }
+  },
   "server": {
     "type": "uv",
     "entry_point": "server.py",
@@ -43,7 +52,7 @@
         "server.py"
       ],
       "env": {
-        "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "full_access"
+        "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "${user_config.shortcuts_safety_mode}"
       }
     }
   },

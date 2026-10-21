@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import ClassVar, TypedDict
 
-from apple_system_mcp.config import load_settings
+from apple_mcp_common.safety import how_to_set
+from apple_system_mcp.config import GUI_ALLOWED_APPS_ENV_VAR, GUI_ALLOWED_APPS_TITLE, load_settings
 from apple_system_mcp.models import AppRecord, BatteryStatus
 
 
@@ -29,24 +30,37 @@ class SystemBridgeError(Exception):
 class SystemBridge:
     _RECORD_SEPARATOR = "\x1e"
     _FIELD_SEPARATOR = "\x1f"
-    # Terminals and apps that run typed code (script editors, IDEs with an integrated
-    # terminal). GUI input to them is refused even when they are allow-listed.
-    _TERMINAL_APP_NAMES: ClassVar[frozenset[str]] = frozenset(
+    # Terminals, script editors and automation apps (IDEs with an integrated terminal,
+    # launchers that run commands). GUI input to them is refused even when they are
+    # allow-listed, because typed text there can run code.
+    _REFUSED_APP_NAMES: ClassVar[frozenset[str]] = frozenset(
         {
             "terminal", "iterm2", "iterm", "warp", "ghostty", "kitty", "alacritty", "wezterm",
-            "script editor", "automator", "shortcuts", "visual studio code", "code", "cursor",
-            "xcode", "hyper", "rio", "tabby", "zed",
+            "hyper", "rio", "tabby", "wave",
+            "script editor", "script debugger", "automator", "shortcuts", "keyboard maestro",
+            "hammerspoon", "raycast", "alfred", "alfred 5",
+            "visual studio code", "visual studio code - insiders", "code", "vscodium", "cursor",
+            "windsurf", "xcode", "zed", "zed preview", "nova", "bbedit", "sublime text",
+            "intellij idea", "intellij idea ce", "pycharm", "pycharm ce", "webstorm", "goland",
+            "clion", "rider", "phpstorm", "rubymine", "datagrip", "rustrover", "fleet", "android studio",
         }
     )
-    _TERMINAL_BUNDLE_IDS: ClassVar[frozenset[str]] = frozenset(
+    _REFUSED_BUNDLE_IDS: ClassVar[frozenset[str]] = frozenset(
         {
-            "com.apple.terminal", "com.googlecode.iterm2", "dev.warp.warp-stable", "dev.warp.warp",
-            "com.mitchellh.ghostty", "net.kovidgoyal.kitty", "org.alacritty", "io.alacritty",
-            "com.github.wez.wezterm", "com.apple.scripteditor2", "com.apple.automator",
-            "com.apple.shortcuts", "com.microsoft.vscode", "com.microsoft.vscodeinsiders",
-            "com.vscodium", "com.todesktop.230313mzl4w4u92", "com.apple.dt.xcode", "co.zeit.hyper",
-            "com.raphaelamorim.rio", "org.tabby", "com.tabby", "dev.zed.zed",
+            "com.apple.terminal", "net.kovidgoyal.kitty", "org.alacritty", "io.alacritty",
+            "com.github.wez.wezterm", "com.apple.scripteditor2", "com.apple.shortcuts",
+            "com.todesktop.230313mzl4w4u92", "co.zeit.hyper", "com.raphaelamorim.rio", "org.tabby",
+            "com.tabby", "dev.commandline.waveterm", "com.raycast.macos", "org.hammerspoon.hammerspoon",
+            "com.barebones.bbedit", "com.panic.nova", "com.google.android.studio",
         }
+    )
+    # Bundle id prefixes that cover every edition of a product family
+    # (JetBrains IDEs, VS Code Insiders, Warp channels, Automator applets, ...).
+    _REFUSED_BUNDLE_PREFIXES: ClassVar[tuple[str, ...]] = (
+        "com.googlecode.iterm2", "dev.warp.", "com.mitchellh.ghostty", "com.microsoft.vscode",
+        "com.vscodium", "com.exafunction.windsurf", "dev.zed.", "com.jetbrains.", "com.sublimetext.",
+        "com.apple.dt.xcode", "com.apple.automator", "com.latenightsw.scriptdebugger",
+        "com.stairways.keyboardmaestro", "com.runningwithcrayons.alfred",
     )
     # Brings the application whose bundle identifier is `targetBundle` to the front and
     # aborts unless it is frontmost. Keystrokes still go to whatever holds keyboard focus,
@@ -61,6 +75,8 @@ class SystemBridge:
         "end repeat",
         "end tell",
         'if frontBundle is not targetBundle then error "GUI_TARGET_NOT_FRONTMOST"',
+        # Give the newly activated app a moment so the first keystrokes are not lost.
+        "delay 0.1",
     ]
     _SPECIAL_KEY_CODES: ClassVar[dict[str, int]] = {
         "return": 36,
@@ -215,6 +231,23 @@ class SystemBridge:
         )
         return self._parse_app_record(raw)
 
+    @classmethod
+    def _is_refused_target(cls, name: str | None, bundle_id: str | None) -> bool:
+        normalized_name = (name or "").strip().lower().removesuffix(".app")
+        normalized_bundle = (bundle_id or "").strip().lower()
+        if normalized_name in cls._REFUSED_APP_NAMES or normalized_bundle in cls._REFUSED_BUNDLE_IDS:
+            return True
+        return bool(normalized_bundle) and normalized_bundle.startswith(cls._REFUSED_BUNDLE_PREFIXES)
+
+    @staticmethod
+    def _refused_target_error(target: str) -> SystemBridgeError:
+        return SystemBridgeError(
+            "TERMINAL_TARGET_REFUSED",
+            f"GUI input to '{target}' is refused. Terminals, script editors and automation apps are always refused, even if allow-listed.",
+            "Use a native tool for this task, or target a different application. Adding this app to "
+            f"{GUI_ALLOWED_APPS_ENV_VAR} does not change this.",
+        )
+
     def _gui_input_target(self, application: str | None = None, bundle_id: str | None = None) -> AppRecord:
         """Resolve the target of a GUI input action: a named, allow-listed, non-terminal application.
 
@@ -228,19 +261,22 @@ class SystemBridge:
                 "application or bundle_id is required for GUI input actions.",
                 "Name the target application; GUI input is never sent to the frontmost app implicitly.",
             )
-        refused = SystemBridgeError("TERMINAL_TARGET_REFUSED", "GUI input to terminal applications is refused.", "Target a non-terminal application.")
-        requested_name = (application or "").strip().lower().removesuffix(".app")
-        if requested_name in self._TERMINAL_APP_NAMES or (bundle_id or "").strip().lower() in self._TERMINAL_BUNDLE_IDS:
-            raise refused
+        if self._is_refused_target(application, bundle_id):
+            raise self._refused_target_error((application or bundle_id or "").strip())
         target_app = self._target_application(application=application, bundle_id=bundle_id)
         # Checked again on the resolved identity: an alias such as "Shell" resolves to Terminal.
-        if target_app.name.strip().lower() in self._TERMINAL_APP_NAMES or (target_app.bundle_id or "").lower() in self._TERMINAL_BUNDLE_IDS:
-            raise refused
+        if self._is_refused_target(target_app.name, target_app.bundle_id):
+            raise self._refused_target_error(f"{target_app.name} ({target_app.bundle_id or 'no bundle id'})")
         if not target_app.bundle_id or target_app.bundle_id.lower() not in load_settings().gui_allowed_apps:
+            bundle_value = target_app.bundle_id or "<bundle id>"
             raise SystemBridgeError(
                 "GUI_TARGET_NOT_ALLOWED",
-                f"GUI input to '{target_app.name}' ({target_app.bundle_id or 'no bundle id'}) is not allowed.",
-                "Add the application's bundle id to APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated) and restart the server.",
+                f"GUI input to '{target_app.name}' ({target_app.bundle_id or 'no bundle id'}) is not allowed because its bundle id "
+                "is not in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS.",
+                "GUI input is off unless the user allow-lists the app. Ask the user before enabling it. "
+                f"To allow it, {how_to_set(GUI_ALLOWED_APPS_ENV_VAR, bundle_value, GUI_ALLOWED_APPS_TITLE)}. "
+                "The value is a comma-separated list of bundle ids, for example com.apple.TextEdit,com.apple.Safari; "
+                "keep any ids already listed.",
             )
         return target_app
 

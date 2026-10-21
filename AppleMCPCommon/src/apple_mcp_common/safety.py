@@ -26,9 +26,13 @@ SAFETY_SETTING_TITLES: dict[str, str] = {
     "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "Shortcuts safety mode",
 }
 
-def how_to_set(env_var: str, value: str) -> str:
-    """Describe where to set ``env_var=value`` for env-block clients and Claude Desktop."""
-    title = SAFETY_SETTING_TITLES.get(env_var)
+def how_to_set(env_var: str, value: str, title: str | None = None) -> str:
+    """Describe where to set ``env_var=value`` for env-block clients and Claude Desktop.
+
+    ``title`` names the Claude Desktop extension setting for variables that are
+    not safety modes; safety modes default to ``SAFETY_SETTING_TITLES``.
+    """
+    title = title or SAFETY_SETTING_TITLES.get(env_var)
     desktop = (
         f'in Claude Desktop, open Settings > Extensions, configure this extension and set "{title}" to {value}'
         if title

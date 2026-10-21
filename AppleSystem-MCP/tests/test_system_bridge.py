@@ -166,3 +166,99 @@ def test_gui_target_not_frontmost_maps_to_distinct_error(monkeypatch) -> None:
     with pytest.raises(SystemBridgeError) as error:
         SystemBridge()._run_osascript(["return 1"])
     assert error.value.error_code == "GUI_TARGET_NOT_FRONTMOST"
+
+
+@pytest.mark.parametrize(
+    "record",
+    [
+        AppRecord(name="PyCharm", bundle_id="com.jetbrains.pycharm", process_id=1),
+        AppRecord(name="IntelliJ IDEA CE", bundle_id="com.jetbrains.intellij.ce", process_id=1),
+        AppRecord(name="Windsurf", bundle_id="com.exafunction.windsurf", process_id=1),
+        AppRecord(name="BBEdit", bundle_id="com.barebones.bbedit", process_id=1),
+        AppRecord(name="Raycast", bundle_id="com.raycast.macos", process_id=1),
+        AppRecord(name="Alfred", bundle_id="com.runningwithcrayons.Alfred", process_id=1),
+        AppRecord(name="Warp", bundle_id="dev.warp.Warp-Preview", process_id=1),
+        AppRecord(name="Ghostty", bundle_id="com.mitchellh.ghostty", process_id=1),
+        AppRecord(name="Code - Insiders", bundle_id="com.microsoft.VSCodeInsiders", process_id=1),
+        AppRecord(name="Xcode-beta", bundle_id="com.apple.dt.Xcode", process_id=1),
+    ],
+)
+def test_gui_input_refuses_ides_launchers_and_terminal_families(monkeypatch, record: AppRecord) -> None:
+    from apple_system_mcp.config import load_settings
+
+    bridge, captured = _gui_bridge(monkeypatch, record)
+    try:
+        _allow_gui_apps(monkeypatch, record.bundle_id or "")
+        with pytest.raises(SystemBridgeError) as error:
+            bridge.gui_type_text("rm -rf ~", application="Helper")
+        assert error.value.error_code == "TERMINAL_TARGET_REFUSED"
+        assert "even if allow-listed" in error.value.message
+        assert "terminal applications" not in error.value.message
+    finally:
+        load_settings.cache_clear()
+    assert captured == []
+
+
+def test_gui_refusal_message_covers_script_and_automation_apps(monkeypatch) -> None:
+    from apple_system_mcp.config import load_settings
+
+    bridge, _ = _gui_bridge(monkeypatch, AppRecord(name="Shortcuts", bundle_id="com.apple.shortcuts", process_id=1))
+    try:
+        _allow_gui_apps(monkeypatch, "com.apple.shortcuts")
+        with pytest.raises(SystemBridgeError) as error:
+            bridge.gui_press_keys("r", application="Shortcuts")
+    finally:
+        load_settings.cache_clear()
+    assert "Terminals, script editors and automation apps are always refused" in error.value.message
+    assert "APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS does not change this" in (error.value.suggestion or "")
+
+
+def test_gui_input_allows_similar_but_unrelated_bundle_ids(monkeypatch) -> None:
+    from apple_system_mcp.config import load_settings
+
+    assert not SystemBridge._is_refused_target("TextEdit", "com.apple.TextEdit")
+    assert not SystemBridge._is_refused_target("Safari", "com.apple.Safari")
+    assert not SystemBridge._is_refused_target("Pages", "com.apple.iWork.Pages")
+    bridge, captured = _gui_bridge(monkeypatch, AppRecord(name="Safari", bundle_id="com.apple.Safari", process_id=1))
+    try:
+        _allow_gui_apps(monkeypatch, " com.apple.TextEdit , com.apple.Safari ")
+        bridge.gui_press_keys("t", modifiers=["command"], bundle_id="com.apple.Safari")
+    finally:
+        load_settings.cache_clear()
+    assert len(captured) == 1
+
+
+def test_gui_not_allowed_error_says_where_to_set_the_allow_list(monkeypatch) -> None:
+    from apple_system_mcp.config import load_settings
+
+    bridge, _ = _gui_bridge(monkeypatch, AppRecord(name="Mail", bundle_id="com.apple.mail", process_id=1))
+    try:
+        _allow_gui_apps(monkeypatch, "")
+        with pytest.raises(SystemBridgeError) as error:
+            bridge.gui_type_text("hi", application="Mail")
+    finally:
+        load_settings.cache_clear()
+    suggestion = error.value.suggestion or ""
+    assert error.value.error_code == "GUI_TARGET_NOT_ALLOWED"
+    assert "APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS=com.apple.mail" in suggestion
+    assert '"env" block' in suggestion
+    assert '"Apps that accept GUI input"' in suggestion
+    assert "restart the MCP client" in suggestion
+    assert "com.apple.TextEdit,com.apple.Safari" in suggestion
+    assert "Ask the user" in suggestion
+
+
+def test_gui_input_scripts_pause_after_frontmost_guard(monkeypatch) -> None:
+    from apple_system_mcp.config import load_settings
+
+    bridge, captured = _gui_bridge(monkeypatch, AppRecord(name="TextEdit", bundle_id="com.apple.TextEdit", process_id=1))
+    try:
+        _allow_gui_apps(monkeypatch, "com.apple.TextEdit")
+        bridge.gui_type_text("hello", application="TextEdit")
+    finally:
+        load_settings.cache_clear()
+    command = captured[0]
+    script = [command[index + 1] for index, part in enumerate(command[: command.index("--")]) if part == "-e"]
+    guard = script.index('if frontBundle is not targetBundle then error "GUI_TARGET_NOT_FRONTMOST"')
+    assert script[guard + 1] == "delay 0.1"
+    assert script.index("keystroke typedText") > guard + 1

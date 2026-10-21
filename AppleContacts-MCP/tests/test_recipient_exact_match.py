@@ -158,3 +158,111 @@ def test_update_contact_refuses_blank_method_value(monkeypatch, field, value) ->
         bridge.update_contact("contact-1", **{field: [ContactMethod(label="mobile", value=value)]})
 
     assert error.value.error_code == "INVALID_INPUT"
+
+
+def ann(**overrides: object) -> dict[str, object]:
+    return {
+        **contact_item("ann"),
+        "name": "Ann Example",
+        "phones": [{"label": "home", "value": "+1 (212) 555-0100"}, {"label": "mobile", "value": "+1 (917) 555-0199"}],
+        "emails": [{"label": "home", "value": "ann@home.com"}, {"label": "work", "value": "ann@work.com"}],
+        **overrides,
+    }
+
+
+@pytest.mark.parametrize("channel", ["phone", "any"])
+def test_resolving_a_phone_returns_that_phone_not_the_first(monkeypatch, channel) -> None:
+    bridge = bridge_with(monkeypatch, [ann()])
+
+    recipient = bridge.resolve_message_recipient("917-555-0199", channel=channel)
+
+    assert recipient.contact.contact_id == "ann"
+    assert recipient.recipient_kind == "phone"
+    assert (recipient.recipient_label, recipient.recipient_value) == ("mobile", "+1 (917) 555-0199")
+
+
+@pytest.mark.parametrize("channel", ["email", "any"])
+def test_resolving_an_email_returns_that_email_ignoring_case(monkeypatch, channel) -> None:
+    bridge = bridge_with(monkeypatch, [ann()])
+
+    recipient = bridge.resolve_message_recipient("ANN@work.com", channel=channel)
+
+    assert recipient.recipient_kind == "email"
+    assert (recipient.recipient_label, recipient.recipient_value) == ("work", "ann@work.com")
+
+
+def test_one_number_stored_twice_in_different_forms_is_not_ambiguous(monkeypatch) -> None:
+    bridge = bridge_with(monkeypatch, [ann(phones=[
+        {"label": "home", "value": "+1 (212) 555-0100"},
+        {"label": "iPhone", "value": "(917) 555-0199"},
+        {"label": "mobile", "value": "+1 917 555 0199"},
+    ])])
+
+    recipient = bridge.resolve_message_recipient("+19175550199")
+
+    assert recipient.recipient_value == "+1 917 555 0199"
+
+
+def test_two_different_numbers_of_one_contact_matching_a_query_are_ambiguous(monkeypatch) -> None:
+    bridge = bridge_with(monkeypatch, [ann(phones=[
+        {"label": "US", "value": "+1 612 345 6789"},
+        {"label": "UK", "value": "+44 612 345 6789"},
+    ])])
+
+    with pytest.raises(ContactsBridgeError) as error:
+        bridge.resolve_message_recipient("612 345 6789")
+
+    assert error.value.error_code == "AMBIGUOUS_PHONE_NUMBER"
+
+
+@pytest.mark.parametrize(
+    ("stored", "query"),
+    [
+        # A national number has no country code to leave out, so an area code
+        # in front of a 7-digit local number is never skipped.
+        ("(212) 555-1234", "555-1234"),
+        ("(310) 555-1234", "555-1234"),
+        ("555-1234", "(212) 555-1234"),
+        ("212 555 1234", "555 1234"),
+        # "0" + area code is not a trunk prefix after a country code either.
+        ("0212 555 1234", "+212 555 1234"),
+        ("0310 555 1234", "555 1234"),
+    ],
+)
+def test_local_number_needs_an_international_number_to_skip_a_country_code(monkeypatch, stored, query) -> None:
+    bridge = bridge_with(monkeypatch, [contact_item("other", phone=stored)])
+
+    with pytest.raises(ContactsBridgeError) as error:
+        bridge.resolve_message_recipient(query)
+
+    assert error.value.error_code == "CONTACT_NOT_FOUND"
+
+
+def test_local_number_resolves_to_the_contact_storing_it_locally(monkeypatch) -> None:
+    bridge = bridge_with(monkeypatch, [
+        contact_item("new-york", phone="(212) 555-1234"),
+        contact_item("los-angeles", phone="(310) 555-1234"),
+        contact_item("local", phone="555 1234"),
+    ])
+
+    assert bridge.resolve_message_recipient("555-1234").contact.contact_id == "local"
+
+
+def test_short_code_resolves_only_to_an_exact_owner(monkeypatch) -> None:
+    bridge = bridge_with(monkeypatch, [
+        contact_item("contains", phone="+1 555 123 4567"),
+        contact_item("owner", phone="12345"),
+    ])
+
+    recipient = bridge.resolve_message_recipient("12345")
+
+    assert (recipient.contact.contact_id, recipient.recipient_value) == ("owner", "12345")
+
+
+def test_short_code_matching_only_part_of_a_number_is_ambiguous(monkeypatch) -> None:
+    bridge = bridge_with(monkeypatch, [contact_item("contains", phone="+1 555 123 4567")])
+
+    with pytest.raises(ContactsBridgeError) as error:
+        bridge.resolve_message_recipient("1234")
+
+    assert error.value.error_code == "AMBIGUOUS_PHONE_NUMBER"

@@ -97,11 +97,19 @@ class AppleMailBridge:
         mailbox: str | None = None,
         unread_only: bool = False,
         limit: int = 10,
+        account: str | None = None,
     ) -> list[MessageSummary]:
-        raw = self._run_script(
-            "search_messages.applescript",
-            [query, mailbox or "", "true" if unread_only else "false", str(limit)],
-        )
+        try:
+            raw = self._run_script(
+                "search_messages.applescript",
+                [query, mailbox or "", "true" if unread_only else "false", str(limit), account or ""],
+            )
+        except MailBridgeError as exc:
+            if account and "ACCOUNT_NOT_FOUND" in str(exc):
+                raise MailBridgeError(
+                    f"ACCOUNT_NOT_FOUND: No Mail account named '{account}'. Call mail_list_mailboxes to get valid account names."
+                ) from exc
+            raise
         results: list[MessageSummary] = []
         for row in _split_records(raw):
             if len(row) < 8:

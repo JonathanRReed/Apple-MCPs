@@ -2742,7 +2742,8 @@
         "query: string (required)",
         "mailbox: string (optional)",
         "unread_only: boolean (optional)",
-        "limit: integer (optional)"
+        "limit: integer (optional)",
+        "account: string (optional)"
       ],
       "description": "Delegated Apple domain tool 'mail_search_messages' exposed through Apple-Tools-MCP.",
       "domain": "apple",
@@ -8021,7 +8022,8 @@
       ],
       "argument_summary": [
         "recipient: string (required)",
-        "text: string (required)"
+        "text: string (required)",
+        "service_name: string (optional)"
       ],
       "description": "Delegated Apple domain tool 'messages_send_message' exposed through Apple-Tools-MCP.",
       "domain": "apple",
@@ -8066,7 +8068,8 @@
       ],
       "argument_summary": [
         "chat_id: string (required)",
-        "text: string (required)"
+        "text: string (required)",
+        "service_name: string (optional)"
       ],
       "description": "Delegated Apple domain tool 'messages_reply_in_conversation' exposed through Apple-Tools-MCP.",
       "domain": "apple",
@@ -8112,7 +8115,8 @@
       "argument_summary": [
         "recipient: string (required)",
         "file_path: string (required)",
-        "text: string (optional)"
+        "text: string (optional)",
+        "service_name: string (optional)"
       ],
       "description": "Delegated Apple domain tool 'messages_send_attachment' exposed through Apple-Tools-MCP.",
       "domain": "apple",

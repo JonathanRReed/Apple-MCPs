@@ -129,6 +129,7 @@ Restart the MCP client after upgrading. A fix merged on GitHub is not available 
 - Run Contacts before any send or reply when the user identifies a person rather than an email address.
 - `tools/list` returns the full Mail tool surface. Context-constrained clients can call `search_tools` first, then `get_tool_info` for the exact Mail tool they plan to call.
 - `mail_search_messages` requires a query string. Use a sender, a subject fragment, or `*` as a wildcard.
+- Pass `account` (an account name from `mail_list_mailboxes`) to search one account. Without it, accounts are searched in Mail's order and stop once `limit` results are collected, so a busy first account can fill the whole result set and hide mailboxes with the same name in other accounts.
 - There is no list-all recent-mail endpoint.
 - Use `mail_get_thread` when the user means a conversation, not a single message.
 - Use `mail_reply_latest_in_thread` when the agent should reply to the newest message in the conversation.

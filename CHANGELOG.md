@@ -6,7 +6,18 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Added
+- Messages sends and replies accept an optional `service_name` (`iMessage`, `SMS` or `RCS`). One-to-one replies without it follow the service of the thread's latest successful message; failed ("Not Delivered") sends are ignored. `SendResponse.service_name` reports the service actually used. (#63)
+
+### Changed
+- **Behavior change:** replies to SMS threads (and RCS threads with no RCS or SMS account) on a Mac without Text Message Forwarding now return `SERVICE_UNAVAILABLE` and send nothing, instead of silently going out as iMessage. To recover, retry with `service_name="iMessage"`, or turn on Text Message Forwarding for this Mac on the iPhone (Settings > Apps > Messages > Text Message Forwarding). The error says whether the service was requested or inferred from the thread. (#63)
+- Group replies reject a `service_name` that differs from the group's existing service with `INVALID_INPUT`. Messages sends group replies over the chat's own service, so the option cannot switch it. (#63)
+- RCS requires macOS 15 or later, where Messages' scripting dictionary gained the RCS service. On older macOS an explicit RCS request returns `SERVICE_UNAVAILABLE` before any AppleScript runs, and RCS threads fall back to SMS. (#63)
+
 ### Fixed
+- `mail_search_messages` accepts an optional `account` filter (Mail server and Apple-Tools-MCP). Without it, accounts were searched in Mail's order until `limit` was reached, so a busy first account filled the results and same-named mailboxes in later accounts (for example a second account's `Inbox`) were never reached. An `account` that matches no Mail account now returns an `ACCOUNT_NOT_FOUND` error pointing to `mail_list_mailboxes` instead of empty results.
+- `mail_get_thread`, and the `mail_reply_latest_in_thread` and `mail_archive_thread` flows built on it, now look for related messages only in the anchor message's account. Previously a message with the same subject in another account's same-named mailbox could be grouped into the thread, so reply-latest or archive could act on the wrong account.
+- Messages returned empty `text` for most recent messages. Recent macOS versions often leave `message.text` NULL and store the body only in `attributedBody`, an NSArchiver-serialized `NSAttributedString`. The Messages server now decodes `attributedBody` when `text` is empty in conversations, single messages, search results and conversation previews. Search also matches bodies stored that way. It checks the decoded text before paging, so archive class and attribute names never match and `limit`/`offset` count only real matches. That check is case-insensitive for non-ASCII text too. Attachment-only messages no longer return the U+FFFC placeholder as text. Databases without an `attributedBody` column keep working.
 - Calendar lookups, updates and deletes of an event that no longer exists return `EVENT_NOT_FOUND` immediately when EventKit has full read access, instead of retrying through Calendar automation and timing out after about 30 seconds.
 - Resolve Calendar names to native EventKit calendars in `calendar_create_event` and `calendar_update_event` when native read access is available, so name-based writes keep full alarm replacement and clearing instead of falling back to automation. Duplicate names return `AMBIGUOUS_CALENDAR` with candidate IDs, unknown names return `CALENDAR_NOT_FOUND`, and read-only calendars return `CALENDAR_READ_ONLY` before any write. Automation remains the fallback without native read access. (#41)
 

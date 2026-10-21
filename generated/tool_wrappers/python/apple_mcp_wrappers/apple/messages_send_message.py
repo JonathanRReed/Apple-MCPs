@@ -8,7 +8,8 @@ from .client import MCPToolCaller, call_tool_json
 async def messages_send_message(
     client: MCPToolCaller,
     recipient: str,
-    text: str
+    text: str,
+    service_name: str | None = None
 ) -> Any:
     """Messages Send Message
 
@@ -20,6 +21,7 @@ async def messages_send_message(
     arguments = {
         "recipient": recipient,
         "text": text,
+        "service_name": service_name,
     }
     payload = {key: value for key, value in arguments.items() if value is not None}
     return await call_tool_json(client, "messages_send_message", payload)

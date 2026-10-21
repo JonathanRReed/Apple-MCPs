@@ -6,6 +6,14 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Added
+- Messages sends and replies accept an optional `service_name` (`iMessage`, `SMS` or `RCS`). One-to-one replies without it follow the service of the thread's latest successful message; failed ("Not Delivered") sends are ignored. `SendResponse.service_name` reports the service actually used. (#63)
+
+### Changed
+- **Behavior change:** replies to SMS threads (and RCS threads with no RCS or SMS account) on a Mac without Text Message Forwarding now return `SERVICE_UNAVAILABLE` and send nothing, instead of silently going out as iMessage. To recover, retry with `service_name="iMessage"`, or turn on Text Message Forwarding for this Mac on the iPhone (Settings > Apps > Messages > Text Message Forwarding). The error says whether the service was requested or inferred from the thread. (#63)
+- Group replies reject a `service_name` that differs from the group's existing service with `INVALID_INPUT`. Messages sends group replies over the chat's own service, so the option cannot switch it. (#63)
+- RCS requires macOS 15 or later, where Messages' scripting dictionary gained the RCS service. On older macOS an explicit RCS request returns `SERVICE_UNAVAILABLE` before any AppleScript runs, and RCS threads fall back to SMS. (#63)
+
 ### Fixed
 - Messages returned empty `text` for most recent messages. Recent macOS versions often leave `message.text` NULL and store the body only in `attributedBody`, an NSArchiver-serialized `NSAttributedString`. The Messages server now decodes `attributedBody` when `text` is empty in conversations, single messages, search results and conversation previews. Search also matches bodies stored that way. It checks the decoded text before paging, so archive class and attribute names never match and `limit`/`offset` count only real matches. That check is case-insensitive for non-ASCII text too. Attachment-only messages no longer return the U+FFFC placeholder as text. Databases without an `attributedBody` column keep working.
 

@@ -9,7 +9,8 @@ async def messages_send_attachment(
     client: MCPToolCaller,
     recipient: str,
     file_path: str,
-    text: str | None = None
+    text: str | None = None,
+    service_name: str | None = None
 ) -> Any:
     """Messages Send Attachment
 
@@ -22,6 +23,7 @@ async def messages_send_attachment(
         "recipient": recipient,
         "file_path": file_path,
         "text": text,
+        "service_name": service_name,
     }
     payload = {key: value for key, value in arguments.items() if value is not None}
     return await call_tool_json(client, "messages_send_attachment", payload)

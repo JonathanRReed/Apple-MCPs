@@ -275,6 +275,32 @@ class MessagesDBBridge:
                 for row in rows
             ]
 
+    def latest_service_for_chat(self, chat_id: str) -> str | None:
+        """Service ("iMessage", "SMS", "RCS") of a chat's most recent successful message.
+
+        Received and sent messages both count, so a thread whose latest
+        activity is an incoming SMS reports SMS. Messages that failed to send
+        (``message.error`` non-zero, shown as "Not Delivered") are skipped: a
+        failed iMessage to an SMS-only number must not switch the thread's
+        replies to iMessage.
+        """
+        with self._connect() as conn:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(message)").fetchall()}
+            failed_filter = " AND COALESCE(m.error, 0) = 0" if "error" in columns else ""
+            row = conn.execute(
+                f"""
+                SELECT m.service
+                FROM chat c
+                JOIN chat_message_join cmj ON cmj.chat_id = c.ROWID
+                JOIN message m ON m.ROWID = cmj.message_id
+                WHERE (c.guid = ? OR CAST(c.ROWID AS TEXT) = ?) AND COALESCE(m.service, '') != ''{failed_filter}
+                ORDER BY m.date DESC
+                LIMIT 1
+                """,
+                (chat_id, chat_id),
+            ).fetchone()
+            return str(row[0]) if row is not None else None
+
     def participant_addresses_for_chat(self, chat_id: str) -> list[str]:
         with self._connect() as conn:
             rows = conn.execute(

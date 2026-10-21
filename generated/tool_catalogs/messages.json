@@ -381,9 +381,10 @@
       ],
       "argument_summary": [
         "recipient: string (required)",
-        "text: string (required)"
+        "text: string (required)",
+        "service_name: string (optional)"
       ],
-      "description": "Send a new iMessage through Messages.app.",
+      "description": "Send a new message through Messages.app. Sends as iMessage unless service_name is set: SMS or RCS go through the iPhone's carrier and need Text Message Forwarding enabled for this Mac.",
       "domain": "messages",
       "example_calls": [
         {
@@ -408,10 +409,20 @@
         "messag",
         "send",
         "message",
-        "new"
+        "new",
+        "sends",
+        "unless",
+        "unles",
+        "service",
+        "name",
+        "set",
+        "rcs",
+        "iphone",
+        "carrier",
+        "need"
       ],
       "title": "Send Message",
-      "usage_intent": "Send a new iMessage through Messages.app."
+      "usage_intent": "Send a new message through Messages.app. Sends as iMessage unless service_name is set: SMS or RCS go through the iPhone's carrier and need Text Message Forwarding enabled for this Mac."
     },
     {
       "aliases": [
@@ -426,9 +437,10 @@
       ],
       "argument_summary": [
         "chat_id: string (required)",
-        "text: string (required)"
+        "text: string (required)",
+        "service_name: string (optional)"
       ],
-      "description": "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats.",
+      "description": "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats. One-to-one replies use the service of the thread's latest message (SMS/RCS threads stay SMS/RCS) unless service_name is set. Group replies always use the group's existing service; service_name is rejected for groups unless it matches.",
       "domain": "messages",
       "example_calls": [
         {
@@ -459,10 +471,14 @@
         "both",
         "one",
         "group",
-        "chats"
+        "chats",
+        "replies",
+        "service",
+        "thread",
+        "latest"
       ],
       "title": "Reply In Conversation",
-      "usage_intent": "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats."
+      "usage_intent": "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats. One-to-one replies use the service of the thread's latest message (SMS/RCS threads stay SMS/RCS) unless service_name is set. Group replies always use the group's existing service; service_name is rejected for groups unless it matches."
     },
     {
       "aliases": [
@@ -478,7 +494,8 @@
       "argument_summary": [
         "recipient: string (required)",
         "file_path: string (required)",
-        "text: string (optional)"
+        "text: string (optional)",
+        "service_name: string (optional)"
       ],
       "description": "Send a file attachment via Apple Messages to a recipient. Optionally include a text message.",
       "domain": "messages",

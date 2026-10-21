@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+from typing import Annotated, Literal
 
-from mcp.server.mcpserver import Context, MCPServer
-from mcp.types import Annotations, ToolAnnotations
+from mcp.server.mcpserver import Context
+from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
+from pydantic import Field
 
 from apple_contacts_mcp.config import load_settings
-from apple_contacts_mcp.contacts_bridge import AppleContactsBridge, ContactsBridgeError, build_bridge
+from apple_contacts_mcp.contacts_bridge import CONTACTS_HELPER_BUNDLE, AppleContactsBridge, ContactsBridgeError, build_bridge
 from apple_contacts_mcp.models import (
     ContactListResponse,
     ContactMethod,
@@ -20,9 +22,12 @@ from apple_contacts_mcp.models import (
     ResolvedRecipientResponse,
     ToolError,
 )
-from apple_contacts_mcp.permissions import SafetyError, ensure_action_allowed
+from apple_contacts_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.privacy import helper_permission_guide
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.safety import safety_mode_warning
+from apple_mcp_common.server import AppleMCPServer
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Contacts on macOS. "
@@ -30,7 +35,21 @@ SERVER_INSTRUCTIONS = (
     "or resolve a contact into a message-ready recipient before using Apple Messages."
 )
 
-mcp = MCPServer("Apple Contacts", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+_CONTACT_ID = "Contact id: the contact_id returned by contacts_search_contacts or contacts_list_contacts."
+_LOOKUP_QUERY = "A name, phone number, or email address to look up."
+_PHONES = "Phone numbers as {label, value} objects, e.g. {\"label\": \"mobile\", \"value\": \"+15551234567\"}."
+_EMAILS = "Email addresses as {label, value} objects, e.g. {\"label\": \"work\", \"value\": \"person@example.com\"}."
+_UNCHANGED = "Empty keeps the current value."
+_REPLACES = "When given, replaces all existing entries; [] removes them all. Omit to keep them."
+
+mcp = AppleMCPServer("Apple Contacts", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+
+
+_PERMISSION_STATUS_BY_ERROR_CODE: dict[str, Literal["unknown", "denied"]] = {
+    "AUTHORIZATION_UNKNOWN": "unknown",
+    "PERMISSION_DENIED": "denied",
+}
+
 
 
 def _bridge() -> AppleContactsBridge:
@@ -82,12 +101,13 @@ def contacts_prepare_message_recipient_prompt() -> str:
 @mcp.tool(
     title="Contacts Health",
     description="Report the active Apple Contacts MCP configuration.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def contacts_health() -> HealthResponse:
     settings = load_settings()
-    accessible, error = _bridge().permission_diagnostic()
+    bridge = _bridge()
+    accessible, error = bridge.permission_diagnostic()
     capabilities = [
         "list_contacts",
         "search_contacts",
@@ -106,41 +126,47 @@ def contacts_health() -> HealthResponse:
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_mode),
         capabilities=capabilities,
         contacts_accessible=accessible,
-        permission_status=("authorized" if accessible else {
-            "AUTHORIZATION_UNKNOWN": "unknown", "PERMISSION_DENIED": "denied",
-        }.get(error.error_code if error is not None else "", "failed")),
+        permission_status=("authorized" if accessible else _PERMISSION_STATUS_BY_ERROR_CODE.get(error.error_code if error is not None else "", "failed")),
         permission_error_code=error.error_code if error is not None else None,
         permission_error=error.message if error is not None else None,
         permission_suggestion=error.suggestion if error is not None else None,
+        permission_client=getattr(bridge, "permission_client", None),
     )
 
 
 @mcp.tool(
     title="Contacts Permission Guide",
     description="Explain how to grant Apple Contacts permission on macOS.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def contacts_permission_guide() -> dict[str, object]:
-    return {
-        "ok": True,
-        "domain": "contacts",
-        "can_prompt_in_app": True,
-        "requires_manual_system_settings": False,
-        "steps": [
-            "Call a Contacts tool from this MCP server.",
-            "Approve the macOS Contacts access prompt when it appears.",
-            "If access was denied before, re-enable it in System Settings > Privacy & Security > Contacts.",
-        ],
-    }
+    if load_settings().backend == "applescript":
+        # The AppleScript backend never launches the native helper: osascript
+        # drives Contacts.app, so access belongs to the app running this server.
+        return {
+            "ok": True,
+            "domain": "contacts",
+            "backend": "applescript",
+            "can_prompt_in_app": True,
+            "requires_manual_system_settings": False,
+            "steps": [
+                "Call a Contacts tool from this MCP server.",
+                "Approve the macOS prompts to let the app running this server control Contacts and access your contacts.",
+                "If access was denied before, re-enable that app in System Settings > Privacy & Security > Automation (Contacts) and > Contacts.",
+                "Or unset APPLE_CONTACTS_MCP_BACKEND to use the native helper, which can ask for access in its own name.",
+            ],
+        }
+    return helper_permission_guide("contacts", "Contacts", "AddressBook", CONTACTS_HELPER_BUNDLE)
 
 
 @mcp.tool(
     title="Contacts Recheck Permissions",
     description="Recheck Contacts access after the user changes macOS permissions, and notify the client that Contacts resources changed.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 async def contacts_recheck_permissions(ctx: Context) -> HealthResponse:
@@ -154,10 +180,13 @@ async def contacts_recheck_permissions(ctx: Context) -> HealthResponse:
 @mcp.tool(
     title="List Contacts",
     description="List Apple Contacts entries.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def contacts_list_contacts(limit: int = 100, offset: int = 0) -> ContactListResponse | ErrorResponse:
+def contacts_list_contacts(
+    limit: Annotated[int, Field(description="Maximum number of contacts to return, from 1 to 100.")] = 100,
+    offset: Annotated[int, Field(description="Number of contacts to skip, for paging; 0 or more.")] = 0,
+) -> ContactListResponse | ErrorResponse:
     try:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
@@ -179,10 +208,13 @@ def contacts_list_contacts(limit: int = 100, offset: int = 0) -> ContactListResp
 @mcp.tool(
     title="Search Contacts",
     description="Search Apple Contacts by name, phone number, or email address.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def contacts_search_contacts(query: str, limit: int = 25) -> ContactListResponse | ErrorResponse:
+def contacts_search_contacts(
+    query: Annotated[str, Field(description=_LOOKUP_QUERY + " Must not be empty.")],
+    limit: Annotated[int, Field(description="Maximum number of matches to return; 1 or more, capped at 100.")] = 25,
+) -> ContactListResponse | ErrorResponse:
     try:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
@@ -200,10 +232,10 @@ def contacts_search_contacts(query: str, limit: int = 25) -> ContactListResponse
 @mcp.tool(
     title="Get Contact",
     description="Fetch full details for an Apple Contacts record by contact_id.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def contacts_get_contact(contact_id: str) -> ContactResponse | ErrorResponse:
+def contacts_get_contact(contact_id: Annotated[str, Field(description=_CONTACT_ID)]) -> ContactResponse | ErrorResponse:
     try:
         ensure_action_allowed("contacts_get_contact")
         return ContactResponse(contact=_bridge().get_contact(contact_id))
@@ -216,10 +248,13 @@ def contacts_get_contact(contact_id: str) -> ContactResponse | ErrorResponse:
 @mcp.tool(
     title="Resolve Message Recipient",
     description="Resolve a contact into a message-ready phone number or email address.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def contacts_resolve_message_recipient(query: str, channel: str = "phone") -> ResolvedRecipientResponse | ErrorResponse:
+def contacts_resolve_message_recipient(
+    query: Annotated[str, Field(description=_LOOKUP_QUERY + " Several matches return AMBIGUOUS_CONTACT; then pick a contact_id with contacts_search_contacts.")],
+    channel: Annotated[str, Field(description="Which contact method to return: phone, email, or any.")] = "phone",
+) -> ResolvedRecipientResponse | ErrorResponse:
     try:
         ensure_action_allowed("contacts_resolve_message_recipient")
         return _bridge().resolve_message_recipient(query=query, channel=channel)
@@ -232,7 +267,7 @@ def contacts_resolve_message_recipient(query: str, channel: str = "phone") -> Re
 @mcp.tool(
     title="Find Duplicate Contacts",
     description="Find likely duplicate Apple Contacts records using names, nicknames, phone numbers, and email addresses.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def contacts_find_duplicates() -> DuplicateContactListResponse | ErrorResponse:
@@ -249,10 +284,12 @@ def contacts_find_duplicates() -> DuplicateContactListResponse | ErrorResponse:
 @mcp.tool(
     title="Suggest Merge Candidates",
     description="Return likely duplicate Apple Contacts groups that are strong candidates for cleanup review.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def contacts_suggest_merge_candidates(query: str | None = None) -> DuplicateContactListResponse | ErrorResponse:
+def contacts_suggest_merge_candidates(
+    query: Annotated[str | None, Field(description="Only groups whose names or matching phone/email contain this text; omit for all.")] = None,
+) -> DuplicateContactListResponse | ErrorResponse:
     try:
         ensure_action_allowed("contacts_suggest_merge_candidates")
         groups = _bridge().suggest_merge_candidates(query=query)
@@ -270,12 +307,12 @@ def contacts_suggest_merge_candidates(query: str | None = None) -> DuplicateCont
     structured_output=True,
 )
 def contacts_create_contact(
-    first_name: str,
-    last_name: str = "",
-    organization: str = "",
-    phones: list[ContactMethod] | None = None,
-    emails: list[ContactMethod] | None = None,
-    note: str = "",
+    first_name: Annotated[str, Field(description="Given name of the new contact.")],
+    last_name: Annotated[str, Field(description="Family name.")] = "",
+    organization: Annotated[str, Field(description="Company or organization.")] = "",
+    phones: Annotated[list[ContactMethod] | None, Field(description=_PHONES)] = None,
+    emails: Annotated[list[ContactMethod] | None, Field(description=_EMAILS)] = None,
+    note: Annotated[str, Field(description="Free-text note stored on the contact.")] = "",
 ) -> CreateContactResponse | ErrorResponse:
     try:
         ensure_action_allowed("contacts_create_contact")
@@ -296,17 +333,17 @@ def contacts_create_contact(
 @mcp.tool(
     title="Update Contact",
     description="Update an existing contact's information. Only the fields you provide will be changed.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def contacts_update_contact(
-    contact_id: str,
-    first_name: str = "",
-    last_name: str = "",
-    organization: str = "",
-    phones: list[ContactMethod] | None = None,
-    emails: list[ContactMethod] | None = None,
-    note: str = "",
+    contact_id: Annotated[str, Field(description=_CONTACT_ID)],
+    first_name: Annotated[str, Field(description="New given name. " + _UNCHANGED)] = "",
+    last_name: Annotated[str, Field(description="New family name. " + _UNCHANGED)] = "",
+    organization: Annotated[str, Field(description="New company or organization. " + _UNCHANGED)] = "",
+    phones: Annotated[list[ContactMethod] | None, Field(description=_PHONES + " " + _REPLACES)] = None,
+    emails: Annotated[list[ContactMethod] | None, Field(description=_EMAILS + " " + _REPLACES)] = None,
+    note: Annotated[str, Field(description="New note, replacing the current one. " + _UNCHANGED)] = "",
 ) -> ContactResponse | ErrorResponse:
     try:
         ensure_action_allowed("contacts_update_contact")
@@ -332,7 +369,7 @@ def contacts_update_contact(
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def contacts_delete_contact(contact_id: str) -> DeleteContactResponse | ErrorResponse:
+def contacts_delete_contact(contact_id: Annotated[str, Field(description=_CONTACT_ID + " Deletion is permanent.")]) -> DeleteContactResponse | ErrorResponse:
     try:
         ensure_action_allowed("contacts_delete_contact")
         return _bridge().delete_contact(contact_id)
@@ -342,7 +379,7 @@ def contacts_delete_contact(contact_id: str) -> DeleteContactResponse | ErrorRes
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 
 
-def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]]:
+def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, object]]:
     return [
         {
             "role": getattr(message, "role", "user"),
@@ -355,7 +392,7 @@ def _serialize_prompt_messages(messages: list[object]) -> list[dict[str, object]
 @mcp.tool(
     title="Contacts List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def contacts_list_prompts() -> dict[str, object]:
@@ -371,12 +408,17 @@ async def contacts_list_prompts() -> dict[str, object]:
     name="contacts_get_prompt",
     title="Contacts Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-async def contacts_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+async def contacts_get_prompt_prompt(
+    name: Annotated[str, Field(description="Prompt name from contacts_list_prompts.")],
+    arguments_json: Annotated[str | None, Field(description="Prompt arguments as a JSON object string; omit when the prompt takes none.")] = None,
+) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
+    if isinstance(prompt, InputRequiredResult):
+        return {"ok": False, "name": name, "error": {"error_code": "PROMPT_INPUT_REQUIRED", "message": f"Prompt '{name}' needs client input before it can render."}}
     return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
 
 

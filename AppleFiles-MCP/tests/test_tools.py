@@ -211,3 +211,45 @@ def test_search_first_mcp_surface_exposes_discovery_and_full_catalog() -> None:
 
 def teardown_function():
     tools.load_settings.cache_clear()
+
+
+def test_files_health_warns_when_safety_value_is_invalid(monkeypatch):
+    monkeypatch.setenv("APPLE_FILES_MCP_SAFETY_MODE", "readonly")
+    tools.load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: StubBridge())
+    try:
+        result = tools.files_health()
+    finally:
+        tools.load_settings.cache_clear()
+    assert result.safety_mode == "safe_readonly"
+    assert "APPLE_FILES_MCP_SAFETY_MODE" in result.safety_mode_warning
+    assert "'readonly'" in result.safety_mode_warning
+
+
+def test_files_health_has_no_safety_warning_for_valid_value(monkeypatch):
+    monkeypatch.setenv("APPLE_FILES_MCP_SAFETY_MODE", "safe_manage")
+    tools.load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: StubBridge())
+    try:
+        result = tools.files_health()
+    finally:
+        tools.load_settings.cache_clear()
+    assert result.safety_mode_warning is None
+
+
+def test_main_falls_back_to_info_for_unknown_log_level(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from apple_files_mcp import tools as server_tools
+
+    calls: list[dict[str, object]] = []
+    settings = replace(server_tools.load_settings(), transport="streamable-http", log_level="VERBOSE")
+    monkeypatch.setattr(server_tools, "load_settings", lambda: settings)
+    monkeypatch.setattr(server_tools.mcp.settings, "log_level", "INFO")
+    monkeypatch.setattr(server_tools.mcp, "run", lambda **kwargs: calls.append(kwargs))
+
+    server_tools.main()
+
+    assert calls and calls[0]["transport"] == "streamable-http"
+    assert server_tools.mcp.settings.log_level == "INFO"
+    assert server_tools._mcp_log_level(" warn ") == "WARNING"

@@ -139,6 +139,7 @@ class HealthResponse:
     visible_drafts: bool
     capabilities: list[str] = field(default_factory=list)
     supports: list[str] = field(default_factory=list)
+    safety_mode_warning: str | None = None
 
 
 @dataclass
@@ -158,6 +159,7 @@ class ErrorResponse:
     ok: bool
     error_code: str
     message: str
+    suggestion: str | None = None
 
 
 @dataclass
@@ -182,6 +184,8 @@ class ForwardRecord:
     subject: str
     to: list[str] = field(default_factory=list)
     from_account: str | None = None
+    draft: bool = False
+    note: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -189,6 +193,8 @@ class ForwardRecord:
             "subject": self.subject,
             "to": self.to,
             "from_account": self.from_account,
+            "draft": self.draft,
+            "note": self.note,
         }
 
 
@@ -268,9 +274,10 @@ class ThreadMutationRecord:
         }
 
 
-def error_response(error_code: str, message: str) -> ErrorResponse:
+def error_response(error_code: str, message: str, suggestion: str | None = None) -> ErrorResponse:
     return ErrorResponse(
         ok=False,
         error_code=error_code,
         message=message,
+        suggestion=suggestion,
     )

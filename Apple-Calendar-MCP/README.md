@@ -77,14 +77,16 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/Apple-Calendar-MCP/start.
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-calendar -- uvx apple-calendar-mcp
+claude mcp add --transport stdio --scope user apple-calendar -- uvx apple-calendar-mcp
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 </details>
 
 ## Selecting calendar and event identifiers
 
-Call `calendar_list_calendars`, select the intended calendar by its displayed name and source, and pass its returned `calendar_id` unchanged to `calendar_list_events`, `calendar_create_event` or the destination of `calendar_update_event`. Native EventKit listings return native identifiers; automation listings use calendar names as identifiers. Supplying a display name when a native identifier is available can select automation even when `calendar_health` reports native access.
+Call `calendar_list_calendars`, select the intended calendar by its displayed name and source, and pass its returned `calendar_id` unchanged to `calendar_list_events`, `calendar_create_event` or the destination of `calendar_update_event`. Native EventKit listings return native identifiers; automation listings use calendar names as identifiers. When EventKit can read calendars, a calendar name passed to `calendar_create_event` or `calendar_update_event` is resolved to its native calendar, ignoring case and extra whitespace, so the write keeps full alarm support. A name shared by several calendars returns `AMBIGUOUS_CALENDAR` with the candidates; pass the intended `calendar_id` instead. Unknown names return `CALENDAR_NOT_FOUND` and read-only calendars return `CALENDAR_READ_ONLY`. Without native calendar read access, names still use automation.
 
 After changing Calendar permissions, restart the MCP server and call `calendar_list_calendars` again to refresh identifiers. For full alarm replacement or clearing, list events with the native `calendar_id` and pass the returned native `event_id` to `calendar_update_event`. Existing `applescript::` event IDs still use automation after permissions change. Treat event IDs as opaque: re-list to obtain native IDs instead of rewriting an existing token. Calendar writability, safety modes and allowlists still apply.
 

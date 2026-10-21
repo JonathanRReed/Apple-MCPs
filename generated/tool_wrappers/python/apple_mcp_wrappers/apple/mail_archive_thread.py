@@ -12,9 +12,9 @@ async def mail_archive_thread(
     archive_account: str | None = None,
     limit: int | None = None
 ) -> Any:
-    """Mail Archive Thread
+    """Archive Thread
 
-    Delegated Apple domain tool 'mail_archive_thread' exposed through Apple-Tools-MCP.
+    Move related messages in the same mailbox thread to the target archive mailbox.
 
     Example:
         await mail_archive_thread(client, message_id='example_message_id', archive_mailbox='example_archive_mailbox')

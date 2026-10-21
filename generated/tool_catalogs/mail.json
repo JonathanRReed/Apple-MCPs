@@ -185,9 +185,10 @@
         "query: string (required)",
         "mailbox: string (optional)",
         "unread_only: boolean (optional)",
-        "limit: integer (optional)"
+        "limit: integer (optional)",
+        "account: string (optional)"
       ],
-      "description": "Search Apple Mail messages by query with optional mailbox and unread filters.",
+      "description": "Search Apple Mail messages by query with optional account, mailbox and unread filters. Without account, accounts are searched in Mail's order and the limit can be filled by the first one; pass account (as returned by mail_list_mailboxes) to search a specific account.",
       "domain": "mail",
       "example_calls": [
         {
@@ -213,13 +214,19 @@
         "messag",
         "query",
         "optional",
+        "account",
         "mailbox",
         "unread",
         "filters",
-        "filter"
+        "filter",
+        "without",
+        "accounts",
+        "are",
+        "searched",
+        "order"
       ],
-      "title": "Search Messages",
-      "usage_intent": "Search Apple Mail messages by query with optional mailbox and unread filters."
+      "title": "Search Mail",
+      "usage_intent": "Search Apple Mail messages by query with optional account, mailbox and unread filters. Without account, accounts are searched in Mail's order and the limit can be filled by the first one; pass account (as returned by mail_list_mailboxes) to search a specific account."
     },
     {
       "aliases": [
@@ -258,7 +265,7 @@
         "fetch",
         "single"
       ],
-      "title": "Get Message",
+      "title": "Get Email",
       "usage_intent": "Fetch a single Apple Mail message by message_id."
     },
     {
@@ -421,7 +428,7 @@
         "set",
         "sender"
       ],
-      "title": "Send Message",
+      "title": "Send Email",
       "usage_intent": "Send an email immediately via Apple Mail. Optionally specify from_account as an email address or account name to set the sender."
     },
     {
@@ -453,7 +460,7 @@
       ],
       "name": "mail_reply_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_reply_message",
       "tags": [
         "mail",
@@ -495,7 +502,7 @@
         "body: string (optional)",
         "from_account: string (optional)"
       ],
-      "description": "Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account.",
+      "description": "Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account. In full_access the forward is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result).",
       "domain": "mail",
       "example_calls": [
         {
@@ -508,7 +515,7 @@
       ],
       "name": "mail_forward_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_forward_message",
       "tags": [
         "mail",
@@ -528,10 +535,12 @@
         "body",
         "text",
         "specify",
-        "account"
+        "account",
+        "full",
+        "access"
       ],
       "title": "Forward Message",
-      "usage_intent": "Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account."
+      "usage_intent": "Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account. In full_access the forward is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result)."
     },
     {
       "aliases": [
@@ -560,7 +569,7 @@
       ],
       "name": "mail_mark_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_mark_message",
       "tags": [
         "mail",
@@ -610,7 +619,7 @@
       ],
       "name": "mail_move_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_move_message",
       "tags": [
         "mail",
@@ -701,7 +710,7 @@
       ],
       "name": "mail_reply_latest_in_thread",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_reply_latest_in_thread",
       "tags": [
         "mail",
@@ -750,7 +759,7 @@
       ],
       "name": "mail_archive_thread",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_archive_thread",
       "tags": [
         "mail",

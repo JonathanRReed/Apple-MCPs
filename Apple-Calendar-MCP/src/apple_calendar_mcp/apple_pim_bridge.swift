@@ -1,6 +1,136 @@
 import CoreFoundation
+import Darwin
 import EventKit
 import Foundation
+
+// BEGIN SHARED HELPER RESPONSIBILITY
+// Keep this block identical in apple_pim_bridge.swift and contacts_bridge.swift;
+// scripts/check_bridge_sync.sh compares the copies.
+//
+// macOS privacy (TCC) decides access for the *responsible* process, not for this
+// helper. A helper spawned by an MCP server inherits the app that started the
+// server (Claude, Terminal, an Electron editor), so that app's grant and its
+// Info.plist usage descriptions decide. An app without a Contacts or Reminders
+// usage description can never be prompted and never appears in System Settings.
+// When the launching app has no grant, the helper re-runs itself with
+// responsibility disclaimed, so macOS evaluates this signed helper bundle and its
+// own usage descriptions instead. Apps that already have access keep working
+// unchanged because the helper only relaunches when access is missing.
+let selfResponsibleEnvironmentKey = "APPLE_MCPS_HELPER_SELF_RESPONSIBLE"
+var selfResponsibleChild: pid_t = 0
+
+func responsibleProcessID() -> pid_t? {
+    typealias ResponsibleFor = @convention(c) (pid_t) -> pid_t
+    guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "responsibility_get_pid_responsible_for_pid") else {
+        return nil
+    }
+    let pid = unsafeBitCast(symbol, to: ResponsibleFor.self)(getpid())
+    return pid > 0 ? pid : nil
+}
+
+/// True when macOS attributes privacy requests to this helper itself.
+func helperIsSelfResponsible() -> Bool {
+    guard let responsible = responsibleProcessID() else {
+        return getenv(selfResponsibleEnvironmentKey) != nil
+    }
+    return responsible == getpid()
+}
+
+func helperDisplayName() -> String {
+    let info = Bundle.main.infoDictionary ?? [:]
+    return (info["CFBundleDisplayName"] as? String) ?? (info["CFBundleName"] as? String) ?? ProcessInfo.processInfo.processName
+}
+
+func helperBundleIdentifier() -> String {
+    Bundle.main.bundleIdentifier ?? ProcessInfo.processInfo.processName
+}
+
+/// The name System Settings shows for the app macOS holds responsible, for messages.
+func responsibleAppName() -> String {
+    if helperIsSelfResponsible() {
+        return helperDisplayName()
+    }
+    guard let pid = responsibleProcessID() else {
+        return "the app that started this MCP server"
+    }
+    var buffer = [CChar](repeating: 0, count: 4096)
+    guard proc_pidpath(pid, &buffer, UInt32(buffer.count)) > 0 else {
+        return "the app that started this MCP server"
+    }
+    let path = String(cString: buffer)
+    if let range = path.range(of: ".app/", options: .backwards) {
+        let bundlePath = String(path[..<range.lowerBound])
+        return (bundlePath as NSString).lastPathComponent
+    }
+    return (path as NSString).lastPathComponent
+}
+
+/// Where to grant access, written for a person or an agent relaying it.
+func privacyGuidance(pane: String, tccService: String) -> String {
+    let helper = helperDisplayName()
+    if helperIsSelfResponsible() {
+        return "Open System Settings > Privacy & Security > \(pane) and turn on '\(helper)'. "
+            + "If '\(helper)' is not listed, run `tccutil reset \(tccService) \(helperBundleIdentifier())` in Terminal, "
+            + "then retry this tool and choose Allow in the macOS prompt."
+    }
+    let host = responsibleAppName()
+    return "Open System Settings > Privacy & Security > \(pane) and turn on '\(host)', the app macOS holds responsible for this MCP server. "
+        + "If '\(host)' is not listed, it cannot ask for \(pane) access (its Info.plist has no \(pane) usage description) "
+        + "and this macOS version did not let the helper ask for itself; start the MCP server from an app that can, then retry."
+}
+
+/// Re-runs this helper as its own responsible process and exits with its status.
+/// Returns only when that is impossible (already self-responsible, or the
+/// private responsibility API is unavailable), so callers fall back to the
+/// launching app's permission.
+func relaunchAsSelfResponsible() {
+    guard getenv(selfResponsibleEnvironmentKey) == nil, !helperIsSelfResponsible() else {
+        return
+    }
+    typealias SetDisclaim = @convention(c) (UnsafeMutablePointer<posix_spawnattr_t?>, Bool) -> Int32
+    guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "responsibility_spawnattrs_setdisclaim"),
+          let executable = Bundle.main.executablePath ?? CommandLine.arguments.first else {
+        return
+    }
+    var attributes: posix_spawnattr_t?
+    guard posix_spawnattr_init(&attributes) == 0 else {
+        return
+    }
+    defer { posix_spawnattr_destroy(&attributes) }
+    guard unsafeBitCast(symbol, to: SetDisclaim.self)(&attributes, true) == 0 else {
+        return
+    }
+    var environment = ProcessInfo.processInfo.environment
+    environment[selfResponsibleEnvironmentKey] = "1"
+    let argv: [UnsafeMutablePointer<CChar>?] = ([executable] + CommandLine.arguments.dropFirst()).map { strdup($0) } + [nil]
+    let envp: [UnsafeMutablePointer<CChar>?] = environment.map { strdup("\($0.key)=\($0.value)") } + [nil]
+    defer {
+        argv.forEach { free($0) }
+        envp.forEach { free($0) }
+    }
+    var child: pid_t = 0
+    // The child inherits stdin, stdout and stderr, so callers see its output unchanged.
+    guard posix_spawn(&child, executable, nil, &attributes, argv, envp) == 0 else {
+        return
+    }
+    selfResponsibleChild = child
+    for signalNumber in [SIGTERM, SIGINT, SIGHUP] {
+        signal(signalNumber) { received in
+            if selfResponsibleChild > 0 {
+                kill(selfResponsibleChild, received)
+            }
+        }
+    }
+    var status: Int32 = 0
+    while waitpid(child, &status, 0) == -1 {
+        if errno != EINTR {
+            Foundation.exit(70)
+        }
+    }
+    let terminatingSignal = status & 0x7f
+    Foundation.exit(terminatingSignal == 0 ? (status >> 8) & 0xff : 128 + terminatingSignal)
+}
+// END SHARED HELPER RESPONSIBILITY
 
 struct BridgeFailure: Error {
     let errorCode: String
@@ -123,6 +253,9 @@ struct AccessStatusPayload: Encodable {
     let can_write_events: Bool
     let message: String?
     let suggestion: String?
+    // The app macOS checks for this access, and whether that is the helper itself.
+    var tcc_client: String = responsibleAppName()
+    var helper_is_responsible: Bool = helperIsSelfResponsible()
 }
 
 @main
@@ -227,7 +360,11 @@ struct ApplePIMBridge {
             let calendars = store.calendars(for: .event).map(calendarRecord).sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
             return try encode(ListPayload(count: calendars.count, items: calendars))
         case "calendar-access-status":
+            relaunchIfAccessMissing(.event)
             return try encode(calendarAccessStatus())
+        case "reminders-access-status":
+            relaunchIfAccessMissing(.reminder)
+            return try encode(remindersAccessStatus())
         case "list-calendar-events":
             let store = EKEventStore()
             try ensureAccess(store: store, entityType: .event)
@@ -427,14 +564,40 @@ struct ApplePIMBridge {
         return Array(events)
     }
 
-    static func getEvent(store: EKEventStore, eventID: String) throws -> EventRecord {
-        guard let event = store.event(withIdentifier: eventID) else {
-            throw BridgeFailure(
-                errorCode: "EVENT_NOT_FOUND",
-                message: "No event matched '\(eventID)'.",
-                suggestion: "List calendar events first to discover valid ids."
-            )
+    // Native identifiers first, then Calendar.app UIDs, which EventKit exposes as
+    // external identifiers. Earlier releases handed out bare UIDs as event ids
+    // under write-only access, so they must keep resolving once full access is
+    // granted. A UID shared by several events (detached recurrence occurrences)
+    // is reported as ambiguous so the caller can fall back to automation.
+    static func resolveEvent(store: EKEventStore, eventID: String) throws -> EKEvent {
+        if let event = store.event(withIdentifier: eventID) {
+            return event
         }
+        if !eventID.hasPrefix("applescript::") {
+            var seen = Set<String>()
+            let matches = store.calendarItems(withExternalIdentifier: eventID)
+                .compactMap { $0 as? EKEvent }
+                .filter { seen.insert($0.eventIdentifier ?? $0.calendarItemIdentifier).inserted }
+            if matches.count == 1 {
+                return matches[0]
+            }
+            if matches.count > 1 {
+                throw BridgeFailure(
+                    errorCode: "EVENT_ID_AMBIGUOUS",
+                    message: "Calendar UID '\(eventID)' matches \(matches.count) events.",
+                    suggestion: "List calendar events and use the returned event_id."
+                )
+            }
+        }
+        throw BridgeFailure(
+            errorCode: "EVENT_NOT_FOUND",
+            message: "No event matched '\(eventID)'.",
+            suggestion: "List calendar events first to discover valid ids."
+        )
+    }
+
+    static func getEvent(store: EKEventStore, eventID: String) throws -> EventRecord {
+        let event = try resolveEvent(store: store, eventID: eventID)
         return eventRecord(event)
     }
 
@@ -488,13 +651,7 @@ struct ApplePIMBridge {
     }
 
     static func updateEvent(store: EKEventStore, eventID: String, payload: [String: Any]) throws -> EventRecord {
-        guard let event = store.event(withIdentifier: eventID) else {
-            throw BridgeFailure(
-                errorCode: "EVENT_NOT_FOUND",
-                message: "No event matched '\(eventID)'.",
-                suggestion: "List calendar events first to discover valid ids."
-            )
-        }
+        let event = try resolveEvent(store: store, eventID: eventID)
         try applyEventFields(store: store, event: event, payload: payload, isCreate: false)
         guard event.endDate > event.startDate else {
             throw BridgeFailure(
@@ -508,13 +665,7 @@ struct ApplePIMBridge {
     }
 
     static func deleteEvent(store: EKEventStore, eventID: String) throws -> BooleanMutationPayload {
-        guard let event = store.event(withIdentifier: eventID) else {
-            throw BridgeFailure(
-                errorCode: "EVENT_NOT_FOUND",
-                message: "No event matched '\(eventID)'.",
-                suggestion: "List calendar events first to discover valid ids."
-            )
-        }
+        let event = try resolveEvent(store: store, eventID: eventID)
         try store.remove(event, span: .thisEvent, commit: true)
         return BooleanMutationPayload(deleted: true, object_id: eventID)
     }
@@ -900,6 +1051,58 @@ struct ApplePIMBridge {
         }
     }
 
+    static func remindersAccessStatus() -> AccessStatusPayload {
+        let status = EKEventStore.authorizationStatus(for: .reminder)
+        let granted = status == .authorized || status == .fullAccess
+        let label: String
+        switch status {
+        case .authorized: label = "authorized"
+        case .fullAccess: label = "full_access"
+        case .writeOnly: label = "write_only"
+        case .notDetermined: label = "not_determined"
+        case .restricted: label = "restricted"
+        case .denied: label = "denied"
+        @unknown default: label = "unknown"
+        }
+        return AccessStatusPayload(
+            domain: "reminders",
+            status: label,
+            can_read_events: granted,
+            can_write_events: granted,
+            message: granted ? nil : (status == .notDetermined
+                ? "Reminders access has not been granted yet."
+                : "macOS has not granted Reminders access to \(responsibleAppName())."),
+            suggestion: granted ? nil : (status == .notDetermined
+                ? "Run a Reminders tool and choose Allow in the macOS prompt for '\(responsibleAppName())'."
+                : privacyGuidance(pane: "Reminders", tccService: "Reminders"))
+        )
+    }
+
+    static func privacyPane(_ entityType: EKEntityType) -> (pane: String, service: String) {
+        entityType == .reminder ? ("Reminders", "Reminders") : ("Calendars", "Calendar")
+    }
+
+    /// Hands the command to a self-responsible copy of the helper when the
+    /// launching app has no grant. Never returns when the relaunch happens.
+    static func relaunchIfAccessMissing(_ entityType: EKEntityType) {
+        let status = EKEventStore.authorizationStatus(for: entityType)
+        if status == .notDetermined || status == .denied {
+            relaunchAsSelfResponsible()
+        }
+    }
+
+    static func deniedFailure(_ entityType: EKEntityType, prompted: Bool = true) -> BridgeFailure {
+        let (pane, service) = privacyPane(entityType)
+        let client = responsibleAppName()
+        return BridgeFailure(
+            errorCode: "PERMISSION_DENIED",
+            message: prompted
+                ? "macOS denied \(entityName(entityType)) access to '\(client)'."
+                : "macOS refused to show a \(entityName(entityType)) permission prompt for '\(client)'.",
+            suggestion: privacyGuidance(pane: pane, tccService: service)
+        )
+    }
+
     static func ensureAccess(store: EKEventStore, entityType: EKEntityType) throws {
         let status = EKEventStore.authorizationStatus(for: entityType)
         switch status {
@@ -909,13 +1112,17 @@ struct ApplePIMBridge {
             return
         case .writeOnly:
             return
-        case .restricted, .denied:
+        case .restricted:
             throw BridgeFailure(
                 errorCode: "PERMISSION_DENIED",
-                message: "macOS denied access to \(entityName(entityType)).",
-                suggestion: "Allow access in System Settings and retry."
+                message: "macOS restricts \(entityName(entityType)) access on this Mac.",
+                suggestion: "A configuration profile or Screen Time setting blocks \(entityName(entityType)) access. Ask the Mac's administrator to allow it."
             )
+        case .denied:
+            relaunchIfAccessMissing(entityType)
+            throw deniedFailure(entityType)
         case .notDetermined:
+            relaunchIfAccessMissing(entityType)
             try requestAccess(store: store, entityType: entityType)
         @unknown default:
             throw BridgeFailure(
@@ -965,7 +1172,7 @@ struct ApplePIMBridge {
             throw BridgeFailure(
                 errorCode: "PERMISSION_TIMEOUT",
                 message: "Timed out while requesting access to \(entityName(entityType)).",
-                suggestion: "Retry and accept the macOS permission prompt."
+                suggestion: "Retry and choose Allow in the macOS prompt for '\(responsibleAppName())'."
             )
         }
         if let capturedError {
@@ -976,11 +1183,8 @@ struct ApplePIMBridge {
             )
         }
         if !granted {
-            throw BridgeFailure(
-                errorCode: "PERMISSION_DENIED",
-                message: "macOS denied access to \(entityName(entityType)).",
-                suggestion: "Allow access in System Settings and retry."
-            )
+            // Still undetermined after a refused request means macOS never showed a prompt.
+            throw deniedFailure(entityType, prompted: EKEventStore.authorizationStatus(for: entityType) != .notDetermined)
         }
     }
 

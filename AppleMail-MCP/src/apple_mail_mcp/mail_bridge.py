@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from importlib.resources import as_file, files
 from pathlib import Path
-from subprocess import CompletedProcess, run
+from subprocess import CompletedProcess, TimeoutExpired, run
 from urllib.parse import quote, unquote
 
+from apple_mail_mcp.config import load_settings
 from apple_mail_mcp.models import AttachmentRecord, DeleteRecord, DraftRecord, ForwardRecord, MailboxRecord, MarkRecord, MessageRecord, MessageSummary, MoveRecord, ReplyRecord, SendRecord
 
 FIELD_SEPARATOR = "\x1f"
@@ -16,6 +17,23 @@ class MailBridgeError(Exception):
     pass
 
 
+class MailScriptTimeoutError(MailBridgeError):
+    pass
+
+
+class MailSendStatusUnknownError(MailBridgeError):
+    """A send-type script timed out, so the message may or may not have gone out.
+
+    Killing osascript does not cancel an Apple event Mail has already received,
+    so a timeout after `send` is not proof of failure. Callers must not retry
+    blindly or the recipient can get the message twice.
+    """
+
+    def __init__(self, message: str, suggestion: str) -> None:
+        super().__init__(message)
+        self.suggestion = suggestion
+
+
 def encode_message_id(account: str, mailbox: str, apple_id: str) -> str:
     return "|".join(quote(part, safe="") for part in (account, mailbox, apple_id))
 
@@ -24,7 +42,8 @@ def decode_message_id(message_id: str) -> tuple[str, str, str]:
     parts = message_id.split("|")
     if len(parts) != 3:
         raise MailBridgeError(f"Invalid message_id: '{message_id}'.")
-    return tuple(unquote(part) for part in parts)
+    account, mailbox, apple_id = (unquote(part) for part in parts)
+    return account, mailbox, apple_id
 
 
 def _restore_text(value: str) -> str:
@@ -46,6 +65,16 @@ def _split_records(raw: str) -> list[list[str]]:
     return records
 
 
+def _send_status_unknown(exc: MailScriptTimeoutError, action: str, account: str | None) -> MailSendStatusUnknownError:
+    where = f"the '{account}' account's" if account else "the sending account's"
+    return MailSendStatusUnknownError(
+        f"SEND_STATUS_UNKNOWN: {exc} Mail may already have {action}; stopping osascript does not cancel a send Mail has started.",
+        f"Do not retry yet. Check {where} Sent mailbox first, for example with mail_search_messages "
+        "using mailbox 'Sent Messages' (or the account's Sent mailbox name from mail_list_mailboxes) "
+        "and the subject. Retry only if the message is not there, or it will be sent twice.",
+    )
+
+
 def _split_list(raw: str) -> list[str]:
     if not raw:
         return []
@@ -53,8 +82,9 @@ def _split_list(raw: str) -> list[str]:
 
 
 class AppleMailBridge:
-    def __init__(self, scripts_dir: Path | None = None) -> None:
+    def __init__(self, scripts_dir: Path | None = None, script_timeout: float | None = None) -> None:
         self.scripts_dir = scripts_dir
+        self.script_timeout = script_timeout if script_timeout is not None else load_settings().script_timeout_seconds
 
     def _run_osascript(self, script_path: Path, args: list[str]) -> CompletedProcess[str]:
         try:
@@ -63,7 +93,14 @@ class AppleMailBridge:
                 capture_output=True,
                 text=True,
                 check=False,
+                timeout=self.script_timeout,
             )
+        except TimeoutExpired as exc:
+            raise MailScriptTimeoutError(
+                f"AppleScript '{script_path.name}' timed out after {self.script_timeout:g}s. "
+                "Mail or System Events did not answer; if the request named a sender account, "
+                "macOS may be waiting on an Automation or Accessibility consent prompt for this process."
+            ) from exc
         except OSError as exc:
             raise MailBridgeError(f"Could not run 'osascript': {exc}. This server requires macOS with osascript available.") from exc
 
@@ -97,11 +134,19 @@ class AppleMailBridge:
         mailbox: str | None = None,
         unread_only: bool = False,
         limit: int = 10,
+        account: str | None = None,
     ) -> list[MessageSummary]:
-        raw = self._run_script(
-            "search_messages.applescript",
-            [query, mailbox or "", "true" if unread_only else "false", str(limit)],
-        )
+        try:
+            raw = self._run_script(
+                "search_messages.applescript",
+                [query, mailbox or "", "true" if unread_only else "false", str(limit), account or ""],
+            )
+        except MailBridgeError as exc:
+            if account and "ACCOUNT_NOT_FOUND" in str(exc):
+                raise MailBridgeError(
+                    f"ACCOUNT_NOT_FOUND: No Mail account named '{account}'. Call mail_list_mailboxes to get valid account names."
+                ) from exc
+            raise
         results: list[MessageSummary] = []
         for row in _split_records(raw):
             if len(row) < 8:
@@ -178,7 +223,7 @@ class AppleMailBridge:
         if not rows or len(rows[0]) < 2:
             raise MailBridgeError("Draft payload was incomplete.")
 
-        draft_id, visible = rows[0][:2]
+        draft_id, visible_flag = rows[0][:2]
         resolved_from_account = _restore_text(rows[0][2]) if len(rows[0]) >= 3 and rows[0][2] else from_account
         return DraftRecord(
             draft_id=_restore_text(draft_id),
@@ -186,7 +231,7 @@ class AppleMailBridge:
             to=to,
             cc=cc or [],
             bcc=bcc or [],
-            visible=_parse_bool(visible),
+            visible=_parse_bool(visible_flag),
             from_account=resolved_from_account,
         )
 
@@ -200,18 +245,21 @@ class AppleMailBridge:
         attachments: list[str] | None,
         from_account: str | None = None,
     ) -> SendRecord:
-        raw = self._run_script(
-            "send_message.applescript",
-            [
-                LIST_SEPARATOR.join(to),
-                LIST_SEPARATOR.join(cc or []),
-                LIST_SEPARATOR.join(bcc or []),
-                subject,
-                body,
-                LIST_SEPARATOR.join(attachments or []),
-                from_account or "",
-            ],
-        )
+        try:
+            raw = self._run_script(
+                "send_message.applescript",
+                [
+                    LIST_SEPARATOR.join(to),
+                    LIST_SEPARATOR.join(cc or []),
+                    LIST_SEPARATOR.join(bcc or []),
+                    subject,
+                    body,
+                    LIST_SEPARATOR.join(attachments or []),
+                    from_account or "",
+                ],
+            )
+        except MailScriptTimeoutError as exc:
+            raise _send_status_unknown(exc, "sent the message", from_account) from exc
         rows = _split_records(raw)
         if not rows or len(rows[0]) < 1:
             raise MailBridgeError("Send payload was incomplete.")
@@ -234,10 +282,13 @@ class AppleMailBridge:
         from_account: str | None = None,
     ) -> ReplyRecord:
         account, mailbox, apple_id = decode_message_id(message_id)
-        raw = self._run_script(
-            "reply_message.applescript",
-            [account, mailbox, apple_id, body, "true" if reply_all else "false", from_account or ""],
-        )
+        try:
+            raw = self._run_script(
+                "reply_message.applescript",
+                [account, mailbox, apple_id, body, "true" if reply_all else "false", from_account or ""],
+            )
+        except MailScriptTimeoutError as exc:
+            raise _send_status_unknown(exc, "sent the reply", from_account or account) from exc
         rows = _split_records(raw)
         if not rows or len(rows[0]) < 3:
             raise MailBridgeError("Reply payload was incomplete.")
@@ -256,19 +307,28 @@ class AppleMailBridge:
         to: list[str],
         body: str = "",
         from_account: str | None = None,
+        send: bool = True,
     ) -> ForwardRecord:
         account, mailbox, apple_id = decode_message_id(message_id)
-        raw = self._run_script(
-            "forward_message.applescript",
-            [account, mailbox, apple_id, LIST_SEPARATOR.join(to), body, from_account or ""],
-        )
+        try:
+            raw = self._run_script(
+                "forward_message.applescript",
+                [account, mailbox, apple_id, LIST_SEPARATOR.join(to), body, from_account or "", "true" if send else "false"],
+            )
+        except MailScriptTimeoutError as exc:
+            # A draft-mode forward never sends, so its timeout is an ordinary failure.
+            if not send:
+                raise
+            raise _send_status_unknown(exc, "sent the forward", from_account or account) from exc
         rows = _split_records(raw)
         if not rows or len(rows[0]) < 2:
             raise MailBridgeError("Forward payload was incomplete.")
         sent_flag, subject = rows[0][:2]
         resolved_from_account = _restore_text(rows[0][2]) if len(rows[0]) >= 3 and rows[0][2] else from_account
+        sent = _parse_bool(sent_flag)
         return ForwardRecord(
-            sent=_parse_bool(sent_flag),
+            sent=sent,
+            draft=not sent,
             subject=_restore_text(subject),
             to=to,
             from_account=resolved_from_account,

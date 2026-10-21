@@ -9,9 +9,9 @@ async def files_delete_path(
     client: MCPToolCaller,
     path: str
 ) -> Any:
-    """Files Delete Path
+    """Delete Path
 
-    Delegated Apple domain tool 'files_delete_path' exposed through Apple-Tools-MCP.
+    Delete a file or empty folder inside the allowed roots. Requires full_access safety mode.
 
     Example:
         await files_delete_path(client, path='/path/to/item')

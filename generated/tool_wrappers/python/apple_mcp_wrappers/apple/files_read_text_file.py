@@ -10,9 +10,9 @@ async def files_read_text_file(
     path: str,
     max_bytes: int | None = None
 ) -> Any:
-    """Files Read Text File
+    """Read Text File
 
-    Delegated Apple domain tool 'files_read_text_file' exposed through Apple-Tools-MCP.
+    Read a UTF-8 text file inside the allowed roots.
 
     Example:
         await files_read_text_file(client, path='/path/to/item', max_bytes=1)

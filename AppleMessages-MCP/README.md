@@ -77,8 +77,10 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/AppleMessages-MCP/start.s
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-messages -- uvx apple-messages-mcp
+claude mcp add --transport stdio --scope user apple-messages -- uvx apple-messages-mcp
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 </details>
 
@@ -107,7 +109,7 @@ claude mcp add --transport stdio --scope project apple-messages -- uvx apple-mes
 - `tools/list` returns the full Messages tool surface. Context-constrained clients can use `search_tools` first, then `get_tool_info` for the Messages tool they need.
 - Resolve the recipient via Contacts before any send or reply when the user names a person.
 - Confirm the intended person if Contacts returns multiple matches.
-- Omit `service_name` on iMessage sends. Passing it can trigger AppleScript error `-1728`.
+- `messages_send_message`, `messages_send_attachment` and `messages_reply_in_conversation` accept an optional `service_name` of `iMessage`, `SMS` or `RCS`. Without it, new messages go out as iMessage, and one-to-one replies use the service of the thread's latest message: SMS threads stay SMS, and RCS threads use RCS, falling back to SMS. The account is chosen as the first enabled Messages account of that service type. SMS and RCS go through the paired iPhone and need Text Message Forwarding turned on for this Mac. Without a matching account the tools return `SERVICE_UNAVAILABLE` instead of sending, so a reply in an SMS thread on a Mac without Text Message Forwarding fails until you retry with `service_name` `iMessage` or turn forwarding on. RCS needs macOS 15 or later; on older macOS, RCS threads fall back to SMS. Group replies always use the group's existing service, and a different `service_name` is rejected with `INVALID_INPUT`. The response's `service_name` reports the service actually used.
 
 ## Related
 

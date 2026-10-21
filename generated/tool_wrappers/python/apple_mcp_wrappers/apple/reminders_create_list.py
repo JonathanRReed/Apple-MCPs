@@ -9,9 +9,9 @@ async def reminders_create_list(
     client: MCPToolCaller,
     title: str
 ) -> Any:
-    """Reminders Create List
+    """Create Reminder List
 
-    Delegated Apple domain tool 'reminders_create_list' exposed through Apple-Tools-MCP.
+    Create a new Apple Reminders list.
 
     Example:
         await reminders_create_list(client, title='example_title')

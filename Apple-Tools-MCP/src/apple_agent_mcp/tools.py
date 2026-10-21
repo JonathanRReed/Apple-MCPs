@@ -9,13 +9,15 @@ from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime, timedelta
 from html import escape as html_escape
 from pathlib import Path
-from typing import Any
+from types import FunctionType
+from typing import Annotated, Any, Literal
 from uuid import uuid4
 
 from mcp import types
-from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver import Context
+from mcp.server.mcpserver.tools import Tool
 from mcp.types import Annotations, ToolAnnotations
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from apple_agent_mcp.bootstrap import ensure_domain_paths
 from apple_agent_mcp.config import load_settings
@@ -44,7 +46,8 @@ from apple_agent_mcp.models import (
 )
 from apple_agent_mcp.state import StateStoreError, load_action_history, load_preferences, save_action_history, save_preferences
 from apple_mcp_common.discovery import install_search_first_discovery
-from apple_mcp_common.runtime import notify_resource_updated, notify_resources_changed, require_loopback_host
+from apple_mcp_common.runtime import notify_resource_updated, notify_resources_changed, python_log_level, require_loopback_host
+from apple_mcp_common.server import AppleMCPServer
 
 ensure_domain_paths()
 
@@ -64,6 +67,10 @@ from apple_calendar_mcp.tools import (
     calendar_prepare_agenda_prompt,
     calendar_update_event,
 )
+from apple_calendar_mcp.tools import (
+    calendar_permission_guide as standalone_calendar_permission_guide,
+)
+from apple_calendar_mcp.tools import mcp as calendar_server
 from apple_contacts_mcp.models import ContactMethod, ContactResponse, CreateContactResponse, DeleteContactResponse, DuplicateContactListResponse
 from apple_contacts_mcp.models import ErrorResponse as ContactsErrorResponse
 from apple_contacts_mcp.tools import (
@@ -85,8 +92,12 @@ from apple_contacts_mcp.tools import (
     contacts_delete_contact as _contacts_delete_contact,
 )
 from apple_contacts_mcp.tools import (
+    contacts_permission_guide as standalone_contacts_permission_guide,
+)
+from apple_contacts_mcp.tools import (
     contacts_update_contact as _contacts_update_contact,
 )
+from apple_contacts_mcp.tools import mcp as contacts_server
 from apple_files_mcp.models import ErrorResponse as FilesErrorResponse
 from apple_files_mcp.models import FileActionResponse, FileTagsResponse
 from apple_files_mcp.tools import (
@@ -114,6 +125,7 @@ from apple_files_mcp.tools import (
     files_search_files,
     files_set_tags,
 )
+from apple_files_mcp.tools import mcp as files_server
 from apple_mail_mcp.mail_bridge import AppleMailBridge
 from apple_mail_mcp.models import (
     DeleteRecord as MailDeleteRecord,
@@ -157,6 +169,7 @@ from apple_mail_mcp.models import (
 from apple_mail_mcp.models import (
     ThreadRecord as MailThreadRecord,
 )
+from apple_mail_mcp.tools import create_server as create_mail_server
 from apple_mail_mcp.tools import (
     mail_archive_thread as _mail_archive_thread,
 )
@@ -218,9 +231,11 @@ from apple_maps_mcp.tools import (
 from apple_maps_mcp.tools import (
     maps_permission_guide as standalone_maps_permission_guide,
 )
+from apple_maps_mcp.tools import mcp as maps_server
 from apple_messages_mcp.models import ConversationResponse, SendResponse
 from apple_messages_mcp.models import ErrorResponse as MessagesErrorResponse
 from apple_messages_mcp.models import ToolError as MessagesToolError
+from apple_messages_mcp.tools import mcp as messages_server
 from apple_messages_mcp.tools import (
     messages_conversation_resource,
     messages_draft_reply_prompt,
@@ -244,6 +259,7 @@ from apple_messages_mcp.tools import (
 )
 from apple_notes_mcp.models import ErrorResponse as NotesErrorResponse
 from apple_notes_mcp.models import NoteResponse as NotesNoteResponse
+from apple_notes_mcp.tools import mcp as notes_server
 from apple_notes_mcp.tools import (
     notes_append_to_note as _notes_append_to_note,
 )
@@ -273,6 +289,7 @@ from apple_notes_mcp.tools import (
 from apple_reminders_mcp.models import DeleteReminderListResponse, ReminderListMutationResponse
 from apple_reminders_mcp.models import ErrorResponse as RemindersErrorResponse
 from apple_reminders_mcp.models import ReminderResponse as RemindersReminderResponse
+from apple_reminders_mcp.tools import mcp as reminders_server
 from apple_reminders_mcp.tools import (
     reminders_complete_reminder,
     reminders_create_reminder,
@@ -294,7 +311,11 @@ from apple_reminders_mcp.tools import (
 from apple_reminders_mcp.tools import (
     reminders_delete_list as _reminders_delete_list,
 )
+from apple_reminders_mcp.tools import (
+    reminders_permission_guide as standalone_reminders_permission_guide,
+)
 from apple_shortcuts_mcp.models import ErrorResponse as ShortcutsErrorResponse
+from apple_shortcuts_mcp.tools import mcp as shortcuts_server
 from apple_shortcuts_mcp.tools import (
     shortcuts_all_resource,
     shortcuts_choose_and_run_prompt,
@@ -309,6 +330,7 @@ from apple_shortcuts_mcp.tools import (
 )
 from apple_system_mcp.models import ErrorResponse as SystemErrorResponse
 from apple_system_mcp.models import FocusStatusResponse, GuiActionResponse, GuiMenuItemsResponse, OpenAppResponse, SettingMutationResponse, SystemContextResponse
+from apple_system_mcp.tools import mcp as system_server
 from apple_system_mcp.tools import (
     system_applications_resource,
     system_capture_context_prompt,
@@ -354,6 +376,43 @@ from apple_system_mcp.tools import (
     system_permission_guide as standalone_system_permission_guide,
 )
 
+# Parameter descriptions for the Apple-Tools native tools. Delegated domain
+# tools take theirs from the standalone servers (see _register_delegated_tool).
+_RECIPIENT_DESCRIPTION = "Who to contact: a contact name (resolved through Contacts and checked for duplicates), a phone number, or an email address."
+_PREFERRED_CHANNEL_DESCRIPTION = "Optional channel override: messages, mail, or auto. Omit to use the contact's saved routing, then the assistant default."
+_COMMUNICATION_TEXT_DESCRIPTION = "Message text, or the email body when the communication routes through Mail."
+_SUBJECT_DESCRIPTION = "Email subject; used only when the communication routes through Mail."
+_ATTACHMENTS_DESCRIPTION = "Absolute local file paths to attach. Messages accepts exactly one attachment per send; Mail accepts several."
+_FROM_ACCOUNT_DESCRIPTION = "Mail account to send from when routed through Mail. Omit to use the saved default Mail account."
+_MAIL_MESSAGE_ID_DESCRIPTION = "Mail message_id returned by mail_search_messages, mail_get_message, or mail_get_thread."
+_ARCHIVE_MAILBOX_DESCRIPTION = "Mailbox to archive into. Omit to use the saved default archive mailbox, or auto-detect one (detected defaults are saved)."
+_ARCHIVE_ACCOUNT_DESCRIPTION = "Mail account that holds the archive mailbox. Omit to use the saved default archive account."
+_REMINDER_TITLE_DESCRIPTION = "Reminder title."
+_DUE_DATE_DESCRIPTION = "Optional due date as an ISO 8601 date or datetime, for example 2026-04-07 or 2026-04-07T17:00:00-05:00."
+_REMINDER_NOTES_DESCRIPTION = "Optional notes stored on the reminder."
+_REMINDER_LIST_ID_DESCRIPTION = "Reminders list_id from reminders_list_lists. Omit to use the saved default reminder list."
+_PRIORITY_DESCRIPTION = "Apple Reminders priority: 0 none, 1-4 high, 5 medium, 6-9 low."
+_NOTE_TITLE_DESCRIPTION = "Note title. Titles containing 'digest' default to the saved digest folder."
+_NOTE_BODY_TEXT_DESCRIPTION = "Plain-text note body. Ignored when body_html is given."
+_NOTE_BODY_HTML_DESCRIPTION = "HTML note body. Takes precedence over body_text."
+_NOTES_FOLDER_ID_DESCRIPTION = "Notes folder_id from notes_list_folders. Omit to use the saved default notes folder."
+_NOTE_TAGS_DESCRIPTION = "Optional tags to add to the note, without the leading #."
+_FOLLOW_UP_DUE_DATE_DESCRIPTION = "Optional reminder due date as an ISO 8601 date or datetime."
+_FOLLOW_UP_REMINDER_TITLE_DESCRIPTION = "Reminder title. Defaults to 'Follow up: <subject or sender>'."
+_FOLLOW_UP_NOTE_TITLE_DESCRIPTION = "Note title. Defaults to 'Mail: <subject or sender>'."
+_CREATE_REMINDER_DESCRIPTION = "Create a follow-up reminder in the default reminder list."
+_CREATE_NOTE_DESCRIPTION = "Create an archival note with the email content in the default notes folder."
+_SUGGEST_QUERY_DESCRIPTION = "Optional text to filter suggestions by. Omit to list the first available values."
+_SUGGEST_LIMIT_DESCRIPTION = "Maximum number of suggestions to return (1 or more)."
+_APPLICATION_DESCRIPTION = "Application name as shown in Finder, for example Safari. Provide application or bundle_id."
+_BUNDLE_ID_DESCRIPTION = "Application bundle identifier, for example com.apple.Safari. Takes the place of application."
+_GUI_APPLICATION_DESCRIPTION = "Application to target by name. Omit application and bundle_id to use the frontmost app."
+_GUI_BUNDLE_ID_DESCRIPTION = "Application to target by bundle identifier, for example com.apple.Safari. Omit to use the frontmost app."
+_FILE_PATH_DESCRIPTION = "Absolute path, or a path starting with ~, inside the Apple Files allowed roots (see files_list_allowed_roots)."
+_PREFERENCE_VALUE_DESCRIPTION = "Omit to keep the current value."
+_MAIL_QUERY_DESCRIPTION = "Apple Mail search text for the highlights section; '*' matches recent messages."
+_MAIL_LIMIT_DESCRIPTION = "Maximum number of Mail highlights to include (1 or more)."
+
 SERVER_INSTRUCTIONS = (
     "Use this server for unified Apple ecosystem access on macOS. "
     "Search here when the user wants one Apple-native entrypoint across Mail, Calendar, Reminders, Messages, Contacts, Notes, Shortcuts, Files, System, and Maps. "
@@ -371,7 +430,7 @@ SERVER_INSTRUCTIONS = (
     "Some clients defer tool schemas, so batch tool discovery on first use when needed."
 )
 
-mcp = MCPServer("Apple Tools MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+mcp = AppleMCPServer("Apple Tools MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 LOGGER = logging.getLogger("apple_agent_mcp")
 
@@ -507,13 +566,9 @@ def _update_action_record(updated_action: AssistantActionRecord) -> AssistantAct
     )
 
 
-def _mail_response_ok(value: Any) -> bool:
-    return not isinstance(value, MailErrorResponse)
-
-
 def _pick_archive_mailbox(account: str | None = None) -> tuple[str | None, str | None]:
     response = mail_list_mailboxes(account=account)
-    if not _mail_response_ok(response):
+    if isinstance(response, MailErrorResponse):
         return None, None
     exact_names = ("archive", "all archive", "archives")
     fallback: tuple[str | None, str | None] = (None, None)
@@ -530,7 +585,7 @@ def _pick_archive_mailbox(account: str | None = None) -> tuple[str | None, str |
 
 def _pick_default_calendar() -> tuple[str | None, str | None]:
     response = calendar_list_calendars()
-    if not getattr(response, "ok", False):
+    if isinstance(response, CalendarErrorResponse):
         return None, None
     preferred = []
     fallback = []
@@ -551,7 +606,7 @@ def _pick_default_calendar() -> tuple[str | None, str | None]:
 
 def _pick_default_reminder_list() -> tuple[str | None, str | None]:
     response = reminders_list_lists()
-    if not getattr(response, "ok", False):
+    if isinstance(response, RemindersErrorResponse):
         return None, None
     preferred_names = ("general", "reminders")
     for reminder_list in response.lists:
@@ -564,7 +619,7 @@ def _pick_default_reminder_list() -> tuple[str | None, str | None]:
 
 def _pick_default_notes_folder() -> tuple[str | None, str | None, str | None]:
     response = notes_list_folders(limit=100, offset=0)
-    if not getattr(response, "ok", False):
+    if isinstance(response, NotesErrorResponse):
         return None, None, None
     preferred_names = ("notes", "general")
     for folder in response.folders:
@@ -578,7 +633,7 @@ def _pick_default_notes_folder() -> tuple[str | None, str | None, str | None]:
 
 def _pick_digest_folder() -> tuple[str | None, str | None, str | None]:
     response = notes_list_folders(limit=100, offset=0)
-    if not getattr(response, "ok", False):
+    if isinstance(response, NotesErrorResponse):
         return None, None, None
     preferred_names = ("digests", "digest")
     for folder in response.folders:
@@ -593,7 +648,7 @@ def _default_notes_account_name(preferences: AssistantPreferences) -> str | None
     if preferences.default_notes_account_name:
         return preferences.default_notes_account_name
     response = notes_list_accounts()
-    if not getattr(response, "ok", False) or not response.accounts:
+    if isinstance(response, NotesErrorResponse) or not response.accounts:
         return None
     for account in response.accounts:
         if getattr(account, "upgraded", True):
@@ -766,19 +821,19 @@ def _resolve_notes_target(
     return (effective_folder_id, updated_preferences), None
 
 
-def _ensure_maps_available() -> tuple[bool, AppleErrorResponse | None]:
+def _maps_unavailable_error() -> AppleErrorResponse | None:
     health = maps_health()
     if isinstance(health, MapsErrorResponse):
-        return False, _apple_error_response(health.error.error_code, health.error.message, health.error.suggestion)
+        return _apple_error_response(health.error.error_code, health.error.message, health.error.suggestion)
     if not getattr(health, "ok", False):
-        return False, _apple_error_response("MAPS_UNAVAILABLE", "Apple Maps MCP is not available.", "Check the Maps MCP server and retry.")
+        return _apple_error_response("MAPS_UNAVAILABLE", "Apple Maps MCP is not available.", "Check the Maps MCP server and retry.")
     if not getattr(health, "helper_available", False):
-        return False, _apple_error_response(
+        return _apple_error_response(
             "MAPS_HELPER_UNAVAILABLE",
             "Apple Maps helper is unavailable, so native place search and routing cannot run.",
             "Call maps_health, fix the helper compilation issue, and retry without using non-Apple fallback data.",
         )
-    return True, None
+    return None
 
 
 def _matching_duplicate_groups(query: str, contact_ids: set[str] | None = None, merge_candidates_only: bool = False) -> DuplicateContactListResponse | ContactsErrorResponse:
@@ -855,7 +910,7 @@ def _build_note_html_from_mail(message: MailMessageRecord) -> str:
     return "".join(lines)
 
 
-def _serialize_prompt_messages(messages: list[Any]) -> list[dict[str, Any]]:
+def _serialize_prompt_messages(messages: list[types.PromptMessage]) -> list[dict[str, Any]]:
     payload: list[dict[str, Any]] = []
     for item in messages:
         content = item.content.model_dump(mode="json") if hasattr(item.content, "model_dump") else item.content
@@ -902,31 +957,21 @@ def _filter_text(values: list[str], query: str | None = None, limit: int = 25) -
     return deduped[:limit]
 
 
+def _guide_from_standalone(guide: dict[str, Any], *extra_notes: str) -> PermissionGuideResponse:
+    return PermissionGuideResponse(
+        domain=guide["domain"],
+        can_prompt_in_app=guide["can_prompt_in_app"],
+        requires_manual_system_settings=guide["requires_manual_system_settings"],
+        steps=guide["steps"],
+        notes=[*guide.get("notes", []), *extra_notes],
+    )
+
+
 def _permission_guide(domain: str) -> PermissionGuideResponse:
     normalized = domain.strip().lower()
     guides = {
-        "calendar": PermissionGuideResponse(
-            domain="calendar",
-            can_prompt_in_app=True,
-            requires_manual_system_settings=False,
-            steps=[
-                "Call a Calendar read or write tool from the MCP server.",
-                "Approve the macOS Calendar access prompt when it appears.",
-                "If access was denied before, re-enable it in System Settings > Privacy & Security > Calendars.",
-            ],
-            notes=["Calendar access can usually trigger a system prompt on first use."],
-        ),
-        "reminders": PermissionGuideResponse(
-            domain="reminders",
-            can_prompt_in_app=True,
-            requires_manual_system_settings=False,
-            steps=[
-                "Call a Reminders read or write tool from the MCP server.",
-                "Approve the macOS Reminders access prompt when it appears.",
-                "If access was denied before, re-enable it in System Settings > Privacy & Security > Reminders.",
-            ],
-            notes=["Reminders access can usually trigger a system prompt on first use."],
-        ),
+        "calendar": _guide_from_standalone(standalone_calendar_permission_guide()),
+        "reminders": _guide_from_standalone(standalone_reminders_permission_guide()),
         "messages": PermissionGuideResponse(
             domain="messages",
             can_prompt_in_app=True,
@@ -938,17 +983,7 @@ def _permission_guide(domain: str) -> PermissionGuideResponse:
             ],
             notes=["Messages send access and history access are separate permissions.", "Full Disk Access cannot be requested programmatically."],
         ),
-        "contacts": PermissionGuideResponse(
-            domain="contacts",
-            can_prompt_in_app=True,
-            requires_manual_system_settings=False,
-            steps=[
-                "Call a Contacts read tool from the MCP server.",
-                "Approve the macOS Contacts access prompt when it appears.",
-                "If access was denied before, re-enable it in System Settings > Privacy & Security > Contacts.",
-            ],
-            notes=["Contacts lookups can resolve a recipient before sending through Apple Messages."],
-        ),
+        "contacts": _guide_from_standalone(standalone_contacts_permission_guide(), "Contacts lookups can resolve a recipient before sending through Apple Messages."),
         "mail": PermissionGuideResponse(
             domain="mail",
             can_prompt_in_app=True,
@@ -992,20 +1027,9 @@ def _permission_guide(domain: str) -> PermissionGuideResponse:
             ],
             notes=["Files access is controlled by environment-scoped roots rather than a macOS privacy prompt."],
         ),
-        "system": PermissionGuideResponse(
-            domain="system",
-            can_prompt_in_app=standalone_system_permission_guide()["can_prompt_in_app"],
-            requires_manual_system_settings=standalone_system_permission_guide()["requires_manual_system_settings"],
-            steps=standalone_system_permission_guide()["steps"],
-            notes=standalone_system_permission_guide().get("notes", []),
-        ),
-        "maps": PermissionGuideResponse(
-            domain="maps",
-            can_prompt_in_app=False,
-            requires_manual_system_settings=False,
-            steps=standalone_maps_permission_guide()["steps"],
-            notes=standalone_maps_permission_guide().get("notes", []),
-        ),
+        # The standalone guides are untyped dicts; let the model validate them.
+        "system": PermissionGuideResponse.model_validate({"notes": [], **standalone_system_permission_guide(), "domain": "system"}),
+        "maps": PermissionGuideResponse.model_validate({"notes": [], **standalone_maps_permission_guide(), "domain": "maps"}),
         "all": PermissionGuideResponse(
             domain="all",
             can_prompt_in_app=True,
@@ -1041,12 +1065,14 @@ def mail_search_messages(
     mailbox: str | None = None,
     unread_only: bool = False,
     limit: int | str = 10,
+    account: str | None = None,
 ) -> MailMessageSearchResponse | MailErrorResponse:
     return _mail_search_messages(
         query=query,
         mailbox=mailbox,
         unread_only=unread_only,
         limit=_coerce_int_arg("limit", limit, minimum=1),
+        account=account,
     )
 
 
@@ -1216,7 +1242,7 @@ def contacts_delete_contact(contact_id: str) -> DeleteContactResponse | Contacts
 
 def notes_append_to_note(
     note_id: str,
-    body: str,
+    body: Annotated[str, Field(description="Plain text to append to the end of the note.")],
 ) -> NotesNoteResponse | NotesErrorResponse:
     return _notes_append_to_note(note_id, body_text=body)
 
@@ -1225,8 +1251,9 @@ def messages_send_attachment(
     recipient: str,
     file_path: str,
     text: str | None = None,
+    service_name: str | None = None,
 ) -> SendResponse | MessagesErrorResponse:
-    return _messages_send_attachment(recipient, file_path=file_path, text=text)
+    return _messages_send_attachment(recipient, file_path=file_path, text=text, service_name=service_name)
 
 
 def reminders_create_list(title: str) -> ReminderListMutationResponse | RemindersErrorResponse:
@@ -1240,7 +1267,7 @@ def reminders_delete_list(list_id: str) -> DeleteReminderListResponse | Reminder
 @mcp.tool(
     title="Apple Get Preferences",
     description="Read the persisted Apple-Tools assistant defaults and routing preferences.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def apple_get_preferences() -> PreferencesResponse | AppleErrorResponse:
@@ -1253,10 +1280,10 @@ def apple_get_preferences() -> PreferencesResponse | AppleErrorResponse:
 @mcp.tool(
     title="Apple Detect Defaults",
     description="Read saved defaults without probing apps. Set probe_apps=true to discover and persist missing Mail, Calendar, Reminders, and Notes targets; this may open apps and request macOS permissions.",
-    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def apple_detect_defaults(probe_apps: bool = False) -> PreferencesDetectResponse | AppleErrorResponse:
+def apple_detect_defaults(probe_apps: Annotated[bool, Field(description="Set true to probe Mail, Calendar, Reminders, and Notes for missing defaults and save what is found; this may open apps and trigger macOS permission prompts. False only reads saved defaults.")] = False) -> PreferencesDetectResponse | AppleErrorResponse:
     try:
         if not probe_apps:
             return PreferencesDetectResponse(preferences=_get_preferences(), detected=[], count=0)
@@ -1270,25 +1297,25 @@ def apple_detect_defaults(probe_apps: bool = False) -> PreferencesDetectResponse
 @mcp.tool(
     title="Apple Update Preferences",
     description="Persist assistant defaults such as default lists, folders, calendars, archive mailboxes, and preferred communication routing.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def apple_update_preferences(
-    default_mail_account: str | None = None,
-    default_archive_mailbox: str | None = None,
-    default_archive_account: str | None = None,
-    default_calendar_id: str | None = None,
-    default_calendar_name: str | None = None,
-    default_reminder_list_id: str | None = None,
-    default_reminder_list_name: str | None = None,
-    default_notes_folder_id: str | None = None,
-    default_notes_folder_name: str | None = None,
-    default_notes_account_name: str | None = None,
-    default_digest_folder_id: str | None = None,
-    default_digest_folder_name: str | None = None,
-    default_digest_account_name: str | None = None,
-    preferred_communication_channel: str | None = None,
-    preferred_message_channel: str | None = None,
+    default_mail_account: Annotated[str | None, Field(description="Default Mail account name used to send and search. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    default_archive_mailbox: Annotated[str | None, Field(description="Default mailbox that apple_archive_message moves messages into. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    default_archive_account: Annotated[str | None, Field(description="Mail account that holds default_archive_mailbox. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    default_calendar_id: Annotated[str | None, Field(description="Default calendar_id from calendar_list_calendars. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    default_calendar_name: Annotated[str | None, Field(description="Display name of the default calendar. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    default_reminder_list_id: Annotated[str | None, Field(description="Default list_id from reminders_list_lists. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    default_reminder_list_name: Annotated[str | None, Field(description="Display name of the default reminder list. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    default_notes_folder_id: Annotated[str | None, Field(description="Default folder_id from notes_list_folders. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    default_notes_folder_name: Annotated[str | None, Field(description="Display name of the default notes folder. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    default_notes_account_name: Annotated[str | None, Field(description="Notes account that holds the default notes folder, for example iCloud. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    default_digest_folder_id: Annotated[str | None, Field(description="Notes folder_id used for daily and weekly digests. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    default_digest_folder_name: Annotated[str | None, Field(description="Display name of the digest folder. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    default_digest_account_name: Annotated[str | None, Field(description="Notes account that holds the digest folder. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    preferred_communication_channel: Annotated[str | None, Field(description="Default channel for apple_send_communication: auto, messages, or mail. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    preferred_message_channel: Annotated[str | None, Field(description="Preferred Messages address type: auto, phone, or email. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
 ) -> PreferencesResponse | AppleErrorResponse:
     try:
         current = _get_preferences()
@@ -1325,7 +1352,7 @@ def apple_update_preferences(
 @mcp.tool(
     title="Apple Detect Digest Folder",
     description="Detect the preferred Notes folder for daily and weekly digests, and persist it if found.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def apple_detect_digest_folder() -> DigestFolderResponse | AppleErrorResponse:
@@ -1363,10 +1390,10 @@ def apple_detect_digest_folder() -> DigestFolderResponse | AppleErrorResponse:
 @mcp.tool(
     title="Apple Set Digest Folder",
     description="Persist the dedicated Notes folder that Apple-Tools should use for daily and weekly digests.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def apple_set_digest_folder(folder_id: str, folder_name: str | None = None, account_name: str | None = None) -> DigestFolderResponse | AppleErrorResponse:
+def apple_set_digest_folder(folder_id: Annotated[str, Field(description="Notes folder_id from notes_list_folders to use for digests.")], folder_name: Annotated[str | None, Field(description="Display name of the folder. Defaults to folder_id in the response.")] = None, account_name: Annotated[str | None, Field(description="Notes account that holds the folder, for example iCloud.")] = None) -> DigestFolderResponse | AppleErrorResponse:
     try:
         current = _get_preferences()
         stored = _save_preferences(
@@ -1397,7 +1424,7 @@ def apple_set_digest_folder(folder_id: str, folder_name: str | None = None, acco
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def apple_ensure_digest_folder(folder_name: str = "Digests", account_name: str | None = None) -> DigestFolderResponse | AppleErrorResponse:
+def apple_ensure_digest_folder(folder_name: Annotated[str, Field(description="Name of the digest folder to find or create.")] = "Digests", account_name: Annotated[str | None, Field(description="Notes account to create the folder in. Omit to use the existing digest folder's account or the default notes account.")] = None) -> DigestFolderResponse | AppleErrorResponse:
     try:
         current = _get_preferences()
         existing_id, existing_name, existing_account = _pick_digest_folder()
@@ -1455,16 +1482,16 @@ def apple_ensure_digest_folder(folder_name: str = "Digests", account_name: str |
 @mcp.tool(
     title="Apple Update Contact Preferences",
     description="Persist preferred communication routing for a specific contact so Apple-Tools can choose the right channel and target for that person.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def apple_update_contact_preferences(
-    contact_id: str,
-    preferred_communication_channel: str | None = None,
-    preferred_message_channel: str | None = None,
-    preferred_mail_address: str | None = None,
-    preferred_message_target: str | None = None,
-    clear_existing: bool = False,
+    contact_id: Annotated[str, Field(description="Contacts contact_id from contacts_search_contacts or contacts_get_contact.")],
+    preferred_communication_channel: Annotated[str | None, Field(description="Channel to use for this person: auto, messages, or mail. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    preferred_message_channel: Annotated[str | None, Field(description="Messages address type for this person: auto, phone, or email. " + _PREFERENCE_VALUE_DESCRIPTION)] = None,
+    preferred_mail_address: Annotated[str | None, Field(description="Email address to use for this person. Pass an empty string to clear it.")] = None,
+    preferred_message_target: Annotated[str | None, Field(description="Phone number or email address to message for this person. Pass an empty string to clear it.")] = None,
+    clear_existing: Annotated[bool, Field(description="Set true to discard this contact's saved routing before applying the new values.")] = False,
 ) -> PreferencesResponse | AppleErrorResponse:
     try:
         current = _get_preferences()
@@ -1593,12 +1620,12 @@ def _communication_plan_for(
 @mcp.tool(
     title="Apple Prepare Communication",
     description="Resolve a recipient through Contacts, evaluate available channels, and return the recommended mail or messages target before sending.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def apple_prepare_communication(
-    recipient: str,
-    preferred_channel: str | None = None,
+    recipient: Annotated[str, Field(description=_RECIPIENT_DESCRIPTION)],
+    preferred_channel: Annotated[str | None, Field(description=_PREFERRED_CHANNEL_DESCRIPTION)] = None,
 ) -> CommunicationPlanResponse | AppleErrorResponse:
     try:
         return _communication_plan_for(recipient, preferred_channel=preferred_channel)
@@ -1609,16 +1636,16 @@ def apple_prepare_communication(
 @mcp.tool(
     title="Apple Preview Communication",
     description="Preview how Apple-Tools will route a communication before sending it through Messages or Mail.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def apple_preview_communication(
-    recipient: str,
-    message: str,
-    preferred_channel: str | None = None,
-    subject: str = "",
-    attachments: list[str] | None = None,
-    from_account: str | None = None,
+    recipient: Annotated[str, Field(description=_RECIPIENT_DESCRIPTION)],
+    message: Annotated[str, Field(description=_COMMUNICATION_TEXT_DESCRIPTION)],
+    preferred_channel: Annotated[str | None, Field(description=_PREFERRED_CHANNEL_DESCRIPTION)] = None,
+    subject: Annotated[str, Field(description=_SUBJECT_DESCRIPTION)] = "",
+    attachments: Annotated[list[str] | None, Field(description=_ATTACHMENTS_DESCRIPTION)] = None,
+    from_account: Annotated[str | None, Field(description=_FROM_ACCOUNT_DESCRIPTION)] = None,
 ) -> ActionPreviewResponse | AppleErrorResponse:
     try:
         plan = _communication_plan_for(recipient, preferred_channel=preferred_channel)
@@ -1661,18 +1688,18 @@ def apple_preview_communication(
 @mcp.tool(
     title="Apple Preview Archive Message",
     description="Preview how Apple-Tools will archive a Mail message before moving it.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def apple_preview_archive_message(
-    message_id: str,
-    archive_mailbox: str | None = None,
-    archive_account: str | None = None,
+    message_id: Annotated[str, Field(description=_MAIL_MESSAGE_ID_DESCRIPTION)],
+    archive_mailbox: Annotated[str | None, Field(description=_ARCHIVE_MAILBOX_DESCRIPTION)] = None,
+    archive_account: Annotated[str | None, Field(description=_ARCHIVE_ACCOUNT_DESCRIPTION)] = None,
 ) -> ActionPreviewResponse | AppleErrorResponse:
     try:
         message = mail_get_message(message_id)
         if isinstance(message, MailErrorResponse):
-            return _apple_error_response(message.error_code, message.message, None)
+            return _apple_error_response(message.error_code, message.message, message.suggestion)
         preferences = _get_preferences()
         resolved, error = _resolve_archive_target(preferences, archive_mailbox=archive_mailbox, archive_account=archive_account, persist=False)
         if error is not None:
@@ -1697,15 +1724,15 @@ def apple_preview_archive_message(
 @mcp.tool(
     title="Apple Preview Create Reminder With Defaults",
     description="Preview how Apple-Tools will create a reminder with the configured default reminder list.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def apple_preview_create_reminder_with_defaults(
-    title: str,
-    due_date: str | None = None,
-    notes: str | None = None,
-    list_id: str | None = None,
-    priority: int | str = 0,
+    title: Annotated[str, Field(description=_REMINDER_TITLE_DESCRIPTION)],
+    due_date: Annotated[str | None, Field(description=_DUE_DATE_DESCRIPTION)] = None,
+    notes: Annotated[str | None, Field(description=_REMINDER_NOTES_DESCRIPTION)] = None,
+    list_id: Annotated[str | None, Field(description=_REMINDER_LIST_ID_DESCRIPTION)] = None,
+    priority: Annotated[int | str, Field(description=_PRIORITY_DESCRIPTION)] = 0,
 ) -> ActionPreviewResponse | AppleErrorResponse:
     try:
         preferences = _get_preferences()
@@ -1738,15 +1765,15 @@ def apple_preview_create_reminder_with_defaults(
 @mcp.tool(
     title="Apple Preview Create Note With Defaults",
     description="Preview how Apple-Tools will create a note with the configured default notes folder.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def apple_preview_create_note_with_defaults(
-    title: str,
-    body_text: str | None = None,
-    body_html: str | None = None,
-    folder_id: str | None = None,
-    tags: list[str] | None = None,
+    title: Annotated[str, Field(description=_NOTE_TITLE_DESCRIPTION)],
+    body_text: Annotated[str | None, Field(description=_NOTE_BODY_TEXT_DESCRIPTION)] = None,
+    body_html: Annotated[str | None, Field(description=_NOTE_BODY_HTML_DESCRIPTION)] = None,
+    folder_id: Annotated[str | None, Field(description=_NOTES_FOLDER_ID_DESCRIPTION)] = None,
+    tags: Annotated[list[str] | None, Field(description=_NOTE_TAGS_DESCRIPTION)] = None,
 ) -> ActionPreviewResponse | AppleErrorResponse:
     try:
         preferences = _get_preferences()
@@ -1781,21 +1808,21 @@ def apple_preview_create_note_with_defaults(
 @mcp.tool(
     title="Apple Preview Follow-Up From Mail",
     description="Preview how Apple-Tools will turn an email into a reminder and note before creating either item.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def apple_preview_follow_up_from_mail(
-    message_id: str,
-    due_date: str | None = None,
-    reminder_title: str | None = None,
-    note_title: str | None = None,
-    create_reminder: bool = True,
-    create_note: bool = True,
+    message_id: Annotated[str, Field(description=_MAIL_MESSAGE_ID_DESCRIPTION)],
+    due_date: Annotated[str | None, Field(description=_FOLLOW_UP_DUE_DATE_DESCRIPTION)] = None,
+    reminder_title: Annotated[str | None, Field(description=_FOLLOW_UP_REMINDER_TITLE_DESCRIPTION)] = None,
+    note_title: Annotated[str | None, Field(description=_FOLLOW_UP_NOTE_TITLE_DESCRIPTION)] = None,
+    create_reminder: Annotated[bool, Field(description=_CREATE_REMINDER_DESCRIPTION)] = True,
+    create_note: Annotated[bool, Field(description=_CREATE_NOTE_DESCRIPTION)] = True,
 ) -> ActionPreviewResponse | AppleErrorResponse:
     try:
         message = mail_get_message(message_id)
         if isinstance(message, MailErrorResponse):
-            return _apple_error_response(message.error_code, message.message, None)
+            return _apple_error_response(message.error_code, message.message, message.suggestion)
         warnings: list[str] = []
         summary_parts: list[str] = [f"Capture follow-up from '{message.subject or message.message_id}'."]
         preferences = _get_preferences()
@@ -1845,12 +1872,12 @@ def apple_preview_follow_up_from_mail(
     structured_output=True,
 )
 def apple_send_communication(
-    recipient: str,
-    message: str,
-    preferred_channel: str | None = None,
-    subject: str = "",
-    attachments: list[str] | None = None,
-    from_account: str | None = None,
+    recipient: Annotated[str, Field(description=_RECIPIENT_DESCRIPTION)],
+    message: Annotated[str, Field(description=_COMMUNICATION_TEXT_DESCRIPTION)],
+    preferred_channel: Annotated[str | None, Field(description=_PREFERRED_CHANNEL_DESCRIPTION)] = None,
+    subject: Annotated[str, Field(description=_SUBJECT_DESCRIPTION)] = "",
+    attachments: Annotated[list[str] | None, Field(description=_ATTACHMENTS_DESCRIPTION)] = None,
+    from_account: Annotated[str | None, Field(description=_FROM_ACCOUNT_DESCRIPTION)] = None,
 ) -> CommunicationActionResponse | AppleErrorResponse:
     try:
         plan = _communication_plan_for(recipient, preferred_channel=preferred_channel)
@@ -1887,7 +1914,7 @@ def apple_send_communication(
             from_account=effective_from_account,
         )
         if isinstance(result, MailErrorResponse):
-            return _apple_error_response(result.error_code, result.message, None)
+            return _apple_error_response(result.error_code, result.message, result.suggestion)
         action = _record_action(
             "send_communication",
             f"Sent an email to {plan.recommended_target}.",
@@ -1902,26 +1929,26 @@ def apple_send_communication(
 @mcp.tool(
     title="Apple Archive Message",
     description="Move a message to the preferred archive mailbox, or auto-detect an archive mailbox if no preference exists yet.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def apple_archive_message(
-    message_id: str,
-    archive_mailbox: str | None = None,
-    archive_account: str | None = None,
+    message_id: Annotated[str, Field(description=_MAIL_MESSAGE_ID_DESCRIPTION)],
+    archive_mailbox: Annotated[str | None, Field(description=_ARCHIVE_MAILBOX_DESCRIPTION)] = None,
+    archive_account: Annotated[str | None, Field(description=_ARCHIVE_ACCOUNT_DESCRIPTION)] = None,
 ) -> MailMoveRecord | AppleErrorResponse:
     try:
         preferences = _get_preferences()
         message = mail_get_message(message_id)
         if isinstance(message, MailErrorResponse):
-            return _apple_error_response(message.error_code, message.message, None)
+            return _apple_error_response(message.error_code, message.message, message.suggestion)
         resolved, error = _resolve_archive_target(preferences, archive_mailbox=archive_mailbox, archive_account=archive_account)
         if error is not None:
             return error
         target_mailbox, target_account, _ = resolved
         result = mail_move_message(message_id=message_id, target_mailbox=target_mailbox, target_account=target_account)
         if isinstance(result, MailErrorResponse):
-            return _apple_error_response(result.error_code, result.message, None)
+            return _apple_error_response(result.error_code, result.message, result.suggestion)
         _record_action(
             "archive_message",
             f"Moved '{message.subject or message.message_id}' from {message.mailbox} to {target_mailbox}.",
@@ -1942,10 +1969,10 @@ def apple_archive_message(
 @mcp.tool(
     title="Apple List Recent Actions",
     description="List recent assistant actions recorded by Apple-Tools for audit and undo workflows.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def apple_list_recent_actions(limit: int | str = 10) -> ActionHistoryResponse | AppleErrorResponse:
+def apple_list_recent_actions(limit: Annotated[int | str, Field(description="Maximum number of recent actions to return, newest first (1 or more).")] = 10) -> ActionHistoryResponse | AppleErrorResponse:
     try:
         bounded_limit = _coerce_int_arg("limit", limit, minimum=1)
         actions = _get_action_history()[:bounded_limit]
@@ -1959,10 +1986,10 @@ def apple_list_recent_actions(limit: int | str = 10) -> ActionHistoryResponse | 
 @mcp.tool(
     title="Apple Undo Action",
     description="Undo a recent Apple-Tools action when the underlying standalone MCPs support a reliable reversal.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def apple_undo_action(action_id: str) -> ActionUndoResponse | AppleErrorResponse:
+def apple_undo_action(action_id: Annotated[str, Field(description="action_id from apple_list_recent_actions. Only actions with undo_status available can be undone.")]) -> ActionUndoResponse | AppleErrorResponse:
     try:
         actions = _get_action_history()
         action = next((item for item in actions if item.action_id == action_id), None)
@@ -2024,11 +2051,11 @@ def apple_undo_action(action_id: str) -> ActionUndoResponse | AppleErrorResponse
     structured_output=True,
 )
 def apple_create_reminder_with_defaults(
-    title: str,
-    due_date: str | None = None,
-    notes: str | None = None,
-    list_id: str | None = None,
-    priority: int | str = 0,
+    title: Annotated[str, Field(description=_REMINDER_TITLE_DESCRIPTION)],
+    due_date: Annotated[str | None, Field(description=_DUE_DATE_DESCRIPTION)] = None,
+    notes: Annotated[str | None, Field(description=_REMINDER_NOTES_DESCRIPTION)] = None,
+    list_id: Annotated[str | None, Field(description=_REMINDER_LIST_ID_DESCRIPTION)] = None,
+    priority: Annotated[int | str, Field(description=_PRIORITY_DESCRIPTION)] = 0,
 ) -> RemindersReminderResponse | RemindersErrorResponse | AppleErrorResponse:
     try:
         preferences = _get_preferences()
@@ -2061,11 +2088,11 @@ def apple_create_reminder_with_defaults(
     structured_output=True,
 )
 def apple_create_note_with_defaults(
-    title: str,
-    body_text: str | None = None,
-    body_html: str | None = None,
-    folder_id: str | None = None,
-    tags: list[str] | None = None,
+    title: Annotated[str, Field(description=_NOTE_TITLE_DESCRIPTION)],
+    body_text: Annotated[str | None, Field(description=_NOTE_BODY_TEXT_DESCRIPTION)] = None,
+    body_html: Annotated[str | None, Field(description=_NOTE_BODY_HTML_DESCRIPTION)] = None,
+    folder_id: Annotated[str | None, Field(description=_NOTES_FOLDER_ID_DESCRIPTION)] = None,
+    tags: Annotated[list[str] | None, Field(description=_NOTE_TAGS_DESCRIPTION)] = None,
 ) -> NotesNoteResponse | NotesErrorResponse | AppleErrorResponse:
     try:
         preferences = _get_preferences()
@@ -2102,17 +2129,17 @@ def apple_create_note_with_defaults(
     structured_output=True,
 )
 def apple_capture_follow_up_from_mail(
-    message_id: str,
-    due_date: str | None = None,
-    reminder_title: str | None = None,
-    note_title: str | None = None,
-    create_reminder: bool = True,
-    create_note: bool = True,
+    message_id: Annotated[str, Field(description=_MAIL_MESSAGE_ID_DESCRIPTION)],
+    due_date: Annotated[str | None, Field(description=_FOLLOW_UP_DUE_DATE_DESCRIPTION)] = None,
+    reminder_title: Annotated[str | None, Field(description=_FOLLOW_UP_REMINDER_TITLE_DESCRIPTION)] = None,
+    note_title: Annotated[str | None, Field(description=_FOLLOW_UP_NOTE_TITLE_DESCRIPTION)] = None,
+    create_reminder: Annotated[bool, Field(description=_CREATE_REMINDER_DESCRIPTION)] = True,
+    create_note: Annotated[bool, Field(description=_CREATE_NOTE_DESCRIPTION)] = True,
 ) -> MailFollowupResponse | AppleErrorResponse:
     try:
         message = mail_get_message(message_id)
         if isinstance(message, MailErrorResponse):
-            return _apple_error_response(message.error_code, message.message, None)
+            return _apple_error_response(message.error_code, message.message, message.suggestion)
 
         reminder_payload: dict[str, Any] | None = None
         note_payload: dict[str, Any] | None = None
@@ -2125,10 +2152,8 @@ def apple_capture_follow_up_from_mail(
                 due_date=due_date,
                 notes=f"From: {message.sender}\nSubject: {message.subject}\nReceived: {message.date_received}",
             )
-            if isinstance(reminder_result, AppleErrorResponse):
+            if isinstance(reminder_result, (AppleErrorResponse, RemindersErrorResponse)):
                 warnings.append(reminder_result.error.message)
-            elif getattr(reminder_result, "ok", True) is False:
-                warnings.append(getattr(reminder_result.error, "message", "Reminder creation failed."))
             else:
                 reminder_payload = _to_jsonable(reminder_result)
 
@@ -2138,10 +2163,8 @@ def apple_capture_follow_up_from_mail(
                 title=resolved_note_title,
                 body_html=_build_note_html_from_mail(message),
             )
-            if isinstance(note_result, AppleErrorResponse):
+            if isinstance(note_result, (AppleErrorResponse, NotesErrorResponse)):
                 warnings.append(note_result.error.message)
-            elif getattr(note_result, "ok", True) is False:
-                warnings.append(getattr(note_result.error, "message", "Note creation failed."))
             else:
                 note_payload = _to_jsonable(note_result)
 
@@ -2158,10 +2181,10 @@ def apple_capture_follow_up_from_mail(
 @mcp.tool(
     title="Apple Event Collaboration Summary",
     description="Summarize attendee state for a shared calendar event so agents can verify collaboration and participation.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def apple_event_collaboration_summary(event_id: str) -> EventCollaborationResponse | AppleErrorResponse:
+def apple_event_collaboration_summary(event_id: Annotated[str, Field(description="Calendar event_id from calendar_list_events or calendar_get_event.")]) -> EventCollaborationResponse | AppleErrorResponse:
     event = calendar_get_event(event_id)
     if isinstance(event, CalendarErrorResponse):
         return _apple_error_response(event.error.error_code, event.error.message, event.error.suggestion)
@@ -2186,12 +2209,12 @@ def apple_event_collaboration_summary(event_id: str) -> EventCollaborationRespon
 @mcp.tool(
     title="Apple Maps Search Places Strict",
     description="Search places through the native Apple Maps MCP and fail closed if the Maps helper is unavailable.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True),
     structured_output=True,
 )
-def apple_maps_search_places_strict(query: str, limit: int = 5) -> PlaceSearchResponse | AppleErrorResponse:
-    ok, error = _ensure_maps_available()
-    if not ok:
+def apple_maps_search_places_strict(query: Annotated[str, Field(description="Place name, address, or category to search for, for example coffee near Union Square.")], limit: Annotated[int, Field(description="Maximum number of places to return (1 or more).")] = 5) -> PlaceSearchResponse | AppleErrorResponse:
+    error = _maps_unavailable_error()
+    if error is not None:
         return error
     result = maps_search_places(query=query, limit=limit)
     if isinstance(result, MapsErrorResponse):
@@ -2202,12 +2225,12 @@ def apple_maps_search_places_strict(query: str, limit: int = 5) -> PlaceSearchRe
 @mcp.tool(
     title="Apple Maps Get Directions Strict",
     description="Get directions through the native Apple Maps MCP and fail closed if the Maps helper is unavailable.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True),
     structured_output=True,
 )
-def apple_maps_get_directions_strict(origin: str, destination: str, transport: str = "driving") -> DirectionsResponse | AppleErrorResponse:
-    ok, error = _ensure_maps_available()
-    if not ok:
+def apple_maps_get_directions_strict(origin: Annotated[str, Field(description="Starting place name or address.")], destination: Annotated[str, Field(description="Destination place name or address.")], transport: Annotated[str, Field(description="Travel mode: driving, walking, or transit.")] = "driving") -> DirectionsResponse | AppleErrorResponse:
+    error = _maps_unavailable_error()
+    if error is not None:
         return error
     result = maps_get_directions(origin=origin, destination=destination, transport=transport)
     if isinstance(result, MapsErrorResponse):
@@ -2218,10 +2241,10 @@ def apple_maps_get_directions_strict(origin: str, destination: str, transport: s
 @mcp.tool(
     title="Apple Find Duplicate Contacts",
     description="Find likely duplicate contacts through Apple Contacts so assistants can disambiguate people before acting.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def apple_find_duplicate_contacts(query: str | None = None, merge_candidates_only: bool = False) -> DuplicateContactListResponse | AppleErrorResponse:
+def apple_find_duplicate_contacts(query: Annotated[str | None, Field(description="Optional name, phone, or email to limit the check to matching contacts. Omit to scan all contacts.")] = None, merge_candidates_only: Annotated[bool, Field(description="Set true to return only groups that look safe to merge.")] = False) -> DuplicateContactListResponse | AppleErrorResponse:
     response = _matching_duplicate_groups(query or "", None, merge_candidates_only=merge_candidates_only) if query else (
         contacts_suggest_merge_candidates() if merge_candidates_only else contacts_find_duplicates()
     )
@@ -2233,10 +2256,10 @@ def apple_find_duplicate_contacts(query: str | None = None, merge_candidates_onl
 @mcp.tool(
     title="Apple Prepare Unique Contact",
     description="Resolve a contact for a person-targeted workflow, but stop and return duplicate groups if likely duplicate records need cleanup first.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def apple_prepare_unique_contact(query: str) -> ContactResponse | DuplicateContactListResponse | AppleErrorResponse:
+def apple_prepare_unique_contact(query: Annotated[str, Field(description="Contact name, phone number, or email address to resolve to exactly one contact.")]) -> ContactResponse | DuplicateContactListResponse | AppleErrorResponse:
     search_result = contacts_search_contacts(query=query, limit=10)
     if isinstance(search_result, ContactsErrorResponse):
         return _apple_error_response(search_result.error.error_code, search_result.error.message, search_result.error.suggestion)
@@ -2256,10 +2279,10 @@ def apple_prepare_unique_contact(query: str) -> ContactResponse | DuplicateConta
 @mcp.tool(
     title="Apple List Shortcuts For Capability",
     description="List likely shortcuts for a requested capability so Apple-Tools can use Shortcuts as an intentional bridge when native coverage is missing.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def apple_list_shortcuts_for_capability(query: str, limit: int | str = 10) -> SuggestionListResponse | AppleErrorResponse:
+def apple_list_shortcuts_for_capability(query: Annotated[str, Field(description="Capability or shortcut name to match, for example resize image.")], limit: Annotated[int | str, Field(description="Maximum number of shortcut names to return (1 or more).")] = 10) -> SuggestionListResponse | AppleErrorResponse:
     normalized_limit = _coerce_int_arg("limit", limit, minimum=1)
     shortcuts = shortcuts_list_shortcuts()
     if isinstance(shortcuts, ShortcutsErrorResponse):
@@ -2272,15 +2295,15 @@ def apple_list_shortcuts_for_capability(query: str, limit: int | str = 10) -> Su
 @mcp.tool(
     title="Apple Route Or Run Shortcut",
     description="Use Apple Shortcuts as the explicit bridge when native Apple MCP coverage is insufficient or when the user names a shortcut directly.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def apple_route_or_run_shortcut(
-    request: str,
-    shortcut_name_or_identifier: str | None = None,
-    input_text: str | None = None,
-    input_paths: list[str] | None = None,
-    dry_run: bool = False,
+    request: Annotated[str, Field(description="What the user wants done. Used to pick a single matching shortcut when shortcut_name_or_identifier is omitted.")],
+    shortcut_name_or_identifier: Annotated[str | None, Field(description="Exact shortcut name or identifier to run. Omit to route from request; ambiguous requests fail without running anything.")] = None,
+    input_text: Annotated[str | None, Field(description="Optional text passed to the shortcut as input.")] = None,
+    input_paths: Annotated[list[str] | None, Field(description="Optional absolute file paths passed to the shortcut as input.")] = None,
+    dry_run: Annotated[bool, Field(description="Set true to report which shortcut would run without running it.")] = False,
 ) -> ShortcutRouteResponse | AppleErrorResponse:
     shortcut_response = shortcuts_list_shortcuts()
     if isinstance(shortcut_response, ShortcutsErrorResponse):
@@ -2342,8 +2365,8 @@ def apple_route_or_run_shortcut(
     structured_output=True,
 )
 async def apple_open_application(
-    application: str | None = None,
-    bundle_id: str | None = None,
+    application: Annotated[str | None, Field(description=_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_BUNDLE_ID_DESCRIPTION)] = None,
     ctx: Context | None = None,
 ) -> OpenAppResponse | AppleErrorResponse:
     result = await system_open_application(application=application, bundle_id=bundle_id, ctx=ctx)
@@ -2355,7 +2378,7 @@ async def apple_open_application(
 @mcp.tool(
     title="Apple Get Focus Status",
     description="Return truthful Focus support metadata through the unified Apple control plane.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def apple_get_focus_status() -> FocusStatusResponse | AppleErrorResponse:
@@ -2368,7 +2391,7 @@ def apple_get_focus_status() -> FocusStatusResponse | AppleErrorResponse:
 @mcp.tool(
     title="Apple Get System Context",
     description="Return a richer Apple system context snapshot, including Focus, frontmost app, and battery state.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def apple_get_system_context() -> SystemContextResponse | AppleErrorResponse:
@@ -2384,7 +2407,7 @@ def apple_get_system_context() -> SystemContextResponse | AppleErrorResponse:
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def apple_open_file_path(path: str) -> FileActionResponse | AppleErrorResponse:
+def apple_open_file_path(path: Annotated[str, Field(description=_FILE_PATH_DESCRIPTION)]) -> FileActionResponse | AppleErrorResponse:
     result = files_open_path(path)
     if isinstance(result, FilesErrorResponse):
         return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
@@ -2397,7 +2420,7 @@ def apple_open_file_path(path: str) -> FileActionResponse | AppleErrorResponse:
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def apple_reveal_in_finder(path: str) -> FileActionResponse | AppleErrorResponse:
+def apple_reveal_in_finder(path: Annotated[str, Field(description=_FILE_PATH_DESCRIPTION)]) -> FileActionResponse | AppleErrorResponse:
     result = files_reveal_in_finder(path)
     if isinstance(result, FilesErrorResponse):
         return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
@@ -2407,10 +2430,10 @@ def apple_reveal_in_finder(path: str) -> FileActionResponse | AppleErrorResponse
 @mcp.tool(
     title="Apple Tag File",
     description="Read, replace, add, or remove Finder tags on a file or folder through Apple Files.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def apple_tag_file(path: str, action: str = "get", tags: list[str] | None = None) -> FileTagsResponse | AppleErrorResponse:
+def apple_tag_file(path: Annotated[str, Field(description=_FILE_PATH_DESCRIPTION)], action: Annotated[str, Field(description="get reads tags; set replaces all tags; add adds tags; remove removes the listed tags.")] = "get", tags: Annotated[list[str] | None, Field(description="Finder tag names. Required for set, add, and remove.")] = None) -> FileTagsResponse | AppleErrorResponse:
     normalized = action.strip().lower()
     if normalized == "get":
         result = files_get_tags(path)
@@ -2433,13 +2456,13 @@ def apple_tag_file(path: str, action: str = "get", tags: list[str] | None = None
 @mcp.tool(
     title="Apple Update System Setting",
     description="Apply an assistant-relevant macOS setting through the unified Apple control plane.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def apple_update_system_setting(
-    setting: str,
-    enabled: bool | None = None,
-    mode: str | None = None,
+    setting: Annotated[str, Field(description="One of appearance_mode, show_all_extensions, show_hidden_files, finder_path_bar, finder_status_bar, dock_autohide, dock_show_recents, reduce_motion, increase_contrast, reduce_transparency.")],
+    enabled: Annotated[bool | None, Field(description="New on/off value. Required for every setting except appearance_mode.")] = None,
+    mode: Annotated[str | None, Field(description="light or dark. Required for appearance_mode.")] = None,
 ) -> SettingMutationResponse | AppleErrorResponse:
     normalized = setting.strip().lower()
     bool_dispatch = {
@@ -2483,17 +2506,17 @@ def apple_update_system_setting(
     structured_output=True,
 )
 def apple_control_frontmost_app(
-    action: str,
-    application: str | None = None,
-    bundle_id: str | None = None,
-    menu_path: list[str] | None = None,
-    key: str | None = None,
-    modifiers: list[str] | None = None,
-    text: str | None = None,
-    label: str | None = None,
-    description: str | None = None,
-    index: int = 1,
-    value: str | None = None,
+    action: Annotated[str, Field(description="One of list_menu_bar_items, click_menu_path, press_keys, type_text, click_button, choose_popup_value.")],
+    application: Annotated[str | None, Field(description=_GUI_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_GUI_BUNDLE_ID_DESCRIPTION)] = None,
+    menu_path: Annotated[list[str] | None, Field(description="Menu titles from the menu bar down, for example [\"File\", \"New Window\"]. Required for click_menu_path.")] = None,
+    key: Annotated[str | None, Field(description="Printable key or special key name to press. Required for press_keys.")] = None,
+    modifiers: Annotated[list[str] | None, Field(description="Modifier keys held during press_keys: command, control, option, shift.")] = None,
+    text: Annotated[str | None, Field(description="Text to type. Required for type_text.")] = None,
+    label: Annotated[str | None, Field(description="Visible label of the button or pop-up. click_button needs label or description.")] = None,
+    description: Annotated[str | None, Field(description="Accessibility description of the button or pop-up, used when it has no visible label.")] = None,
+    index: Annotated[int, Field(description="Which match to use when several buttons share the label, starting at 1.")] = 1,
+    value: Annotated[str | None, Field(description="Pop-up menu value to select. Required for choose_popup_value.")] = None,
 ) -> GuiMenuItemsResponse | GuiActionResponse | AppleErrorResponse:
     normalized = action.strip().lower()
     if normalized == "list_menu_bar_items":
@@ -2529,7 +2552,7 @@ def apple_control_frontmost_app(
     return result
 
 
-def apple_suggest_mailboxes(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
+def apple_suggest_mailboxes(query: Annotated[str | None, Field(description=_SUGGEST_QUERY_DESCRIPTION)] = None, limit: Annotated[int | str, Field(description=_SUGGEST_LIMIT_DESCRIPTION)] = 25) -> SuggestionListResponse:
     response = mail_list_mailboxes()
     if isinstance(response, MailErrorResponse):
         return SuggestionListResponse(domain="mail", suggestions=[], count=0)
@@ -2538,38 +2561,38 @@ def apple_suggest_mailboxes(query: str | None = None, limit: int | str = 25) -> 
     return SuggestionListResponse(domain="mail", suggestions=suggestions, count=len(suggestions))
 
 
-def apple_suggest_calendars(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
+def apple_suggest_calendars(query: Annotated[str | None, Field(description=_SUGGEST_QUERY_DESCRIPTION)] = None, limit: Annotated[int | str, Field(description=_SUGGEST_LIMIT_DESCRIPTION)] = 25) -> SuggestionListResponse:
     response = calendar_list_calendars()
-    values = [] if not getattr(response, "ok", False) else [f"{item.calendar_id} / {item.name}" for item in response.calendars]
+    values = [] if isinstance(response, CalendarErrorResponse) else [f"{item.calendar_id} / {item.name}" for item in response.calendars]
     suggestions = _filter_text(values, query=query, limit=_coerce_int_arg("limit", limit, minimum=1))
     return SuggestionListResponse(domain="calendar", suggestions=suggestions, count=len(suggestions))
 
 
-def apple_suggest_reminder_lists(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
+def apple_suggest_reminder_lists(query: Annotated[str | None, Field(description=_SUGGEST_QUERY_DESCRIPTION)] = None, limit: Annotated[int | str, Field(description=_SUGGEST_LIMIT_DESCRIPTION)] = 25) -> SuggestionListResponse:
     response = reminders_list_lists()
-    values = [] if not getattr(response, "ok", False) else [f"{item.list_id} / {item.title}" for item in response.lists]
+    values = [] if isinstance(response, RemindersErrorResponse) else [f"{item.list_id} / {item.title}" for item in response.lists]
     suggestions = _filter_text(values, query=query, limit=_coerce_int_arg("limit", limit, minimum=1))
     return SuggestionListResponse(domain="reminders", suggestions=suggestions, count=len(suggestions))
 
 
-def apple_suggest_shortcuts(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
+def apple_suggest_shortcuts(query: Annotated[str | None, Field(description=_SUGGEST_QUERY_DESCRIPTION)] = None, limit: Annotated[int | str, Field(description=_SUGGEST_LIMIT_DESCRIPTION)] = 25) -> SuggestionListResponse:
     response = shortcuts_list_shortcuts()
-    values = [] if not getattr(response, "ok", False) else [item.name for item in response.shortcuts]
+    values = [] if isinstance(response, ShortcutsErrorResponse) else [item.name for item in response.shortcuts]
     suggestions = _filter_text(values, query=query, limit=_coerce_int_arg("limit", limit, minimum=1))
     return SuggestionListResponse(domain="shortcuts", suggestions=suggestions, count=len(suggestions))
 
 
-def apple_suggest_note_folders(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
+def apple_suggest_note_folders(query: Annotated[str | None, Field(description=_SUGGEST_QUERY_DESCRIPTION)] = None, limit: Annotated[int | str, Field(description=_SUGGEST_LIMIT_DESCRIPTION)] = 25) -> SuggestionListResponse:
     response = notes_list_folders(limit=100, offset=0)
-    values = [] if not getattr(response, "ok", False) else [f"{item.folder_id} / {item.account_name} / {item.name}" for item in response.folders]
+    values = [] if isinstance(response, NotesErrorResponse) else [f"{item.folder_id} / {item.account_name} / {item.name}" for item in response.folders]
     suggestions = _filter_text(values, query=query, limit=_coerce_int_arg("limit", limit, minimum=1))
     return SuggestionListResponse(domain="notes", suggestions=suggestions, count=len(suggestions))
 
 
-def apple_suggest_message_conversations(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
+def apple_suggest_message_conversations(query: Annotated[str | None, Field(description=_SUGGEST_QUERY_DESCRIPTION)] = None, limit: Annotated[int | str, Field(description=_SUGGEST_LIMIT_DESCRIPTION)] = 25) -> SuggestionListResponse:
     response = messages_list_conversations(limit=100, offset=0)
     values = []
-    if getattr(response, "ok", False):
+    if not isinstance(response, MessagesErrorResponse):
         for item in response.conversations:
             label = item.display_name or ", ".join(participant.address for participant in item.participants) or item.chat_id
             values.append(f"{item.chat_id} / {label}")
@@ -2577,10 +2600,10 @@ def apple_suggest_message_conversations(query: str | None = None, limit: int | s
     return SuggestionListResponse(domain="messages", suggestions=suggestions, count=len(suggestions))
 
 
-def apple_suggest_contacts(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
+def apple_suggest_contacts(query: Annotated[str | None, Field(description=_SUGGEST_QUERY_DESCRIPTION)] = None, limit: Annotated[int | str, Field(description=_SUGGEST_LIMIT_DESCRIPTION)] = 25) -> SuggestionListResponse:
     response = contacts_search_contacts(query=query or "", limit=100) if query else contacts_list_contacts(limit=100, offset=0)
     values = []
-    if getattr(response, "ok", False):
+    if not isinstance(response, ContactsErrorResponse):
         for item in response.contacts:
             primary = item.phones[0].value if item.phones else (item.emails[0].value if item.emails else "")
             values.append(f"{item.contact_id} / {item.name} / {primary}")
@@ -2588,31 +2611,31 @@ def apple_suggest_contacts(query: str | None = None, limit: int | str = 25) -> S
     return SuggestionListResponse(domain="contacts", suggestions=suggestions, count=len(suggestions))
 
 
-def apple_suggest_files(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
+def apple_suggest_files(query: Annotated[str | None, Field(description=_SUGGEST_QUERY_DESCRIPTION)] = None, limit: Annotated[int | str, Field(description=_SUGGEST_LIMIT_DESCRIPTION)] = 25) -> SuggestionListResponse:
     normalized_limit = _coerce_int_arg("limit", limit, minimum=1)
     response = files_search_files(query=query or "", limit=normalized_limit) if query else files_recent_files(limit=normalized_limit)
     values = []
-    if getattr(response, "ok", False):
+    if not isinstance(response, FilesErrorResponse):
         values = [item.path for item in response.entries]
     suggestions = _filter_text(values, query=query, limit=normalized_limit)
     return SuggestionListResponse(domain="files", suggestions=suggestions, count=len(suggestions))
 
 
-def apple_suggest_running_apps(query: str | None = None, limit: int | str = 25) -> SuggestionListResponse:
+def apple_suggest_running_apps(query: Annotated[str | None, Field(description=_SUGGEST_QUERY_DESCRIPTION)] = None, limit: Annotated[int | str, Field(description=_SUGGEST_LIMIT_DESCRIPTION)] = 25) -> SuggestionListResponse:
     normalized_limit = _coerce_int_arg("limit", limit, minimum=1)
     response = system_list_running_apps()
-    values = [] if not getattr(response, "ok", False) else [f"{item.name} / {item.bundle_id or ''}".strip(" /") for item in response.apps]
+    values = [] if isinstance(response, SystemErrorResponse) else [f"{item.name} / {item.bundle_id or ''}".strip(" /") for item in response.apps]
     suggestions = _filter_text(values, query=query, limit=normalized_limit)
     return SuggestionListResponse(domain="system", suggestions=suggestions, count=len(suggestions))
 
 
-def apple_suggest_places(query: str | None = None, limit: int | str = 10) -> SuggestionListResponse:
+def apple_suggest_places(query: Annotated[str | None, Field(description="Place text to search Apple Maps for. Without a query no suggestions are returned.")] = None, limit: Annotated[int | str, Field(description=_SUGGEST_LIMIT_DESCRIPTION)] = 10) -> SuggestionListResponse:
     normalized_limit = _coerce_int_arg("limit", limit, minimum=1)
     if not query:
         return SuggestionListResponse(domain="maps", suggestions=[], count=0)
     response = apple_maps_search_places_strict(query=query, limit=normalized_limit)
     values = []
-    if getattr(response, "ok", False):
+    if not isinstance(response, AppleErrorResponse):
         values = [f"{item.name} / {item.address or ''}".strip() for item in response.places]
     suggestions = _filter_text(values, query=query, limit=normalized_limit)
     return SuggestionListResponse(domain="maps", suggestions=suggestions, count=len(suggestions))
@@ -2633,7 +2656,8 @@ for _name, _fn in (
     mcp.tool(
         title=_name,
         description=f"{_name} using the current Apple data surfaces. This is a completion fallback for clients without MCP completion support.",
-        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+        # Place suggestions query the Apple Maps service; the rest read local data.
+        annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=_fn is apple_suggest_places),
         structured_output=True,
     )(_fn)
 
@@ -2641,17 +2665,17 @@ for _name, _fn in (
 @mcp.tool(
     title="Apple Permission Guide",
     description="Explain how to grant the Apple permissions needed by a given Apple domain on macOS.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def apple_permission_guide(domain: str = "all") -> PermissionGuideResponse:
+def apple_permission_guide(domain: Annotated[str, Field(description="Domain to explain: calendar, reminders, messages, contacts, mail, notes, shortcuts, files, system, maps, or all.")] = "all") -> PermissionGuideResponse:
     return _permission_guide(domain)
 
 
 @mcp.tool(
     title="Apple Recheck Permissions",
     description="Recheck Apple domain health after the user changes macOS permissions, and notify the client that Apple resources changed.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 async def apple_recheck_permissions(ctx: Context) -> AppleHealthResponse:
@@ -2666,12 +2690,12 @@ async def apple_recheck_permissions(ctx: Context) -> AppleHealthResponse:
 @mcp.tool(
     title="Apple Send Message Interactive",
     description="Send an Apple Messages message, asking for missing recipient or text when needed.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 async def apple_send_message_interactive(
-    recipient: str | None = None,
-    text: str | None = None,
+    recipient: Annotated[str | None, Field(description="Contact name, phone number, or email address. If missing, clients that support elicitation are asked for it.")] = None,
+    text: Annotated[str | None, Field(description="Message text. If missing, clients that support elicitation are asked for it.")] = None,
     ctx: Context | None = None,
 ) -> SendResponse | MessagesErrorResponse:
     if ctx is not None and (not recipient or not text):
@@ -2718,13 +2742,13 @@ async def apple_send_message_interactive(
     structured_output=True,
 )
 async def apple_create_event_interactive(
-    title: str | None = None,
-    start_iso: str | None = None,
-    end_iso: str | None = None,
-    calendar_id: str | None = None,
-    notes: str | None = None,
-    location: str | None = None,
-    all_day: bool = False,
+    title: Annotated[str | None, Field(description="Event title. If missing, clients that support elicitation are asked for it.")] = None,
+    start_iso: Annotated[str | None, Field(description="Event start as an ISO 8601 datetime with timezone, for example 2026-04-07T15:00:00-05:00.")] = None,
+    end_iso: Annotated[str | None, Field(description="Event end as an ISO 8601 datetime with timezone; must be after start_iso.")] = None,
+    calendar_id: Annotated[str | None, Field(description="calendar_id from calendar_list_calendars. Omit to use the saved default calendar.")] = None,
+    notes: Annotated[str | None, Field(description="Optional event notes.")] = None,
+    location: Annotated[str | None, Field(description="Optional event location.")] = None,
+    all_day: Annotated[bool, Field(description="Set true for an all-day event.")] = False,
     ctx: Context | None = None,
 ) -> EventResponse | CalendarErrorResponse:
     if calendar_id is None:
@@ -2902,7 +2926,7 @@ def apple_route_request_prompt() -> str:
 @mcp.tool(
     title="Apple Health",
     description="Report aggregated health across the unified Apple ecosystem MCP domains.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def apple_health() -> AppleHealthResponse:
@@ -2918,7 +2942,7 @@ def apple_health() -> AppleHealthResponse:
 @mcp.tool(
     title="Apple Overview",
     description="Return domain health and saved preferences; defer permission-sensitive data reads and Shortcuts library enumeration.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def apple_overview() -> AppleOverviewResponse:
@@ -2945,44 +2969,21 @@ async def apple_completion(
         uri = str(ref.uri)
         if uri == "contacts://contact/{contact_id}" and argument.name == "contact_id":
             response = contacts_list_contacts(limit=50, offset=0)
-            values = [] if not getattr(response, "ok", False) else [item.contact_id for item in response.contacts]
-            return types.Completion(values=values, total=len(values), hasMore=False)
+            values = [] if isinstance(response, ContactsErrorResponse) else [item.contact_id for item in response.contacts]
+            return types.Completion(values=values, total=len(values), has_more=False)
         if uri == "notes://note/{note_id}" and argument.name == "note_id":
             response = notes_list_notes(limit=50, offset=0)
-            values = [] if not getattr(response, "ok", False) else [item.note_id for item in response.notes]
-            return types.Completion(values=values, total=len(values), hasMore=False)
+            values = [] if isinstance(response, NotesErrorResponse) else [item.note_id for item in response.notes]
+            return types.Completion(values=values, total=len(values), has_more=False)
         if uri == "messages://conversation/{chat_id}" and argument.name == "chat_id":
             response = messages_list_conversations(limit=50, offset=0)
-            values = [] if not getattr(response, "ok", False) else [item.chat_id for item in response.conversations]
-            return types.Completion(values=values, total=len(values), hasMore=False)
+            values = [] if isinstance(response, MessagesErrorResponse) else [item.chat_id for item in response.conversations]
+            return types.Completion(values=values, total=len(values), has_more=False)
         if uri == "shortcuts://folder/{folder_name}" and argument.name == "folder_name":
             response = shortcuts_list_folders()
-            values = [] if not getattr(response, "ok", False) else [item.name for item in response.folders]
-            return types.Completion(values=values, total=len(values), hasMore=False)
-    return types.Completion(values=[], total=0, hasMore=False)
-
-
-def _tool_annotations(name: str) -> ToolAnnotations:
-    if any(marker in name for marker in ("health", "list_", "get_", "search_", "view_", "resolve_")):
-        return ToolAnnotations(read_only_hint=True, idempotent_hint=True)
-    if any(marker in name for marker in ("delete_", "send_message")):
-        return ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint="send_message" in name)
-    return ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=name in {"messages_reply_in_conversation", "mail_compose_draft"})
-
-
-def _tool_title(name: str) -> str:
-    return name.replace("_", " ").title()
-
-
-def _tool_description(name: str) -> str:
-    calendar_descriptions = {
-        "calendar_list_calendars": "List available Apple Calendar calendars. Select by name and source, then pass the returned calendar_id unchanged. Re-list after Calendar access changes to refresh identifiers.",
-        "calendar_create_event": "Create an Apple Calendar event. Use the exact calendar_id returned by calendar_list_calendars; a display name can select automation even with native access. Optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
-        "calendar_update_event": "Update an Apple Calendar event and its alarms. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
-        "calendar_get_event": "Read an Apple Calendar event, including relative, absolute, and location-based alarms.",
-        "calendar_list_events": "List Apple Calendar events in a date range, including their alarm metadata. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits.",
-    }
-    return calendar_descriptions.get(name, f"Delegated Apple domain tool '{name}' exposed through Apple-Tools-MCP.")
+            values = [] if isinstance(response, ShortcutsErrorResponse) else [item.folder_name for item in response.folders]
+            return types.Completion(values=values, total=len(values), has_more=False)
+    return types.Completion(values=[], total=0, has_more=False)
 
 
 def _looks_like_message_address(value: str) -> bool:
@@ -2995,7 +2996,7 @@ def _looks_like_message_address(value: str) -> bool:
 def _summarize_mail_results(query: str, limit: int) -> list[dict[str, Any]]:
     result = mail_search_messages(query=query, limit=limit)
     if isinstance(result, MailErrorResponse):
-        return [{"error": result.error.message}]
+        return [{"error": result.message}]
     return [
         {
             "message_id": item.message_id,
@@ -3003,7 +3004,7 @@ def _summarize_mail_results(query: str, limit: int) -> list[dict[str, Any]]:
             "sender": item.sender,
             "date_received": item.date_received,
             "mailbox": item.mailbox,
-            "unread": item.unread,
+            "unread": not item.is_read,
         }
         for item in result.results
     ]
@@ -3034,7 +3035,7 @@ def _build_weekly_briefing_payload(days: int, mail_query: str, mail_limit: int) 
     mail_highlights = _summarize_mail_results(mail_query, mail_limit)
     system_context = _safe_resource_call(system_context_resource)
     calendar_payload = [] if isinstance(upcoming, CalendarErrorResponse) else [event.model_dump(mode="json") for event in upcoming.events]
-    reminders_payload = [] if getattr(reminders, "ok", False) is not True else [item.model_dump(mode="json") for item in reminders.reminders]
+    reminders_payload = [] if isinstance(reminders, RemindersErrorResponse) else [item.model_dump(mode="json") for item in reminders.reminders]
     return {
         "generated_at": datetime.now(UTC).isoformat(),
         "kind": "weekly_briefing",
@@ -3066,10 +3067,10 @@ def _build_triage_payload(mail_query: str, mail_limit: int, conversation_limit: 
     name="apple_generate_daily_briefing",
     title="Apple Generate Daily Briefing",
     description="Generate a daily Apple briefing from today's context, domain health, and Mail highlights.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def apple_generate_daily_briefing(mail_query: str = "*", mail_limit: int = 5) -> dict[str, Any]:
+def apple_generate_daily_briefing(mail_query: Annotated[str, Field(description=_MAIL_QUERY_DESCRIPTION)] = "*", mail_limit: Annotated[int, Field(description=_MAIL_LIMIT_DESCRIPTION)] = 5) -> dict[str, Any]:
     limit = _coerce_int_arg("mail_limit", mail_limit, minimum=1)
     return _build_daily_briefing_payload(str(mail_query or "*"), limit)
 
@@ -3078,10 +3079,10 @@ def apple_generate_daily_briefing(mail_query: str = "*", mail_limit: int = 5) ->
     name="apple_generate_weekly_briefing",
     title="Apple Generate Weekly Briefing",
     description="Generate a weekly Apple briefing from upcoming events, reminders, and Mail highlights.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def apple_generate_weekly_briefing(days: int = 7, mail_query: str = "*", mail_limit: int = 5) -> dict[str, Any]:
+def apple_generate_weekly_briefing(days: Annotated[int, Field(description="Number of days ahead to cover, starting now (1 or more).")] = 7, mail_query: Annotated[str, Field(description=_MAIL_QUERY_DESCRIPTION)] = "*", mail_limit: Annotated[int, Field(description=_MAIL_LIMIT_DESCRIPTION)] = 5) -> dict[str, Any]:
     days_value = _coerce_int_arg("days", days, minimum=1)
     limit = _coerce_int_arg("mail_limit", mail_limit, minimum=1)
     return _build_weekly_briefing_payload(days_value, str(mail_query or "*"), limit)
@@ -3091,16 +3092,16 @@ def apple_generate_weekly_briefing(days: int = 7, mail_query: str = "*", mail_li
     name="apple_triage_communications_task",
     title="Apple Triage Communications Task",
     description="Generate a cross-app communications triage summary from unread Messages and Mail search results.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def apple_triage_communications_task(mail_query: str = "*", mail_limit: int = 10, conversation_limit: int = 10) -> dict[str, Any]:
+def apple_triage_communications_task(mail_query: Annotated[str, Field(description=_MAIL_QUERY_DESCRIPTION)] = "*", mail_limit: Annotated[int, Field(description=_MAIL_LIMIT_DESCRIPTION)] = 10, conversation_limit: Annotated[int, Field(description="Maximum number of recent Messages conversations to include (1 or more).")] = 10) -> dict[str, Any]:
     limit = _coerce_int_arg("mail_limit", mail_limit, minimum=1)
     conversations = _coerce_int_arg("conversation_limit", conversation_limit, minimum=1)
     return _build_triage_payload(str(mail_query or "*"), limit, conversations)
 
 
-UNIFIED_TOOL_FUNCTIONS: list[Callable[..., Any]] = [
+UNIFIED_TOOL_FUNCTIONS: list[FunctionType] = [
     mail_health,
     mail_list_mailboxes,
     mail_search_messages,
@@ -3287,15 +3288,59 @@ APPLE_AGENT_TOOL_NAMES = [
 
 REGISTERED_TOOL_NAMES = [*APPLE_AGENT_TOOL_NAMES, *[fn.__name__ for fn in UNIFIED_TOOL_FUNCTIONS]]
 
-for tool_fn in UNIFIED_TOOL_FUNCTIONS:
+# Delegated tools reuse the metadata registered on their standalone domain
+# server, so titles, descriptions, annotations, and parameter descriptions
+# cannot drift between Apple-Tools-MCP and the server that implements them.
+STANDALONE_SERVERS: dict[str, AppleMCPServer] = {
+    "calendar": calendar_server,
+    "contacts": contacts_server,
+    "files": files_server,
+    "mail": create_mail_server(),
+    "maps": maps_server,
+    "messages": messages_server,
+    "notes": notes_server,
+    "reminders": reminders_server,
+    "shortcuts": shortcuts_server,
+    "system": system_server,
+}
+
+# Wrappers whose signature intentionally differs from the standalone tool.
+DELEGATED_DESCRIPTION_OVERRIDES = {
+    "notes_append_to_note": "Append plain text to an existing note without replacing its current content. Pass the text as body.",
+}
+
+
+def standalone_tool(name: str) -> Tool:
+    """Return the standalone server's registration for a delegated tool name."""
+    server = STANDALONE_SERVERS[name.split("_", 1)[0]]
+    tool = server._tool_manager.get_tool(name)
+    if tool is None:
+        raise LookupError(f"{name} is not registered on its standalone server")
+    return tool
+
+
+def _register_delegated_tool(tool_fn: FunctionType) -> None:
+    name = tool_fn.__name__
+    source = standalone_tool(name)
     mcp.add_tool(
         tool_fn,
-        name=tool_fn.__name__,
-        title=_tool_title(tool_fn.__name__),
-        description=_tool_description(tool_fn.__name__),
-        annotations=_tool_annotations(tool_fn.__name__),
+        name=name,
+        title=source.title,
+        description=DELEGATED_DESCRIPTION_OVERRIDES.get(name, source.description),
+        annotations=source.annotations,
         structured_output=True,
     )
+    registered = mcp._tool_manager.get_tool(name)
+    assert registered is not None
+    source_properties = source.parameters.get("properties", {})
+    for parameter, schema in registered.parameters.get("properties", {}).items():
+        description = source_properties.get(parameter, {}).get("description")
+        if description:
+            schema["description"] = description
+
+
+for tool_fn in UNIFIED_TOOL_FUNCTIONS:
+    _register_delegated_tool(tool_fn)
 
 mcp.resource(
     "mail://mailboxes",
@@ -3512,7 +3557,7 @@ mcp.prompt(name="contacts_prepare_message_recipient", title="Prepare Message Rec
 @mcp.tool(
     title="Apple List Prompts",
     description="Fallback prompt discovery tool for clients that only support tools.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def apple_list_prompts() -> dict[str, Any]:
@@ -3535,10 +3580,10 @@ async def apple_list_prompts() -> dict[str, Any]:
 @mcp.tool(
     title="Apple Get Prompt",
     description="Fallback prompt rendering tool for clients that only support tools.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-async def apple_get_prompt(name: str, arguments_json: str | None = None) -> dict[str, Any] | AppleErrorResponse:
+async def apple_get_prompt(name: Annotated[str, Field(description="Prompt name from apple_list_prompts.")], arguments_json: Annotated[str | None, Field(description="Optional prompt arguments as a JSON object string, for example {\"topic\": \"launch\"}.")] = None) -> dict[str, Any] | AppleErrorResponse:
     try:
         arguments = json.loads(arguments_json) if arguments_json else None
     except json.JSONDecodeError as exc:
@@ -3547,6 +3592,12 @@ async def apple_get_prompt(name: str, arguments_json: str | None = None) -> dict
         prompt = await mcp.get_prompt(name, arguments)
     except Exception as exc:
         return _apple_error_response("PROMPT_LOOKUP_FAILED", str(exc), "Call apple_list_prompts first to inspect the available prompt names.")
+    if isinstance(prompt, types.InputRequiredResult):
+        return _apple_error_response(
+            "PROMPT_INPUT_REQUIRED",
+            f"Prompt '{name}' needs input from the client before it can render.",
+            "Request this prompt through prompts/get with a client that supports input requests.",
+        )
     return {
         "ok": True,
         "name": name,
@@ -3563,9 +3614,25 @@ TOOL_DISCOVERY = install_search_first_discovery(
 )
 
 
+_McpLogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+_MCP_LOG_LEVELS: dict[str, _McpLogLevel] = {
+    "DEBUG": "DEBUG",
+    "INFO": "INFO",
+    "WARN": "WARNING",
+    "WARNING": "WARNING",
+    "ERROR": "ERROR",
+    "CRITICAL": "CRITICAL",
+}
+
+
+def _mcp_log_level(value: str) -> _McpLogLevel:
+    """Map a LOG_LEVEL setting onto a level the MCP SDK accepts; unknown values fall back to INFO."""
+    return _MCP_LOG_LEVELS.get(value.strip().upper(), "INFO")
+
+
 def main() -> None:
     settings = load_settings()
-    logging.basicConfig(level=getattr(logging, settings.log_level, logging.INFO))
+    logging.basicConfig(level=python_log_level(settings.log_level))
     conformance_value = os.environ.get("APPLE_AGENT_MCP_CONFORMANCE_MODE", "").strip().lower()
     conformance_mode = conformance_value in {"1", "true", "yes", "on", "legacy"}
     if conformance_mode:
@@ -3573,7 +3640,7 @@ def main() -> None:
     if settings.transport == "stdio":
         mcp.run(transport="stdio")
         return
-    mcp.settings.log_level = settings.log_level
+    mcp.settings.log_level = _mcp_log_level(settings.log_level)
     mcp.run(
         transport="streamable-http",
         host=require_loopback_host(settings.host),

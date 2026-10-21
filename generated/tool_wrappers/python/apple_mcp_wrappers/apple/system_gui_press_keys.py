@@ -12,9 +12,9 @@ async def system_gui_press_keys(
     application: str | None = None,
     bundle_id: str | None = None
 ) -> Any:
-    """System Gui Press Keys
+    """Press Keys
 
-    Delegated Apple domain tool 'system_gui_press_keys' exposed through Apple-Tools-MCP.
+    Press a key or key chord in the target application. This is a GUI fallback tool.
 
     Example:
         await system_gui_press_keys(client, key='example_key', modifiers=[])

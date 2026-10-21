@@ -9,9 +9,9 @@ async def system_set_appearance_mode(
     client: MCPToolCaller,
     mode: str
 ) -> Any:
-    """System Set Appearance Mode
+    """Set Appearance Mode
 
-    Delegated Apple domain tool 'system_set_appearance_mode' exposed through Apple-Tools-MCP.
+    Set macOS appearance mode to light or dark.
 
     Example:
         await system_set_appearance_mode(client, mode='example_mode')

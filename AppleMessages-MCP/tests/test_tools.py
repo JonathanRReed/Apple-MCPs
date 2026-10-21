@@ -66,6 +66,9 @@ class FakeDBBridge:
             return ["+15551234567", "+15557654321"]
         return ["+15551234567"]
 
+    def latest_service_for_chat(self, chat_id: str):
+        return {"sms-chat": "SMS", "rcs-chat": "RCS"}.get(chat_id, "iMessage")
+
 
 class FakeAutomationBridge:
     def automation_accessible(self) -> bool:
@@ -74,14 +77,17 @@ class FakeAutomationBridge:
     def automation_access_diagnostic(self):
         return True, None
 
-    def send_message(self, recipient: str, text: str, service_name: str | None = None):
-        return {"sent": True, "recipient": recipient, "text": text, "service_name": service_name or "iMessage"}
+    def send_message(self, recipient: str, text: str, service_name: str | None = None, *, services=None):
+        self.last_send = {"service_name": service_name, "services": services}
+        chosen = service_name or (services[0] if services else "iMessage")
+        return {"sent": True, "recipient": recipient, "text": text, "service_name": chosen}
 
     def send_to_group(self, chat_id: str, text: str):
+        self.last_group_send = chat_id
         return {"sent": True, "chat_id": chat_id, "text": text}
 
-    def send_attachment(self, recipient: str, file_path: str, text: str | None = None):
-        return {"sent": True, "recipient": recipient, "file_path": file_path, "text": text}
+    def send_attachment(self, recipient: str, file_path: str, text: str | None = None, service_name: str | None = None):
+        return {"sent": True, "recipient": recipient, "file_path": file_path, "text": text, "service_name": service_name}
 
 
 def test_messages_health_reports_capabilities(monkeypatch) -> None:
@@ -112,6 +118,8 @@ def test_messages_reply_in_conversation_returns_send_response(monkeypatch) -> No
 
     assert result.ok is True
     assert result.sent is True
+    # Live 1:1 replies returned chat_id=None; the caller's conversation is echoed.
+    assert result.chat_id == "chat-guid-1"
 
 
 def test_messages_reply_in_group_conversation_returns_chat_id(monkeypatch) -> None:
@@ -191,3 +199,72 @@ def test_messages_get_conversation_accepts_string_limit_and_offset(monkeypatch) 
 
 def teardown_function() -> None:
     load_settings.cache_clear()
+
+
+def _reply_with(monkeypatch, chat_id: str, **kwargs):
+    monkeypatch.setenv("APPLE_MESSAGES_MCP_SAFETY_MODE", "full_access")
+    load_settings.cache_clear()
+    automation = FakeAutomationBridge()
+    monkeypatch.setattr(tools, "_db_bridge", lambda: FakeDBBridge())
+    monkeypatch.setattr(tools, "_automation_bridge", lambda: automation)
+    result = tools.messages_reply_in_conversation(chat_id, "hi", **kwargs)
+    return result, automation.last_send
+
+
+def test_reply_in_sms_thread_stays_sms(monkeypatch) -> None:
+    result, sent = _reply_with(monkeypatch, "sms-chat")
+    assert sent["services"] == ["SMS"]
+    assert result.service_name == "SMS"
+
+
+def test_reply_in_rcs_thread_prefers_rcs_then_sms(monkeypatch) -> None:
+    _, sent = _reply_with(monkeypatch, "rcs-chat")
+    assert sent["services"] == ["RCS", "SMS"]
+
+
+def test_reply_in_imessage_thread_keeps_default_and_explicit_service_wins(monkeypatch) -> None:
+    _, sent = _reply_with(monkeypatch, "chat-guid-1")
+    assert sent["services"] is None
+    _, sent = _reply_with(monkeypatch, "sms-chat", service_name="iMessage")
+    assert sent["service_name"] == "iMessage"
+
+
+def test_send_message_forwards_service_name(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_MESSAGES_MCP_SAFETY_MODE", "full_access")
+    load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_automation_bridge", lambda: FakeAutomationBridge())
+
+    result = tools.messages_send_message("+61400000000", "hi", service_name="SMS")
+
+    assert result.service_name == "SMS"
+
+
+def test_group_reply_rejects_service_name_that_differs_from_the_group(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_MESSAGES_MCP_SAFETY_MODE", "full_access")
+    load_settings.cache_clear()
+    automation = FakeAutomationBridge()
+    monkeypatch.setattr(tools, "_db_bridge", lambda: FakeDBBridge())
+    monkeypatch.setattr(tools, "_automation_bridge", lambda: automation)
+
+    result = tools.messages_reply_in_conversation("group-chat-guid", "hi", service_name="sms")
+
+    assert result.ok is False
+    assert result.error.error_code == "INVALID_INPUT"
+    assert "service_name='SMS'" in result.error.message
+    assert "uses iMessage" in result.error.message
+    assert "messages_send_message" in result.error.suggestion
+    assert not hasattr(automation, "last_group_send")
+
+
+def test_group_reply_allows_omitted_or_matching_service_name(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_MESSAGES_MCP_SAFETY_MODE", "full_access")
+    load_settings.cache_clear()
+    automation = FakeAutomationBridge()
+    monkeypatch.setattr(tools, "_db_bridge", lambda: FakeDBBridge())
+    monkeypatch.setattr(tools, "_automation_bridge", lambda: automation)
+
+    for service_name in (None, "", "imessage"):
+        automation.__dict__.pop("last_group_send", None)
+        result = tools.messages_reply_in_conversation("group-chat-guid", "hi", service_name=service_name)
+        assert result.ok is True
+        assert automation.last_group_send == "group-chat-guid"

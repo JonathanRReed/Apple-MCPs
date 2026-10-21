@@ -10,9 +10,9 @@ async def files_add_tags(
     path: str,
     tags: list[Any]
 ) -> Any:
-    """Files Add Tags
+    """Add Tags
 
-    Delegated Apple domain tool 'files_add_tags' exposed through Apple-Tools-MCP.
+    Add Finder tags to a file or folder. Requires safe_manage or full_access safety mode.
 
     Example:
         await files_add_tags(client, path='/path/to/item', tags=[])

@@ -8,9 +8,9 @@ from .client import MCPToolCaller, call_tool_json
 async def system_get_appearance_settings(
     client: MCPToolCaller
 ) -> Any:
-    """System Get Appearance Settings
+    """Get Appearance Settings
 
-    Delegated Apple domain tool 'system_get_appearance_settings' exposed through Apple-Tools-MCP.
+    Read current macOS appearance settings such as light or dark mode and accent color.
 
     Example:
         await system_get_appearance_settings(client)

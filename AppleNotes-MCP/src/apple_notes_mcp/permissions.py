@@ -1,4 +1,7 @@
+from apple_mcp_common.safety import safety_block_suggestion
 from apple_notes_mcp.config import load_settings
+
+SAFETY_ENV_VAR = "APPLE_NOTES_MCP_SAFETY_MODE"
 
 READ_ACTIONS = frozenset(
     {
@@ -38,18 +41,18 @@ def ensure_action_allowed(action: str, account_name: str | None = None, folder_n
 
     if action in READ_ACTIONS:
         if settings.allowed_accounts and account_name is not None and account_name not in settings.allowed_accounts:
-            raise SafetyError("ACCOUNT_BLOCKED", f"Account '{account_name}' is not in the allowed account list.", "Choose one of the configured allowed accounts or clear the allowlist.")
+            raise SafetyError("ACCOUNT_BLOCKED", f"Account '{account_name}' is not in the allowed account list.", "Use an account named in APPLE_NOTES_MCP_ALLOWED_ACCOUNTS, or ask the user to add this account to that setting (Claude Desktop: \"Allowed Notes accounts\" in the extension settings) or clear it, then restart the MCP client.")
         if settings.allowed_folders and folder_name is not None and folder_name not in settings.allowed_folders:
-            raise SafetyError("FOLDER_BLOCKED", f"Folder '{folder_name}' is not in the allowed folder list.", "Choose one of the configured allowed folders or clear the allowlist.")
+            raise SafetyError("FOLDER_BLOCKED", f"Folder '{folder_name}' is not in the allowed folder list.", "Use a folder named in APPLE_NOTES_MCP_ALLOWED_FOLDERS, or ask the user to add this folder to that setting (Claude Desktop: \"Allowed Notes folders\" in the extension settings) or clear it, then restart the MCP client.")
         return
 
     if action in MANAGE_ACTIONS:
         if settings.safety_mode == "safe_readonly":
-            raise SafetyError("WRITE_BLOCKED", f"Action '{action}' is blocked in safety mode '{settings.safety_mode}'.", "Switch to safe_manage or full_access to mutate notes.")
+            raise SafetyError("WRITE_BLOCKED", f"Action '{action}' is blocked because {SAFETY_ENV_VAR} is '{settings.safety_mode}'.", safety_block_suggestion(SAFETY_ENV_VAR, "safe_manage", settings.safety_mode))
         if settings.allowed_accounts and account_name is not None and account_name not in settings.allowed_accounts:
-            raise SafetyError("ACCOUNT_BLOCKED", f"Account '{account_name}' is not in the allowed account list.", "Choose one of the configured allowed accounts or clear the allowlist.")
+            raise SafetyError("ACCOUNT_BLOCKED", f"Account '{account_name}' is not in the allowed account list.", "Use an account named in APPLE_NOTES_MCP_ALLOWED_ACCOUNTS, or ask the user to add this account to that setting (Claude Desktop: \"Allowed Notes accounts\" in the extension settings) or clear it, then restart the MCP client.")
         if settings.allowed_folders and folder_name is not None and folder_name not in settings.allowed_folders:
-            raise SafetyError("FOLDER_BLOCKED", f"Folder '{folder_name}' is not in the allowed folder list.", "Choose one of the configured allowed folders or clear the allowlist.")
+            raise SafetyError("FOLDER_BLOCKED", f"Folder '{folder_name}' is not in the allowed folder list.", "Use a folder named in APPLE_NOTES_MCP_ALLOWED_FOLDERS, or ask the user to add this folder to that setting (Claude Desktop: \"Allowed Notes folders\" in the extension settings) or clear it, then restart the MCP client.")
         return
 
     raise SafetyError("UNKNOWN_ACTION", f"Action '{action}' is not recognized by the safety policy.", "Update the permissions layer before exposing new tools.")

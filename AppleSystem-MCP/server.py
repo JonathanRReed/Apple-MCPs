@@ -7,6 +7,9 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 if __name__ == "__main__":
+    from apple_mcp_common.bundle import drop_unexpanded_user_config
+
+    drop_unexpanded_user_config()
     from apple_system_mcp.tools import main
 
     main()

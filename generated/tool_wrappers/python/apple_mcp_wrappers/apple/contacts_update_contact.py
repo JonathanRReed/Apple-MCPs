@@ -15,9 +15,9 @@ async def contacts_update_contact(
     emails: list[Any] | None = None,
     note: str | None = None
 ) -> Any:
-    """Contacts Update Contact
+    """Update Contact
 
-    Delegated Apple domain tool 'contacts_update_contact' exposed through Apple-Tools-MCP.
+    Update an existing contact's information. Only the fields you provide will be changed.
 
     Example:
         await contacts_update_contact(client, contact_id='example_contact_id', first_name='example_first_name')

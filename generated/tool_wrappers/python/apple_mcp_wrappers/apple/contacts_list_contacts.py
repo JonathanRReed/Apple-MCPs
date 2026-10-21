@@ -10,9 +10,9 @@ async def contacts_list_contacts(
     limit: int | None = None,
     offset: int | None = None
 ) -> Any:
-    """Contacts List Contacts
+    """List Contacts
 
-    Delegated Apple domain tool 'contacts_list_contacts' exposed through Apple-Tools-MCP.
+    List Apple Contacts entries.
 
     Example:
         await contacts_list_contacts(client, limit=1, offset=1)

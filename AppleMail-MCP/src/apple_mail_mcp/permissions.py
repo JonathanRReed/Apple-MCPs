@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 from apple_mail_mcp.models import SafetyProfile
+from apple_mcp_common.safety import safety_block_suggestion
+
+SAFETY_ENV_VAR = "APPLE_MAIL_MCP_SAFETY_PROFILE"
 
 
 class SafetyPolicyError(Exception):
-    pass
+    def __init__(self, message: str, suggestion: str | None = None) -> None:
+        super().__init__(message)
+        self.message = message
+        self.suggestion = suggestion
 
 
 _ALLOWED_TOOLS: dict[SafetyProfile, set[str]] = {
@@ -53,4 +59,8 @@ def ensure_tool_allowed(profile: SafetyProfile, tool_name: str) -> None:
     allowed_tools = _ALLOWED_TOOLS.get(profile, set())
     if tool_name in allowed_tools:
         return
-    raise SafetyPolicyError(f"Tool '{tool_name}' is blocked by safety profile '{profile.value}'.")
+    required = next((candidate for candidate, tools in _ALLOWED_TOOLS.items() if tool_name in tools), None)
+    raise SafetyPolicyError(
+        f"Tool '{tool_name}' is blocked because {SAFETY_ENV_VAR} is '{profile.value}'.",
+        safety_block_suggestion(SAFETY_ENV_VAR, required.value, profile.value) if required is not None else None,
+    )

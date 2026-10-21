@@ -9,9 +9,9 @@ async def system_set_reduce_transparency(
     client: MCPToolCaller,
     enabled: bool
 ) -> Any:
-    """System Set Reduce Transparency
+    """Set Reduce Transparency
 
-    Delegated Apple domain tool 'system_set_reduce_transparency' exposed through Apple-Tools-MCP.
+    Enable or disable macOS reduce transparency accessibility mode.
 
     Example:
         await system_set_reduce_transparency(client, enabled=False)

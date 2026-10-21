@@ -10,9 +10,9 @@ async def notes_append_to_note(
     note_id: str,
     body: str
 ) -> Any:
-    """Notes Append To Note
+    """Append to Note
 
-    Delegated Apple domain tool 'notes_append_to_note' exposed through Apple-Tools-MCP.
+    Append plain text to an existing note without replacing its current content. Pass the text as body.
 
     Example:
         await notes_append_to_note(client, note_id='example_note_id', body='example_body')

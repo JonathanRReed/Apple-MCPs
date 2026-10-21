@@ -45,15 +45,18 @@ on resolveAccountBySender(senderRaw)
         return missing value
     end if
     tell application "Mail"
-        repeat with theAccount in every account
+        -- Return a concrete account, not a live `item N of every account`
+        -- loop reference (issue #23).
+        repeat with accountRef in (get every account)
+            set candidateAccount to contents of accountRef
             try
-                if (name of theAccount as text) is senderRaw then
-                    return theAccount
+                if (name of candidateAccount as text) is senderRaw then
+                    return candidateAccount
                 end if
             end try
             try
-                if (email addresses of theAccount) contains senderRaw then
-                    return theAccount
+                if (email addresses of candidateAccount) contains senderRaw then
+                    return candidateAccount
                 end if
             end try
         end repeat

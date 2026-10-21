@@ -13,7 +13,14 @@ from pathlib import Path
 import pytest
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "apple_mail_mcp" / "applescripts"
-LOOKUP_SCRIPTS = ("delete_message.applescript", "move_message.applescript", "get_message.applescript")
+LOOKUP_SCRIPTS = (
+    "delete_message.applescript",
+    "move_message.applescript",
+    "get_message.applescript",
+    "mark_message.applescript",
+    "reply_message.applescript",
+    "forward_message.applescript",
+)
 SENDER_SCRIPTS = (
     "compose_draft.applescript",
     "send_message.applescript",
@@ -30,7 +37,9 @@ def test_lookup_resolves_objects_instead_of_retaining_live_loop_references(name)
     assert "(get every account whose name is accountName)" in code
     assert "(get every mailbox of sourceAccount whose name is mailboxName)" in code
     assert "(get first message of sourceMailbox whose id is numericMessageId)" in code
-    assert 'error "MESSAGE_NOT_FOUND"' in code
+    assert 'if errorNumber is in {-1728, -1719} then error "MESSAGE_NOT_FOUND"' in code
+    # Walking `id of` every message took minutes on a few-thousand-message mailbox.
+    assert not re.search(r"id of \w+\) as text\) is appleId", code)
     assert 'error "INVALID_MESSAGE_ID"' in code
     assert 'if (id of targetMessage) is not numericMessageId then error "MESSAGE_ID_MISMATCH"' in code
     if name == "move_message.applescript":

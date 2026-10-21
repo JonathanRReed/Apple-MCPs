@@ -75,6 +75,27 @@ jobs:
       - name: Run ruff
         run: uv run --no-sync ruff check .
 
+  typecheck:
+    # Config, version pin and test/bridge overrides live in the root pyproject.toml.
+    name: ty
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Sync workspace (with dev extras)
+        run: uv sync --all-packages --all-extras
+
+      - name: Run ty
+        run: uv run --no-sync ty check
+
   test:
     name: Pytest (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

@@ -440,7 +440,7 @@
         "text: string (required)",
         "service_name: string (optional)"
       ],
-      "description": "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats. One-to-one replies use the service of the thread's latest message (SMS/RCS threads stay SMS/RCS) unless service_name is set.",
+      "description": "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats. One-to-one replies use the service of the thread's latest message (SMS/RCS threads stay SMS/RCS) unless service_name is set. Group replies always use the group's existing service; service_name is rejected for groups unless it matches.",
       "domain": "messages",
       "example_calls": [
         {
@@ -478,7 +478,7 @@
         "latest"
       ],
       "title": "Reply In Conversation",
-      "usage_intent": "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats. One-to-one replies use the service of the thread's latest message (SMS/RCS threads stay SMS/RCS) unless service_name is set."
+      "usage_intent": "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats. One-to-one replies use the service of the thread's latest message (SMS/RCS threads stay SMS/RCS) unless service_name is set. Group replies always use the group's existing service; service_name is rejected for groups unless it matches."
     },
     {
       "aliases": [

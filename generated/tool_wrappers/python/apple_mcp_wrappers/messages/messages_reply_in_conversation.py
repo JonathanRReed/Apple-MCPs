@@ -13,7 +13,7 @@ async def messages_reply_in_conversation(
 ) -> Any:
     """Reply In Conversation
 
-    Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats. One-to-one replies use the service of the thread's latest message (SMS/RCS threads stay SMS/RCS) unless service_name is set.
+    Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats. One-to-one replies use the service of the thread's latest message (SMS/RCS threads stay SMS/RCS) unless service_name is set. Group replies always use the group's existing service; service_name is rejected for groups unless it matches.
 
     Example:
         await messages_reply_in_conversation(client, chat_id='example_chat_id', text='example_text')

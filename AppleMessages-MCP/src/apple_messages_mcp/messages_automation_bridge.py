@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 import subprocess
 
 
@@ -15,6 +16,11 @@ class MessagesAutomationBridgeError(Exception):
 SERVICE_NAMES = {"imessage": "iMessage", "sms": "SMS", "rcs": "RCS"}
 DEFAULT_SERVICE = "iMessage"
 _NO_ACCOUNT_ERROR_NUMBER = 9001
+# Messages' scripting dictionary gained the RCS service type in macOS 15.
+_RCS_MIN_MACOS = 15
+_ENABLE_FORWARDING = (
+    "turn on Text Message Forwarding for this Mac on the iPhone (Settings > Apps > Messages > Text Message Forwarding)"
+)
 
 
 def normalize_service_name(service_name: str | None) -> str | None:
@@ -29,6 +35,24 @@ def normalize_service_name(service_name: str | None) -> str | None:
             "Use iMessage, SMS or RCS, or omit service_name to send as iMessage.",
         )
     return canonical
+
+
+def _macos_major_version() -> int | None:
+    """Major macOS version, or None when unknown (non-macOS, or the 10.16 compatibility shim)."""
+    release = platform.mac_ver()[0]
+    try:
+        parts = [int(part) for part in release.split(".")[:2]]
+    except ValueError:
+        return None
+    if not parts or parts[:2] == [10, 16]:
+        return None
+    return parts[0]
+
+
+def _rcs_scriptable() -> bool:
+    """False only when this Mac is known to predate RCS in Messages' scripting dictionary."""
+    major = _macos_major_version()
+    return major is None or major >= _RCS_MIN_MACOS
 
 
 class MessagesAutomationBridge:
@@ -71,7 +95,7 @@ class MessagesAutomationBridge:
             raise MessagesAutomationBridgeError("INVALID_INPUT", "recipient must not be empty", "Provide an explicit iMessage address or phone number.")
         if not text.strip():
             raise MessagesAutomationBridgeError("INVALID_INPUT", "text must not be empty", "Provide a non-empty message body.")
-        wanted = self._service_preference(service_name, services)
+        wanted, thread_service = self._service_preference(service_name, services)
         script = f'''
         tell application "Messages"
 {self._account_selection(wanted)}
@@ -80,7 +104,7 @@ class MessagesAutomationBridge:
             return usedService
         end tell
         '''
-        used = self._run_send_script(script, wanted)
+        used = self._run_send_script(script, wanted, thread_service)
         return {
             "sent": True,
             "recipient": recipient,
@@ -115,7 +139,7 @@ class MessagesAutomationBridge:
         if not file_path.strip():
             raise MessagesAutomationBridgeError("INVALID_INPUT", "file_path must not be empty", "Provide a valid file path.")
 
-        wanted = self._service_preference(service_name, None)
+        wanted, _ = self._service_preference(service_name, None)
         send_parts = [f'send POSIX file "{self._escape(file_path)}" to targetParticipant']
         if text and text.strip():
             send_parts.append(f'send "{self._escape(text)}" to targetParticipant')
@@ -128,7 +152,7 @@ class MessagesAutomationBridge:
             return usedService
         end tell
         '''
-        used = self._run_send_script(script, wanted)
+        used = self._run_send_script(script, wanted, None)
         return {
             "sent": True,
             "recipient": recipient,
@@ -138,12 +162,30 @@ class MessagesAutomationBridge:
         }
 
     @staticmethod
-    def _service_preference(service_name: str | None, services: list[str] | None) -> list[str]:
+    def _service_preference(service_name: str | None, services: list[str] | None) -> tuple[list[str], str | None]:
+        """Return the ordered services to try and, when inferred from ``services``, the thread's service.
+
+        RCS is dropped on Macs known to predate it in Messages' scripting
+        dictionary (macOS < 15); if nothing is left the send is refused with
+        SERVICE_UNAVAILABLE instead of failing inside AppleScript.
+        """
         explicit = normalize_service_name(service_name)
         if explicit is not None:
-            return [explicit]
-        preferred = [name for name in (normalize_service_name(item) for item in services or []) if name]
-        return preferred or [DEFAULT_SERVICE]
+            wanted, thread_service = [explicit], None
+        else:
+            preferred = [name for name in (normalize_service_name(item) for item in services or []) if name]
+            wanted, thread_service = (preferred, preferred[0]) if preferred else ([DEFAULT_SERVICE], None)
+        if "RCS" in wanted and not _rcs_scriptable():
+            wanted = [name for name in wanted if name != "RCS"]
+            if not wanted:
+                requested = "This thread's last message used RCS" if thread_service else "service_name='RCS' was requested"
+                raise MessagesAutomationBridgeError(
+                    "SERVICE_UNAVAILABLE",
+                    f"{requested}, but RCS sending needs macOS {_RCS_MIN_MACOS} or later "
+                    f"and this Mac runs macOS {platform.mac_ver()[0]}. Nothing was sent.",
+                    "Retry with service_name='SMS' (needs Text Message Forwarding) or service_name='iMessage'.",
+                )
+        return wanted, thread_service
 
     @staticmethod
     def _account_selection(services: list[str]) -> str:
@@ -164,23 +206,49 @@ class MessagesAutomationBridge:
         )
         return "\n".join(lines)
 
-    def _run_send_script(self, script: str, services: list[str]) -> str:
+    def _run_send_script(self, script: str, services: list[str], thread_service: str | None) -> str:
         try:
             output = self._run_script(script)
         except MessagesAutomationBridgeError as exc:
-            if exc.error_code == "AUTOMATION_FAILED" and f"({_NO_ACCOUNT_ERROR_NUMBER})" in exc.message:
-                wanted = " or ".join(services)
-                suggestion = (
-                    "Turn on Text Message Forwarding for this Mac on the iPhone (Settings > Apps > Messages), "
-                    "or send as iMessage."
-                    if any(name in {"SMS", "RCS"} for name in services)
-                    else "Sign in to iMessage in Messages settings on this Mac."
-                )
+            if exc.error_code != "AUTOMATION_FAILED":
+                raise
+            if f"({_NO_ACCOUNT_ERROR_NUMBER})" in exc.message:
+                raise self._no_account_error(services, thread_service) from exc
+            if "-2753" in exc.message and "RCS" in exc.message:
+                # Older Messages dictionaries have no RCS service type, so the script
+                # stops at account selection, before anything is sent.
                 raise MessagesAutomationBridgeError(
-                    "SERVICE_UNAVAILABLE", f"This Mac has no enabled {wanted} account in Messages.", suggestion
+                    "SERVICE_UNAVAILABLE",
+                    "This Mac's Messages app has no RCS service (RCS sending needs macOS "
+                    f"{_RCS_MIN_MACOS} or later). Nothing was sent.",
+                    "Retry with service_name='SMS' (needs Text Message Forwarding) or service_name='iMessage'.",
                 ) from exc
             raise
         return output.strip() or services[0]
+
+    @staticmethod
+    def _no_account_error(services: list[str], thread_service: str | None) -> MessagesAutomationBridgeError:
+        wanted = " or ".join(services)
+        carrier = any(name in {"SMS", "RCS"} for name in services)
+        reason = " (Text Message Forwarding is off or this Mac is not paired with an iPhone)" if carrier else ""
+        if thread_service is not None:
+            message = (
+                f"This thread's last message used {thread_service}, but this Mac has no enabled {wanted} "
+                f"account in Messages{reason}. Nothing was sent."
+            )
+        elif services == [DEFAULT_SERVICE]:
+            message = f"This Mac has no enabled {DEFAULT_SERVICE} account in Messages. Nothing was sent."
+        else:
+            message = (
+                f"service_name='{services[0]}' was requested, but this Mac has no enabled {wanted} "
+                f"account in Messages{reason}. Nothing was sent."
+            )
+        suggestion = (
+            f"Retry with service_name='iMessage' to send over iMessage instead, or {_ENABLE_FORWARDING} and retry."
+            if carrier
+            else "Sign in to iMessage in Messages settings on this Mac, then retry."
+        )
+        return MessagesAutomationBridgeError("SERVICE_UNAVAILABLE", message, suggestion)
 
     def _run_script(self, script: str) -> str:
         return self._run_command(["osascript", "-e", script], timeout=30)

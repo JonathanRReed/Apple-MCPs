@@ -83,6 +83,7 @@ class FakeAutomationBridge:
         return {"sent": True, "recipient": recipient, "text": text, "service_name": chosen}
 
     def send_to_group(self, chat_id: str, text: str):
+        self.last_group_send = chat_id
         return {"sent": True, "chat_id": chat_id, "text": text}
 
     def send_attachment(self, recipient: str, file_path: str, text: str | None = None, service_name: str | None = None):
@@ -234,3 +235,34 @@ def test_send_message_forwards_service_name(monkeypatch) -> None:
     result = tools.messages_send_message("+61400000000", "hi", service_name="SMS")
 
     assert result.service_name == "SMS"
+
+
+def test_group_reply_rejects_service_name_that_differs_from_the_group(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_MESSAGES_MCP_SAFETY_MODE", "full_access")
+    load_settings.cache_clear()
+    automation = FakeAutomationBridge()
+    monkeypatch.setattr(tools, "_db_bridge", lambda: FakeDBBridge())
+    monkeypatch.setattr(tools, "_automation_bridge", lambda: automation)
+
+    result = tools.messages_reply_in_conversation("group-chat-guid", "hi", service_name="sms")
+
+    assert result.ok is False
+    assert result.error.error_code == "INVALID_INPUT"
+    assert "service_name='SMS'" in result.error.message
+    assert "uses iMessage" in result.error.message
+    assert "messages_send_message" in result.error.suggestion
+    assert not hasattr(automation, "last_group_send")
+
+
+def test_group_reply_allows_omitted_or_matching_service_name(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_MESSAGES_MCP_SAFETY_MODE", "full_access")
+    load_settings.cache_clear()
+    automation = FakeAutomationBridge()
+    monkeypatch.setattr(tools, "_db_bridge", lambda: FakeDBBridge())
+    monkeypatch.setattr(tools, "_automation_bridge", lambda: automation)
+
+    for service_name in (None, "", "imessage"):
+        automation.__dict__.pop("last_group_send", None)
+        result = tools.messages_reply_in_conversation("group-chat-guid", "hi", service_name=service_name)
+        assert result.ok is True
+        assert automation.last_group_send == "group-chat-guid"

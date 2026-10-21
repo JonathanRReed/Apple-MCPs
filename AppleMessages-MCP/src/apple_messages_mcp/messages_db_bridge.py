@@ -190,11 +190,13 @@ class MessagesDBBridge:
             ]
 
     def latest_service_for_chat(self, chat_id: str) -> str | None:
-        """Service ("iMessage", "SMS", "RCS") of the most recent successfully sent message in a chat.
+        """Service ("iMessage", "SMS", "RCS") of a chat's most recent successful message.
 
-        Messages that failed to send (``message.error`` non-zero, shown as
-        "Not Delivered") are skipped: a failed iMessage to an SMS-only number
-        must not switch the thread's replies to iMessage.
+        Received and sent messages both count, so a thread whose latest
+        activity is an incoming SMS reports SMS. Messages that failed to send
+        (``message.error`` non-zero, shown as "Not Delivered") are skipped: a
+        failed iMessage to an SMS-only number must not switch the thread's
+        replies to iMessage.
         """
         with self._connect() as conn:
             columns = {row[1] for row in conn.execute("PRAGMA table_info(message)").fetchall()}

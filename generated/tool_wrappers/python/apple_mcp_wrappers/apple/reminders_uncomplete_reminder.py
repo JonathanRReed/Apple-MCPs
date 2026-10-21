@@ -9,9 +9,9 @@ async def reminders_uncomplete_reminder(
     client: MCPToolCaller,
     reminder_id: str
 ) -> Any:
-    """Reminders Uncomplete Reminder
+    """Uncomplete Reminder
 
-    Delegated Apple domain tool 'reminders_uncomplete_reminder' exposed through Apple-Tools-MCP.
+    Mark a reminder as not completed.
 
     Example:
         await reminders_uncomplete_reminder(client, reminder_id='example_reminder_id')

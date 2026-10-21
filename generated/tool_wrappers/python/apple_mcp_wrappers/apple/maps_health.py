@@ -10,7 +10,7 @@ async def maps_health(
 ) -> Any:
     """Maps Health
 
-    Delegated Apple domain tool 'maps_health' exposed through Apple-Tools-MCP.
+    Report the active Apple Maps MCP configuration.
 
     Example:
         await maps_health(client)

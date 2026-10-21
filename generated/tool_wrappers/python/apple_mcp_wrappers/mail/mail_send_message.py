@@ -15,7 +15,7 @@ async def mail_send_message(
     attachments: list[Any] | None = None,
     from_account: str | None = None
 ) -> Any:
-    """Send Message
+    """Send Email
 
     Send an email immediately via Apple Mail. Optionally specify from_account as an email address or account name to set the sender.
 

@@ -10,7 +10,7 @@ async def calendar_health(
 ) -> Any:
     """Calendar Health
 
-    Delegated Apple domain tool 'calendar_health' exposed through Apple-Tools-MCP.
+    Report the active Apple Calendar server configuration.
 
     Example:
         await calendar_health(client)

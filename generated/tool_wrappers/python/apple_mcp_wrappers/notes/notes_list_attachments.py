@@ -9,7 +9,7 @@ async def notes_list_attachments(
     client: MCPToolCaller,
     note_id: str
 ) -> Any:
-    """List Attachments
+    """List Note Attachments
 
     List attachments for a note.
 

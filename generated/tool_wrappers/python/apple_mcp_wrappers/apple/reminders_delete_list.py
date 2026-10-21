@@ -9,9 +9,9 @@ async def reminders_delete_list(
     client: MCPToolCaller,
     list_id: str
 ) -> Any:
-    """Reminders Delete List
+    """Delete Reminder List
 
-    Delegated Apple domain tool 'reminders_delete_list' exposed through Apple-Tools-MCP.
+    Delete a reminder list entirely. Requires full_access safety mode.
 
     Example:
         await reminders_delete_list(client, list_id='example_list_id')

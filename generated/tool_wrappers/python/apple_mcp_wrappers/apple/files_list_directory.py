@@ -9,9 +9,9 @@ async def files_list_directory(
     client: MCPToolCaller,
     path: str
 ) -> Any:
-    """Files List Directory
+    """List Directory
 
-    Delegated Apple domain tool 'files_list_directory' exposed through Apple-Tools-MCP.
+    List files and folders inside an allowed directory path.
 
     Example:
         await files_list_directory(client, path='/path/to/item')

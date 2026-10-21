@@ -11,9 +11,9 @@ async def system_gui_type_text(
     application: str | None = None,
     bundle_id: str | None = None
 ) -> Any:
-    """System Gui Type Text
+    """Type Text
 
-    Delegated Apple domain tool 'system_gui_type_text' exposed through Apple-Tools-MCP.
+    Type text into the frontmost focused control. This is a GUI fallback tool.
 
     Example:
         await system_gui_type_text(client, text='example_text', application='example_application')

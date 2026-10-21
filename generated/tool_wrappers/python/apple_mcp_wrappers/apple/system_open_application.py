@@ -10,9 +10,9 @@ async def system_open_application(
     application: str | None = None,
     bundle_id: str | None = None
 ) -> Any:
-    """System Open Application
+    """Open Application
 
-    Delegated Apple domain tool 'system_open_application' exposed through Apple-Tools-MCP.
+    Open an application by name using macOS.
 
     Example:
         await system_open_application(client, application='example_application', bundle_id='example_bundle_id')

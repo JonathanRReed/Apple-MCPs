@@ -10,7 +10,7 @@ async def shortcuts_health(
 ) -> Any:
     """Shortcuts Health
 
-    Delegated Apple domain tool 'shortcuts_health' exposed through Apple-Tools-MCP.
+    Report the active Apple Shortcuts MCP configuration.
 
     Example:
         await shortcuts_health(client)

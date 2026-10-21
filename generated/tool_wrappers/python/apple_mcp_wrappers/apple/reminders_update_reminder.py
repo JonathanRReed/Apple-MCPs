@@ -18,9 +18,9 @@ async def reminders_update_reminder(
     parent_reminder_id: str | None = None,
     tags: list[Any] | None = None
 ) -> Any:
-    """Reminders Update Reminder
+    """Update Reminder
 
-    Delegated Apple domain tool 'reminders_update_reminder' exposed through Apple-Tools-MCP.
+    Update one or more fields on an existing reminder.
 
     Example:
         await reminders_update_reminder(client, reminder_id='example_reminder_id', title='example_title')

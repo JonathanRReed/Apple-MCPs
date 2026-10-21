@@ -9,9 +9,9 @@ async def system_set_finder_status_bar(
     client: MCPToolCaller,
     enabled: bool
 ) -> Any:
-    """System Set Finder Status Bar
+    """Set Finder Status Bar
 
-    Delegated Apple domain tool 'system_set_finder_status_bar' exposed through Apple-Tools-MCP.
+    Show or hide the Finder status bar.
 
     Example:
         await system_set_finder_status_bar(client, enabled=False)

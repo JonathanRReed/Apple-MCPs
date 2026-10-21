@@ -606,7 +606,7 @@
       ],
       "name": "files_set_tags",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "files_set_tags",
       "tags": [
         "files",
@@ -722,7 +722,7 @@
       ],
       "name": "files_remove_tags",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "files_remove_tags",
       "tags": [
         "files",
@@ -938,7 +938,7 @@
       ],
       "name": "files_move_path",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "files_move_path",
       "tags": [
         "files",

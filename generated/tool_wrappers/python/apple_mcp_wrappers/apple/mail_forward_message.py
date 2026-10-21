@@ -12,9 +12,9 @@ async def mail_forward_message(
     body: str | None = None,
     from_account: str | None = None
 ) -> Any:
-    """Mail Forward Message
+    """Forward Message
 
-    Delegated Apple domain tool 'mail_forward_message' exposed through Apple-Tools-MCP.
+    Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account. In full_access the forward is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result).
 
     Example:
         await mail_forward_message(client, message_id='example_message_id', to=[])

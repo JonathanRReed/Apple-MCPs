@@ -752,7 +752,7 @@
       ],
       "name": "system_set_appearance_mode",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_appearance_mode",
       "tags": [
         "system",
@@ -799,7 +799,7 @@
       ],
       "name": "system_set_show_all_extensions",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_show_all_extensions",
       "tags": [
         "system",
@@ -848,7 +848,7 @@
       ],
       "name": "system_set_show_hidden_files",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_show_hidden_files",
       "tags": [
         "system",
@@ -896,7 +896,7 @@
       ],
       "name": "system_set_finder_path_bar",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_finder_path_bar",
       "tags": [
         "system",
@@ -943,7 +943,7 @@
       ],
       "name": "system_set_finder_status_bar",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_finder_status_bar",
       "tags": [
         "system",
@@ -991,7 +991,7 @@
       ],
       "name": "system_set_dock_autohide",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_dock_autohide",
       "tags": [
         "system",
@@ -1037,7 +1037,7 @@
       ],
       "name": "system_set_dock_show_recents",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_dock_show_recents",
       "tags": [
         "system",
@@ -1087,7 +1087,7 @@
       ],
       "name": "system_set_reduce_motion",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_reduce_motion",
       "tags": [
         "system",
@@ -1136,7 +1136,7 @@
       ],
       "name": "system_set_increase_contrast",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_increase_contrast",
       "tags": [
         "system",
@@ -1185,7 +1185,7 @@
       ],
       "name": "system_set_reduce_transparency",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_reduce_transparency",
       "tags": [
         "system",
@@ -1292,7 +1292,7 @@
       ],
       "name": "system_gui_click_menu_path",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_click_menu_path",
       "tags": [
         "system",
@@ -1350,7 +1350,7 @@
       ],
       "name": "system_gui_press_keys",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_press_keys",
       "tags": [
         "system",
@@ -1406,7 +1406,7 @@
       ],
       "name": "system_gui_type_text",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_type_text",
       "tags": [
         "system",
@@ -1462,7 +1462,7 @@
       ],
       "name": "system_gui_click_button",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_click_button",
       "tags": [
         "system",
@@ -1518,7 +1518,7 @@
       ],
       "name": "system_gui_choose_popup_value",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_choose_popup_value",
       "tags": [
         "system",
@@ -1572,7 +1572,7 @@
       ],
       "name": "system_set_clipboard",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_clipboard",
       "tags": [
         "system",

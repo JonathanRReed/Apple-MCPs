@@ -15,9 +15,9 @@ async def mail_send_message(
     attachments: list[Any] | None = None,
     from_account: str | None = None
 ) -> Any:
-    """Mail Send Message
+    """Send Email
 
-    Delegated Apple domain tool 'mail_send_message' exposed through Apple-Tools-MCP.
+    Send an email immediately via Apple Mail. Optionally specify from_account as an email address or account name to set the sender.
 
     Example:
         await mail_send_message(client, to=[], cc=[])

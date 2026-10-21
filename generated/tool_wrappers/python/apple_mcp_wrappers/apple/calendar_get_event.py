@@ -9,9 +9,9 @@ async def calendar_get_event(
     client: MCPToolCaller,
     event_id: str
 ) -> Any:
-    """Calendar Get Event
+    """Get Event
 
-    Read an Apple Calendar event, including relative, absolute, and location-based alarms.
+    Fetch full details for a calendar event by event_id.
 
     Example:
         await calendar_get_event(client, event_id='example_event_id')

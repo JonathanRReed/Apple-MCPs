@@ -13,9 +13,9 @@ async def mail_reply_latest_in_thread(
     from_account: str | None = None,
     limit: int | None = None
 ) -> Any:
-    """Mail Reply Latest In Thread
+    """Reply To Latest In Thread
 
-    Delegated Apple domain tool 'mail_reply_latest_in_thread' exposed through Apple-Tools-MCP.
+    Find the latest related message in the same mailbox thread and reply to that message.
 
     Example:
         await mail_reply_latest_in_thread(client, message_id='example_message_id', body='example_body')

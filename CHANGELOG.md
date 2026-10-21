@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Fixed
+- Return a new note's identity from the create call without reading back its name, body or plaintext. On macOS 27.2/iCloud each readback of a just-created note could block for its full 10-second timeout, so a successful create could exceed the script deadline and report `NOTE_CREATE_STATUS_UNKNOWN`. (#32)
+
 ## [1.1.3] - 2026-10-16
 
 ### Fixed

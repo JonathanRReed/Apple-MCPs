@@ -15,7 +15,7 @@ on run argv
 		if noteBody is not "" then
 			set body of newNote to noteBody
 		end if
-		return "{" & quote & "note" & quote & ":" & my note_json(accountId, accountName, folderId, folderName, newNote) & "}"
+		return "{" & quote & "note" & quote & ":" & my note_json(accountId, accountName, folderId, folderName, newNote, titleText, noteBody) & "}"
 	end tell
 end run
 
@@ -56,39 +56,15 @@ on tags_html(tagsCsv)
 	return my join_list(htmlTags, " ")
 end tags_html
 
-on note_json(accountId, accountName, folderId, folderName, n)
+on note_json(accountId, accountName, folderId, folderName, n, titleText, bodyHtml)
+	-- Read only the new note's id. Name, body, plaintext and attachment reads
+	-- on a just-created note can each block until their Apple Event timeout
+	-- while Notes finishes saving or syncing it, and this script's deadline
+	-- covers creation itself: a stalled readback killed the script after the
+	-- note existed and made the outcome unknowable. The caller already knows
+	-- the title, folder and body it requested; a new note has no attachments.
 	tell application "Notes" to set rawNoteId to id of n
 	set noteId to my safe_text(rawNoteId)
-	set titleText to ""
-	set bodyHtml to ""
-	set plainText to ""
-	set attachmentCount to 0
-	-- The note already exists at this point; a stalled readback (Notes can
-	-- block on body/plaintext while syncing) must degrade to empty fields
-	-- instead of hanging the whole script past the caller's deadline.
-	try
-		with timeout of 10 seconds
-			tell application "Notes" to set rawTitleText to name of n
-			set titleText to my safe_text(rawTitleText)
-		end timeout
-	end try
-	try
-		with timeout of 10 seconds
-			tell application "Notes" to set rawBodyHtml to body of n
-			set bodyHtml to my safe_text(rawBodyHtml)
-		end timeout
-	end try
-	try
-		with timeout of 10 seconds
-			tell application "Notes" to set rawPlainText to plaintext of n
-			set plainText to my safe_text(rawPlainText)
-		end timeout
-	end try
-	try
-		with timeout of 10 seconds
-			tell application "Notes" to set attachmentCount to count of attachments of n
-		end timeout
-	end try
 	return "{" & ¬
 		quote & "note_id" & quote & ":" & my json_string(noteId) & "," & ¬
 		quote & "title" & quote & ":" & my json_string(titleText) & "," & ¬
@@ -100,8 +76,8 @@ on note_json(accountId, accountName, folderId, folderName, n)
 		quote & "modified_epoch" & quote & ":0," & ¬
 		quote & "password_protected" & quote & ":false," & ¬
 		quote & "shared" & quote & ":false," & ¬
-		quote & "attachment_count" & quote & ":" & attachmentCount & "," & ¬
-		quote & "plaintext" & quote & ":" & my json_string(plainText) & "," & ¬
+		quote & "attachment_count" & quote & ":0," & ¬
+		quote & "plaintext" & quote & ":" & my json_string("") & "," & ¬
 		quote & "body_html" & quote & ":" & my json_string(bodyHtml) & "," & ¬
 		quote & "attachments" & quote & ":[]}"
 end note_json

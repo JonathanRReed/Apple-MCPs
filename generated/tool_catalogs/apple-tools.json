@@ -3474,7 +3474,7 @@
         "all_day: boolean (optional)",
         "recurrence: object (optional)"
       ],
-      "description": "Create an Apple Calendar event. Use the exact calendar_id returned by calendar_list_calendars; a display name can select automation even with native access. Optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
+      "description": "Create an Apple Calendar event. Use the exact calendar_id returned by calendar_list_calendars. With native access, a unique calendar name resolves to its native calendar; duplicate names return AMBIGUOUS_CALENDAR. Optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3501,20 +3501,20 @@
         "exact",
         "returned",
         "calendars",
-        "display",
-        "name",
-        "can",
-        "select",
-        "automation",
-        "even",
         "native",
         "access",
         "acces",
-        "optional",
-        "alarms"
+        "unique",
+        "name",
+        "resolves",
+        "resolv",
+        "its",
+        "duplicate",
+        "names",
+        "nam"
       ],
       "title": "Calendar Create Event",
-      "usage_intent": "Create an Apple Calendar event. Use the exact calendar_id returned by calendar_list_calendars; a display name can select automation even with native access. Optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access."
+      "usage_intent": "Create an Apple Calendar event. Use the exact calendar_id returned by calendar_list_calendars. With native access, a unique calendar name resolves to its native calendar; duplicate names return AMBIGUOUS_CALENDAR. Optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access."
     },
     {
       "aliases": [

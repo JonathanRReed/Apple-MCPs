@@ -7,7 +7,7 @@ from mcp.types import Annotations, ToolAnnotations
 from pydantic import Field
 
 from apple_calendar_mcp.alarm_validation import coerce_alarm_minutes, validate_alarms
-from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError
+from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError, match_calendar
 from apple_calendar_mcp.config import load_settings
 from apple_calendar_mcp.models import CalendarInfo, CalendarListResponse, DeleteEventResponse, ErrorResponse, EventListResponse, EventResponse, EventSummary, HealthResponse, ToolError
 from apple_calendar_mcp.permissions import SafetyError, ensure_action_allowed
@@ -91,10 +91,14 @@ def _validate_alarms(alarms: object) -> list[dict[str, object]] | None:
 def _calendar_name_from_id(calendar_id: str | None) -> str | None:
     if calendar_id is None:
         return None
-    for calendar in _bridge().list_calendars():
-        if calendar.calendar_id == calendar_id:
-            return calendar.name
-    return None
+    try:
+        return match_calendar(_bridge().list_calendars(), calendar_id).name
+    except CalendarBridgeError as exc:
+        # Unknown targets stay unresolved so allowlists fail closed; an
+        # ambiguous name is reported so the caller can pick a calendar_id.
+        if exc.error_code == "CALENDAR_NOT_FOUND":
+            return None
+        raise
 
 
 def _event_owner_calendar(event_id: str) -> str | None:
@@ -317,7 +321,7 @@ def calendar_get_event(event_id: str) -> EventResponse | ErrorResponse:
 
 @mcp.tool(
     title="Create Event",
-    description="Create a new event in a specific Apple Calendar calendar. Use the exact calendar_id returned by calendar_list_calendars; a display name can select automation even with native access. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
+    description="Create a new event in a specific Apple Calendar calendar. Use the exact calendar_id returned by calendar_list_calendars. With native access, a unique calendar name resolves to its native calendar; duplicate names return AMBIGUOUS_CALENDAR. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )

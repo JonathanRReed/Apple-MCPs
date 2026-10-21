@@ -147,6 +147,61 @@ on selectSenderPopup(senderRaw, senderEmail)
     error "ACCOUNT_MENU_ITEM_NOT_FOUND"
 end selectSenderPopup
 
+on fullNameForAccount(theAccount)
+    tell application "Mail"
+        try
+            return (full name of theAccount) as text
+        end try
+    end tell
+    return ""
+end fullNameForAccount
+
+on emailForAccount(theAccount, senderRaw)
+    tell application "Mail"
+        try
+            set addressList to email addresses of theAccount
+            if senderRaw contains "@" then
+                repeat with addressRef in addressList
+                    if (addressRef as text) is senderRaw then
+                        return addressRef as text
+                    end if
+                end repeat
+            end if
+            return item 1 of addressList as text
+        end try
+    end tell
+    return ""
+end emailForAccount
+
+on senderStringForAccount(senderRaw, senderEmail, senderName)
+    if senderEmail is "" then
+        return senderRaw
+    end if
+    if senderName is "" then
+        return senderEmail
+    end if
+    return senderName & " <" & senderEmail & ">"
+end senderStringForAccount
+
+on applySender(theMessage, senderRaw, senderEmail, senderString)
+    -- Mail honours its own `sender` property when the address belongs to a
+    -- configured account, so set it first. Only drive the From pop-up through
+    -- System Events (separate Automation + Accessibility consent, and a hang
+    -- while that consent is pending) when Mail did not take the value.
+    set currentSender to ""
+    tell application "Mail"
+        set sender of theMessage to senderString
+        delay 0.2
+        try
+            set currentSender to (sender of theMessage) as text
+        end try
+    end tell
+    if my senderMatches(currentSender, senderRaw, senderEmail) then
+        return currentSender
+    end if
+    return my selectSenderPopup(senderRaw, senderEmail)
+end applySender
+
 on run argv
     set toRaw to item 1 of argv
     set ccRaw to item 2 of argv
@@ -166,6 +221,7 @@ on run argv
 
     set resolvedAccountLabel to ""
     set senderEmail to ""
+    set senderString to ""
 
     tell application "Mail"
         set forceVisible to false
@@ -175,9 +231,8 @@ on run argv
         set newMessage to make new outgoing message with properties {visible:forceVisible, subject:subjectText, content:bodyText}
         if senderRaw is not "" then
             set matchedAccount to my resolveAccountBySender(senderRaw)
-            set senderEmail to my primaryEmailForAccount(matchedAccount)
-            set sender of newMessage to senderRaw
-            delay 0.2
+            set senderEmail to my emailForAccount(matchedAccount, senderRaw)
+            set senderString to my senderStringForAccount(senderRaw, senderEmail, my fullNameForAccount(matchedAccount))
         end if
         tell newMessage
             repeat with addressText in toList
@@ -204,7 +259,7 @@ on run argv
     end tell
 
     if senderRaw is not "" then
-        set resolvedAccountLabel to my sanitizeText(my selectSenderPopup(senderRaw, senderEmail))
+        set resolvedAccountLabel to my sanitizeText(my applySender(newMessage, senderRaw, senderEmail, senderString))
     end if
 
     tell application "Mail"

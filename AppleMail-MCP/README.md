@@ -151,6 +151,8 @@ Restart the MCP client after upgrading. A fix merged on GitHub is not available 
 - Use `mail_archive_thread` when the user wants thread-level cleanup and Archive is the intended mailbox.
 - If the user could mean text or email, ask once before choosing Messages or Mail.
 - When Mail must send from a specific identity, pass the exact sender email in `from_account`.
+- `from_account` is applied through Mail's own `sender` property (`Full Name <address>`), which needs no extra macOS permissions. Only if Mail does not accept it does the server fall back to picking the From pop-up via System Events, which additionally needs Automation consent for System Events and Accessibility for the process running the server.
+- Every AppleScript call is bounded by `APPLE_MAIL_MCP_SCRIPT_TIMEOUT` (seconds, default `45`) so a pending macOS consent prompt surfaces as an error instead of a hung request.
 
 ## Related
 

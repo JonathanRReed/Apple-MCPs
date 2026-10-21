@@ -14,6 +14,12 @@ import pytest
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "apple_mail_mcp" / "applescripts"
 LOOKUP_SCRIPTS = ("delete_message.applescript", "move_message.applescript", "get_message.applescript")
+SENDER_SCRIPTS = (
+    "compose_draft.applescript",
+    "send_message.applescript",
+    "reply_message.applescript",
+    "forward_message.applescript",
+)
 
 
 @pytest.mark.parametrize("name", LOOKUP_SCRIPTS)
@@ -89,3 +95,31 @@ def test_native_message_id_rejects_invalid_values(compiled_script, value):
     result = run_pure_handler(compiled_script, "return subjectScript's parseMessageID(item 2 of argv)", value)
     assert result.returncode != 0
     assert "INVALID_MESSAGE_ID" in result.stderr
+
+
+@pytest.mark.parametrize("name", SENDER_SCRIPTS)
+def test_sender_scripts_set_mail_sender_before_touching_system_events(name):
+    """`from_account` must go through Mail's `sender` property; System Events is a fallback only."""
+    source = (SCRIPTS / name).read_text()
+    code = "\n".join(line.split("--", 1)[0] for line in source.splitlines())
+    assert "on applySender(theMessage, senderRaw, senderEmail, senderString)" in code
+    assert "set sender of theMessage to senderString" in code
+    # The raw account name is never written to `sender`; Mail ignores it.
+    assert not re.search(r"set sender of \w+ to senderRaw", code)
+    # The GUI pop-up path is reached only from applySender, after the direct set failed.
+    assert code.count("my selectSenderPopup(") == 1
+    assert "my applySender(" in code
+    assert "my senderStringForAccount(senderRaw, senderEmail, my fullNameForAccount(matchedAccount))" in code
+    assert "my emailForAccount(matchedAccount, senderRaw)" in code
+
+
+@pytest.mark.parametrize("name", SENDER_SCRIPTS)
+def test_sender_scripts_compile(name, tmp_path):
+    if sys.platform != "darwin":
+        pytest.skip("AppleScript compilation requires macOS")
+    # Compile only. Nothing here opens Mail or sends Apple events.
+    result = subprocess.run(
+        ["osacompile", "-o", str(tmp_path / (name + ".scpt")), str(SCRIPTS / name)],
+        capture_output=True, text=True, timeout=45, check=False,
+    )
+    assert result.returncode == 0, result.stderr

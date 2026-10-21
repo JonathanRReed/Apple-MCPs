@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import os
 from importlib.resources import as_file, files
 from pathlib import Path
-from subprocess import CompletedProcess, run
+from subprocess import CompletedProcess, TimeoutExpired, run
 from urllib.parse import quote, unquote
 
 from apple_mail_mcp.models import AttachmentRecord, DeleteRecord, DraftRecord, ForwardRecord, MailboxRecord, MarkRecord, MessageRecord, MessageSummary, MoveRecord, ReplyRecord, SendRecord
@@ -10,6 +11,7 @@ from apple_mail_mcp.models import AttachmentRecord, DeleteRecord, DraftRecord, F
 FIELD_SEPARATOR = "\x1f"
 LIST_SEPARATOR = "\x1d"
 RECORD_SEPARATOR = "\x1e"
+DEFAULT_SCRIPT_TIMEOUT_SECONDS = 45.0
 
 
 class MailBridgeError(Exception):
@@ -47,6 +49,17 @@ def _split_records(raw: str) -> list[list[str]]:
     return records
 
 
+def _script_timeout_from_env() -> float:
+    raw = os.getenv("APPLE_MAIL_MCP_SCRIPT_TIMEOUT")
+    if raw is None or not raw.strip():
+        return DEFAULT_SCRIPT_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_SCRIPT_TIMEOUT_SECONDS
+    return value if value > 0 else DEFAULT_SCRIPT_TIMEOUT_SECONDS
+
+
 def _split_list(raw: str) -> list[str]:
     if not raw:
         return []
@@ -54,8 +67,9 @@ def _split_list(raw: str) -> list[str]:
 
 
 class AppleMailBridge:
-    def __init__(self, scripts_dir: Path | None = None) -> None:
+    def __init__(self, scripts_dir: Path | None = None, script_timeout: float | None = None) -> None:
         self.scripts_dir = scripts_dir
+        self.script_timeout = script_timeout if script_timeout is not None else _script_timeout_from_env()
 
     def _run_osascript(self, script_path: Path, args: list[str]) -> CompletedProcess[str]:
         try:
@@ -64,7 +78,14 @@ class AppleMailBridge:
                 capture_output=True,
                 text=True,
                 check=False,
+                timeout=self.script_timeout,
             )
+        except TimeoutExpired as exc:
+            raise MailBridgeError(
+                f"AppleScript '{script_path.name}' timed out after {self.script_timeout:g}s. "
+                "Mail or System Events did not answer; if the request named a sender account, "
+                "macOS may be waiting on an Automation or Accessibility consent prompt for this process."
+            ) from exc
         except OSError as exc:
             raise MailBridgeError(f"Could not run 'osascript': {exc}. This server requires macOS with osascript available.") from exc
 

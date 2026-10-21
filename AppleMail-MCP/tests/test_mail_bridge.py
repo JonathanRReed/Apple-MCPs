@@ -1,5 +1,9 @@
+from pathlib import Path
+from subprocess import TimeoutExpired
+
 import pytest
 
+from apple_mail_mcp import mail_bridge
 from apple_mail_mcp.mail_bridge import AppleMailBridge, MailBridgeError, decode_message_id, encode_message_id
 
 
@@ -97,3 +101,33 @@ def test_forward_message_passes_send_flag_and_reports_draft(monkeypatch) -> None
     assert calls[0][-1] == "false" and calls[1][-1] == "true"
     assert draft.sent is False and draft.draft is True
     assert sent.sent is True and sent.draft is False
+def test_run_osascript_times_out_with_actionable_error(monkeypatch) -> None:
+    bridge = AppleMailBridge(script_timeout=0.5)
+
+    def fake_run(command, **kwargs):
+        assert command[0] == "osascript"
+        assert kwargs["timeout"] == 0.5
+        raise TimeoutExpired(command, kwargs["timeout"])
+
+    monkeypatch.setattr(mail_bridge, "run", fake_run)
+
+    with pytest.raises(MailBridgeError) as excinfo:
+        bridge._run_osascript(Path("/tmp/compose_draft.applescript"), [])
+
+    message = str(excinfo.value)
+    assert "compose_draft.applescript" in message
+    assert "timed out after 0.5s" in message
+    assert "consent" in message
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [(None, 45.0), ("", 45.0), ("abc", 45.0), ("-3", 45.0), ("12", 12.0)],
+)
+def test_script_timeout_env_parsing(monkeypatch, raw, expected) -> None:
+    if raw is None:
+        monkeypatch.delenv("APPLE_MAIL_MCP_SCRIPT_TIMEOUT", raising=False)
+    else:
+        monkeypatch.setenv("APPLE_MAIL_MCP_SCRIPT_TIMEOUT", raw)
+
+    assert AppleMailBridge().script_timeout == expected

@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from apple_mail_mcp.config import Settings
+from apple_mail_mcp.mail_bridge import AppleMailBridge, MailBridgeError
 from apple_mail_mcp.models import (
     AttachmentRecord,
     DeleteRecord,
@@ -204,6 +205,22 @@ def test_search_wrapper_forwards_account() -> None:
 
     assert result.count == 1
     assert bridge.search_calls[-1]["account"] == "Work"
+
+
+def test_search_wrapper_reports_unknown_account_instead_of_empty_results(monkeypatch) -> None:
+    bridge = AppleMailBridge()
+
+    def fake_run_script(script_name: str, args: list[str]) -> str:
+        raise MailBridgeError("search_messages.applescript: execution error: ACCOUNT_NOT_FOUND (-2700)")
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+
+    result = mail_search_messages(query="*", account="Nope", bridge=bridge, settings=Settings())
+
+    assert result.ok is False
+    assert result.error_code == "MESSAGE_SEARCH_FAILED"
+    assert result.message.startswith("ACCOUNT_NOT_FOUND:")
+    assert "mail_list_mailboxes" in result.message
 
 
 def test_get_thread_scopes_candidate_search_to_anchor_account() -> None:

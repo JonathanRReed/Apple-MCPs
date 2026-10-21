@@ -65,6 +65,11 @@ on run argv
     end if
 
     tell application "Mail"
+        -- Same (case-insensitive) account match as get_message; an unknown
+        -- account is an error, not an empty result.
+        if accountFilter is not "" then
+            if (count of (get every account whose name is accountFilter)) is 0 then error "ACCOUNT_NOT_FOUND"
+        end if
         repeat with theAccount in every account
             set accountName to name of theAccount
             set targetMailboxes to {}

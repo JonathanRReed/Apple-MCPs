@@ -7,7 +7,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [Unreleased]
 
 ### Fixed
-- `mail_search_messages` accepts an optional `account` filter (Mail server and Apple-Tools-MCP). Without it, accounts were searched in Mail's order until `limit` was reached, so a busy first account filled the results and same-named mailboxes in later accounts (for example a second account's `Inbox`) were never reached.
+- `mail_search_messages` accepts an optional `account` filter (Mail server and Apple-Tools-MCP). Without it, accounts were searched in Mail's order until `limit` was reached, so a busy first account filled the results and same-named mailboxes in later accounts (for example a second account's `Inbox`) were never reached. An `account` that matches no Mail account now returns an `ACCOUNT_NOT_FOUND` error pointing to `mail_list_mailboxes` instead of empty results.
 - `mail_get_thread`, and the `mail_reply_latest_in_thread` and `mail_archive_thread` flows built on it, now look for related messages only in the anchor message's account. Previously a message with the same subject in another account's same-named mailbox could be grouped into the thread, so reply-latest or archive could act on the wrong account.
 
 ## [1.1.3] - 2026-10-16

@@ -77,3 +77,23 @@ def test_search_messages_without_account_searches_all_accounts(monkeypatch) -> N
     results = bridge.search_messages("*")
 
     assert [(item.account, item.subject) for item in results] == [("Work", "Hello")]
+
+
+def test_forward_message_passes_send_flag_and_reports_draft(monkeypatch) -> None:
+    bridge = AppleMailBridge()
+    calls: list[list[str]] = []
+
+    def fake_run_script(script_name: str, args: list[str]) -> str:
+        calls.append(args)
+        sent = args[-1]
+        return f"{sent}\x1fFwd: Hello\x1f\x1e"
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+    message_id = encode_message_id("iCloud", "INBOX", "42")
+
+    draft = bridge.forward_message(message_id, to=["x@example.com"], send=False)
+    sent = bridge.forward_message(message_id, to=["x@example.com"])
+
+    assert calls[0][-1] == "false" and calls[1][-1] == "true"
+    assert draft.sent is False and draft.draft is True
+    assert sent.sent is True and sent.draft is False

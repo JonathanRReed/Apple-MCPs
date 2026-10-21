@@ -23,6 +23,7 @@ from apple_mail_mcp.models import (
     MessageSummary,
     MoveRecord,
     ReplyRecord,
+    SafetyProfile,
     SendRecord,
     ThreadMutationRecord,
     ThreadRecord,
@@ -32,7 +33,7 @@ from apple_mail_mcp.models import (
 from apple_mail_mcp.permissions import SAFETY_ENV_VAR, SafetyPolicyError, ensure_tool_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
-from apple_mcp_common.safety import safety_mode_warning
+from apple_mcp_common.safety import how_to_set, safety_mode_warning
 
 LOGGER = logging.getLogger("apple_mail_mcp")
 SERVER_INSTRUCTIONS = (
@@ -276,13 +277,24 @@ def mail_forward_message_tool(
     from_account: str | None = None,
 ) -> ForwardRecord:
     ensure_tool_allowed(settings.safety_profile, "mail_forward_message")
+    # A forward can reach any address, so it is only sent directly in
+    # full_access. Below that it is left in Mail as a draft for the user to
+    # review, which keeps safe_manage from sending mail to new recipients.
+    send = settings.safety_profile == SafetyProfile.FULL_ACCESS
     result = bridge.forward_message(
         message_id=message_id,
         to=to,
         body=body,
         from_account=from_account,
+        send=send,
     )
-    LOGGER.info("mail_forward_message ok message_id=%s recipients=%s", message_id, len(to))
+    if not result.sent:
+        result.note = (
+            f"Forward saved as a draft in Mail and NOT sent, because {SAFETY_ENV_VAR} is "
+            f"'{settings.safety_profile.value}'. Ask the user to review and send it in Mail. "
+            f"To send forwards directly, {how_to_set(SAFETY_ENV_VAR, SafetyProfile.FULL_ACCESS.value)}."
+        )
+    LOGGER.info("mail_forward_message ok message_id=%s recipients=%s sent=%s", message_id, len(to), result.sent)
     return result
 
 
@@ -943,7 +955,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
     @mcp.tool(
         name="mail_forward_message",
         title="Forward Message",
-        description="Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account.",
+        description="Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account. In full_access the forward is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result).",
         annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
         structured_output=True,
     )

@@ -21,6 +21,42 @@ class CalendarBridgeError(Exception):
         self.suggestion = suggestion
 
 
+def _normalized_title(value: str) -> str:
+    return " ".join(value.split()).casefold()
+
+
+def match_calendar(calendars: Sequence[CalendarInfo], requested: str) -> CalendarInfo:
+    """Select one calendar by exact identifier, then by a unique title.
+
+    Exact titles win over case- and whitespace-insensitive matches. Several
+    matches are ambiguous because titles repeat across accounts.
+    """
+    for calendar in calendars:
+        if calendar.calendar_id == requested:
+            return calendar
+    matches = [calendar for calendar in calendars if calendar.name == requested] or [
+        calendar for calendar in calendars if _normalized_title(calendar.name) == _normalized_title(requested)
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if matches:
+        candidates = "; ".join(
+            f"'{calendar.name}' (source: {calendar.source_title or 'unknown'}, calendar_id: {calendar.calendar_id}, "
+            f"{'writable' if calendar.writable else 'read-only'})"
+            for calendar in matches
+        )
+        raise CalendarBridgeError(
+            "AMBIGUOUS_CALENDAR",
+            f"Calendar name '{requested}' matches {len(matches)} calendars: {candidates}.",
+            "Pass the calendar_id of the intended calendar from calendar_list_calendars.",
+        )
+    raise CalendarBridgeError(
+        "CALENDAR_NOT_FOUND",
+        f"No calendar has the identifier or name '{requested}'.",
+        "Call calendar_list_calendars and pass the returned calendar_id unchanged.",
+    )
+
+
 class CalendarBridge:
     _JXA_TIMEOUT_SECONDS = 30
 
@@ -43,7 +79,12 @@ class CalendarBridge:
                 if not self._should_use_read_fallback(exc):
                     raise
                 payload = self._fallback_list_calendars()
+        return self._calendar_infos(payload)
+
+    def _calendar_infos(self, payload: dict[str, object]) -> list[CalendarInfo]:
         calendars = payload.get("items", [])
+        if not isinstance(calendars, list):
+            return []
         return [
             CalendarInfo(
                 calendar_id=str(item.get("calendar_id", "")),
@@ -299,6 +340,7 @@ class CalendarBridge:
         alarms = validate_alarms(alarms)
         if alarms is not None:
             request["alarms"] = alarms
+        request["calendar_id"] = self._native_write_calendar_id(calendar_id)
         try:
             payload = self._run_helper("create-calendar-event", json.dumps(request))
         except CalendarBridgeError as exc:
@@ -360,6 +402,8 @@ class CalendarBridge:
                 event_id, title=title, calendar_id=calendar_id, start_iso=start_iso, end_iso=end_iso,
                 notes=notes, location=location, all_day=all_day, alarms=alarms,
             ))
+        if calendar_id is not None:
+            request["calendar_id"] = self._native_write_calendar_id(calendar_id)
         try:
             payload = self._run_helper("update-calendar-event", event_id, json.dumps(request))
         except CalendarBridgeError as exc:
@@ -388,6 +432,30 @@ class CalendarBridge:
                 raise
             payload = self._fallback_delete_event(event_id)
         return bool(payload.get("deleted", False))
+
+    def _native_write_calendar_id(self, calendar_id: str) -> str:
+        """Resolve a write target to its EventKit identifier when EventKit can list calendars.
+
+        Callers often pass a calendar name. EventKit looks calendars up only by
+        identifier, so an unresolved name would push the write onto Calendar
+        automation, which cannot replace or clear alarms. When EventKit cannot
+        enumerate calendars, the value is returned unchanged and automation
+        remains the fallback.
+        """
+        if self._helper_read_blocked():
+            return calendar_id
+        try:
+            payload = self._run_helper("list-calendar-calendars")
+        except CalendarBridgeError:
+            return calendar_id
+        calendar = match_calendar(self._calendar_infos(payload), calendar_id)
+        if not calendar.writable:
+            raise CalendarBridgeError(
+                "CALENDAR_READ_ONLY",
+                f"Calendar '{calendar.name}' (source: {calendar.source_title or 'unknown'}) does not allow modifications.",
+                "Choose a writable calendar from calendar_list_calendars and pass its calendar_id.",
+            )
+        return calendar.calendar_id
 
     def _run_helper(self, command: str, *args: str) -> dict[str, object]:
         helper_binary = self._ensure_helper()

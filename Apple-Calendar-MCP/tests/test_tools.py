@@ -470,3 +470,47 @@ def test_validate_alarms_rejects_unknown_keys_and_excess_entries() -> None:
         tools._validate_alarms([{"minutes_before": 15, "extra": True}])
     with pytest.raises(ValueError):
         tools._validate_alarms([{"minutes_before": 15}] * 101)
+
+
+class NamedCalendarBridge(FakeBridge):
+    def list_calendars(self):
+        return [
+            CalendarInfo(calendar_id="native-work", name="Work", source_title="iCloud", writable=True),
+            CalendarInfo(calendar_id="native-home-icloud", name="Home", source_title="iCloud", writable=True),
+            CalendarInfo(calendar_id="native-home-google", name="Home", source_title="Google", writable=True),
+        ]
+
+
+def test_create_event_by_calendar_name_passes_write_allowlist(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    monkeypatch.delenv("APPLE_CALENDAR_MCP_ALLOWED_CALENDARS", raising=False)
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS", "Work")
+    load_settings.cache_clear()
+    bridge = NamedCalendarBridge()
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+
+    result = tools.calendar_create_event(
+        title="Planning", start_iso="2026-03-27T10:00:00-05:00", end_iso="2026-03-27T10:30:00-05:00",
+        calendar_id=" work ",
+    )
+
+    assert result.ok is True
+
+
+def test_create_event_with_ambiguous_calendar_name_returns_candidates(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    monkeypatch.delenv("APPLE_CALENDAR_MCP_ALLOWED_CALENDARS", raising=False)
+    monkeypatch.delenv("APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS", raising=False)
+    load_settings.cache_clear()
+    bridge = NamedCalendarBridge()
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+
+    result = tools.calendar_create_event(
+        title="Planning", start_iso="2026-03-27T10:00:00-05:00", end_iso="2026-03-27T10:30:00-05:00",
+        calendar_id="Home",
+    )
+
+    assert result.ok is False
+    assert result.error.error_code == "AMBIGUOUS_CALENDAR"
+    assert "native-home-icloud" in result.error.message and "native-home-google" in result.error.message
+    assert not [call for call in bridge.calls if call.get("method") == "create_event"]

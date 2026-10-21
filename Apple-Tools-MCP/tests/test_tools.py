@@ -1658,3 +1658,18 @@ def test_apple_create_reminder_and_note_record_actions(monkeypatch, tmp_path) ->
 
 def teardown_function() -> None:
     load_settings.cache_clear()
+
+
+def test_apple_permission_guide_uses_helper_guidance_for_privacy_domains() -> None:
+    for domain, pane, helper in [
+        ("calendar", "Calendars", "Apple Calendar MCP Helper"),
+        ("reminders", "Reminders", "Apple Reminders MCP Helper"),
+        ("contacts", "Contacts", "Apple Contacts MCP Helper"),
+    ]:
+        guide = tools.apple_permission_guide(domain)
+        text = " ".join(guide.steps + guide.notes)
+        assert guide.domain == domain
+        assert f"System Settings > Privacy & Security > {pane}" in text
+        assert f"'{helper}'" in text
+        assert "tccutil reset" in text
+    assert any("Apple Messages" in note for note in tools.apple_permission_guide("contacts").notes)

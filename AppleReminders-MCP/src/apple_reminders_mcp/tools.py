@@ -8,6 +8,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.privacy import helper_permission_guide
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
 from apple_reminders_mcp.config import load_settings
 from apple_reminders_mcp.models import (
@@ -22,7 +23,7 @@ from apple_reminders_mcp.models import (
     ToolError,
 )
 from apple_reminders_mcp.permissions import SafetyError, ensure_action_allowed
-from apple_reminders_mcp.reminders_bridge import RemindersBridge, RemindersBridgeError, build_bridge
+from apple_reminders_mcp.reminders_bridge import REMINDERS_HELPER_BUNDLE, RemindersBridge, RemindersBridgeError, build_bridge
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Reminders task management on macOS. "
@@ -171,6 +172,19 @@ def reminders_inbox_triage_prompt() -> str:
 def reminders_health() -> HealthResponse:
     settings = load_settings()
     capabilities, helper_available, helper_compiled = _capabilities()
+    access: dict[str, object] = {}
+    if helper_available:
+        try:
+            payload = _bridge().access_status()
+            access = {
+                "access_status": str(payload.get("status", "unknown")),
+                "can_access_reminders": bool(payload.get("can_read_events", False)),
+                "permission_client": str(payload["tcc_client"]) if payload.get("tcc_client") else None,
+                "permission_error": payload.get("message"),
+                "permission_suggestion": payload.get("suggestion"),
+            }
+        except RemindersBridgeError as exc:
+            access = {"access_status": "helper_error", "permission_error": exc.message, "permission_suggestion": exc.suggestion}
     return HealthResponse(
         server_name=settings.server_name,
         version=settings.version,
@@ -178,6 +192,7 @@ def reminders_health() -> HealthResponse:
         capabilities=capabilities,
         helper_available=helper_available,
         helper_compiled=helper_compiled,
+        **access,
     )
 
 
@@ -188,17 +203,7 @@ def reminders_health() -> HealthResponse:
     structured_output=True,
 )
 def reminders_permission_guide() -> dict[str, object]:
-    return {
-        "ok": True,
-        "domain": "reminders",
-        "can_prompt_in_app": True,
-        "requires_manual_system_settings": False,
-        "steps": [
-            "Call a Reminders tool from this MCP server.",
-            "Approve the macOS Reminders access prompt when it appears.",
-            "If access was denied before, re-enable it in System Settings > Privacy & Security > Reminders.",
-        ],
-    }
+    return helper_permission_guide("reminders", "Reminders", "Reminders", REMINDERS_HELPER_BUNDLE)
 
 
 @mcp.tool(

@@ -12,4 +12,4 @@ def test_load_settings_uses_packaged_helper_source() -> None:
     assert settings.helper_source.name == "apple_pim_bridge.swift"
     assert settings.helper_source.parent.name == "apple_reminders_mcp"
     assert settings.helper_source.exists()
-    assert settings.helper_binary.name == "apple-reminders-pim-bridge"
+    assert settings.helper_build_dir.name == "build"

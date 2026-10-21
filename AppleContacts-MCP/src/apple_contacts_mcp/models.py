@@ -47,6 +47,8 @@ class HealthResponse(BaseModel):
     permission_error_code: str | None = None
     permission_error: str | None = None
     permission_suggestion: str | None = None
+    # The app macOS checks for Contacts access: the app running this server, or the helper itself.
+    permission_client: str | None = None
 
 
 class ContactListResponse(BaseModel):

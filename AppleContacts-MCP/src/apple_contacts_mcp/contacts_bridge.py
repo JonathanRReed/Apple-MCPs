@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import plistlib
 import re
 import subprocess
 import tempfile
@@ -13,7 +12,7 @@ from pathlib import Path
 
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSummary, CreateContactResponse, DeleteContactResponse, DuplicateCandidateGroup, DuplicateEvidence, ResolvedRecipientResponse
-from apple_mcp_common.atomic import rename_without_replacement
+from apple_mcp_common.native import HelperBundle, NativeHelperError, ensure_helper_bundle
 
 METHOD_FIELD_SEPARATOR = "\x1f"
 METHOD_RECORD_SEPARATOR = "\x1e"
@@ -22,6 +21,17 @@ SCRIPT_TIMEOUT_SECONDS = 30
 MAX_SCRIPT_OUTPUT_BYTES = 8 * 1024 * 1024
 MAX_CONTACTS_PER_REQUEST = 1000
 MAX_DIRECTORY_CONTACTS = 100_000
+
+# macOS only shows a Contacts prompt for an app whose Info.plist explains the access,
+# and remembers the answer by bundle identifier and signature.
+CONTACTS_HELPER_BUNDLE = HelperBundle(
+    executable="apple-contacts-bridge",
+    display_name="Apple Contacts MCP Helper",
+    bundle_identifier="io.github.jonathanrreed.apple-mcps.contacts-bridge",
+    usage_descriptions={
+        "NSContactsUsageDescription": "Apple Contacts MCP reads and manages contacts when your AI assistant asks it to.",
+    },
+)
 
 
 class ContactsBridgeError(Exception):
@@ -38,6 +48,8 @@ class AppleContactsBridge:
         self.helper_source = helper_source
         self.helper_build_dir = helper_build_dir
         self._native_binary: Path | None = None
+        # The app macOS checked during the last permission_diagnostic, when the helper reports it.
+        self.permission_client: str | None = None
 
     def permission_diagnostic(self) -> tuple[bool, ContactsBridgeError | None]:
         if self.helper_source is None:
@@ -47,18 +59,21 @@ class AppleContactsBridge:
             )
         try:
             payload = self._run_script("permission_check.applescript")
+            self.permission_client = str(payload["tcc_client"]) if payload.get("tcc_client") else None
             if payload.get("status") not in {"authorized", "denied", "unknown"} or not isinstance(payload.get("accessible"), bool):
                 raise ContactsBridgeError("INVALID_SCRIPT_OUTPUT", "Contacts permission check returned an invalid status.")
             if payload["status"] == "authorized" and payload["accessible"] is True:
                 return True, None
+            client = payload.get("tcc_client")
+            suggestion = payload.get("suggestion")
             if payload.get("status") == "denied":
                 return False, ContactsBridgeError(
-                    "PERMISSION_DENIED", "macOS denied Contacts access.",
-                    "Allow Contacts access in System Settings > Privacy & Security > Contacts.",
+                    "PERMISSION_DENIED", f"macOS denied Contacts access to '{client}'." if client else "macOS denied Contacts access.",
+                    str(suggestion) if suggestion else "Allow Contacts access in System Settings > Privacy & Security > Contacts.",
                 )
             return False, ContactsBridgeError(
                 "AUTHORIZATION_UNKNOWN", "Contacts authorization has not been granted.",
-                "Use an explicit Contacts operation to request access.",
+                str(suggestion) if suggestion else "Use an explicit Contacts operation to request access.",
             )
         except ContactsBridgeError as exc:
             return False, exc
@@ -471,52 +486,19 @@ class AppleContactsBridge:
     def _ensure_native_helper(self) -> Path:
         assert self.helper_source is not None and self.helper_build_dir is not None
         try:
-            source_bytes = self.helper_source.read_bytes()
-            digest = hashlib.sha256(source_bytes).hexdigest()
-            app = self.helper_build_dir / f"apple-contacts-bridge-{digest}.app"
-            binary = app / "Contents" / "MacOS" / "apple-contacts-bridge"
-            if binary.is_file() and (app / "Contents" / "Info.plist").is_file():
-                self._native_binary = binary
-                return binary
-            self.helper_build_dir.mkdir(parents=True, exist_ok=True)
-            with tempfile.TemporaryDirectory(prefix="contacts-build-", dir=self.helper_build_dir) as directory:
-                source_snapshot = Path(directory) / "contacts_bridge.swift"
-                source_snapshot.write_bytes(source_bytes)
-                temporary_app = Path(directory) / app.name
-                executable = temporary_app / "Contents" / "MacOS" / binary.name
-                executable.parent.mkdir(parents=True)
-                info = {
-                    "CFBundleIdentifier": "io.github.jonathanrreed.apple-mcps.contacts-bridge",
-                    "CFBundleName": "Apple Contacts MCP Bridge",
-                    "CFBundleExecutable": binary.name,
-                    "CFBundlePackageType": "APPL",
-                    "CFBundleVersion": "1",
-                    "LSUIElement": True,
-                    "LSBackgroundOnly": True,
-                    "NSContactsUsageDescription": "Reads and manages contacts for Apple Contacts MCP.",
-                }
-                with (temporary_app / "Contents" / "Info.plist").open("wb") as stream:
-                    plistlib.dump(info, stream)
-                result = subprocess.run(
-                    ["swiftc", "-parse-as-library", "-O", str(source_snapshot), "-o", str(executable)],
-                    capture_output=True, text=True, timeout=300, check=False,
-                )
-                if result.returncode != 0:
-                    raise ContactsBridgeError("HELPER_COMPILE_FAILED", result.stderr.strip() or "Contacts helper compilation failed.", "Install Xcode Command Line Tools, or select APPLE_CONTACTS_MCP_BACKEND=applescript.")
-                if self.helper_source.read_bytes() != source_bytes:
-                    raise ContactsBridgeError("HELPER_SOURCE_CHANGED", "Contacts helper source changed during compilation.", "Retry with the installed source unchanged.")
-                try:
-                    rename_without_replacement(temporary_app, app)
-                except FileExistsError:
-                    # A concurrent first-use compile may have installed the same source.
-                    if not binary.is_file() or not (app / "Contents" / "Info.plist").is_file():
-                        raise
-            self._native_binary = binary
-            return binary
-        except subprocess.TimeoutExpired as exc:
-            raise ContactsBridgeError("HELPER_COMPILE_TIMEOUT", "Contacts helper compilation exceeded 300 seconds.", "Check the Swift toolchain, or select the AppleScript backend.") from exc
+            binary = ensure_helper_bundle(self.helper_source, self.helper_build_dir, CONTACTS_HELPER_BUNDLE)
+        except NativeHelperError as exc:
+            suggestion = {
+                "HELPER_COMPILE_FAILED": "Install Xcode Command Line Tools, or select APPLE_CONTACTS_MCP_BACKEND=applescript.",
+                "SWIFTC_UNAVAILABLE": "Install Xcode Command Line Tools, or select APPLE_CONTACTS_MCP_BACKEND=applescript.",
+                "HELPER_COMPILE_TIMEOUT": "Check the Swift toolchain, or select the AppleScript backend.",
+                "HELPER_SOURCE_CHANGED": "Retry with the installed source unchanged.",
+            }.get(exc.error_code, exc.suggestion)
+            raise ContactsBridgeError(exc.error_code, str(exc), suggestion) from exc
         except OSError as exc:
             raise ContactsBridgeError("HELPER_BUILD_UNAVAILABLE", str(exc), "Check the packaged Swift source, build directory and Xcode Command Line Tools, or select the AppleScript backend.") from exc
+        self._native_binary = binary
+        return binary
 
     def _stop_process(self, process: subprocess.Popen[bytes]) -> None:
         with suppress(ProcessLookupError):
@@ -535,6 +517,18 @@ class AppleContactsBridge:
         return [self._normalize_summary(item) for item in payload.get("items", []) if isinstance(item, dict)]
 
     def _map_script_error(self, error_text: str) -> ContactsBridgeError:
+        # The native helper reports permission failures as a JSON object naming
+        # the app macOS checked and exactly where to grant access.
+        if error_text.startswith("{"):
+            with suppress(json.JSONDecodeError):
+                payload = json.loads(error_text)
+                if isinstance(payload, dict) and payload.get("error_code"):
+                    suggestion = payload.get("suggestion")
+                    return ContactsBridgeError(
+                        str(payload["error_code"]),
+                        str(payload.get("message") or "The Contacts helper failed."),
+                        str(suggestion) if suggestion else None,
+                    )
         lowered = error_text.lower()
         if "notes cannot be written" in lowered:
             return ContactsBridgeError("CONTACT_NOTE_UNAVAILABLE", error_text, "Leave note empty, or select APPLE_CONTACTS_MCP_BACKEND=applescript.")

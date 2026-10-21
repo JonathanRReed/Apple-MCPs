@@ -4,7 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from apple_mcp_common.native import NativeHelperError, ensure_swift_helper, swift_helper_path
+from apple_mcp_common.native import HelperBundle, NativeHelperError, ensure_helper_bundle, helper_bundle_executable
 from apple_reminders_mcp.config import load_settings
 from apple_reminders_mcp.models import (
     DeleteReminderListResponse,
@@ -23,15 +23,33 @@ class RemindersBridgeError(Exception):
         self.suggestion = suggestion
 
 
+# macOS only shows a Reminders prompt for an app whose Info.plist explains the access,
+# and remembers the answer by bundle identifier and signature. A bare command-line
+# helper has neither, so it could never be granted access in its own right.
+REMINDERS_HELPER_BUNDLE = HelperBundle(
+    executable="apple-reminders-pim-bridge",
+    display_name="Apple Reminders MCP Helper",
+    bundle_identifier="io.github.jonathanrreed.apple-mcps.reminders-pim-bridge",
+    usage_descriptions={
+        "NSRemindersUsageDescription": "Apple Reminders MCP reads and changes reminders when your AI assistant asks it to.",
+        "NSRemindersFullAccessUsageDescription": "Apple Reminders MCP reads and changes reminders when your AI assistant asks it to.",
+    },
+)
+
+
 class RemindersBridge:
-    def __init__(self, helper_source: Path, helper_binary: Path) -> None:
+    def __init__(self, helper_source: Path, helper_build_dir: Path) -> None:
         self.helper_source = helper_source
-        self.helper_binary = helper_binary
-        self._helper_base_binary = helper_binary
+        self.helper_build_dir = helper_build_dir
+        self.helper_binary: Path | None = None
 
     def helper_available(self) -> tuple[bool, bool]:
         source_available = self.helper_source.exists()
-        return source_available, source_available and swift_helper_path(self.helper_source, self._helper_base_binary).is_file()
+        return source_available, source_available and helper_bundle_executable(self.helper_source, self.helper_build_dir, REMINDERS_HELPER_BUNDLE).is_file()
+
+    def access_status(self) -> dict[str, object]:
+        """Read Reminders authorization without requesting it."""
+        return self._run_helper("reminders-access-status")
 
     def list_lists(self) -> list[ReminderListInfo]:
         payload = self._run_helper("list-reminder-lists")
@@ -205,7 +223,7 @@ class RemindersBridge:
                 "Restore the shared Swift helper and retry.",
             )
         try:
-            helper_binary = ensure_swift_helper(self.helper_source, self._helper_base_binary)
+            helper_binary = ensure_helper_bundle(self.helper_source, self.helper_build_dir, REMINDERS_HELPER_BUNDLE)
             self.helper_binary = helper_binary
             return helper_binary
         except NativeHelperError as exc:
@@ -242,4 +260,4 @@ class RemindersBridge:
 
 def build_bridge() -> RemindersBridge:
     settings = load_settings()
-    return RemindersBridge(settings.helper_source, settings.helper_binary)
+    return RemindersBridge(settings.helper_source, settings.helper_build_dir)

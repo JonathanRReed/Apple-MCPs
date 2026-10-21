@@ -7,7 +7,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import Annotations, ToolAnnotations
 
 from apple_contacts_mcp.config import load_settings
-from apple_contacts_mcp.contacts_bridge import AppleContactsBridge, ContactsBridgeError, build_bridge
+from apple_contacts_mcp.contacts_bridge import CONTACTS_HELPER_BUNDLE, AppleContactsBridge, ContactsBridgeError, build_bridge
 from apple_contacts_mcp.models import (
     ContactListResponse,
     ContactMethod,
@@ -22,6 +22,7 @@ from apple_contacts_mcp.models import (
 )
 from apple_contacts_mcp.permissions import SafetyError, ensure_action_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.privacy import helper_permission_guide
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
 
 SERVER_INSTRUCTIONS = (
@@ -87,7 +88,8 @@ def contacts_prepare_message_recipient_prompt() -> str:
 )
 def contacts_health() -> HealthResponse:
     settings = load_settings()
-    accessible, error = _bridge().permission_diagnostic()
+    bridge = _bridge()
+    accessible, error = bridge.permission_diagnostic()
     capabilities = [
         "list_contacts",
         "search_contacts",
@@ -114,6 +116,7 @@ def contacts_health() -> HealthResponse:
         permission_error_code=error.error_code if error is not None else None,
         permission_error=error.message if error is not None else None,
         permission_suggestion=error.suggestion if error is not None else None,
+        permission_client=getattr(bridge, "permission_client", None),
     )
 
 
@@ -124,17 +127,7 @@ def contacts_health() -> HealthResponse:
     structured_output=True,
 )
 def contacts_permission_guide() -> dict[str, object]:
-    return {
-        "ok": True,
-        "domain": "contacts",
-        "can_prompt_in_app": True,
-        "requires_manual_system_settings": False,
-        "steps": [
-            "Call a Contacts tool from this MCP server.",
-            "Approve the macOS Contacts access prompt when it appears.",
-            "If access was denied before, re-enable it in System Settings > Privacy & Security > Contacts.",
-        ],
-    }
+    return helper_permission_guide("contacts", "Contacts", "AddressBook", CONTACTS_HELPER_BUNDLE)
 
 
 @mcp.tool(

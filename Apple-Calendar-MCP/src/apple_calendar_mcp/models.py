@@ -31,6 +31,8 @@ class HealthResponse(BaseModel):
     alarm_edit_backend: Literal["native_eventkit"] = "native_eventkit"
     permission_error: str | None = None
     permission_suggestion: str | None = None
+    # The app macOS checks for Calendar access: the app running this server, or the helper itself.
+    permission_client: str | None = None
 
 
 class CalendarInfo(BaseModel):

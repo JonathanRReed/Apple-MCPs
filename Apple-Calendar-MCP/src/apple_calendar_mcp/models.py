@@ -19,6 +19,7 @@ class HealthResponse(BaseModel):
     server_name: str
     version: str
     safety_mode: str
+    safety_mode_warning: str | None = Field(default=None, description="Set when the configured safety value was invalid or blank and the server fell back to a safer mode")
     write_allowed_calendars: list[str] = []
     transport: str = "stdio"
     capabilities: list[str]
@@ -31,6 +32,8 @@ class HealthResponse(BaseModel):
     alarm_edit_backend: Literal["native_eventkit"] = "native_eventkit"
     permission_error: str | None = None
     permission_suggestion: str | None = None
+    # The app macOS checks for Calendar access: the app running this server, or the helper itself.
+    permission_client: str | None = None
 
 
 class CalendarInfo(BaseModel):

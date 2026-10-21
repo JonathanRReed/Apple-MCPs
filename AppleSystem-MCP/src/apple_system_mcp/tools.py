@@ -9,6 +9,7 @@ from pydantic import Field
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.safety import safety_mode_warning
 from apple_mcp_common.server import AppleMCPServer
 from apple_system_mcp.config import load_settings
 from apple_system_mcp.models import (
@@ -30,7 +31,7 @@ from apple_system_mcp.models import (
     SystemContextResponse,
     ToolError,
 )
-from apple_system_mcp.permissions import SafetyError, ensure_action_allowed
+from apple_system_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
 from apple_system_mcp.system_bridge import SettingMutation, SystemBridgeError, build_bridge
 
 _GUI_APPLICATION_DESCRIPTION = "Name of a running application to target, for example Safari. Omit both application and bundle_id to target the frontmost app."
@@ -206,6 +207,7 @@ def system_health() -> HealthResponse:
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_mode),
         transport=settings.transport,
         capabilities=capabilities,
         supports=["stdio", "streamable-http"],

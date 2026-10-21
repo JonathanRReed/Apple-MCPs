@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from apple_mcp_common.safety import safety_block_suggestion
 from apple_system_mcp.config import load_settings
+
+SAFETY_ENV_VAR = "APPLE_SYSTEM_MCP_SAFETY_MODE"
 
 
 @dataclass(frozen=True)
@@ -61,6 +64,6 @@ def ensure_action_allowed(action: str) -> None:
         return
     raise SafetyError(
         error_code="SAFETY_RESTRICTION",
-        message=f"{action} is not allowed while APPLE_SYSTEM_MCP_SAFETY_MODE={safety_mode}.",
-        suggestion="Use safe_manage or full_access for system mutation tools.",
+        message=f"{action} is not allowed while {SAFETY_ENV_VAR}={safety_mode}.",
+        suggestion=safety_block_suggestion(SAFETY_ENV_VAR, "safe_manage", safety_mode),
     )

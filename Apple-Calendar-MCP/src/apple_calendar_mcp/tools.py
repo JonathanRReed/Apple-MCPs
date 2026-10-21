@@ -7,13 +7,15 @@ from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnot
 from pydantic import Field
 
 from apple_calendar_mcp.alarm_validation import coerce_alarm_minutes, validate_alarms
-from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError, match_calendar
+from apple_calendar_mcp.calendar_bridge import CALENDAR_HELPER_BUNDLE, CalendarBridge, CalendarBridgeError, match_calendar
 from apple_calendar_mcp.config import load_settings
 from apple_calendar_mcp.models import CalendarInfo, CalendarListResponse, DeleteEventResponse, ErrorResponse, EventListResponse, EventResponse, EventSummary, HealthResponse, ToolError
-from apple_calendar_mcp.permissions import SafetyError, ensure_action_allowed
+from apple_calendar_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
 from apple_calendar_mcp.utils import parse_iso_datetime
 from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.privacy import helper_permission_guide
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.safety import safety_mode_warning
 from apple_mcp_common.server import AppleMCPServer
 
 _CALENDAR_ID_DESCRIPTION = (
@@ -49,7 +51,7 @@ mcp = AppleMCPServer("Apple Calendar", instructions=SERVER_INSTRUCTIONS, version
 
 def _bridge() -> CalendarBridge:
     settings = load_settings()
-    return CalendarBridge(settings.helper_source, settings.helper_binary)
+    return CalendarBridge(settings.helper_source, settings.helper_build_dir)
 
 
 def _error_response(error_code: str, message: str, suggestion: str | None = None) -> ErrorResponse:
@@ -218,6 +220,7 @@ def calendar_health() -> HealthResponse:
     can_edit_existing_alarms = False
     permission_error: str | None = None
     permission_suggestion: str | None = None
+    permission_client: str | None = None
     if helper_available:
         try:
             access_payload = _bridge().calendar_access_status()
@@ -225,6 +228,7 @@ def calendar_health() -> HealthResponse:
             can_read_events = bool(access_payload.get("can_read_events", False))
             can_write_events = bool(access_payload.get("can_write_events", False))
             can_edit_existing_alarms = can_read_events and can_write_events
+            permission_client = access_payload.get("tcc_client")
             if not can_read_events:
                 message = access_payload.get("message")
                 suggestion = access_payload.get("suggestion")
@@ -238,6 +242,7 @@ def calendar_health() -> HealthResponse:
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_mode),
         write_allowed_calendars=list(settings.write_allowed_calendars),
         capabilities=capabilities,
         helper_available=helper_available,
@@ -248,6 +253,7 @@ def calendar_health() -> HealthResponse:
         can_edit_existing_alarms=can_edit_existing_alarms,
         permission_error=permission_error,
         permission_suggestion=permission_suggestion,
+        permission_client=str(permission_client) if permission_client else None,
     )
 
 
@@ -258,17 +264,7 @@ def calendar_health() -> HealthResponse:
     structured_output=True,
 )
 def calendar_permission_guide() -> dict[str, object]:
-    return {
-        "ok": True,
-        "domain": "calendar",
-        "can_prompt_in_app": True,
-        "requires_manual_system_settings": False,
-        "steps": [
-            "Call a Calendar tool from this MCP server.",
-            "Approve the macOS Calendar access prompt when it appears.",
-            "If access was denied before, re-enable it in System Settings > Privacy & Security > Calendars.",
-        ],
-    }
+    return helper_permission_guide("calendar", "Calendars", "Calendar", CALENDAR_HELPER_BUNDLE)
 
 
 @mcp.tool(

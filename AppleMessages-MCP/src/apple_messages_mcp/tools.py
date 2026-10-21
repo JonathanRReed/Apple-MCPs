@@ -10,6 +10,7 @@ from pydantic import Field
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.safety import safety_mode_warning
 from apple_mcp_common.server import AppleMCPServer
 from apple_messages_mcp.config import load_settings
 from apple_messages_mcp.messages_automation_bridge import (
@@ -30,7 +31,7 @@ from apple_messages_mcp.models import (
     SendResponse,
     ToolError,
 )
-from apple_messages_mcp.permissions import SafetyError, ensure_action_allowed
+from apple_messages_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Messages on macOS. "
@@ -53,6 +54,13 @@ _SERVICE_NAME = (
 _ISO_BOUND = "ISO 8601 datetime, e.g. 2026-04-07T18:00:00-05:00; without an offset it is read as local time."
 
 mcp = AppleMCPServer("Apple Messages MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+
+
+_AUTOMATION_STATUS_BY_ERROR_CODE: dict[str, Literal["not_probed", "unknown", "denied"]] = {
+    "NOT_PROBED": "not_probed",
+    "AUTHORIZATION_UNKNOWN": "unknown",
+    "PERMISSION_DENIED": "denied",
+}
 
 
 _AUTOMATION_STATUS_BY_ERROR_CODE: dict[str, Literal["not_probed", "unknown", "denied"]] = {
@@ -187,6 +195,7 @@ def messages_health() -> HealthResponse:
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_mode),
         capabilities=caps,
         history_access=history_access,
         automation_access=automation_access,

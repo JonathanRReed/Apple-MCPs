@@ -83,18 +83,33 @@ Running from a clone instead? Use `/path/to/Apple-MCPs/AppleMail-MCP/start.sh` a
 <summary>Claude Code example</summary>
 
 ```bash
-claude mcp add --transport stdio --scope project apple-mail -- uvx apple-mcp-mail
+claude mcp add --transport stdio --scope user apple-mail -- uvx apple-mcp-mail
 ```
+
+`--scope user` makes the server available in every project. To share it with one repository through its `.mcp.json` instead, use `--scope project`.
 
 </details>
 
 ## Safety Modes
 
+Set the mode with `APPLE_MAIL_MCP_SAFETY_PROFILE`:
+
 - `safe_readonly`, read and search only
-- `safe_manage`, read, create drafts, reply/forward, mark, move, delete, and archive threads; new-message sending is blocked
+- `safe_manage`, read, create drafts, reply, forward as a draft, mark, move, delete, and archive threads; new-message sending is blocked. Replies are sent immediately, so this mode can still send mail to people already in a thread. Forwards can go to any address, so they are saved as unsent drafts in Mail for the user to review; switch to `full_access` to send forwards directly
 - `full_access`, full Mail tool surface in this repo, including new-message sending
 
-These are the existing policy rules. Deleting or archiving does not require switching from `safe_manage` to `full_access`.
+Deleting or archiving does not require switching from `safe_manage` to `full_access`.
+
+Defaults depend on how you installed the server:
+
+| Install | Default | Why |
+| --- | --- | --- |
+| `uvx`, `pip`, or a clone | `safe_manage` | Code default |
+| Claude Desktop bundle (`.mcpb`) | `full_access` | Bundles have always shipped with `full_access`; keeping it means upgrades don't remove sending |
+
+To change it in Claude Desktop, open Settings > Extensions, choose Apple Mail, click Configure, and set "Mail safety mode". In other clients, set `APPLE_MAIL_MCP_SAFETY_PROFILE` in the server's `env` block and restart the client. If a tool is blocked, its error names the setting and the value to use. An invalid or blank value selects `safe_readonly`, and `mail_health` explains it in `safety_mode_warning`.
+
+Attachments are off until you set `APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT` (bundle setting: "Mail attachment folder") to a dedicated folder.
 
 ## Transport
 

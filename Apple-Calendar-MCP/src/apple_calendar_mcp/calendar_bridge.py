@@ -1,16 +1,14 @@
 import json
-import os
-import plistlib
 import subprocess
-import tempfile
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from urllib.parse import unquote
 
 from apple_calendar_mcp.alarm_validation import validate_alarms
 from apple_calendar_mcp.models import CalendarInfo, EventDetail, EventSummary
-from apple_mcp_common.native import NativeHelperError, ensure_swift_helper, swift_helper_path
+from apple_mcp_common.native import HelperBundle, NativeHelperError, ensure_helper_bundle, helper_bundle_executable
 
 
 class CalendarBridgeError(Exception):
@@ -57,17 +55,35 @@ def match_calendar(calendars: Sequence[CalendarInfo], requested: str) -> Calenda
     )
 
 
+# A bare CLI Mach-O has no CFBundleIdentifier, so when EventKit needs a real (non-cached)
+# resync it can't attribute the request to us and routes it through Calendar.app instead,
+# which brings Calendar.app to the foreground. Real bundle identity stops that. The usage
+# descriptions and stable signature also let macOS prompt for, and remember, the helper
+# itself when the app hosting this server has no Calendar access (see apple_pim_bridge.swift).
+CALENDAR_HELPER_BUNDLE = HelperBundle(
+    executable="apple-calendar-pim-bridge",
+    display_name="Apple Calendar MCP Helper",
+    bundle_identifier="io.github.jonathanrreed.apple-mcps.calendar-pim-bridge",
+    usage_descriptions={
+        "NSCalendarsUsageDescription": "Apple Calendar MCP reads and changes calendar events when your AI assistant asks it to.",
+        "NSCalendarsFullAccessUsageDescription": "Apple Calendar MCP reads and changes calendar events when your AI assistant asks it to.",
+        "NSRemindersUsageDescription": "Apple Calendar MCP reads and changes reminders when your AI assistant asks it to.",
+        "NSRemindersFullAccessUsageDescription": "Apple Calendar MCP reads and changes reminders when your AI assistant asks it to.",
+    },
+)
+
+
 class CalendarBridge:
     _JXA_TIMEOUT_SECONDS = 30
 
-    def __init__(self, helper_source: Path, helper_binary: Path) -> None:
+    def __init__(self, helper_source: Path, helper_build_dir: Path) -> None:
         self.helper_source = helper_source
-        self.helper_binary = helper_binary
-        self._helper_base_binary = helper_binary
+        self.helper_build_dir = helper_build_dir
+        self.helper_binary: Path | None = None
 
     def helper_available(self) -> tuple[bool, bool]:
         source_available = self.helper_source.exists()
-        return source_available, source_available and swift_helper_path(self.helper_source, self._helper_base_binary).is_file()
+        return source_available, source_available and helper_bundle_executable(self.helper_source, self.helper_build_dir, CALENDAR_HELPER_BUNDLE).is_file()
 
     def list_calendars(self) -> list[CalendarInfo]:
         if self._helper_read_blocked():
@@ -97,7 +113,7 @@ class CalendarBridge:
             if isinstance(item, dict)
         ]
 
-    def calendar_access_status(self) -> dict[str, object]:
+    def calendar_access_status(self) -> dict[str, Any]:
         return self._run_helper("calendar-access-status")
 
     def list_events(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> list[EventSummary]:
@@ -457,7 +473,7 @@ class CalendarBridge:
             )
         return calendar.calendar_id
 
-    def _run_helper(self, command: str, *args: str) -> dict[str, object]:
+    def _run_helper(self, command: str, *args: str) -> dict[str, Any]:
         helper_binary = self._ensure_helper()
         try:
             completed = subprocess.run(
@@ -503,46 +519,11 @@ class CalendarBridge:
                 "Restore the shared Swift helper and retry.",
             )
         try:
-            helper_binary = ensure_swift_helper(self.helper_source, self._helper_base_binary)
+            helper_binary = ensure_helper_bundle(self.helper_source, self.helper_build_dir, CALENDAR_HELPER_BUNDLE)
         except NativeHelperError as exc:
             raise CalendarBridgeError(exc.error_code, str(exc), exc.suggestion or "Confirm Xcode command line tools and Swift are available, then retry.") from exc
-        info_plist = helper_binary.parent.parent / "Info.plist"
-        self._write_bundle_info_plist(info_plist)
         self.helper_binary = helper_binary
         return helper_binary
-
-    def _bundle_info_plist_path(self) -> Path:
-        return self.helper_binary.parent.parent / "Info.plist"
-
-    def _write_bundle_info_plist(self, plist_path: Path) -> None:
-        # A bare CLI Mach-O has no CFBundleIdentifier, so when EventKit needs a real (non-cached)
-        # resync it can't attribute the request to us and routes it through Calendar.app instead --
-        # which brings Calendar.app to the foreground to service it. Giving the helper real bundle
-        # identity (this Info.plist, with LSUIElement so it never wants foreground/dock presence)
-        # stops macOS from needing to borrow Calendar.app's identity, so a background poll no
-        # longer steals focus from whatever the user is doing.
-        plist_data: dict[str, object] = {
-            "CFBundleIdentifier": "io.github.jonathanrreed.apple-mcps.calendar-pim-bridge",
-            "CFBundleName": self.helper_binary.name,
-            "CFBundleExecutable": self.helper_binary.name,
-            "CFBundlePackageType": "APPL",
-            "CFBundleShortVersionString": "1.0",
-            "CFBundleVersion": "1",
-            "LSUIElement": True,
-            "LSBackgroundOnly": True,
-            "NSCalendarsUsageDescription": "Reads and writes Calendar events for the Apple Calendar MCP server.",
-            "NSCalendarsFullAccessUsageDescription": "Reads and writes Calendar events for the Apple Calendar MCP server.",
-            "NSRemindersUsageDescription": "Reads and writes Reminders for the Apple Calendar MCP server.",
-            "NSRemindersFullAccessUsageDescription": "Reads and writes Reminders for the Apple Calendar MCP server.",
-        }
-        descriptor, name = tempfile.mkstemp(prefix=".Info.", dir=plist_path.parent)
-        temporary = Path(name)
-        try:
-            with os.fdopen(descriptor, "wb") as stream:
-                plistlib.dump(plist_data, stream)
-            temporary.replace(plist_path)
-        finally:
-            temporary.unlink(missing_ok=True)
 
     def _map_helper_error(self, stdout_text: str, stderr_text: str) -> CalendarBridgeError:
         if stdout_text:
@@ -609,7 +590,7 @@ class CalendarBridge:
             return False
         return not bool(payload.get("can_read_events", False))
 
-    def _fallback_list_calendars(self) -> dict[str, object]:
+    def _fallback_list_calendars(self) -> dict[str, Any]:
         script = """
 function run(argv) {
   const app = Application("Calendar");
@@ -628,7 +609,7 @@ function run(argv) {
 """
         return self._run_jxa(script)
 
-    def _fallback_list_events(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, object]:
+    def _fallback_list_events(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, Any]:
         start = datetime.fromisoformat(start_iso)
         end = datetime.fromisoformat(end_iso)
         script = self._JXA_ID_HELPERS + self._JXA_ALARM_HELPERS + """
@@ -960,7 +941,7 @@ function eventRecord(cal, evt) {
 }
 """
 
-    def _fallback_get_event(self, event_id: str) -> dict[str, object]:
+    def _fallback_get_event(self, event_id: str) -> dict[str, Any]:
         script = self._JXA_FIND_EVENT + """
 function run(argv) {
   const app = Application("Calendar");
@@ -984,7 +965,7 @@ function run(argv) {
         location: str | None,
         all_day: bool,
         alarms: list[dict[str, object]] | None = None,
-    ) -> dict[str, object]:
+    ) -> dict[str, Any]:
         script = self._JXA_FIND_EVENT + """
 function run(argv) {
   const app = Application("Calendar");
@@ -1051,7 +1032,7 @@ function run(argv) {
         location: str | None,
         all_day: bool | None,
         alarms: list[dict[str, object]] | None = None,
-    ) -> dict[str, object]:
+    ) -> dict[str, Any]:
         fields = {
             "title": title,
             "calendar_id": calendar_id,
@@ -1130,7 +1111,7 @@ function run(argv) {
 """
         return self._run_jxa_event(script, event_id, json.dumps(fields), mutation=True)
 
-    def _fallback_delete_event(self, event_id: str) -> dict[str, object]:
+    def _fallback_delete_event(self, event_id: str) -> dict[str, Any]:
         script = self._JXA_FIND_EVENT + """
 function run(argv) {
   const app = Application("Calendar");
@@ -1144,7 +1125,7 @@ function run(argv) {
 """
         return self._run_jxa_event(script, event_id, mutation=True)
 
-    def _run_jxa_event(self, script: str, *args: str, mutation: bool = False) -> dict[str, object]:
+    def _run_jxa_event(self, script: str, *args: str, mutation: bool = False) -> dict[str, Any]:
         try:
             payload = self._run_jxa(script, *args, timeout=self._JXA_TIMEOUT_SECONDS)
         except CalendarBridgeError as error:
@@ -1181,12 +1162,12 @@ function run(argv) {
             )
         return payload
 
-    def _fallback_events_payload(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, object]:
+    def _fallback_events_payload(self, start_iso: str, end_iso: str, calendar_id: str | None = None, limit: int = 100) -> dict[str, Any]:
         if calendar_id:
             return self._fallback_list_events(start_iso, end_iso, calendar_id=calendar_id, limit=limit)
         return self._fallback_list_events_across_calendars(start_iso, end_iso, limit=limit)
 
-    def _fallback_list_events_across_calendars(self, start_iso: str, end_iso: str, limit: int = 100) -> dict[str, object]:
+    def _fallback_list_events_across_calendars(self, start_iso: str, end_iso: str, limit: int = 100) -> dict[str, Any]:
         seen_calendar_ids: set[str] = set()
         items: list[dict[str, object]] = []
         for calendar in self.list_calendars():
@@ -1228,7 +1209,7 @@ function run(argv) {
                 break
         return unique_items
 
-    def _run_jxa(self, script: str, *args: str, timeout: int = _JXA_TIMEOUT_SECONDS) -> dict[str, object]:
+    def _run_jxa(self, script: str, *args: str, timeout: int = _JXA_TIMEOUT_SECONDS) -> dict[str, Any]:
         try:
             completed = subprocess.run(
                 ["osascript", "-l", "JavaScript", "-e", script, "--", *args],
@@ -1281,7 +1262,7 @@ function run(argv) {
             )
         return payload
 
-    def _normalize_summary(self, raw_event: dict[str, object]) -> EventSummary:
+    def _normalize_summary(self, raw_event: dict[str, Any]) -> EventSummary:
         return EventSummary(
             event_id=str(raw_event.get("event_id", "")),
             title=str(raw_event.get("title", "")),

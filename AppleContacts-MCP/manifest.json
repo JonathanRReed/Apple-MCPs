@@ -31,6 +31,15 @@
       "python": ">=3.11"
     }
   },
+  "user_config": {
+    "contacts_safety_mode": {
+      "type": "string",
+      "title": "Contacts safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read and search contacts only. safe_manage: also create and update contacts. full_access: also delete contacts. This bundle's default is safe_manage. Sets APPLE_CONTACTS_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "safe_manage"
+    }
+  },
   "server": {
     "type": "uv",
     "entry_point": "server.py",
@@ -43,7 +52,7 @@
         "server.py"
       ],
       "env": {
-        "APPLE_CONTACTS_MCP_SAFETY_MODE": "safe_manage"
+        "APPLE_CONTACTS_MCP_SAFETY_MODE": "${user_config.contacts_safety_mode}"
       }
     }
   },

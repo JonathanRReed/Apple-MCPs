@@ -161,6 +161,9 @@ on run argv
     set toRaw to item 4 of argv
     set forwardBody to item 5 of argv
     set senderRaw to item 6 of argv
+    -- "false" leaves the forward open in Mail as an unsent draft for the user to review.
+    set sendNow to true
+    if (count of argv) ≥ 7 then set sendNow to ((item 7 of argv) is not "false")
 
     set listSeparator to ASCII character 29
     set fieldSeparator to ASCII character 31
@@ -231,13 +234,20 @@ on run argv
     end if
 
     tell application "Mail"
-        send forwardMessage
+        if sendNow then
+            send forwardMessage
+        else
+            -- Keep the compose window open; Mail autosaves it to Drafts.
+            try
+                save forwardMessage
+            end try
+        end if
 
         set subjectText to ""
         try
             set subjectText to my sanitizeText(subject of forwardMessage)
         end try
 
-        return my boolText(true) & fieldSeparator & subjectText & fieldSeparator & resolvedAccountLabel & recordSeparator
+        return my boolText(sendNow) & fieldSeparator & subjectText & fieldSeparator & resolvedAccountLabel & recordSeparator
     end tell
 end run

@@ -16,7 +16,7 @@ class Settings:
     allowed_lists: tuple[str, ...]
     log_level: str
     helper_source: Path
-    helper_binary: Path
+    helper_build_dir: Path
 
 
 def _parse_allowed_lists(value: str | None) -> tuple[str, ...]:
@@ -45,5 +45,7 @@ def load_settings() -> Settings:
         allowed_lists=_parse_allowed_lists(os.environ.get("APPLE_REMINDERS_MCP_ALLOWED_LISTS")),
         log_level=os.environ.get("APPLE_REMINDERS_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",
         helper_source=package_dir / "apple_pim_bridge.swift",
-        helper_binary=helper_build_dir / "apple-reminders-pim-bridge",
+        # The helper is compiled into a signed app bundle under this directory.
+        # See reminders_bridge.REMINDERS_HELPER_BUNDLE for why it needs bundle identity.
+        helper_build_dir=helper_build_dir,
     )

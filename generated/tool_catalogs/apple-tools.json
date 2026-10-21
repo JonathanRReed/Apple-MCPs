@@ -3036,7 +3036,7 @@
         "body: string (optional)",
         "from_account: string (optional)"
       ],
-      "description": "Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account.",
+      "description": "Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account. In full_access the forward is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result).",
       "domain": "apple",
       "example_calls": [
         {
@@ -3069,10 +3069,12 @@
         "body",
         "text",
         "specify",
-        "account"
+        "account",
+        "full",
+        "access"
       ],
       "title": "Forward Message",
-      "usage_intent": "Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account."
+      "usage_intent": "Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account. In full_access the forward is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result)."
     },
     {
       "aliases": [

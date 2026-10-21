@@ -31,6 +31,29 @@
       "python": ">=3.11"
     }
   },
+  "user_config": {
+    "notes_safety_mode": {
+      "type": "string",
+      "title": "Notes safety mode",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read and search notes only. safe_manage: also create, edit, move, and delete notes and folders. full_access: same as safe_manage. This bundle's default is full_access. Sets APPLE_NOTES_MCP_SAFETY_MODE.",
+      "required": false,
+      "default": "full_access"
+    },
+    "notes_allowed_accounts": {
+      "type": "string",
+      "title": "Allowed Notes accounts",
+      "description": "Optional comma-separated Notes account names the assistant may use. Leave empty for all accounts. Sets APPLE_NOTES_MCP_ALLOWED_ACCOUNTS.",
+      "required": false,
+      "default": ""
+    },
+    "notes_allowed_folders": {
+      "type": "string",
+      "title": "Allowed Notes folders",
+      "description": "Optional comma-separated Notes folder names the assistant may use. Leave empty for all folders. Sets APPLE_NOTES_MCP_ALLOWED_FOLDERS.",
+      "required": false,
+      "default": ""
+    }
+  },
   "server": {
     "type": "uv",
     "entry_point": "server.py",
@@ -43,7 +66,9 @@
         "server.py"
       ],
       "env": {
-        "APPLE_NOTES_MCP_SAFETY_MODE": "full_access"
+        "APPLE_NOTES_MCP_SAFETY_MODE": "${user_config.notes_safety_mode}",
+        "APPLE_NOTES_MCP_ALLOWED_ACCOUNTS": "${user_config.notes_allowed_accounts}",
+        "APPLE_NOTES_MCP_ALLOWED_FOLDERS": "${user_config.notes_allowed_folders}"
       }
     }
   },

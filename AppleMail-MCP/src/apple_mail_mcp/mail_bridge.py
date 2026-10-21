@@ -265,19 +265,22 @@ class AppleMailBridge:
         to: list[str],
         body: str = "",
         from_account: str | None = None,
+        send: bool = True,
     ) -> ForwardRecord:
         account, mailbox, apple_id = decode_message_id(message_id)
         raw = self._run_script(
             "forward_message.applescript",
-            [account, mailbox, apple_id, LIST_SEPARATOR.join(to), body, from_account or ""],
+            [account, mailbox, apple_id, LIST_SEPARATOR.join(to), body, from_account or "", "true" if send else "false"],
         )
         rows = _split_records(raw)
         if not rows or len(rows[0]) < 2:
             raise MailBridgeError("Forward payload was incomplete.")
         sent_flag, subject = rows[0][:2]
         resolved_from_account = _restore_text(rows[0][2]) if len(rows[0]) >= 3 and rows[0][2] else from_account
+        sent = _parse_bool(sent_flag)
         return ForwardRecord(
-            sent=_parse_bool(sent_flag),
+            sent=sent,
+            draft=not sent,
             subject=_restore_text(subject),
             to=to,
             from_account=resolved_from_account,

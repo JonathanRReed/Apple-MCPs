@@ -10,6 +10,7 @@ from pydantic import Field
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.safety import safety_mode_warning
 from apple_mcp_common.server import AppleMCPServer
 from apple_notes_mcp.config import load_settings
 from apple_notes_mcp.models import (
@@ -28,7 +29,7 @@ from apple_notes_mcp.models import (
     ToolError,
 )
 from apple_notes_mcp.notes_bridge import AppleNotesBridge, NotesBridgeError, build_bridge
-from apple_notes_mcp.permissions import SafetyError, ensure_action_allowed
+from apple_notes_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
 
 _NOTE_ID_DESCRIPTION = "note_id from notes_list_notes or notes_search_notes; pass it unchanged."
 _ACCOUNT_FILTER_DESCRIPTION = "Exact Notes account name from notes_list_accounts, for example iCloud. Omit to include all accounts."
@@ -188,6 +189,7 @@ def notes_health() -> HealthResponse:
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_mode),
         capabilities=_capabilities(),
     )
 

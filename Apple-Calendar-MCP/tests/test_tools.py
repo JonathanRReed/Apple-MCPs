@@ -514,3 +514,28 @@ def test_create_event_with_ambiguous_calendar_name_returns_candidates(monkeypatc
     assert result.error.error_code == "AMBIGUOUS_CALENDAR"
     assert "native-home-icloud" in result.error.message and "native-home-google" in result.error.message
     assert not [call for call in bridge.calls if call.get("method") == "create_event"]
+
+
+def test_calendar_health_names_the_app_macos_checks(monkeypatch) -> None:
+    monkeypatch.setenv("APPLE_CALENDAR_MCP_SAFETY_MODE", "safe_manage")
+    load_settings.cache_clear()
+
+    class UngrantedBridge(FakeBridge):
+        def calendar_access_status(self):
+            return {
+                "status": "denied",
+                "can_read_events": False,
+                "can_write_events": False,
+                "message": "macOS has not granted Calendar access.",
+                "suggestion": "Open System Settings > Privacy & Security > Calendars and turn on 'Apple Calendar MCP Helper'.",
+                "tcc_client": "Apple Calendar MCP Helper",
+                "helper_is_responsible": True,
+            }
+
+    monkeypatch.setattr(tools, "_bridge", lambda: UngrantedBridge())
+
+    result = tools.calendar_health()
+
+    assert result.access_status == "denied"
+    assert result.permission_client == "Apple Calendar MCP Helper"
+    assert "Privacy & Security > Calendars" in result.permission_suggestion

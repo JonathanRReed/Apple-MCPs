@@ -67,6 +67,9 @@ from apple_calendar_mcp.tools import (
     calendar_prepare_agenda_prompt,
     calendar_update_event,
 )
+from apple_calendar_mcp.tools import (
+    calendar_permission_guide as standalone_calendar_permission_guide,
+)
 from apple_calendar_mcp.tools import mcp as calendar_server
 from apple_contacts_mcp.models import ContactMethod, ContactResponse, CreateContactResponse, DeleteContactResponse, DuplicateContactListResponse
 from apple_contacts_mcp.models import ErrorResponse as ContactsErrorResponse
@@ -87,6 +90,9 @@ from apple_contacts_mcp.tools import (
 )
 from apple_contacts_mcp.tools import (
     contacts_delete_contact as _contacts_delete_contact,
+)
+from apple_contacts_mcp.tools import (
+    contacts_permission_guide as standalone_contacts_permission_guide,
 )
 from apple_contacts_mcp.tools import (
     contacts_update_contact as _contacts_update_contact,
@@ -304,6 +310,9 @@ from apple_reminders_mcp.tools import (
 )
 from apple_reminders_mcp.tools import (
     reminders_delete_list as _reminders_delete_list,
+)
+from apple_reminders_mcp.tools import (
+    reminders_permission_guide as standalone_reminders_permission_guide,
 )
 from apple_shortcuts_mcp.models import ErrorResponse as ShortcutsErrorResponse
 from apple_shortcuts_mcp.tools import mcp as shortcuts_server
@@ -948,31 +957,21 @@ def _filter_text(values: list[str], query: str | None = None, limit: int = 25) -
     return deduped[:limit]
 
 
+def _guide_from_standalone(guide: dict[str, Any], *extra_notes: str) -> PermissionGuideResponse:
+    return PermissionGuideResponse(
+        domain=guide["domain"],
+        can_prompt_in_app=guide["can_prompt_in_app"],
+        requires_manual_system_settings=guide["requires_manual_system_settings"],
+        steps=guide["steps"],
+        notes=[*guide.get("notes", []), *extra_notes],
+    )
+
+
 def _permission_guide(domain: str) -> PermissionGuideResponse:
     normalized = domain.strip().lower()
     guides = {
-        "calendar": PermissionGuideResponse(
-            domain="calendar",
-            can_prompt_in_app=True,
-            requires_manual_system_settings=False,
-            steps=[
-                "Call a Calendar read or write tool from the MCP server.",
-                "Approve the macOS Calendar access prompt when it appears.",
-                "If access was denied before, re-enable it in System Settings > Privacy & Security > Calendars.",
-            ],
-            notes=["Calendar access can usually trigger a system prompt on first use."],
-        ),
-        "reminders": PermissionGuideResponse(
-            domain="reminders",
-            can_prompt_in_app=True,
-            requires_manual_system_settings=False,
-            steps=[
-                "Call a Reminders read or write tool from the MCP server.",
-                "Approve the macOS Reminders access prompt when it appears.",
-                "If access was denied before, re-enable it in System Settings > Privacy & Security > Reminders.",
-            ],
-            notes=["Reminders access can usually trigger a system prompt on first use."],
-        ),
+        "calendar": _guide_from_standalone(standalone_calendar_permission_guide()),
+        "reminders": _guide_from_standalone(standalone_reminders_permission_guide()),
         "messages": PermissionGuideResponse(
             domain="messages",
             can_prompt_in_app=True,
@@ -984,17 +983,7 @@ def _permission_guide(domain: str) -> PermissionGuideResponse:
             ],
             notes=["Messages send access and history access are separate permissions.", "Full Disk Access cannot be requested programmatically."],
         ),
-        "contacts": PermissionGuideResponse(
-            domain="contacts",
-            can_prompt_in_app=True,
-            requires_manual_system_settings=False,
-            steps=[
-                "Call a Contacts read tool from the MCP server.",
-                "Approve the macOS Contacts access prompt when it appears.",
-                "If access was denied before, re-enable it in System Settings > Privacy & Security > Contacts.",
-            ],
-            notes=["Contacts lookups can resolve a recipient before sending through Apple Messages."],
-        ),
+        "contacts": _guide_from_standalone(standalone_contacts_permission_guide(), "Contacts lookups can resolve a recipient before sending through Apple Messages."),
         "mail": PermissionGuideResponse(
             domain="mail",
             can_prompt_in_app=True,
@@ -1710,7 +1699,7 @@ def apple_preview_archive_message(
     try:
         message = mail_get_message(message_id)
         if isinstance(message, MailErrorResponse):
-            return _apple_error_response(message.error_code, message.message, None)
+            return _apple_error_response(message.error_code, message.message, message.suggestion)
         preferences = _get_preferences()
         resolved, error = _resolve_archive_target(preferences, archive_mailbox=archive_mailbox, archive_account=archive_account, persist=False)
         if error is not None:
@@ -1833,7 +1822,7 @@ def apple_preview_follow_up_from_mail(
     try:
         message = mail_get_message(message_id)
         if isinstance(message, MailErrorResponse):
-            return _apple_error_response(message.error_code, message.message, None)
+            return _apple_error_response(message.error_code, message.message, message.suggestion)
         warnings: list[str] = []
         summary_parts: list[str] = [f"Capture follow-up from '{message.subject or message.message_id}'."]
         preferences = _get_preferences()
@@ -1925,7 +1914,7 @@ def apple_send_communication(
             from_account=effective_from_account,
         )
         if isinstance(result, MailErrorResponse):
-            return _apple_error_response(result.error_code, result.message, None)
+            return _apple_error_response(result.error_code, result.message, result.suggestion)
         action = _record_action(
             "send_communication",
             f"Sent an email to {plan.recommended_target}.",
@@ -1952,14 +1941,14 @@ def apple_archive_message(
         preferences = _get_preferences()
         message = mail_get_message(message_id)
         if isinstance(message, MailErrorResponse):
-            return _apple_error_response(message.error_code, message.message, None)
+            return _apple_error_response(message.error_code, message.message, message.suggestion)
         resolved, error = _resolve_archive_target(preferences, archive_mailbox=archive_mailbox, archive_account=archive_account)
         if error is not None:
             return error
         target_mailbox, target_account, _ = resolved
         result = mail_move_message(message_id=message_id, target_mailbox=target_mailbox, target_account=target_account)
         if isinstance(result, MailErrorResponse):
-            return _apple_error_response(result.error_code, result.message, None)
+            return _apple_error_response(result.error_code, result.message, result.suggestion)
         _record_action(
             "archive_message",
             f"Moved '{message.subject or message.message_id}' from {message.mailbox} to {target_mailbox}.",
@@ -2150,7 +2139,7 @@ def apple_capture_follow_up_from_mail(
     try:
         message = mail_get_message(message_id)
         if isinstance(message, MailErrorResponse):
-            return _apple_error_response(message.error_code, message.message, None)
+            return _apple_error_response(message.error_code, message.message, message.suggestion)
 
         reminder_payload: dict[str, Any] | None = None
         note_payload: dict[str, Any] | None = None

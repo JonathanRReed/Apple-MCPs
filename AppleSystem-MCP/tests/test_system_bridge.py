@@ -262,3 +262,44 @@ def test_gui_input_scripts_pause_after_frontmost_guard(monkeypatch) -> None:
     guard = script.index('if frontBundle is not targetBundle then error "GUI_TARGET_NOT_FRONTMOST"')
     assert script[guard + 1] == "delay 0.1"
     assert script.index("keystroke typedText") > guard + 1
+
+
+def test_gui_input_checks_named_bundle_id_before_resolving(monkeypatch) -> None:
+    # Live repro: a bundle id outside the allowlist for an app that wasn't
+    # running surfaced a raw System Events error instead of GUI_TARGET_NOT_ALLOWED.
+    from apple_system_mcp.config import load_settings
+
+    bridge = SystemBridge()
+    resolved: list[object] = []
+    monkeypatch.setattr(bridge, "_target_application", lambda **kwargs: resolved.append(kwargs))
+    try:
+        _allow_gui_apps(monkeypatch, "com.apple.TextEdit")
+        with pytest.raises(SystemBridgeError) as error:
+            bridge.gui_type_text("hi", bundle_id="com.apple.Safari")
+        assert error.value.error_code == "GUI_TARGET_NOT_ALLOWED"
+        assert "APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS" in (error.value.suggestion or "")
+    finally:
+        load_settings.cache_clear()
+    assert resolved == []
+
+
+def test_gui_input_reports_allowed_app_that_is_not_running(monkeypatch) -> None:
+    from apple_system_mcp.config import load_settings
+
+    bridge = SystemBridge()
+
+    def not_running(**kwargs):
+        raise SystemBridgeError(
+            "COMMAND_FAILED",
+            '178:248: execution error: System Events got an error: Can\u2019t get application process 1 whose bundle identifier = "com.apple.TextEdit". Invalid index. (-1719)',
+        )
+
+    monkeypatch.setattr(bridge, "_target_application", not_running)
+    try:
+        _allow_gui_apps(monkeypatch, "com.apple.TextEdit")
+        with pytest.raises(SystemBridgeError) as error:
+            bridge.gui_type_text("hi", bundle_id="com.apple.TextEdit")
+        assert error.value.error_code == "APP_NOT_RUNNING"
+        assert "system_open_application" in (error.value.suggestion or "")
+    finally:
+        load_settings.cache_clear()

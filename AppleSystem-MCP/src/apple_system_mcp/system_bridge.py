@@ -263,22 +263,42 @@ class SystemBridge:
             )
         if self._is_refused_target(application, bundle_id):
             raise self._refused_target_error((application or bundle_id or "").strip())
-        target_app = self._target_application(application=application, bundle_id=bundle_id)
+        allowed = load_settings().gui_allowed_apps
+        # A named bundle id is checked before System Events is asked about it, so an
+        # app that is not allow-listed gets this error even when it isn't running.
+        if bundle_id and bundle_id.strip().lower() not in allowed:
+            raise self._not_allowed_error(bundle_id.strip(), bundle_id.strip())
+        try:
+            target_app = self._target_application(application=application, bundle_id=bundle_id)
+        except SystemBridgeError as error:
+            # System Events reports a missing process as -1719 (invalid index) or -1728.
+            if any(marker in error.message for marker in ("(-1719)", "(-1728)", "get application process")):
+                target = (bundle_id or application or "").strip()
+                raise SystemBridgeError(
+                    "APP_NOT_RUNNING",
+                    f"'{target}' is not running, so GUI input cannot reach it.",
+                    "Open the app first (for example with system_open_application), bring the right window to the front, then retry.",
+                ) from error
+            raise
         # Checked again on the resolved identity: an alias such as "Shell" resolves to Terminal.
         if self._is_refused_target(target_app.name, target_app.bundle_id):
             raise self._refused_target_error(f"{target_app.name} ({target_app.bundle_id or 'no bundle id'})")
-        if not target_app.bundle_id or target_app.bundle_id.lower() not in load_settings().gui_allowed_apps:
-            bundle_value = target_app.bundle_id or "<bundle id>"
-            raise SystemBridgeError(
-                "GUI_TARGET_NOT_ALLOWED",
-                f"GUI input to '{target_app.name}' ({target_app.bundle_id or 'no bundle id'}) is not allowed because its bundle id "
-                "is not in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS.",
-                "GUI input is off unless the user allow-lists the app. Ask the user before enabling it. "
-                f"To allow it, {how_to_set(GUI_ALLOWED_APPS_ENV_VAR, bundle_value, GUI_ALLOWED_APPS_TITLE)}. "
-                "The value is a comma-separated list of bundle ids, for example com.apple.TextEdit,com.apple.Safari; "
-                "keep any ids already listed.",
-            )
+        if not target_app.bundle_id or target_app.bundle_id.lower() not in allowed:
+            raise self._not_allowed_error(target_app.name, target_app.bundle_id)
         return target_app
+
+    @staticmethod
+    def _not_allowed_error(name: str, bundle_id: str | None) -> SystemBridgeError:
+        bundle_value = bundle_id or "<bundle id>"
+        return SystemBridgeError(
+            "GUI_TARGET_NOT_ALLOWED",
+            f"GUI input to '{name}' ({bundle_id or 'no bundle id'}) is not allowed because its bundle id "
+            "is not in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS.",
+            "GUI input is off unless the user allow-lists the app. Ask the user before enabling it. "
+            f"To allow it, {how_to_set(GUI_ALLOWED_APPS_ENV_VAR, bundle_value, GUI_ALLOWED_APPS_TITLE)}. "
+            "The value is a comma-separated list of bundle ids, for example com.apple.TextEdit,com.apple.Safari; "
+            "keep any ids already listed.",
+        )
 
     def battery(self) -> BatteryStatus:
         raw = self._run("pmset", "-g", "batt")

@@ -13,7 +13,7 @@ async def system_gui_type_text(
 ) -> Any:
     """Type Text
 
-    Type text into the focused control of a named application. This is a GUI fallback tool. Requires a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code (Script Editor, Automator, Shortcuts, IDEs) are always refused.
+    Type text into the focused control of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed.
 
     Example:
         await system_gui_type_text(client, text='example_text', application='example_application')

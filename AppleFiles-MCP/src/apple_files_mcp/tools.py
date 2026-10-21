@@ -21,9 +21,10 @@ from apple_files_mcp.models import (
     RootsResponse,
     ToolError,
 )
-from apple_files_mcp.permissions import SafetyError, ensure_action_allowed
+from apple_files_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.safety import safety_mode_warning
 
 SERVER_INSTRUCTIONS = (
     "Use this server for file and folder access on macOS. "
@@ -142,6 +143,7 @@ def files_health() -> HealthResponse:
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_mode),
         allowed_roots=[str(path) for path in settings.allowed_roots],
         transport=settings.transport,
         capabilities=capabilities,

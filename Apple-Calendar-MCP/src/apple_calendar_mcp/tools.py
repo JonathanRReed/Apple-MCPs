@@ -10,10 +10,11 @@ from apple_calendar_mcp.alarm_validation import coerce_alarm_minutes, validate_a
 from apple_calendar_mcp.calendar_bridge import CalendarBridge, CalendarBridgeError, match_calendar
 from apple_calendar_mcp.config import load_settings
 from apple_calendar_mcp.models import CalendarInfo, CalendarListResponse, DeleteEventResponse, ErrorResponse, EventListResponse, EventResponse, EventSummary, HealthResponse, ToolError
-from apple_calendar_mcp.permissions import SafetyError, ensure_action_allowed
+from apple_calendar_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
 from apple_calendar_mcp.utils import parse_iso_datetime
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.safety import safety_mode_warning
 
 _CALENDAR_ID_DESCRIPTION = (
     "Select the calendar by name and source in calendar_list_calendars, then pass its calendar_id unchanged. "
@@ -218,6 +219,7 @@ def calendar_health() -> HealthResponse:
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_mode),
         write_allowed_calendars=list(settings.write_allowed_calendars),
         capabilities=capabilities,
         helper_available=helper_available,

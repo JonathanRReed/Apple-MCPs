@@ -211,3 +211,27 @@ def test_search_first_mcp_surface_exposes_discovery_and_full_catalog() -> None:
 
 def teardown_function():
     tools.load_settings.cache_clear()
+
+
+def test_files_health_warns_when_safety_value_is_invalid(monkeypatch):
+    monkeypatch.setenv("APPLE_FILES_MCP_SAFETY_MODE", "readonly")
+    tools.load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: StubBridge())
+    try:
+        result = tools.files_health()
+    finally:
+        tools.load_settings.cache_clear()
+    assert result.safety_mode == "safe_readonly"
+    assert "APPLE_FILES_MCP_SAFETY_MODE" in result.safety_mode_warning
+    assert "'readonly'" in result.safety_mode_warning
+
+
+def test_files_health_has_no_safety_warning_for_valid_value(monkeypatch):
+    monkeypatch.setenv("APPLE_FILES_MCP_SAFETY_MODE", "safe_manage")
+    tools.load_settings.cache_clear()
+    monkeypatch.setattr(tools, "_bridge", lambda: StubBridge())
+    try:
+        result = tools.files_health()
+    finally:
+        tools.load_settings.cache_clear()
+    assert result.safety_mode_warning is None

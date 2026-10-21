@@ -27,6 +27,7 @@ class HealthResponse(BaseModel):
     server_name: str
     version: str
     safety_mode: str
+    safety_mode_warning: str | None = Field(default=None, description="Set when the configured safety value was invalid or blank and the server fell back to a safer mode")
     capabilities: MessagesCapabilities
     history_access: bool
     automation_access: bool

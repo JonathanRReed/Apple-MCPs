@@ -20,9 +20,10 @@ from apple_contacts_mcp.models import (
     ResolvedRecipientResponse,
     ToolError,
 )
-from apple_contacts_mcp.permissions import SafetyError, ensure_action_allowed
+from apple_contacts_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.safety import safety_mode_warning
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Contacts on macOS. "
@@ -106,6 +107,7 @@ def contacts_health() -> HealthResponse:
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_mode),
         capabilities=capabilities,
         contacts_accessible=accessible,
         permission_status=("authorized" if accessible else {

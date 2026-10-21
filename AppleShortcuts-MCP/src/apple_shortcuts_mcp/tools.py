@@ -8,9 +8,10 @@ from mcp.types import Annotations, ToolAnnotations
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.safety import safety_mode_warning
 from apple_shortcuts_mcp.config import Settings, load_settings
 from apple_shortcuts_mcp.models import ErrorResponse, HealthResponse, ShortcutFolderListResponse, ShortcutListResponse, ShortcutPermissionStatus, ShortcutRunResponse, ToolError, ViewShortcutResponse
-from apple_shortcuts_mcp.permissions import SafetyError, ensure_action_allowed
+from apple_shortcuts_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
 from apple_shortcuts_mcp.shortcuts_bridge import ShortcutsBridge, ShortcutsBridgeError
 
 SERVER_INSTRUCTIONS = (
@@ -46,6 +47,7 @@ def health_tool(settings: Settings) -> HealthResponse:
         server_name=settings.server_name,
         version=settings.version,
         safety_mode=settings.safety_mode,
+        safety_mode_warning=safety_mode_warning(SAFETY_ENV_VAR, settings.safety_mode),
         transport=settings.transport,
         capabilities=[
             "list_shortcuts",

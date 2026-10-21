@@ -284,3 +284,25 @@ def test_main_uses_streamable_http(monkeypatch):
         "stateless_http": False,
         "log_level": "DEBUG",
     }
+
+
+def test_system_health_warns_when_safety_value_is_invalid(monkeypatch):
+    monkeypatch.setenv("APPLE_SYSTEM_MCP_SAFETY_MODE", "readonly")
+    tools.load_settings.cache_clear()
+    try:
+        result = tools.system_health()
+    finally:
+        tools.load_settings.cache_clear()
+    assert result.safety_mode == "safe_readonly"
+    assert "APPLE_SYSTEM_MCP_SAFETY_MODE" in result.safety_mode_warning
+    assert "'readonly'" in result.safety_mode_warning
+
+
+def test_system_health_has_no_safety_warning_for_valid_value(monkeypatch):
+    monkeypatch.setenv("APPLE_SYSTEM_MCP_SAFETY_MODE", "safe_manage")
+    tools.load_settings.cache_clear()
+    try:
+        result = tools.system_health()
+    finally:
+        tools.load_settings.cache_clear()
+    assert result.safety_mode_warning is None

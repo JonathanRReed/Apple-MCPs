@@ -1,4 +1,7 @@
 from apple_contacts_mcp.config import load_settings
+from apple_mcp_common.safety import safety_block_suggestion
+
+SAFETY_ENV_VAR = "APPLE_CONTACTS_MCP_SAFETY_MODE"
 
 READ_ACTIONS = frozenset(
     {
@@ -42,16 +45,16 @@ def ensure_action_allowed(action: str) -> None:
         if settings.safety_mode == "safe_readonly":
             raise SafetyError(
                 "WRITE_BLOCKED",
-                f"Action '{action}' is blocked in safety mode '{settings.safety_mode}'.",
-                "Switch to safe_manage or full_access to create/update contacts.",
+                f"Action '{action}' is blocked because {SAFETY_ENV_VAR} is '{settings.safety_mode}'.",
+                safety_block_suggestion(SAFETY_ENV_VAR, "safe_manage", settings.safety_mode),
             )
         return
     if action in FULL_ACCESS_ACTIONS:
         if settings.safety_mode != "full_access":
             raise SafetyError(
                 "WRITE_BLOCKED",
-                f"Action '{action}' requires full_access mode (current: '{settings.safety_mode}').",
-                "Switch to full_access to delete contacts.",
+                f"Action '{action}' requires {SAFETY_ENV_VAR}=full_access (current: '{settings.safety_mode}').",
+                safety_block_suggestion(SAFETY_ENV_VAR, "full_access", settings.safety_mode),
             )
         return
     raise SafetyError(

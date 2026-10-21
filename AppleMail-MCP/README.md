@@ -151,6 +151,9 @@ Restart the MCP client after upgrading. A fix merged on GitHub is not available 
 - Use `mail_archive_thread` when the user wants thread-level cleanup and Archive is the intended mailbox.
 - If the user could mean text or email, ask once before choosing Messages or Mail.
 - When Mail must send from a specific identity, pass the exact sender email in `from_account`.
+- `from_account` is applied through Mail's own `sender` property (`Full Name <address>`, with the name quoted when it contains a comma or quote), which needs no extra macOS permissions. Only if Mail does not accept it does the server fall back to picking the From pop-up via System Events, which additionally needs Automation consent for System Events and Accessibility for the process running the server.
+- Every AppleScript call is bounded by `APPLE_MAIL_MCP_SCRIPT_TIMEOUT_SECONDS` (whole seconds, default `120`, minimum `5`; an invalid or smaller value uses the default) so a pending macOS consent prompt surfaces as an error instead of a hung request. The default leaves room for slow but legitimate searches: a subject/sender search of a 4,900-message Exchange mailbox took about 56 seconds.
+- If `mail_send_message`, `mail_reply_message`, `mail_reply_latest_in_thread` or a sending `mail_forward_message` times out, the result is `SEND_STATUS_UNKNOWN`, not a failure: Mail may already have sent it. Check the account's Sent mailbox (`mail_search_messages` with `mailbox` set to `Sent Messages`, or the name `mail_list_mailboxes` shows, such as `Sent Items`) before retrying, or the message can go out twice.
 
 ## Related
 

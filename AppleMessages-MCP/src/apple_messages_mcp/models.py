@@ -45,6 +45,9 @@ class ParticipantRecord(BaseModel):
     address: str
     service: str | None = None
     uncanonicalized_address: str | None = None
+    # Filled by Apple-Tools-MCP from Contacts; the standalone server leaves them unset.
+    display_name: str | None = None
+    contact_id: str | None = None
 
 
 class AttachmentRecord(BaseModel):
@@ -87,22 +90,30 @@ class ConversationListResponse(BaseModel):
     ok: Literal[True] = True
     conversations: list[ConversationSummary]
     count: int
+    # Set by Apple-Tools-MCP: ok, permission_denied or unavailable. Unset in the standalone server.
+    contact_names_status: str | None = None
 
 
 class ConversationResponse(BaseModel):
     ok: Literal[True] = True
     conversation: ConversationRecord
+    # Set by Apple-Tools-MCP: ok, permission_denied or unavailable. Unset in the standalone server.
+    contact_names_status: str | None = None
 
 
 class MessageResponse(BaseModel):
     ok: Literal[True] = True
     message: MessageRecord
+    # Set by Apple-Tools-MCP: ok, permission_denied or unavailable. Unset in the standalone server.
+    contact_names_status: str | None = None
 
 
 class MessageSearchResponse(BaseModel):
     ok: Literal[True] = True
     messages: list[MessageRecord]
     count: int
+    # Set by Apple-Tools-MCP: ok, permission_denied or unavailable. Unset in the standalone server.
+    contact_names_status: str | None = None
 
 
 class AttachmentListResponse(BaseModel):

@@ -10,6 +10,7 @@
 //   permission_check
 //   list_contacts LIMIT OFFSET
 //   search_contacts QUERY LIMIT
+//   lookup_handles HANDLES_JSON   (JSON array of phone numbers / email addresses)
 //   get_contact ID
 //   create_contact FIRST LAST ORG PHONES EMAILS NOTE
 //   update_contact ID FIRST LAST ORG PHONES EMAILS NOTE
@@ -280,6 +281,46 @@ func displayName(_ contact: CNContact) -> String {
     return formatted.isEmpty ? contact.organizationName : formatted
 }
 
+func digitsOnly(_ value: String) -> String {
+    return value.filter { $0.isNumber }
+}
+
+/// Contacts that could own one of the given handles. Emails must match exactly
+/// (ignoring case). A phone is a candidate when its digits equal the handle's, or
+/// when both have at least 7 digits and the same last 7 digits (a country code or
+/// trunk 0 in front does not matter here). The Python bridge applies the strict
+/// country-code rule to these candidates, so this only has to be cheap and
+/// complete, never precise.
+func candidateOwners(of handles: [String]) -> [CNContact] {
+    var emails = Set<String>()
+    var exactPhones = Set<String>()
+    var phoneTails = Set<String>()
+    for handle in handles {
+        let trimmed = handle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.contains("@") {
+            emails.insert(trimmed.lowercased())
+        } else {
+            let digits = digitsOnly(trimmed)
+            if digits.isEmpty { continue }
+            exactPhones.insert(digits)
+            if digits.count >= 7 { phoneTails.insert(String(digits.suffix(7))) }
+        }
+    }
+    if emails.isEmpty && exactPhones.isEmpty { return [] }
+    return allContacts().filter { contact in
+        for email in contact.emailAddresses where emails.contains((email.value as String).lowercased()) {
+            return true
+        }
+        for phone in contact.phoneNumbers {
+            let stored = digitsOnly(phone.value.stringValue)
+            if stored.isEmpty { continue }
+            if exactPhones.contains(stored) { return true }
+            if stored.count >= 7 && phoneTails.contains(String(stored.suffix(7))) { return true }
+        }
+        return false
+    }
+}
+
 func personJSON(_ contact: CNContact) -> [String: Any] {
     let phones = contact.phoneNumbers.map { ["label": displayLabel($0.label), "value": $0.value.stringValue] }
     let emails = contact.emailAddresses.map { ["label": displayLabel($0.label), "value": $0.value as String] }
@@ -379,6 +420,14 @@ struct NativeContactsBridge {
                     || $0.organizationName.range(of: query, options: .caseInsensitive) != nil
             }
             emit(["items": matches.prefix(limit).map(personJSON)])
+
+        case "lookup_handles":
+            guard let data = argument(args, 0).data(using: .utf8),
+                  let parsed = try? JSONSerialization.jsonObject(with: data),
+                  let handles = parsed as? [String] else {
+                fail("HANDLES_JSON must be a JSON array of strings.")
+            }
+            emit(["items": candidateOwners(of: handles).map(personJSON)])
 
         case "get_contact":
             if let contact = findContact(argument(args, 0)) {

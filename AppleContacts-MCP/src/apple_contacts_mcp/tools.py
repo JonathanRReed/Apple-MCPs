@@ -17,6 +17,7 @@ from apple_contacts_mcp.models import (
     DeleteContactResponse,
     DuplicateContactListResponse,
     ErrorResponse,
+    HandleLookupResponse,
     HealthResponse,
     ResolvedRecipientResponse,
     ToolError,
@@ -225,6 +226,23 @@ def contacts_get_contact(contact_id: str) -> ContactResponse | ErrorResponse:
         return ContactResponse(contact=_bridge().get_contact(contact_id))
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except ContactsBridgeError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+def contacts_lookup_handles(handles: list[str]) -> HandleLookupResponse | ErrorResponse:
+    """Owners of Messages handles, for callers that already hold the handles (not an MCP tool).
+
+    Returns PERMISSION_DENIED or AUTHORIZATION_UNKNOWN without reading Contacts when
+    access was never granted, so a passive read elsewhere never raises a macOS prompt.
+    """
+    bridge = _bridge()
+    accessible, diagnostic = bridge.permission_diagnostic()
+    if not accessible:
+        error = diagnostic or ContactsBridgeError("AUTHORIZATION_UNKNOWN", "Contacts authorization has not been granted.")
+        return _error_response(error.error_code, error.message, error.suggestion)
+    try:
+        return HandleLookupResponse(contacts=bridge.lookup_handles(handles))
     except ContactsBridgeError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 

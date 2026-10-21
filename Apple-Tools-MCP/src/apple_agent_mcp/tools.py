@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from apple_agent_mcp.bootstrap import ensure_domain_paths
 from apple_agent_mcp.config import load_settings
 from apple_agent_mcp.conformance import enable_conformance_mode
+from apple_agent_mcp.contact_names import ContactNameResolver, annotate_conversations, annotate_messages
 from apple_agent_mcp.models import (
     ActionHistoryResponse,
     ActionPreviewResponse,
@@ -77,6 +78,7 @@ from apple_contacts_mcp.tools import (
     contacts_get_contact,
     contacts_health,
     contacts_list_contacts,
+    contacts_lookup_handles,
     contacts_prepare_message_recipient_prompt,
     contacts_resolve_message_recipient,
     contacts_search_contacts,
@@ -225,19 +227,22 @@ from apple_maps_mcp.tools import (
 from apple_maps_mcp.tools import (
     maps_permission_guide as standalone_maps_permission_guide,
 )
-from apple_messages_mcp.models import ConversationResponse, SendResponse
+from apple_messages_mcp.models import (
+    ConversationListResponse,
+    ConversationResponse,
+    MessageResponse,
+    MessageSearchResponse,
+    SendResponse,
+)
 from apple_messages_mcp.models import ErrorResponse as MessagesErrorResponse
 from apple_messages_mcp.models import ToolError as MessagesToolError
 from apple_messages_mcp.tools import (
     messages_conversation_resource,
     messages_draft_reply_prompt,
-    messages_get_message,
     messages_health,
     messages_list_attachments,
-    messages_list_conversations,
     messages_recent_resource,
     messages_reply_in_conversation,
-    messages_search_messages,
     messages_send_message,
     messages_summarize_thread_prompt,
     messages_triage_unread_prompt,
@@ -245,6 +250,15 @@ from apple_messages_mcp.tools import (
 )
 from apple_messages_mcp.tools import (
     messages_get_conversation as _messages_get_conversation,
+)
+from apple_messages_mcp.tools import (
+    messages_get_message as _messages_get_message,
+)
+from apple_messages_mcp.tools import (
+    messages_list_conversations as _messages_list_conversations,
+)
+from apple_messages_mcp.tools import (
+    messages_search_messages as _messages_search_messages,
 )
 from apple_messages_mcp.tools import (
     messages_send_attachment as _messages_send_attachment,
@@ -2896,12 +2910,51 @@ def apple_overview() -> AppleOverviewResponse:
     return AppleOverviewResponse(overview=payload)
 
 
+_CONTACT_NAMES = ContactNameResolver(lambda handles: contacts_lookup_handles(handles))
+
+
+def messages_list_conversations(
+    limit: int | str = 25, offset: int | str = 0, unread_only: bool = False
+) -> ConversationListResponse | MessagesErrorResponse:
+    response = _messages_list_conversations(limit=limit, offset=offset, unread_only=unread_only)
+    if isinstance(response, ConversationListResponse):
+        response.contact_names_status = annotate_conversations(response.conversations, _CONTACT_NAMES)
+    return response
+
+
 def messages_get_conversation(chat_id: str, limit: int | str = 50, offset: int | str = 0) -> ConversationResponse | MessagesErrorResponse:
-    return _messages_get_conversation(
+    response = _messages_get_conversation(
         chat_id=chat_id,
         limit=_coerce_int_arg("limit", limit, minimum=1),
         offset=_coerce_int_arg("offset", offset, minimum=0),
     )
+    if isinstance(response, ConversationResponse):
+        response.contact_names_status = annotate_conversations([response.conversation], _CONTACT_NAMES)
+    return response
+
+
+def messages_search_messages(
+    query: str,
+    chat_id: str | None = None,
+    sender: str | None = None,
+    start_iso: str | None = None,
+    end_iso: str | None = None,
+    limit: int | str = 50,
+    offset: int | str = 0,
+) -> MessageSearchResponse | MessagesErrorResponse:
+    response = _messages_search_messages(
+        query=query, chat_id=chat_id, sender=sender, start_iso=start_iso, end_iso=end_iso, limit=limit, offset=offset
+    )
+    if isinstance(response, MessageSearchResponse):
+        response.contact_names_status = annotate_messages(response.messages, _CONTACT_NAMES)
+    return response
+
+
+def messages_get_message(message_id: str) -> MessageResponse | MessagesErrorResponse:
+    response = _messages_get_message(message_id=message_id)
+    if isinstance(response, MessageResponse):
+        response.contact_names_status = annotate_messages([response.message], _CONTACT_NAMES)
+    return response
 
 
 @mcp.completion()

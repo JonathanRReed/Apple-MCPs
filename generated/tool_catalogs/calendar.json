@@ -379,7 +379,7 @@
       ],
       "name": "calendar_update_event",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "calendar_update_event",
       "tags": [
         "calendar",

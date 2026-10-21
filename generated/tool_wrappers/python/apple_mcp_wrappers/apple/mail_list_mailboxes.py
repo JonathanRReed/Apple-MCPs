@@ -9,9 +9,9 @@ async def mail_list_mailboxes(
     client: MCPToolCaller,
     account: str | None = None
 ) -> Any:
-    """Mail List Mailboxes
+    """List Mailboxes
 
-    Delegated Apple domain tool 'mail_list_mailboxes' exposed through Apple-Tools-MCP.
+    List Apple Mail mailboxes, optionally filtered by account.
 
     Example:
         await mail_list_mailboxes(client, account='example_account')

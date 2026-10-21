@@ -15,9 +15,9 @@ async def messages_search_messages(
     limit: int | None = None,
     offset: int | None = None
 ) -> Any:
-    """Messages Search Messages
+    """Search Messages
 
-    Delegated Apple domain tool 'messages_search_messages' exposed through Apple-Tools-MCP.
+    Search Apple Messages text history.
 
     Example:
         await messages_search_messages(client, query='find apple', chat_id='example_chat_id')

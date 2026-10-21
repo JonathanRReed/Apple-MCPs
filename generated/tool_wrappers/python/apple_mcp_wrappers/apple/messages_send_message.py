@@ -11,9 +11,9 @@ async def messages_send_message(
     text: str,
     service_name: str | None = None
 ) -> Any:
-    """Messages Send Message
+    """Send Message
 
-    Delegated Apple domain tool 'messages_send_message' exposed through Apple-Tools-MCP.
+    Send a new message through Messages.app. Sends as iMessage unless service_name is set: SMS or RCS go through the iPhone's carrier and need Text Message Forwarding enabled for this Mac.
 
     Example:
         await messages_send_message(client, recipient='Example Person', text='example_text')

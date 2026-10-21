@@ -9,9 +9,9 @@ async def system_set_show_all_extensions(
     client: MCPToolCaller,
     enabled: bool
 ) -> Any:
-    """System Set Show All Extensions
+    """Set Show All Extensions
 
-    Delegated Apple domain tool 'system_set_show_all_extensions' exposed through Apple-Tools-MCP.
+    Show or hide filename extensions in macOS.
 
     Example:
         await system_set_show_all_extensions(client, enabled=False)

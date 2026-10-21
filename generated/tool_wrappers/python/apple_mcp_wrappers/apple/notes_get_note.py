@@ -9,9 +9,9 @@ async def notes_get_note(
     client: MCPToolCaller,
     note_id: str
 ) -> Any:
-    """Notes Get Note
+    """Get Note
 
-    Delegated Apple domain tool 'notes_get_note' exposed through Apple-Tools-MCP.
+    Fetch full details for an Apple Notes note by note_id.
 
     Example:
         await notes_get_note(client, note_id='example_note_id')

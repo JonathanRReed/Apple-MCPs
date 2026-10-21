@@ -12,9 +12,9 @@ async def mail_reply_message(
     reply_all: bool | None = None,
     from_account: str | None = None
 ) -> Any:
-    """Mail Reply Message
+    """Reply to Message
 
-    Delegated Apple domain tool 'mail_reply_message' exposed through Apple-Tools-MCP.
+    Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account.
 
     Example:
         await mail_reply_message(client, message_id='example_message_id', body='example_body')

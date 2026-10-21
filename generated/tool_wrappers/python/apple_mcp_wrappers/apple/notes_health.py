@@ -10,7 +10,7 @@ async def notes_health(
 ) -> Any:
     """Notes Health
 
-    Delegated Apple domain tool 'notes_health' exposed through Apple-Tools-MCP.
+    Report the active Apple Notes MCP configuration.
 
     Example:
         await notes_health(client)

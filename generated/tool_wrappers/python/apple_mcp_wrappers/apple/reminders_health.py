@@ -10,7 +10,7 @@ async def reminders_health(
 ) -> Any:
     """Reminders Health
 
-    Delegated Apple domain tool 'reminders_health' exposed through Apple-Tools-MCP.
+    Report the active Apple Reminders MCP server configuration.
 
     Example:
         await reminders_health(client)

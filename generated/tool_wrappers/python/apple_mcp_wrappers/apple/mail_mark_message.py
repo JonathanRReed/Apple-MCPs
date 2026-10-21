@@ -10,9 +10,9 @@ async def mail_mark_message(
     message_id: str,
     is_read: bool
 ) -> Any:
-    """Mail Mark Message
+    """Mark Message Read/Unread
 
-    Delegated Apple domain tool 'mail_mark_message' exposed through Apple-Tools-MCP.
+    Set the read status of an email message. Pass is_read=true to mark as read, is_read=false to mark as unread.
 
     Example:
         await mail_mark_message(client, message_id='example_message_id', is_read=False)

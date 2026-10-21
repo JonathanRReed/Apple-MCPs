@@ -10,9 +10,9 @@ async def files_set_tags(
     path: str,
     tags: list[Any]
 ) -> Any:
-    """Files Set Tags
+    """Set Tags
 
-    Delegated Apple domain tool 'files_set_tags' exposed through Apple-Tools-MCP.
+    Replace Finder tags for a file or folder. Requires safe_manage or full_access safety mode.
 
     Example:
         await files_set_tags(client, path='/path/to/item', tags=[])

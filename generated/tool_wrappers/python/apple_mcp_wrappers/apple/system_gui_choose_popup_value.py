@@ -13,9 +13,9 @@ async def system_gui_choose_popup_value(
     application: str | None = None,
     bundle_id: str | None = None
 ) -> Any:
-    """System Gui Choose Popup Value
+    """Choose Pop-Up Value
 
-    Delegated Apple domain tool 'system_gui_choose_popup_value' exposed through Apple-Tools-MCP.
+    Choose a value from a named pop-up button in the frontmost window. This is a GUI fallback tool.
 
     Example:
         await system_gui_choose_popup_value(client, label='example_label', value='example_value')

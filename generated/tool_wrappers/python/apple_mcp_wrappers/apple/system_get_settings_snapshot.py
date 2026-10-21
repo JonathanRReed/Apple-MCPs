@@ -8,9 +8,9 @@ from .client import MCPToolCaller, call_tool_json
 async def system_get_settings_snapshot(
     client: MCPToolCaller
 ) -> Any:
-    """System Get Settings Snapshot
+    """Get Settings Snapshot
 
-    Delegated Apple domain tool 'system_get_settings_snapshot' exposed through Apple-Tools-MCP.
+    Return a combined read-only snapshot of appearance, accessibility, Dock, and Finder settings.
 
     Example:
         await system_get_settings_snapshot(client)

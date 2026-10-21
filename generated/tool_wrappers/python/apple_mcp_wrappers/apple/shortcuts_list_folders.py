@@ -8,9 +8,9 @@ from .client import MCPToolCaller, call_tool_json
 async def shortcuts_list_folders(
     client: MCPToolCaller
 ) -> Any:
-    """Shortcuts List Folders
+    """List Shortcut Folders
 
-    Delegated Apple domain tool 'shortcuts_list_folders' exposed through Apple-Tools-MCP.
+    List Apple Shortcuts folders.
 
     Example:
         await shortcuts_list_folders(client)

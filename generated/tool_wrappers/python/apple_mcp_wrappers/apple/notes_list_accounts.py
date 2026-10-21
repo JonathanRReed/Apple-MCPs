@@ -8,9 +8,9 @@ from .client import MCPToolCaller, call_tool_json
 async def notes_list_accounts(
     client: MCPToolCaller
 ) -> Any:
-    """Notes List Accounts
+    """List Accounts
 
-    Delegated Apple domain tool 'notes_list_accounts' exposed through Apple-Tools-MCP.
+    List Apple Notes accounts.
 
     Example:
         await notes_list_accounts(client)

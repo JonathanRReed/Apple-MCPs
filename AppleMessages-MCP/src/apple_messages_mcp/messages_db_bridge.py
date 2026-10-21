@@ -193,15 +193,14 @@ class MessagesDBBridge:
             # ("NSString", "__kIMMessagePartAttributeName", ...) would match raw
             # byte searches, so blob-only rows are checked against the decoded
             # text inside the query. That keeps LIMIT/OFFSET applied to genuine
-            # matches. For ASCII queries a cheap instr() prefilter (NUL-safe,
-            # unlike LIKE) skips decoding rows that cannot match.
+            # matches.
             body_col = self._body_column(conn)
             conn.create_function(_BODY_MATCH_FUNCTION, 2, _body_contains, deterministic=True)
+            # No byte-level prefilter: case folding can match text whose bytes
+            # differ from the query (STRASSE finds Straße), so only the decoded,
+            # case-folded comparison decides.
             body_clause = f"{_BODY_MATCH_FUNCTION}({body_col}, ?)"
             body_params: list[object] = [query]
-            if query.isascii():
-                body_clause = f"instr(lower(CAST({body_col} AS TEXT)), lower(?)) > 0 AND {body_clause}"
-                body_params.insert(0, query)
             clauses = [
                 "(COALESCE(m.text, '') LIKE ? OR COALESCE(m.subject, '') LIKE ?"
                 f" OR (COALESCE(m.text, '') = '' AND {body_col} IS NOT NULL AND {body_clause}))"

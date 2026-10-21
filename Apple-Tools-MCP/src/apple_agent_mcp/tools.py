@@ -46,7 +46,7 @@ from apple_agent_mcp.models import (
 )
 from apple_agent_mcp.state import StateStoreError, load_action_history, load_preferences, save_action_history, save_preferences
 from apple_mcp_common.discovery import install_search_first_discovery
-from apple_mcp_common.runtime import notify_resource_updated, notify_resources_changed, require_loopback_host
+from apple_mcp_common.runtime import notify_resource_updated, notify_resources_changed, python_log_level, require_loopback_host
 from apple_mcp_common.server import AppleMCPServer
 
 ensure_domain_paths()
@@ -3628,7 +3628,7 @@ def _mcp_log_level(value: str) -> _McpLogLevel:
 
 def main() -> None:
     settings = load_settings()
-    logging.basicConfig(level=getattr(logging, settings.log_level, logging.INFO))
+    logging.basicConfig(level=python_log_level(settings.log_level))
     conformance_value = os.environ.get("APPLE_AGENT_MCP_CONFORMANCE_MODE", "").strip().lower()
     conformance_mode = conformance_value in {"1", "true", "yes", "on", "legacy"}
     if conformance_mode:

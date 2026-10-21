@@ -9,7 +9,7 @@ from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnot
 from pydantic import Field
 
 from apple_mcp_common.discovery import install_search_first_discovery
-from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
+from apple_mcp_common.runtime import notify_resources_changed, python_log_level, require_loopback_host
 from apple_mcp_common.safety import safety_mode_warning
 from apple_mcp_common.server import AppleMCPServer
 from apple_shortcuts_mcp.config import Settings, load_settings
@@ -35,7 +35,7 @@ mcp = AppleMCPServer("Apple Shortcuts MCP", instructions=SERVER_INSTRUCTIONS, ve
 
 
 def configure_logging(settings: Settings) -> None:
-    logging.basicConfig(level=getattr(logging, settings.log_level, logging.INFO))
+    logging.basicConfig(level=python_log_level(settings.log_level))
 
 
 def _bridge() -> ShortcutsBridge:

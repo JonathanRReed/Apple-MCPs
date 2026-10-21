@@ -261,3 +261,18 @@ def test_legacy_resource_notifications_cross_http_get_stream() -> None:
     finally:
         process.terminate()
         process.wait(timeout=5)
+
+
+def test_python_log_level_only_accepts_real_level_names() -> None:
+    # Release review: getattr(logging, "BASIC_FORMAT") is a format string, and
+    # passing it to basicConfig crashed server startup.
+    import logging
+
+    from apple_mcp_common.runtime import python_log_level
+
+    assert python_log_level("debug") == logging.DEBUG
+    assert python_log_level(" warn ") == logging.WARNING
+    assert python_log_level("BASIC_FORMAT") == logging.INFO
+    assert python_log_level("verbose") == logging.INFO
+    assert python_log_level(None) == logging.INFO
+    logging.basicConfig(level=python_log_level("BASIC_FORMAT"))

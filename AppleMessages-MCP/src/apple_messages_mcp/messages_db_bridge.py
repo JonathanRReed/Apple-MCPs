@@ -10,9 +10,11 @@ APPLE_EPOCH = datetime(2001, 1, 1, tzinfo=UTC)
 
 _NSSTRING_MARKER = b"NSString"
 _TYPEDSTREAM_STRING_START = b"\x01+"
+_OBJECT_REPLACEMENT_CHAR = "\ufffc"
+_BODY_MATCH_FUNCTION = "apple_messages_body_contains"
 
 
-def decode_attributed_body(blob: bytes | None) -> str | None:
+def decode_attributed_body(blob: object) -> str | None:
     """Return the plain text stored in a Messages ``attributedBody`` blob.
 
     Recent macOS versions often leave ``message.text`` NULL and keep the body
@@ -20,10 +22,17 @@ def decode_attributed_body(blob: bytes | None) -> str | None:
     NSArchiver (``typedstream``). The string follows the first ``NSString``
     class marker as ``0x01 '+'`` and a length: one byte, or ``0x81`` plus a
     little-endian uint16, or ``0x82`` plus a little-endian uint32, then UTF-8.
+    Attachment placeholders (U+FFFC) are dropped; a body with nothing else
+    returns None.
     """
     if not blob:
         return None
-    data = bytes(blob)
+    if isinstance(blob, str):
+        data = blob.encode("utf-8", errors="ignore")
+    elif isinstance(blob, (bytes, bytearray, memoryview)):
+        data = bytes(blob)
+    else:
+        return None
     marker = data.find(_NSSTRING_MARKER)
     if marker < 0:
         return None
@@ -44,7 +53,16 @@ def decode_attributed_body(blob: bytes | None) -> str | None:
     text = data[index : index + length]
     if not text or len(text) < length:
         return None
-    return text.decode("utf-8", errors="replace")
+    decoded = text.decode("utf-8", errors="replace").replace(_OBJECT_REPLACEMENT_CHAR, "").strip()
+    return decoded or None
+
+
+def _body_contains(blob: object, needle: str | None) -> bool:
+    """SQLite UDF: case-insensitive (Unicode-aware) match against decoded attributedBody text."""
+    if not needle:
+        return False
+    text = decode_attributed_body(blob)
+    return text is not None and needle.casefold() in text.casefold()
 
 
 def _row_text(row: sqlite3.Row) -> str | None:
@@ -171,15 +189,24 @@ class MessagesDBBridge:
         offset: int = 0,
     ) -> list[MessageRecord]:
         with self._connect() as conn:
-            # attributedBody is a binary archive with embedded NULs, which LIKE
-            # stops at; instr() over the lowered bytes is NUL-safe. Matches are
-            # re-checked against the decoded text below.
+            # attributedBody is a binary archive whose class and attribute names
+            # ("NSString", "__kIMMessagePartAttributeName", ...) would match raw
+            # byte searches, so blob-only rows are checked against the decoded
+            # text inside the query. That keeps LIMIT/OFFSET applied to genuine
+            # matches. For ASCII queries a cheap instr() prefilter (NUL-safe,
+            # unlike LIKE) skips decoding rows that cannot match.
             body_col = self._body_column(conn)
+            conn.create_function(_BODY_MATCH_FUNCTION, 2, _body_contains, deterministic=True)
+            body_clause = f"{_BODY_MATCH_FUNCTION}({body_col}, ?)"
+            body_params: list[object] = [query]
+            if query.isascii():
+                body_clause = f"instr(lower(CAST({body_col} AS TEXT)), lower(?)) > 0 AND {body_clause}"
+                body_params.insert(0, query)
             clauses = [
                 "(COALESCE(m.text, '') LIKE ? OR COALESCE(m.subject, '') LIKE ?"
-                f" OR (COALESCE(m.text, '') = '' AND instr(lower(CAST({body_col} AS TEXT)), lower(?)) > 0))"
+                f" OR (COALESCE(m.text, '') = '' AND {body_col} IS NOT NULL AND {body_clause}))"
             ]
-            params: list[object] = [f"%{query}%", f"%{query}%", query]
+            params: list[object] = [f"%{query}%", f"%{query}%", *body_params]
             if chat_id is not None:
                 clauses.append("(c.guid = ? OR CAST(c.ROWID AS TEXT) = ?)")
                 params.extend([chat_id, chat_id])
@@ -208,13 +235,7 @@ class MessagesDBBridge:
                 """,
                 params,
             ).fetchall()
-            records = [self._message_record(row) for row in rows]
-            needle = query.lower()
-            return [
-                record
-                for record in records
-                if needle in (record.text or "").lower() or needle in (record.subject or "").lower()
-            ]
+            return [self._message_record(row) for row in rows]
 
     def list_attachments(self, chat_id: str | None = None, message_id: str | None = None, limit: int = 50, offset: int = 0) -> list[AttachmentRecord]:
         with self._connect() as conn:

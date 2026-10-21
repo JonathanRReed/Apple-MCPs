@@ -1,3 +1,4 @@
+import random
 import sqlite3
 from pathlib import Path
 
@@ -143,3 +144,84 @@ def test_search_matches_attributed_body_text_but_not_archive_internals(tmp_path)
     assert [message.message_id for message in bridge.search_messages(query="DINNER")] == ["msg-3"]
     assert [message.message_id for message in bridge.search_messages(query="hello")] == ["msg-1"]
     assert bridge.search_messages(query="NSDictionary") == []
+
+
+def test_decode_attributed_body_strips_attachment_placeholders_and_accepts_str() -> None:
+    assert decode_attributed_body(_attributed_body("\ufffc")) is None
+    assert decode_attributed_body(_attributed_body("\ufffc\ufffc look at this")) == "look at this"
+    assert decode_attributed_body("prefix NSString\x01+\x05hello") == "hello"
+    assert decode_attributed_body(bytearray(_attributed_body("hey"))) == "hey"
+    assert decode_attributed_body(memoryview(_attributed_body("hey"))) == "hey"
+    assert decode_attributed_body(12345) is None
+
+
+def test_decode_attributed_body_fuzz_never_raises() -> None:
+    rng = random.Random(61)
+    samples = [_attributed_body("fuzz me 👋"), _attributed_body("z" * 400)]
+    for _ in range(400):
+        data = bytearray(rng.choice(samples))
+        mutation = rng.randrange(4)
+        if mutation == 0:
+            data = data[: rng.randrange(len(data) + 1)]
+        elif mutation == 1:
+            for _ in range(rng.randint(1, 8)):
+                data[rng.randrange(len(data))] = rng.randrange(256)
+        elif mutation == 2:
+            cut = rng.randrange(len(data))
+            del data[cut : cut + rng.randint(1, 16)]
+        else:
+            cut = rng.randrange(len(data))
+            data[cut:cut] = bytes(rng.randrange(256) for _ in range(rng.randint(1, 16)))
+        result = decode_attributed_body(bytes(data))
+        assert result is None or isinstance(result, str)
+
+
+def test_search_pages_over_decoded_matches_not_archive_bytes(tmp_path) -> None:
+    db_path = tmp_path / "chat.db"
+    _build_fixture(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("ALTER TABLE message ADD COLUMN attributedBody BLOB")
+    # 30 newer blob-only rows whose archive bytes contain "name", "string",
+    # "value", ... but whose text does not, plus one older genuine match.
+    rows = [
+        (100 + index, f"noise-{index}", 1, None, None, "iMessage", 1000 - index, 0, 1, 0, _attributed_body(f"ok {index}"))
+        for index in range(30)
+    ]
+    rows.append((200, "real-match", 1, None, None, "iMessage", 10, 0, 1, 0, _attributed_body("what is your NAME?")))
+    rows.append((201, "real-match-2", 1, "my name is Bob", None, "iMessage", 9, 0, 1, 0, None))
+    conn.executemany(
+        "INSERT INTO message (ROWID, guid, handle_id, text, subject, service, date, is_from_me, is_read,"
+        " cache_has_attachments, attributedBody) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        rows,
+    )
+    conn.executemany("INSERT INTO chat_message_join VALUES (1, ?)", [(row[0],) for row in rows])
+    conn.commit()
+    conn.close()
+    bridge = MessagesDBBridge(db_path)
+
+    for label in ("name", "string", "value", "number", "attribute"):
+        found = [message.message_id for message in bridge.search_messages(query=label, limit=20)]
+        assert all(not message_id.startswith("noise-") for message_id in found), label
+    assert [message.message_id for message in bridge.search_messages(query="name", limit=20)] == ["real-match", "real-match-2"]
+    assert [message.message_id for message in bridge.search_messages(query="name", limit=1)] == ["real-match"]
+    assert [message.message_id for message in bridge.search_messages(query="name", limit=1, offset=1)] == ["real-match-2"]
+    assert bridge.search_messages(query="name", limit=20, offset=2) == []
+
+
+def test_search_attributed_body_is_case_insensitive_for_non_ascii(tmp_path) -> None:
+    db_path = tmp_path / "chat.db"
+    _build_fixture(db_path)
+    _add_attributed_body_messages(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO message (ROWID, guid, handle_id, text, subject, service, date, is_from_me, is_read,"
+        " cache_has_attachments, attributedBody) VALUES (5, 'msg-5', 1, NULL, NULL, 'iMessage', 5, 0, 1, 0, ?)",
+        (_attributed_body("Café ÉTÉ plans"),),
+    )
+    conn.execute("INSERT INTO chat_message_join VALUES (1, 5)")
+    conn.commit()
+    conn.close()
+    bridge = MessagesDBBridge(db_path)
+
+    assert [message.message_id for message in bridge.search_messages(query="été")] == ["msg-5"]
+    assert [message.message_id for message in bridge.search_messages(query="CAFÉ")] == ["msg-5"]

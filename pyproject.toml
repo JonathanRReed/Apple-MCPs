@@ -13,3 +13,8 @@ members = [
   "AppleShortcuts-MCP",
   "AppleSystem-MCP",
 ]
+
+[tool.pytest.ini_options]
+# Package test suites reuse module names (test_tools.py, ...); importlib mode
+# lets `uv run pytest */tests` collect every package in one run.
+addopts = "--import-mode=importlib"

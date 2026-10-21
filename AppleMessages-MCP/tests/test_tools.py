@@ -118,6 +118,8 @@ def test_messages_reply_in_conversation_returns_send_response(monkeypatch) -> No
 
     assert result.ok is True
     assert result.sent is True
+    # Live 1:1 replies returned chat_id=None; the caller's conversation is echoed.
+    assert result.chat_id == "chat-guid-1"
 
 
 def test_messages_reply_in_group_conversation_returns_chat_id(monkeypatch) -> None:

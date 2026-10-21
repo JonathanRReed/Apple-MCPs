@@ -21,7 +21,7 @@ async def apple_control_frontmost_app(
 ) -> Any:
     """Apple Control Frontmost App
 
-    Use the unified Apple control plane for bounded GUI fallback actions when a native app-domain tool cannot complete the task.
+    Use the unified Apple control plane for bounded GUI fallback actions when a native app-domain tool cannot complete the task. Input actions (click, keys, type) require a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code are always refused.
 
     Example:
         await apple_control_frontmost_app(client, action='example_action', application='example_application')

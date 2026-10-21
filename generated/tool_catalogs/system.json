@@ -1279,7 +1279,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Click a menu path in an application, for example ['File', 'New Window']. This is a GUI fallback tool.",
+      "description": "Click a menu path in a named application, for example ['File', 'New Window']. This is a GUI fallback tool. Requires a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code (Script Editor, Automator, Shortcuts, IDEs) are always refused.",
       "domain": "system",
       "example_calls": [
         {
@@ -1306,6 +1306,7 @@
         "click",
         "menu",
         "path",
+        "named",
         "application",
         "example",
         "file",
@@ -1313,11 +1314,10 @@
         "window",
         "this",
         "thi",
-        "fallback",
-        "tool"
+        "fallback"
       ],
       "title": "Click Menu Path",
-      "usage_intent": "Click a menu path in an application, for example ['File', 'New Window']. This is a GUI fallback tool."
+      "usage_intent": "Click a menu path in a named application, for example ['File', 'New Window']. This is a GUI fallback tool. Requires a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code (Script Editor, Automator, Shortcuts, IDEs) are always refused."
     },
     {
       "aliases": [
@@ -1337,7 +1337,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Press a key or key chord in the target application. This is a GUI fallback tool.",
+      "description": "Press a key or key chord in a named application. This is a GUI fallback tool. Requires a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code (Script Editor, Automator, Shortcuts, IDEs) are always refused.",
       "domain": "system",
       "example_calls": [
         {
@@ -1366,15 +1366,16 @@
         "keys",
         "key",
         "chord",
-        "target",
+        "named",
         "application",
         "this",
         "thi",
         "fallback",
-        "tool"
+        "tool",
+        "requires"
       ],
       "title": "Press Keys",
-      "usage_intent": "Press a key or key chord in the target application. This is a GUI fallback tool."
+      "usage_intent": "Press a key or key chord in a named application. This is a GUI fallback tool. Requires a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code (Script Editor, Automator, Shortcuts, IDEs) are always refused."
     },
     {
       "aliases": [
@@ -1393,7 +1394,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Type text into the frontmost focused control. This is a GUI fallback tool.",
+      "description": "Type text into the focused control of a named application. This is a GUI fallback tool. Requires a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code (Script Editor, Automator, Shortcuts, IDEs) are always refused.",
       "domain": "system",
       "example_calls": [
         {
@@ -1419,16 +1420,19 @@
         "gui",
         "type",
         "text",
-        "frontmost",
         "focused",
         "control",
+        "named",
+        "application",
         "this",
         "thi",
         "fallback",
-        "tool"
+        "tool",
+        "requires",
+        "requir"
       ],
       "title": "Type Text",
-      "usage_intent": "Type text into the frontmost focused control. This is a GUI fallback tool."
+      "usage_intent": "Type text into the focused control of a named application. This is a GUI fallback tool. Requires a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code (Script Editor, Automator, Shortcuts, IDEs) are always refused."
     },
     {
       "aliases": [
@@ -1449,7 +1453,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Click a named button in the frontmost window. This is a GUI fallback tool.",
+      "description": "Click a named button in the front window of a named application. This is a GUI fallback tool. Requires a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code (Script Editor, Automator, Shortcuts, IDEs) are always refused.",
       "domain": "system",
       "example_calls": [
         {
@@ -1476,15 +1480,18 @@
         "click",
         "button",
         "named",
-        "frontmost",
+        "front",
         "window",
+        "application",
         "this",
         "thi",
         "fallback",
-        "tool"
+        "tool",
+        "requires",
+        "requir"
       ],
       "title": "Click Button",
-      "usage_intent": "Click a named button in the frontmost window. This is a GUI fallback tool."
+      "usage_intent": "Click a named button in the front window of a named application. This is a GUI fallback tool. Requires a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code (Script Editor, Automator, Shortcuts, IDEs) are always refused."
     },
     {
       "aliases": [
@@ -1505,7 +1512,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Choose a value from a named pop-up button in the frontmost window. This is a GUI fallback tool.",
+      "description": "Choose a value from a named pop-up button in the front window of a named application. This is a GUI fallback tool. Requires a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code (Script Editor, Automator, Shortcuts, IDEs) are always refused.",
       "domain": "system",
       "example_calls": [
         {
@@ -1535,15 +1542,15 @@
         "pop",
         "named",
         "button",
-        "frontmost",
+        "front",
         "window",
+        "application",
         "this",
         "thi",
-        "fallback",
-        "tool"
+        "fallback"
       ],
       "title": "Choose Pop-Up Value",
-      "usage_intent": "Choose a value from a named pop-up button in the frontmost window. This is a GUI fallback tool."
+      "usage_intent": "Choose a value from a named pop-up button in the front window of a named application. This is a GUI fallback tool. Requires a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code (Script Editor, Automator, Shortcuts, IDEs) are always refused."
     },
     {
       "aliases": [

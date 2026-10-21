@@ -15,7 +15,7 @@ async def system_gui_choose_popup_value(
 ) -> Any:
     """Choose Pop-Up Value
 
-    Choose a value from a named pop-up button in the frontmost window. This is a GUI fallback tool.
+    Choose a value from a named pop-up button in the front window of a named application. This is a GUI fallback tool. Requires a target whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS; terminals and apps that run typed code (Script Editor, Automator, Shortcuts, IDEs) are always refused.
 
     Example:
         await system_gui_choose_popup_value(client, label='example_label', value='example_value')

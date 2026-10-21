@@ -176,6 +176,33 @@ def test_delete_event_falls_back_on_event_not_found(monkeypatch) -> None:
     assert bridge.delete_event("applescript-uid-1") is True
 
 
+def test_not_found_skips_jxa_fallback_with_full_read_access(monkeypatch) -> None:
+    # Live repro: with full Calendar access, getting or deleting an event that
+    # no longer exists retried through JXA, which scanned every calendar and
+    # returned APPLESCRIPT_FALLBACK_TIMEOUT instead of EVENT_NOT_FOUND.
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        if command == "calendar-access-status":
+            return {"status": "full_access", "can_read_events": True, "can_write_events": True}
+        raise CalendarBridgeError("EVENT_NOT_FOUND", "missing")
+
+    def fail_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        raise AssertionError("JXA fallback must not run when native read access is confirmed")
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fail_jxa)
+
+    for call in (lambda: bridge.get_event("E99452A7-8023-4A72-9813-CAA34AE1FF75"),
+                 lambda: bridge.delete_event("E99452A7-8023-4A72-9813-CAA34AE1FF75")):
+        try:
+            call()
+        except CalendarBridgeError as exc:
+            assert exc.error_code == "EVENT_NOT_FOUND"
+        else:
+            raise AssertionError("Expected EVENT_NOT_FOUND")
+
+
 def test_calendar_access_status_reads_helper_payload(monkeypatch) -> None:
     bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
 

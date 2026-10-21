@@ -7,6 +7,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [Unreleased]
 
 ### Fixed
+- Calendar lookups, updates and deletes of an event that no longer exists return `EVENT_NOT_FOUND` immediately when EventKit has full read access, instead of retrying through Calendar automation and timing out after about 30 seconds.
 - Resolve Calendar names to native EventKit calendars in `calendar_create_event` and `calendar_update_event` when native read access is available, so name-based writes keep full alarm replacement and clearing instead of falling back to automation. Duplicate names return `AMBIGUOUS_CALENDAR` with candidate IDs, unknown names return `CALENDAR_NOT_FOUND`, and read-only calendars return `CALENDAR_READ_ONLY` before any write. Automation remains the fallback without native read access. (#41)
 
 ## [1.1.3] - 2026-10-16

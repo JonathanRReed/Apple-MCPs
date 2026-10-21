@@ -582,10 +582,19 @@ class CalendarBridge:
         # identifier. The native helper can then never resolve it, no matter
         # how valid the id is, so the same request has to be retried through
         # the JXA fallback instead of surfacing a confusing "not found".
-        return self._should_use_read_fallback(error) or error.error_code in {
-            "CALENDAR_NOT_FOUND",
-            "EVENT_NOT_FOUND",
-        }
+        # When the helper confirms full read access, the native "not found" is
+        # authoritative: retrying through JXA would only scan every calendar
+        # and time out.
+        if self._should_use_read_fallback(error):
+            return True
+        return error.error_code in {"CALENDAR_NOT_FOUND", "EVENT_NOT_FOUND"} and not self._helper_read_confirmed()
+
+    def _helper_read_confirmed(self) -> bool:
+        try:
+            payload = self.calendar_access_status()
+        except CalendarBridgeError:
+            return False
+        return bool(payload.get("can_read_events", False))
 
     def _helper_read_blocked(self) -> bool:
         try:

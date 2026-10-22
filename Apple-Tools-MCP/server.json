@@ -90,6 +90,13 @@
           "default": "safe_manage"
         },
         {
+          "name": "APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS",
+          "description": "Comma-separated bundle ids of apps that GUI input tools (type, press keys, click, choose, menu) may send input to, for example com.apple.TextEdit,com.apple.Safari. Unset or empty disables GUI input. Terminals, script editors and automation apps are always refused.",
+          "isRequired": false,
+          "format": "string",
+          "placeholder": "com.apple.TextEdit,com.apple.Safari"
+        },
+        {
           "name": "APPLE_CONTACTS_MCP_SAFETY_MODE",
           "description": "Safety mode for the Contacts domain: safe_readonly, safe_manage, or full_access.",
           "isRequired": false,

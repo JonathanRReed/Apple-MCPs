@@ -406,8 +406,14 @@ _SUGGEST_QUERY_DESCRIPTION = "Optional text to filter suggestions by. Omit to li
 _SUGGEST_LIMIT_DESCRIPTION = "Maximum number of suggestions to return (1 or more)."
 _APPLICATION_DESCRIPTION = "Application name as shown in Finder, for example Safari. Provide application or bundle_id."
 _BUNDLE_ID_DESCRIPTION = "Application bundle identifier, for example com.apple.Safari. Takes the place of application."
-_GUI_APPLICATION_DESCRIPTION = "Application to target by name. Omit application and bundle_id to use the frontmost app."
-_GUI_BUNDLE_ID_DESCRIPTION = "Application to target by bundle identifier, for example com.apple.Safari. Omit to use the frontmost app."
+_GUI_APPLICATION_DESCRIPTION = (
+    "Running application to target by name, for example TextEdit. Every action except list_menu_bar_items requires application or bundle_id, "
+    "and the app's bundle id must be listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS. list_menu_bar_items uses the frontmost app when both are omitted."
+)
+_GUI_BUNDLE_ID_DESCRIPTION = (
+    "Running application to target by bundle identifier, for example com.apple.TextEdit. Takes precedence over application. "
+    "Every action except list_menu_bar_items requires application or bundle_id, listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS."
+)
 _FILE_PATH_DESCRIPTION = "Absolute path, or a path starting with ~, inside the Apple Files allowed roots (see files_list_allowed_roots)."
 _PREFERENCE_VALUE_DESCRIPTION = "Omit to keep the current value."
 _MAIL_QUERY_DESCRIPTION = "Apple Mail search text for the highlights section; '*' matches recent messages."
@@ -2497,7 +2503,13 @@ def apple_update_system_setting(
 
 @mcp.tool(
     title="Apple Control Frontmost App",
-    description="Use the unified Apple control plane for bounded GUI fallback actions when a native app-domain tool cannot complete the task.",
+    description=(
+        "Use the unified Apple control plane for bounded GUI fallback actions when a native app-domain tool cannot complete the task. "
+        "Input actions (click_menu_path, press_keys, type_text, click_button, choose_popup_value) require application or bundle_id "
+        "naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off "
+        "while it is empty), and that app must come to the front before any input is sent. "
+        "Terminals, script editors and automation apps are always refused, even if allow-listed."
+    ),
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )

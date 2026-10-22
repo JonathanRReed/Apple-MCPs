@@ -94,7 +94,7 @@ claude mcp add --transport stdio --scope user apple-system -- uvx apple-system-m
 - Use the settings tools before falling back to raw `defaults read` in prompts or E2E checks.
 - Use `APPLE_SYSTEM_MCP_SAFETY_MODE=safe_manage` for assistant-grade operation.
 - Keep `safe_readonly` only for audit-only or context-only deployments.
-- Keep GUI fallback narrow. Prefer native app-domain MCPs first, then explicit System tools, then GUI tools only when native support is missing.
+- Keep GUI fallback narrow. Prefer native app-domain MCPs first, then explicit System tools, then GUI tools only when native support is missing. GUI input needs the target app in `APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS` (see [GUI Input Allowlist](#gui-input-allowlist)).
 - Focus reporting is best-effort and truthful. This server does not claim Notification Center history support when macOS does not expose it cleanly on an unsigned local install.
 
 ## Health And Recovery
@@ -129,6 +129,16 @@ The bounded GUI fallback surface is:
 - `system_gui_type_text`
 - `system_gui_click_button`
 - `system_gui_choose_popup_value`
+
+## GUI Input Allowlist
+
+The GUI input tools (`system_gui_click_menu_path`, `system_gui_press_keys`, `system_gui_type_text`, `system_gui_click_button` and `system_gui_choose_popup_value`) send input only to apps you list in `APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS`. It is empty by default, so GUI input is off until you set it. `system_gui_list_menu_bar_items` only reads and needs no allowlist.
+
+- Format: comma-separated bundle ids, for example `com.apple.TextEdit,com.apple.Safari`. Case and spaces around commas are ignored. To find an app's bundle id, run `osascript -e 'id of app "TextEdit"'`.
+- Where to set it: the `env` block of this server in your MCP client config, for example `"APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS": "com.apple.TextEdit,com.apple.Safari"`. In Claude Desktop, open Settings > Extensions, configure Apple System and fill in "Apps that accept GUI input". Restart the client afterwards.
+- Every GUI input call must name its target with `application` or `bundle_id`. Input is never sent to whatever app happens to be frontmost; the target is brought to the front first and the call fails with `GUI_TARGET_NOT_FRONTMOST` if it does not get there.
+- Terminals, script editors and automation apps are always refused with `TERMINAL_TARGET_REFUSED`, even if allow-listed, because text typed there can run code. This covers Terminal, iTerm2, Ghostty, Warp, kitty, WezTerm and similar terminals, Script Editor, Automator, Shortcuts, Xcode, VS Code, Cursor, Windsurf, Zed, JetBrains IDEs, BBEdit, Raycast and Alfred.
+- A call to an app outside the list returns `GUI_TARGET_NOT_ALLOWED`, and its `suggestion` gives the exact value to add.
 
 ## Launch Checklist
 

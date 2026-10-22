@@ -73,3 +73,12 @@ def test_drop_unexpanded_user_config_removes_only_literal_placeholders() -> None
         "APPLE_CALENDAR_MCP_ALLOWED_CALENDARS": "",
         "OTHER": "${user_config.other}",
     }
+
+
+def test_how_to_set_uses_an_explicit_desktop_title() -> None:
+    from apple_mcp_common.safety import how_to_set
+
+    text = how_to_set("APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS", "com.apple.TextEdit", "Apps that accept GUI input")
+    assert "APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS=com.apple.TextEdit" in text
+    assert '"Apps that accept GUI input" to com.apple.TextEdit' in text
+    assert "restart the MCP client" in text

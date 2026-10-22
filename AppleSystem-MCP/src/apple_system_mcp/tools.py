@@ -36,6 +36,19 @@ from apple_system_mcp.system_bridge import SettingMutation, SystemBridgeError, b
 
 _GUI_APPLICATION_DESCRIPTION = "Name of a running application to target, for example Safari. Omit both application and bundle_id to target the frontmost app."
 _GUI_BUNDLE_ID_DESCRIPTION = "Bundle identifier of a running application, for example com.apple.Safari. Takes precedence over application."
+_GUI_INPUT_REQUIREMENT = (
+    " Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS "
+    "(comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. "
+    "Terminals, script editors and automation apps are always refused, even if allow-listed."
+)
+_GUI_INPUT_APPLICATION_DESCRIPTION = (
+    "Name of a running application to send input to, for example TextEdit. Provide application or bundle_id; "
+    "the app's bundle id must be listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS."
+)
+_GUI_INPUT_BUNDLE_ID_DESCRIPTION = (
+    "Bundle identifier of a running application to send input to, for example com.apple.TextEdit. Takes precedence over application. "
+    "Provide application or bundle_id; it must be listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS."
+)
 
 SERVER_INSTRUCTIONS = (
     "Use this server for macOS system context and control. "
@@ -196,6 +209,12 @@ def system_health() -> HealthResponse:
                 "show_notification",
                 "open_application",
                 "gui_list_menu_bar_items",
+            ]
+        )
+    # With an empty allow-list every GUI input is refused, so none is advertised.
+    if settings.safety_mode in {"safe_manage", "full_access"} and settings.gui_allowed_apps:
+        capabilities.extend(
+            [
                 "gui_click_menu_path",
                 "gui_press_keys",
                 "gui_type_text",
@@ -628,14 +647,14 @@ def system_gui_list_menu_bar_items(
 
 @mcp.tool(
     title="Click Menu Path",
-    description="Click a menu path in an application, for example ['File', 'New Window']. This is a GUI fallback tool.",
+    description="Click a menu path in a named application, for example ['File', 'New Window']. This is a GUI fallback tool." + _GUI_INPUT_REQUIREMENT,
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def system_gui_click_menu_path(
     menu_path: Annotated[list[str], Field(description="Menu titles from the menu bar item down to the item to click, at least two entries, for example [\"File\", \"New Window\"]. Titles must match exactly.")],
-    application: Annotated[str | None, Field(description=_GUI_APPLICATION_DESCRIPTION)] = None,
-    bundle_id: Annotated[str | None, Field(description=_GUI_BUNDLE_ID_DESCRIPTION)] = None,
+    application: Annotated[str | None, Field(description=_GUI_INPUT_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_GUI_INPUT_BUNDLE_ID_DESCRIPTION)] = None,
 ) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_click_menu_path")
@@ -655,15 +674,15 @@ def system_gui_click_menu_path(
 
 @mcp.tool(
     title="Press Keys",
-    description="Press a key or key chord in the target application. This is a GUI fallback tool.",
+    description="Press a key or key chord in a named application. This is a GUI fallback tool." + _GUI_INPUT_REQUIREMENT,
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def system_gui_press_keys(
     key: Annotated[str, Field(description="A printable character such as n, or a special key: return, enter, tab, space, escape, delete, forward_delete, left, right, up, down.")],
     modifiers: Annotated[list[str] | None, Field(description="Modifier keys held during the press: command, control, option, shift. Omit for none.")] = None,
-    application: Annotated[str | None, Field(description=_GUI_APPLICATION_DESCRIPTION)] = None,
-    bundle_id: Annotated[str | None, Field(description=_GUI_BUNDLE_ID_DESCRIPTION)] = None,
+    application: Annotated[str | None, Field(description=_GUI_INPUT_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_GUI_INPUT_BUNDLE_ID_DESCRIPTION)] = None,
 ) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_press_keys")
@@ -686,14 +705,14 @@ def system_gui_press_keys(
 
 @mcp.tool(
     title="Type Text",
-    description="Type text into the frontmost focused control. This is a GUI fallback tool.",
+    description="Type text into the focused control of a named application. This is a GUI fallback tool." + _GUI_INPUT_REQUIREMENT,
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
 def system_gui_type_text(
     text: Annotated[str, Field(description="Text typed as keystrokes into the focused control of the target application.")],
-    application: Annotated[str | None, Field(description=_GUI_APPLICATION_DESCRIPTION)] = None,
-    bundle_id: Annotated[str | None, Field(description=_GUI_BUNDLE_ID_DESCRIPTION)] = None,
+    application: Annotated[str | None, Field(description=_GUI_INPUT_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_GUI_INPUT_BUNDLE_ID_DESCRIPTION)] = None,
 ) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_type_text")
@@ -712,7 +731,7 @@ def system_gui_type_text(
 
 @mcp.tool(
     title="Click Button",
-    description="Click a named button in the frontmost window. This is a GUI fallback tool.",
+    description="Click a named button in the front window of a named application. This is a GUI fallback tool." + _GUI_INPUT_REQUIREMENT,
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
@@ -720,8 +739,8 @@ def system_gui_click_button(
     label: Annotated[str | None, Field(description="Exact button name in the front window. Provide label or description.")] = None,
     description: Annotated[str | None, Field(description="Accessibility description of the button, used when label is omitted.")] = None,
     index: Annotated[int, Field(description="Which matching button to click when several match, starting at 1.")] = 1,
-    application: Annotated[str | None, Field(description=_GUI_APPLICATION_DESCRIPTION)] = None,
-    bundle_id: Annotated[str | None, Field(description=_GUI_BUNDLE_ID_DESCRIPTION)] = None,
+    application: Annotated[str | None, Field(description=_GUI_INPUT_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_GUI_INPUT_BUNDLE_ID_DESCRIPTION)] = None,
 ) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_click_button")
@@ -743,7 +762,7 @@ def system_gui_click_button(
 
 @mcp.tool(
     title="Choose Pop-Up Value",
-    description="Choose a value from a named pop-up button in the frontmost window. This is a GUI fallback tool.",
+    description="Choose a value from a named pop-up button in the front window of a named application. This is a GUI fallback tool." + _GUI_INPUT_REQUIREMENT,
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
@@ -751,8 +770,8 @@ def system_gui_choose_popup_value(
     label: Annotated[str | None, Field(description="Exact name of the pop-up button in the front window, or null to match by description.")],
     value: Annotated[str, Field(description="Exact title of the menu item to choose from the pop-up.")],
     description: Annotated[str | None, Field(description="Accessibility description of the pop-up button, used when label is null.")] = None,
-    application: Annotated[str | None, Field(description=_GUI_APPLICATION_DESCRIPTION)] = None,
-    bundle_id: Annotated[str | None, Field(description=_GUI_BUNDLE_ID_DESCRIPTION)] = None,
+    application: Annotated[str | None, Field(description=_GUI_INPUT_APPLICATION_DESCRIPTION)] = None,
+    bundle_id: Annotated[str | None, Field(description=_GUI_INPUT_BUNDLE_ID_DESCRIPTION)] = None,
 ) -> GuiActionResponse | ErrorResponse:
     try:
         ensure_action_allowed("system_gui_choose_popup_value")

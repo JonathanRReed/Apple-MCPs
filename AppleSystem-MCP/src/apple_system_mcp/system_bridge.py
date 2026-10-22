@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import ClassVar, TypedDict
 
+from apple_mcp_common.safety import how_to_set
+from apple_system_mcp.config import GUI_ALLOWED_APPS_ENV_VAR, GUI_ALLOWED_APPS_TITLE, load_settings
 from apple_system_mcp.models import AppRecord, BatteryStatus
 
 
@@ -28,6 +30,54 @@ class SystemBridgeError(Exception):
 class SystemBridge:
     _RECORD_SEPARATOR = "\x1e"
     _FIELD_SEPARATOR = "\x1f"
+    # Terminals, script editors and automation apps (IDEs with an integrated terminal,
+    # launchers that run commands). GUI input to them is refused even when they are
+    # allow-listed, because typed text there can run code.
+    _REFUSED_APP_NAMES: ClassVar[frozenset[str]] = frozenset(
+        {
+            "terminal", "iterm2", "iterm", "warp", "ghostty", "kitty", "alacritty", "wezterm",
+            "hyper", "rio", "tabby", "wave",
+            "script editor", "script debugger", "automator", "shortcuts", "keyboard maestro",
+            "hammerspoon", "raycast", "alfred", "alfred 5",
+            "visual studio code", "visual studio code - insiders", "code", "vscodium", "cursor",
+            "windsurf", "xcode", "zed", "zed preview", "nova", "bbedit", "sublime text",
+            "intellij idea", "intellij idea ce", "pycharm", "pycharm ce", "webstorm", "goland",
+            "clion", "rider", "phpstorm", "rubymine", "datagrip", "rustrover", "fleet", "android studio",
+        }
+    )
+    _REFUSED_BUNDLE_IDS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "com.apple.terminal", "net.kovidgoyal.kitty", "org.alacritty", "io.alacritty",
+            "com.github.wez.wezterm", "com.apple.scripteditor2", "com.apple.shortcuts",
+            "com.todesktop.230313mzl4w4u92", "co.zeit.hyper", "com.raphaelamorim.rio", "org.tabby",
+            "com.tabby", "dev.commandline.waveterm", "com.raycast.macos", "org.hammerspoon.hammerspoon",
+            "com.barebones.bbedit", "com.panic.nova", "com.google.android.studio",
+        }
+    )
+    # Bundle id prefixes that cover every edition of a product family
+    # (JetBrains IDEs, VS Code Insiders, Warp channels, Automator applets, ...).
+    _REFUSED_BUNDLE_PREFIXES: ClassVar[tuple[str, ...]] = (
+        "com.googlecode.iterm2", "dev.warp.", "com.mitchellh.ghostty", "com.microsoft.vscode",
+        "com.vscodium", "com.exafunction.windsurf", "dev.zed.", "com.jetbrains.", "com.sublimetext.",
+        "com.apple.dt.xcode", "com.apple.automator", "com.latenightsw.scriptdebugger",
+        "com.stairways.keyboardmaestro", "com.runningwithcrayons.alfred",
+    )
+    # Brings the application whose bundle identifier is `targetBundle` to the front and
+    # aborts unless it is frontmost. Keystrokes still go to whatever holds keyboard focus,
+    # so a non-activating panel (Spotlight) or a focus change can still receive them.
+    _FRONTMOST_GUARD: ClassVar[list[str]] = [
+        "tell application id targetBundle to activate",
+        'tell application "System Events"',
+        "repeat 20 times",
+        "set frontBundle to bundle identifier of first application process whose frontmost is true",
+        "if frontBundle is targetBundle then exit repeat",
+        "delay 0.05",
+        "end repeat",
+        "end tell",
+        'if frontBundle is not targetBundle then error "GUI_TARGET_NOT_FRONTMOST"',
+        # Give the newly activated app a moment so the first keystrokes are not lost.
+        "delay 0.1",
+    ]
     _SPECIAL_KEY_CODES: ClassVar[dict[str, int]] = {
         "return": 36,
         "enter": 76,
@@ -71,6 +121,12 @@ class SystemBridge:
                     "AUTOMATION_PERMISSION_REQUIRED",
                     stderr or "Automation permission is required for this action.",
                     "Approve the macOS automation prompt for the host app and retry.",
+                ) from exc
+            if "GUI_TARGET_NOT_FRONTMOST" in stderr:
+                raise SystemBridgeError(
+                    "GUI_TARGET_NOT_FRONTMOST",
+                    "The target application did not become frontmost, so no input was sent.",
+                    "Bring the target application to the front (background-only apps cannot receive GUI input) and retry.",
                 ) from exc
             raise SystemBridgeError("COMMAND_FAILED", stderr or "System command failed.", "Check macOS privacy permissions and retry.") from exc
         except subprocess.TimeoutExpired as exc:
@@ -174,6 +230,75 @@ class SystemBridge:
             args=[application or "", bundle_id or ""],
         )
         return self._parse_app_record(raw)
+
+    @classmethod
+    def _is_refused_target(cls, name: str | None, bundle_id: str | None) -> bool:
+        normalized_name = (name or "").strip().lower().removesuffix(".app")
+        normalized_bundle = (bundle_id or "").strip().lower()
+        if normalized_name in cls._REFUSED_APP_NAMES or normalized_bundle in cls._REFUSED_BUNDLE_IDS:
+            return True
+        return bool(normalized_bundle) and normalized_bundle.startswith(cls._REFUSED_BUNDLE_PREFIXES)
+
+    @staticmethod
+    def _refused_target_error(target: str) -> SystemBridgeError:
+        return SystemBridgeError(
+            "TERMINAL_TARGET_REFUSED",
+            f"GUI input to '{target}' is refused. Terminals, script editors and automation apps are always refused, even if allow-listed.",
+            "Use a native tool for this task, or target a different application. Adding this app to "
+            f"{GUI_ALLOWED_APPS_ENV_VAR} does not change this.",
+        )
+
+    def _gui_input_target(self, application: str | None = None, bundle_id: str | None = None) -> AppRecord:
+        """Resolve the target of a GUI input action: a named, allow-listed, non-terminal application.
+
+        Clicks and keystrokes are never sent to whatever happens to be frontmost, only to an
+        application whose bundle id is in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS, and never to a
+        terminal or another app that runs typed code, even when it is allow-listed.
+        """
+        if not (application and application.strip()) and not (bundle_id and bundle_id.strip()):
+            raise SystemBridgeError(
+                "INVALID_INPUT",
+                "application or bundle_id is required for GUI input actions.",
+                "Name the target application; GUI input is never sent to the frontmost app implicitly.",
+            )
+        if self._is_refused_target(application, bundle_id):
+            raise self._refused_target_error((application or bundle_id or "").strip())
+        allowed = load_settings().gui_allowed_apps
+        # A named bundle id is checked before System Events is asked about it, so an
+        # app that is not allow-listed gets this error even when it isn't running.
+        if bundle_id and bundle_id.strip().lower() not in allowed:
+            raise self._not_allowed_error(bundle_id.strip(), bundle_id.strip())
+        try:
+            target_app = self._target_application(application=application, bundle_id=bundle_id)
+        except SystemBridgeError as error:
+            # System Events reports a missing process as -1719 (invalid index) or -1728.
+            if any(marker in error.message for marker in ("(-1719)", "(-1728)", "get application process")):
+                target = (bundle_id or application or "").strip()
+                raise SystemBridgeError(
+                    "APP_NOT_RUNNING",
+                    f"'{target}' is not running, so GUI input cannot reach it.",
+                    "Open the app first (for example with system_open_application), bring the right window to the front, then retry.",
+                ) from error
+            raise
+        # Checked again on the resolved identity: an alias such as "Shell" resolves to Terminal.
+        if self._is_refused_target(target_app.name, target_app.bundle_id):
+            raise self._refused_target_error(f"{target_app.name} ({target_app.bundle_id or 'no bundle id'})")
+        if not target_app.bundle_id or target_app.bundle_id.lower() not in allowed:
+            raise self._not_allowed_error(target_app.name, target_app.bundle_id)
+        return target_app
+
+    @staticmethod
+    def _not_allowed_error(name: str, bundle_id: str | None) -> SystemBridgeError:
+        bundle_value = bundle_id or "<bundle id>"
+        return SystemBridgeError(
+            "GUI_TARGET_NOT_ALLOWED",
+            f"GUI input to '{name}' ({bundle_id or 'no bundle id'}) is not allowed because its bundle id "
+            "is not in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS.",
+            "GUI input is off unless the user allow-lists the app. Ask the user before enabling it. "
+            f"To allow it, {how_to_set(GUI_ALLOWED_APPS_ENV_VAR, bundle_value, GUI_ALLOWED_APPS_TITLE)}. "
+            "The value is a comma-separated list of bundle ids, for example com.apple.TextEdit,com.apple.Safari; "
+            "keep any ids already listed.",
+        )
 
     def battery(self) -> BatteryStatus:
         raw = self._run("pmset", "-g", "batt")
@@ -404,14 +529,14 @@ class SystemBridge:
     def gui_click_menu_path(self, menu_path: list[str], application: str | None = None, bundle_id: str | None = None) -> AppRecord:
         if len(menu_path) < 2:
             raise SystemBridgeError("INVALID_INPUT", "menu_path must contain at least two items.", "Provide a top-level menu and a target item.")
-        target_app = self._target_application(application=application, bundle_id=bundle_id)
+        target_app = self._gui_input_target(application=application, bundle_id=bundle_id)
         self._run_osascript(
             [
                 "on run argv",
                 "set appName to item 1 of argv",
-                "set pathCount to count of argv",
-                'tell application appName to activate',
-                "delay 0.15",
+                "set targetBundle to last item of argv",
+                "set pathCount to (count of argv) - 1",
+                *self._FRONTMOST_GUARD,
                 'tell application "System Events"',
                 "tell process appName",
                 "set currentMenu to menu 1 of menu bar item (item 2 of argv) of menu bar 1",
@@ -429,7 +554,7 @@ class SystemBridge:
                 'return "ok"',
                 "end run",
             ],
-            args=[target_app.name, *menu_path],
+            args=[target_app.name, *menu_path, target_app.bundle_id or ""],
         )
         return target_app
 
@@ -443,7 +568,7 @@ class SystemBridge:
         modifier_clause = ""
         if modifier_literals:
             modifier_clause = " using {" + ", ".join(modifier_literals) + "}"
-        target_app = self._target_application(application=application, bundle_id=bundle_id)
+        target_app = self._gui_input_target(application=application, bundle_id=bundle_id)
         key_value = key.strip()
         if not key_value:
             raise SystemBridgeError("INVALID_INPUT", "key must not be empty.", "Provide a printable key or supported special key name.")
@@ -454,10 +579,9 @@ class SystemBridge:
         self._run_osascript(
             [
                 "on run argv",
-                "set appName to item 1 of argv",
                 "set keyText to item 2 of argv",
-                'tell application appName to activate',
-                "delay 0.1",
+                "set targetBundle to item 3 of argv",
+                *self._FRONTMOST_GUARD,
                 'tell application "System Events"',
                 key_command,
                 "end tell",
@@ -469,14 +593,13 @@ class SystemBridge:
         return target_app
 
     def gui_type_text(self, text: str, application: str | None = None, bundle_id: str | None = None) -> AppRecord:
-        target_app = self._target_application(application=application, bundle_id=bundle_id)
+        target_app = self._gui_input_target(application=application, bundle_id=bundle_id)
         self._run_osascript(
             [
                 "on run argv",
-                "set appName to item 1 of argv",
                 "set typedText to item 2 of argv",
-                'tell application appName to activate',
-                "delay 0.1",
+                "set targetBundle to item 3 of argv",
+                *self._FRONTMOST_GUARD,
                 'tell application "System Events"',
                 "keystroke typedText",
                 "end tell",
@@ -499,7 +622,7 @@ class SystemBridge:
             raise SystemBridgeError("INVALID_INPUT", "label or description is required.", "Provide a button label or accessibility description.")
         if index < 1:
             raise SystemBridgeError("INVALID_INPUT", "index must be at least 1.", "Use a positive button index.")
-        target_app = self._target_application(application=application, bundle_id=bundle_id)
+        target_app = self._gui_input_target(application=application, bundle_id=bundle_id)
         self._run_osascript(
             [
                 "on run argv",
@@ -507,8 +630,8 @@ class SystemBridge:
                 "set buttonName to item 2 of argv",
                 "set buttonDescription to item 3 of argv",
                 "set buttonIndex to (item 4 of argv) as integer",
-                'tell application appName to activate',
-                "delay 0.15",
+                "set targetBundle to item 5 of argv",
+                *self._FRONTMOST_GUARD,
                 'tell application "System Events"',
                 "tell process appName",
                 "tell front window",
@@ -539,7 +662,7 @@ class SystemBridge:
     ) -> AppRecord:
         if not label and not description:
             raise SystemBridgeError("INVALID_INPUT", "label or description is required.", "Provide a pop-up label or accessibility description.")
-        target_app = self._target_application(application=application, bundle_id=bundle_id)
+        target_app = self._gui_input_target(application=application, bundle_id=bundle_id)
         self._run_osascript(
             [
                 "on run argv",
@@ -547,8 +670,8 @@ class SystemBridge:
                 "set popupLabel to item 2 of argv",
                 "set popupValue to item 3 of argv",
                 "set popupDescription to item 4 of argv",
-                'tell application appName to activate',
-                "delay 0.15",
+                "set targetBundle to item 5 of argv",
+                *self._FRONTMOST_GUARD,
                 'tell application "System Events"',
                 "tell process appName",
                 "tell front window",

@@ -117,6 +117,11 @@ class AppleMailBridge:
                 result = self._run_osascript(script_path, args)
         if result.returncode != 0:
             message = result.stderr.strip() or result.stdout.strip() or f"AppleScript '{script_name}' failed."
+            # AppleScript's own Apple Event timeout stops the script without cancelling
+            # Mail's operation, exactly like our subprocess timeout, so a send may
+            # still complete. Report it the same way.
+            if "(-1712)" in message:
+                raise MailScriptTimeoutError(f"AppleScript '{script_name}' hit an Apple Event timeout: {message}")
             raise MailBridgeError(message)
         return result.stdout.rstrip("\n\r")
 

@@ -64,7 +64,8 @@ def _denied(code: str = "PERMISSION_DENIED") -> ErrorResponse:
 
 def test_normalize_handle_lowercases_emails_and_keeps_phone_digits() -> None:
     assert normalize_handle(" Ana@Example.com ") == "ana@example.com"
-    assert normalize_handle("+1 (212) 555-1234") == "12125551234"
+    assert normalize_handle("+1 (212) 555-1234") == "+12125551234"
+    assert normalize_handle("(212) 555-1234") == "2125551234"
     assert normalize_handle("") is None
     assert normalize_handle(None) is None
     assert normalize_handle("---") is None
@@ -84,12 +85,12 @@ def test_resolver_asks_contacts_only_for_unknown_handles_and_caches_both_hits_an
 
     names, status = resolver.resolve(["+61402797945", "+61402797945", "+15550000000", None, ""])
     assert status == "ok"
-    assert names == {"61402797945": ("c-michael", "Michael")}
+    assert names == {"+61402797945": ("c-michael", "Michael")}
     assert contacts.calls == [["+61402797945", "+15550000000"]]
 
     names, status = resolver.resolve(["+61402797945", "+15550000000", "ana@example.com"])
     assert status == "ok"
-    assert names == {"61402797945": ("c-michael", "Michael"), "ana@example.com": ("c-ana", "Ana Silva")}
+    assert names == {"+61402797945": ("c-michael", "Michael"), "ana@example.com": ("c-ana", "Ana Silva")}
     assert contacts.calls[1] == ["ana@example.com"]  # the hit and the miss were both cached
 
     now[0] = 301.0
@@ -141,7 +142,7 @@ def test_resolver_keeps_cached_names_while_contacts_is_down() -> None:
     names, status = resolver.resolve(["+61402797945", "+12125551234"])
 
     assert status == "permission_denied"
-    assert names == {"61402797945": ("c-michael", "Michael")}
+    assert names == {"+61402797945": ("c-michael", "Michael")}
 
 
 def test_annotate_conversations_names_participants_senders_and_unnamed_one_to_one_title() -> None:
@@ -252,7 +253,7 @@ def test_wrappers_skip_contacts_entirely_when_nothing_needs_a_name(monkeypatch) 
 
 
 def test_normalize_handle_keeps_extensions_and_skips_non_phone_handles() -> None:
-    assert normalize_handle("+1 415 555 0100 x12") == "14155550100;ext=12"
+    assert normalize_handle("+1 415 555 0100 x12") == "+14155550100;ext=12"
     assert normalize_handle("urn:biz:1234567-abcd") is None
 
 
@@ -267,7 +268,7 @@ def test_resolver_caps_one_lookup_and_does_not_cache_the_overflow(monkeypatch) -
     names, _ = resolver.resolve(["+12125551234"])
 
     assert contacts.calls == [["+61402797945", "ana@example.com"], ["+12125551234"]]
-    assert names == {"12125551234": ("c-mom", "Mom")}
+    assert names == {"+12125551234": ("c-mom", "Mom")}
 
 
 def test_end_to_end_a_stranger_never_gets_a_saved_contacts_name(monkeypatch) -> None:
@@ -299,3 +300,31 @@ def test_end_to_end_a_stranger_never_gets_a_saved_contacts_name(monkeypatch) -> 
     assert stranger.display_name == "+13125551234"
     assert family.participants[0].display_name == "Mom"
     assert helper_calls == ["lookup_handles.applescript"]
+
+
+def test_international_and_national_handles_with_same_digits_keep_separate_names() -> None:
+    # Release review round 2: "+44 20 7946 0958" (Alice, saved as 020 7946 0958)
+    # and the national "442079460958" (Bob, saved as +49 442079460958) have the
+    # same digits; a digits-only cache key showed Alice's name on Bob's messages.
+    from apple_contacts_mcp.phone_matching import same_phone
+
+    alice = _contact("c-alice", "Alice", phones=("020 7946 0958",))
+    bob = _contact("c-bob", "Bob", phones=("+49 442079460958",))
+    assert same_phone("+44 20 7946 0958", "020 7946 0958") and same_phone("442079460958", "+49 442079460958")
+
+    def lookup(handles):
+        owners = {}
+        for handle in handles:
+            matches = [c for c in (alice, bob) if any(same_phone(handle, m.value) for m in c.phones)]
+            if len(matches) == 1:
+                owners[handle] = matches[0]
+        return HandleLookupResponse(contacts=owners)
+
+    together, _ = ContactNameResolver(lookup).resolve(["+44 20 7946 0958", "442079460958"])
+    assert together == {"+442079460958": ("c-alice", "Alice"), "442079460958": ("c-bob", "Bob")}
+
+    resolver = ContactNameResolver(lookup)
+    first, _ = resolver.resolve(["+44 20 7946 0958"])
+    second, _ = resolver.resolve(["442079460958"])
+    assert first == {"+442079460958": ("c-alice", "Alice")}
+    assert second == {"442079460958": ("c-bob", "Bob")}

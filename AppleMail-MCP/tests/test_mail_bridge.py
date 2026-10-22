@@ -264,3 +264,38 @@ def test_non_send_timeout_keeps_ordinary_error(monkeypatch, script, call, code) 
     assert result.error_code == code
     assert "timed out after 7s" in result.message
     assert "SEND_STATUS_UNKNOWN" not in result.message
+
+
+def _bridge_with_applescript_timeout_on(monkeypatch, *timing_out: str) -> AppleMailBridge:
+    """A real bridge whose script exits with AppleScript's own Apple Event timeout (-1712)."""
+    bridge = AppleMailBridge(script_timeout=300)
+
+    def fake_run(command, **kwargs):
+        script = Path(command[1]).name
+        if script in timing_out:
+            return mail_bridge.CompletedProcess(command, 1, "", f"{script}: execution error: Mail got an error: AppleEvent timed out. (-1712)")
+        stdout = {"get_message.applescript": GET_MESSAGE_ROW}.get(script, "")
+        return mail_bridge.CompletedProcess(command, 0, stdout, "")
+
+    monkeypatch.setattr(mail_bridge, "run", fake_run)
+    return bridge
+
+
+@pytest.mark.parametrize(("script", "call", "where"), SEND_PATHS)
+def test_applescript_event_timeout_on_send_reports_unknown_status(monkeypatch, script, call, where) -> None:
+    # Release review round 2: AppleScript's own -1712 timeout (reachable when the
+    # script timeout is set high) also leaves Mail's send running, so it must not
+    # read as a plain failure that invites a duplicate retry.
+    result = call(_bridge_with_applescript_timeout_on(monkeypatch, script))
+
+    assert result.ok is False
+    assert result.error_code == "SEND_STATUS_UNKNOWN"
+    assert where in result.suggestion
+
+
+@pytest.mark.parametrize(("script", "call", "code"), NON_SEND_PATHS)
+def test_applescript_event_timeout_on_non_send_keeps_ordinary_error(monkeypatch, script, call, code) -> None:
+    result = call(_bridge_with_applescript_timeout_on(monkeypatch, script))
+
+    assert result.ok is False
+    assert result.error_code == code

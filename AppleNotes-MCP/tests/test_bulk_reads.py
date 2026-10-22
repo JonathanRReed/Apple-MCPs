@@ -151,3 +151,17 @@ def test_bulk_folder_values_build_the_same_json_as_before(tmp_path) -> None:
         "parent_folder_name": None,
         "shared": True,
     }
+
+
+def test_list_folders_compares_parent_class_inside_notes_context() -> None:
+    # `class of container ... is folder` evaluated outside `tell application "Notes"`
+    # never matched, so parent_folder_id was always null and the subfolder
+    # allowlist check in notes_delete_folder never fired.
+    script = (SCRIPTS / "list_folders.applescript").read_text()
+    bulk = script[script.index('tell application "Notes"', script.index("on account_folders_json")) :]
+    bulk = bulk[: bulk.index("end tell")]
+    assert "is folder" in bulk
+    assert "parentIsFolderFlags" in bulk
+    fallback = script[script.index("on folder_json(") :]
+    fallback = fallback[: fallback.index("end folder_json")]
+    assert 'tell application "Notes"' in fallback and "is folder" in fallback

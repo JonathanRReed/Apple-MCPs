@@ -34,6 +34,11 @@ on account_folders_json(accountId, accountName, acc)
 				set parentIds to id of container of folders of acc
 				set parentNames to name of container of folders of acc
 				set folderIdsAfter to id of folders of acc
+				-- Compare inside Notes' context, where `folder` is its folder class.
+				set parentIsFolderFlags to {}
+				repeat with parentClass in parentClasses
+					set end of parentIsFolderFlags to ((contents of parentClass) is folder)
+				end repeat
 			end tell
 			set folderCount to count of folderIds
 			set columnsMatch to (count of folderNames) is folderCount and (count of folderSharedValues) is folderCount and (count of parentClasses) is folderCount and (count of parentIds) is folderCount and (count of parentNames) is folderCount
@@ -43,7 +48,7 @@ on account_folders_json(accountId, accountName, acc)
 			if columnsMatch and idsStable then
 				set folderItems to {}
 				repeat with i from 1 to folderCount
-					set end of folderItems to my folder_json_from_values(accountId, accountName, item i of folderIds, item i of folderNames, item i of folderSharedValues, item i of parentClasses, item i of parentIds, item i of parentNames)
+					set end of folderItems to my folder_json_from_values(accountId, accountName, item i of folderIds, item i of folderNames, item i of folderSharedValues, item i of parentIsFolderFlags, item i of parentIds, item i of parentNames)
 				end repeat
 				return folderItems
 			end if
@@ -62,7 +67,7 @@ on account_folders_json(accountId, accountName, acc)
 	return folderItems
 end account_folders_json
 
-on folder_json_from_values(accountId, accountName, rawFolderId, rawFolderName, rawSharedValue, parentClass, rawParentId, rawParentName)
+on folder_json_from_values(accountId, accountName, rawFolderId, rawFolderName, rawSharedValue, parentIsFolder, rawParentId, rawParentName)
 	set folderId to ""
 	set folderName to ""
 	set sharedValue to false
@@ -78,7 +83,7 @@ on folder_json_from_values(accountId, accountName, rawFolderId, rawFolderName, r
 		set sharedValue to rawSharedValue
 	end try
 	try
-		if parentClass is folder then
+		if parentIsFolder then
 			set parentFolderId to my safe_text(rawParentId)
 			set parentFolderName to my safe_text(rawParentName)
 		end if
@@ -102,9 +107,16 @@ on folder_json(accountId, accountName, fld)
 		set sharedValue to shared of fld
 	end try
 	try
-		if class of container of fld is folder then
-			set parentFolderId to my safe_text(id of container of fld)
-			set parentFolderName to my safe_text(name of container of fld)
+		tell application "Notes"
+			set parentIsFolder to (class of container of fld is folder)
+			if parentIsFolder then
+				set rawParentId to id of container of fld
+				set rawParentName to name of container of fld
+			end if
+		end tell
+		if parentIsFolder then
+			set parentFolderId to my safe_text(rawParentId)
+			set parentFolderName to my safe_text(rawParentName)
 		end if
 	end try
 	return my folder_record_json(accountId, accountName, folderId, folderName, sharedValue, parentFolderId, parentFolderName)

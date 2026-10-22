@@ -33,7 +33,7 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 from apple_contacts_mcp.models import ContactSummary
-from apple_contacts_mcp.phone_matching import normalize_email, normalize_phone
+from apple_contacts_mcp.phone_matching import has_international_prefix, normalize_email, normalize_phone
 from apple_messages_mcp.models import ContactNamesStatus
 
 CACHE_TTL_SECONDS = 300.0
@@ -59,16 +59,20 @@ def normalize_handle(address: str | None) -> str | None:
     """The cache key for a Messages handle, or None when it is neither an email nor a phone.
 
     Emails are lower-cased; phones are ``phone_matching.normalize_phone`` digits
-    (with any extension), so two handles share a key only when they are the same
-    number written differently. Other handles (business chat ids) are never sent
-    to Contacts.
+    (with any extension), prefixed with ``+`` when written internationally. The
+    prefix matters: ``+44 20 7946 0958`` and the national ``442079460958`` have
+    the same digits but can belong to different people under ``same_phone``.
+    Other handles (business chat ids) are never sent to Contacts.
     """
     value = (address or "").strip()
     if not value:
         return None
     if "@" in value:
         return normalize_email(value)
-    return normalize_phone(value)
+    digits = normalize_phone(value)
+    if digits is None:
+        return None
+    return f"+{digits}" if has_international_prefix(value) else digits
 
 
 class ContactNameResolver:

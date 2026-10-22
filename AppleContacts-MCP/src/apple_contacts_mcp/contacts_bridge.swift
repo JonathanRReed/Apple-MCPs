@@ -10,7 +10,7 @@
 //   permission_check
 //   list_contacts LIMIT OFFSET
 //   search_contacts QUERY LIMIT
-//   lookup_handles HANDLES_JSON   (JSON array of phone numbers / email addresses)
+//   lookup_handles HANDLES_JSON   (JSON array of phone numbers / email addresses; never prompts)
 //   get_contact ID
 //   create_contact FIRST LAST ORG PHONES EMAILS NOTE
 //   update_contact ID FIRST LAST ORG PHONES EMAILS NOTE
@@ -232,6 +232,19 @@ func requireAccess() {
     }
 }
 
+/// Fails with PERMISSION_DENIED or AUTHORIZATION_UNKNOWN instead of asking for access.
+func requireAccessWithoutPrompt() {
+    relaunchIfContactsAccessMissing()
+    let status = CNContactStore.authorizationStatus(for: .contacts)
+    if contactsAccessGranted(status) { return }
+    if status == .denied || status == .restricted {
+        failPermission("PERMISSION_DENIED", "macOS denied Contacts access to '\(responsibleAppName())'.",
+                       privacyGuidance(pane: "Contacts", tccService: "AddressBook"))
+    }
+    failPermission("AUTHORIZATION_UNKNOWN", "Contacts access has not been granted to '\(responsibleAppName())'.",
+                   "Run a Contacts tool and choose Allow in the macOS prompt for '\(responsibleAppName())'.")
+}
+
 // The note field is deliberately absent: reading it needs an entitlement that an
 // unsigned command-line tool cannot have, and the AppleScript version never
 // returned it either.
@@ -286,11 +299,11 @@ func digitsOnly(_ value: String) -> String {
 }
 
 /// Contacts that could own one of the given handles. Emails must match exactly
-/// (ignoring case). A phone is a candidate when its digits equal the handle's, or
+/// (ignoring case and surrounding whitespace). A phone is a candidate when its digits equal the handle's, or
 /// when both have at least 7 digits and the same last 7 digits (a country code or
-/// trunk 0 in front does not matter here). The Python bridge applies the strict
-/// country-code rule to these candidates, so this only has to be cheap and
-/// complete, never precise.
+/// trunk 0 in front does not matter here). The Python bridge applies
+/// phone_matching.same_phone to these candidates, so this only has to be cheap
+/// and a superset of its matches, never precise.
 func candidateOwners(of handles: [String]) -> [CNContact] {
     var emails = Set<String>()
     var exactPhones = Set<String>()
@@ -308,7 +321,8 @@ func candidateOwners(of handles: [String]) -> [CNContact] {
     }
     if emails.isEmpty && exactPhones.isEmpty { return [] }
     return allContacts().filter { contact in
-        for email in contact.emailAddresses where emails.contains((email.value as String).lowercased()) {
+        for email in contact.emailAddresses
+        where emails.contains((email.value as String).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()) {
             return true
         }
         for phone in contact.phoneNumbers {
@@ -401,7 +415,14 @@ struct NativeContactsBridge {
             emit(result)
             return
         }
-        requireAccess()
+        if command == "lookup_handles" {
+            // Messages reads call this to name handles, so it must stay passive:
+            // check the grant (relaunching silently when only this helper holds
+            // it) and never call requestAccess, which could show a prompt.
+            requireAccessWithoutPrompt()
+        } else {
+            requireAccess()
+        }
 
         switch command {
         case "list_contacts":

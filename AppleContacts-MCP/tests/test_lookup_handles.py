@@ -1,4 +1,4 @@
-"""lookup_handles: exact owners only, no prompt, one helper call per lookup."""
+"""lookup_handles: exact owners only, passive (no prompt, no build), one helper call per lookup."""
 
 import json
 from pathlib import Path
@@ -54,7 +54,7 @@ def native_bridge(monkeypatch, directory: list[dict[str, object]], calls: list[t
 def _helper_candidate(item: dict[str, object], wanted: list[str]) -> bool:
     for handle in wanted:
         if "@" in handle:
-            if any(method["value"].lower() == handle.lower() for method in item["emails"]):  # type: ignore[index]
+            if any(method["value"].strip().lower() == handle.strip().lower() for method in item["emails"]):  # type: ignore[index]
                 return True
             continue
         digits = "".join(ch for ch in handle if ch.isdigit())
@@ -135,40 +135,111 @@ def test_applescript_backend_scans_the_directory_pages(monkeypatch) -> None:
     assert scripts == ["list_contacts.applescript"]
 
 
-@pytest.mark.parametrize(
-    ("error_code", "message"),
-    [("PERMISSION_DENIED", "macOS denied Contacts access to 'node'."), ("AUTHORIZATION_UNKNOWN", "Contacts authorization has not been granted.")],
-)
-def test_tool_returns_the_permission_state_without_reading_contacts(monkeypatch, error_code, message) -> None:
-    bridge = AppleContactsBridge(SCRIPTS_DIR, helper_source=HELPER_SOURCE, helper_build_dir=Path("/nonexistent"))
-    monkeypatch.setattr(bridge, "permission_diagnostic", lambda: (False, ContactsBridgeError(error_code, message, "Allow Contacts access.")))
-    monkeypatch.setattr(bridge, "lookup_handles", lambda handles: pytest.fail("Contacts must not be read without access"))
+def test_national_handle_matching_two_contacts_numbers_is_left_out(monkeypatch) -> None:
+    # same_phone is not transitive: a national handle matches both a +1 and a +44
+    # number. Owned by two contacts, it is ambiguous and gets no name.
+    directory = [
+        contact_item("c-us", "US Person", phones=("+1 6123456789",)),
+        contact_item("c-uk", "UK Person", phones=("+44 6123456789",)),
+    ]
+    bridge = native_bridge(monkeypatch, directory)
+
+    assert bridge.lookup_handles(["6123456789"]) == {}
+    assert bridge.lookup_handles(["+16123456789"])["+16123456789"].contact_id == "c-us"
+
+
+def test_shared_phone_matching_rules_apply(monkeypatch) -> None:
+    directory = [
+        contact_item("c-mom", "Mom", phones=("(212) 555-1234",)),
+        contact_item("c-ana", "Ana", emails=("  Ana@Example.com ",)),
+        contact_item("c-ext", "Desk", phones=("+1 415 555 0100 x12",)),
+    ]
+    bridge = native_bridge(monkeypatch, directory)
+
+    resolved = bridge.lookup_handles(["1 (212) 555-1234", "ANA@example.com", "+14155550100", "+14155550100 x12"])
+
+    assert {handle: contact.contact_id for handle, contact in resolved.items()} == {
+        "1 (212) 555-1234": "c-mom",
+        "ANA@example.com": "c-ana",
+        "+14155550100 x12": "c-ext",
+    }
+
+
+def _no_helper_run(*_args, **_kwargs):
+    pytest.fail("a passive lookup must not run or build the Contacts helper")
+
+
+def test_tool_never_runs_the_applescript_backend(monkeypatch) -> None:
+    bridge = AppleContactsBridge(SCRIPTS_DIR)
+    monkeypatch.setattr(bridge, "_run_script", _no_helper_run)
     monkeypatch.setattr(tools, "_bridge", lambda: bridge)
 
     result = tools.contacts_lookup_handles(["+61402797945"])
 
     assert isinstance(result, ErrorResponse)
-    assert result.error.error_code == error_code
-    assert result.error.message == message
+    assert result.error.error_code == "AUTHORIZATION_UNKNOWN"
 
 
-def test_tool_resolves_when_access_is_granted(monkeypatch) -> None:
-    bridge = native_bridge(monkeypatch, DIRECTORY)
-    monkeypatch.setattr(bridge, "permission_diagnostic", lambda: (True, None))
+def test_tool_never_builds_the_helper(monkeypatch, tmp_path) -> None:
+    bridge = AppleContactsBridge(SCRIPTS_DIR, helper_source=HELPER_SOURCE, helper_build_dir=tmp_path)
+    monkeypatch.setattr(bridge, "_run_script", _no_helper_run)
+    monkeypatch.setattr(bridge, "_ensure_native_helper", _no_helper_run)
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+
+    result = tools.contacts_lookup_handles(["+61402797945"])
+
+    assert isinstance(result, ErrorResponse)
+    assert result.error.error_code == "HELPER_NOT_BUILT"
+
+
+def test_tool_resolves_with_one_helper_call_and_no_separate_permission_check(monkeypatch) -> None:
+    calls: list[tuple[str, tuple[str, ...]]] = []
+    bridge = native_bridge(monkeypatch, DIRECTORY, calls)
+    monkeypatch.setattr(bridge, "helper_built", lambda: True)
+    monkeypatch.setattr(bridge, "permission_diagnostic", _no_helper_run)
     monkeypatch.setattr(tools, "_bridge", lambda: bridge)
 
     result = tools.contacts_lookup_handles(["+61402797945"])
 
     assert isinstance(result, HandleLookupResponse)
     assert result.contacts["+61402797945"].name == "Michael"
+    assert [name for name, _ in calls] == ["lookup_handles.applescript"]
+
+
+@pytest.mark.parametrize("error_code", ["PERMISSION_DENIED", "AUTHORIZATION_UNKNOWN"])
+def test_tool_passes_the_helpers_permission_state_through(monkeypatch, error_code) -> None:
+    bridge = AppleContactsBridge(SCRIPTS_DIR, helper_source=HELPER_SOURCE, helper_build_dir=Path("/nonexistent"))
+    monkeypatch.setattr(bridge, "helper_built", lambda: True)
+    helper_stderr = json.dumps({"ok": False, "error_code": error_code, "message": "no access", "suggestion": "Allow it."})
+
+    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+        raise bridge._map_script_error(helper_stderr)
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+    monkeypatch.setattr(tools, "_bridge", lambda: bridge)
+
+    result = tools.contacts_lookup_handles(["+61402797945"])
+
+    assert isinstance(result, ErrorResponse)
+    assert result.error.error_code == error_code
+
+
+def test_helper_lookup_command_never_requests_access() -> None:
+    source = HELPER_SOURCE.read_text()
+    passive = source[source.index("func requireAccessWithoutPrompt()"):]
+    passive = passive[: passive.index("\n}\n")]
+    assert "requestAccess" not in passive
+    assert 'if command == "lookup_handles" {\n' in source
+    dispatch = source[source.index('if command == "lookup_handles" {'):]
+    assert dispatch.index("requireAccessWithoutPrompt()") < dispatch.index("requireAccess()")
 
 
 def test_tool_reports_bridge_failures_as_errors(monkeypatch) -> None:
     bridge = AppleContactsBridge(SCRIPTS_DIR, helper_source=HELPER_SOURCE, helper_build_dir=Path("/nonexistent"))
-    monkeypatch.setattr(bridge, "permission_diagnostic", lambda: (True, None))
+    monkeypatch.setattr(bridge, "helper_built", lambda: True)
 
     def boom(handles: list[str]) -> dict[str, object]:
-        raise ContactsBridgeError("SCRIPT_TIMEOUT", "Contacts helper timed out.", "Retry.")
+        raise ContactsBridgeError("HELPER_TIMEOUT", "Contacts helper timed out.", "Retry.")
 
     monkeypatch.setattr(bridge, "lookup_handles", boom)
     monkeypatch.setattr(tools, "_bridge", lambda: bridge)
@@ -176,4 +247,4 @@ def test_tool_reports_bridge_failures_as_errors(monkeypatch) -> None:
     result = tools.contacts_lookup_handles(["+61402797945"])
 
     assert isinstance(result, ErrorResponse)
-    assert result.error.error_code == "SCRIPT_TIMEOUT"
+    assert result.error.error_code == "HELPER_TIMEOUT"

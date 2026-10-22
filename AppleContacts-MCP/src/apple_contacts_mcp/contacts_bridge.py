@@ -14,7 +14,7 @@ from typing import Any, Literal
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSummary, CreateContactResponse, DeleteContactResponse, DuplicateCandidateGroup, DuplicateEvidence, ResolvedRecipientResponse
 from apple_contacts_mcp.phone_matching import MIN_PHONE_DIGITS, is_email, normalize_email, normalize_phone, phone_parts, same_email, same_phone
-from apple_mcp_common.native import HelperBundle, NativeHelperError, ensure_helper_bundle
+from apple_mcp_common.native import HelperBundle, NativeHelperError, ensure_helper_bundle, helper_bundle_executable
 
 METHOD_FIELD_SEPARATOR = "\x1f"
 METHOD_RECORD_SEPARATOR = "\x1e"
@@ -23,14 +23,6 @@ SCRIPT_TIMEOUT_SECONDS = 30
 MAX_SCRIPT_OUTPUT_BYTES = 8 * 1024 * 1024
 MAX_CONTACTS_PER_REQUEST = 1000
 MAX_DIRECTORY_CONTACTS = 100_000
-
-# ITU-T E.164 country calling codes (1 to 3 digits). A phone handle that is the
-# national part of a stored number only matches when the digits in front of it
-# are one of these codes. Mirrors PR #58 (JaumeAP); drop this copy once that merges.
-COUNTRY_CALLING_CODES = frozenset(
-    ["1", "7", "20", "27", "30", "31", "32", "33", "34", "36", "39", "40", "41", "43", "44", "45", "46", "47", "48", "49", "51", "52", "53", "54", "55", "56", "57", "58", "60", "61", "62", "63", "64", "65", "66", "81", "82", "84", "86", "90", "91", "92", "93", "94", "95", "98", "211", "212", "213", "216", "218", "220", "221", "222", "223", "224", "225", "226", "227", "228", "229", "230", "231", "232", "233", "234", "235", "236", "237", "238", "239", "240", "241", "242", "243", "244", "245", "246", "247", "248", "249", "250", "251", "252", "253", "254", "255", "256", "257", "258", "260", "261", "262", "263", "264", "265", "266", "267", "268", "269", "290", "291", "297", "298", "299", "350", "351", "352", "353", "354", "355", "356", "357", "358", "359", "370", "371", "372", "373", "374", "375", "376", "377", "378", "379", "380", "381", "382", "383", "385", "386", "387", "389", "420", "421", "423", "500", "501", "502", "503", "504", "505", "506", "507", "508", "509", "590", "591", "592", "593", "594", "595", "596", "597", "598", "599", "670", "672", "673", "674", "675", "676", "677", "678", "679", "680", "681", "682", "683", "685", "686", "687", "688", "689", "690", "691", "692", "800", "808", "850", "852", "853", "855", "856", "870", "878", "880", "881", "882", "883", "886", "888", "960", "961", "962", "963", "964", "965", "966", "967", "968", "970", "971", "972", "973", "974", "975", "976", "977", "979", "991", "992", "993", "994", "995", "996", "998"]
-)
-MIN_PHONE_HANDLE_DIGITS = 7
 
 # macOS only shows a Contacts prompt for an app whose Info.plist explains the access,
 # and remembers the answer by bundle identifier and signature.
@@ -87,6 +79,15 @@ class AppleContactsBridge:
             )
         except ContactsBridgeError as exc:
             return False, exc
+
+    def helper_built(self) -> bool:
+        """Whether the native helper for this source is already compiled, without building it."""
+        if self.helper_source is None or self.helper_build_dir is None:
+            return False
+        try:
+            return helper_bundle_executable(self.helper_source, self.helper_build_dir, CONTACTS_HELPER_BUNDLE).is_file()
+        except OSError:
+            return False
 
     def list_contacts(self, limit: int = MAX_CONTACTS_PER_REQUEST, offset: int = 0) -> list[ContactSummary]:
         bounded_limit = max(1, min(limit, MAX_CONTACTS_PER_REQUEST))
@@ -652,11 +653,11 @@ class AppleContactsBridge:
         """Contacts that own the given Messages handles (phone numbers or email addresses).
 
         Only exact owners are returned: an email must match ignoring case, a phone
-        must be the same number under ``_same_phone`` (a missing country calling
-        code is allowed, a different area code is not), and a handle under 7 digits
-        (a short code) must match a stored number digit for digit. A handle whose
-        owners are two different contacts is left out rather than guessed. Handles
-        with no owner are absent from the result. Never requests Contacts access.
+        must be the same number under ``phone_matching.same_phone`` (a missing
+        country calling code is allowed, a different area code is not, and a short
+        code under 7 digits matches digit for digit only). A handle whose owners are
+        two different contacts is left out rather than guessed. Handles with no
+        owner are absent from the result.
         """
         wanted: list[str] = []
         seen: set[str] = set()
@@ -682,47 +683,12 @@ class AppleContactsBridge:
                 resolved[handle] = next(iter(owners.values()))
         return resolved
 
-    def _owns_handle(self, contact: ContactSummary, handle: str) -> bool:
-        if "@" in handle:
-            wanted = handle.lower()
-            return any((method.value or "").strip().lower() == wanted for method in contact.emails)
-        parts = self._phone_query_parts(handle)
-        if parts is None:
-            return False
-        if len(parts[0]) < MIN_PHONE_HANDLE_DIGITS:
-            return any(self._phone_query_parts(method.value or "") == parts for method in contact.phones)
-        return any(self._same_phone(handle, method.value or "") for method in contact.phones)
-
     @staticmethod
-    def _drop_trunk_zero(digits: str) -> str:
-        """Drop the 00 international prefix, or else a single leading 0 (the national trunk prefix)."""
-        return digits[2:] if digits.startswith("00") else digits.removeprefix("0")
-
-    def _same_phone(self, query: str, value: str) -> bool:
-        """The same number and extension, allowing a missing country calling code.
-
-        The shorter number must be a 7+ digit suffix of the longer one and the
-        digits in front of it must be exactly a country calling code, or a
-        country calling code followed by a single 0 trunk digit (stored
-        "+44 (0)20 7946 0958" matches "20 7946 0958"), so a different area code
-        never passes as a country code. An area code equal to a country code
-        still matches; resolving that needs a per-country numbering plan.
-        Mirrors PR #58; drop this copy once that merges.
-        """
-        query_parts = self._phone_query_parts(query)
-        value_parts = self._phone_query_parts(value)
-        if query_parts is None or value_parts is None or query_parts[1] != value_parts[1]:
-            return False
-        shorter, longer = sorted(
-            (self._drop_trunk_zero(query_parts[0]), self._drop_trunk_zero(value_parts[0])),
-            key=len,
-        )
-        if shorter == longer:
-            return bool(shorter)
-        if len(shorter) < MIN_PHONE_HANDLE_DIGITS or not longer.endswith(shorter):
-            return False
-        prefix = longer[: len(longer) - len(shorter)]
-        return prefix in COUNTRY_CALLING_CODES or (prefix.endswith("0") and prefix[:-1] in COUNTRY_CALLING_CODES)
+    def _owns_handle(contact: ContactSummary, handle: str) -> bool:
+        """Whether one of the contact's methods is the handle under ``phone_matching``."""
+        if "@" in handle:
+            return any(same_email(handle, method.value) for method in contact.emails)
+        return any(same_phone(handle, method.value) for method in contact.phones)
 
     @staticmethod
     def _phone_query_parts(value: str) -> tuple[str, str | None] | None:

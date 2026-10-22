@@ -8,42 +8,42 @@ handles present in a Messages response through Contacts and fills
 standalone Messages server is unchanged and keeps needing only Messages access.
 
 Rules:
-- Only the handles actually returned are looked up, in one Contacts call per
-  response, and nothing is looked up when Contacts access was never granted,
-  so a Messages read never raises the macOS Contacts prompt.
-- Matching is exact-owner only (``AppleContactsBridge.lookup_handles``): emails
-  ignore case; a phone matches when it is the same number, allowing only a
-  missing country calling code in front of it, so a different area code never
-  borrows a contact's name; a handle owned by two different contacts is never
-  guessed.
+- Only the handles actually returned are looked up, in one Contacts helper call
+  per response (at most ``MAX_HANDLES_PER_LOOKUP`` handles). The lookup is
+  passive: it never builds the helper, never requests access and never runs
+  the AppleScript backend, so a Messages read never raises a macOS prompt.
+- Matching is exact-owner only (``AppleContactsBridge.lookup_handles`` with
+  ``apple_contacts_mcp.phone_matching``): emails ignore case; a phone matches
+  when it is the same number, allowing only a missing country calling code, so
+  a different area code never borrows a contact's name; a handle owned by two
+  different contacts is never guessed.
 - Results are cached per handle for a few minutes; a Contacts failure is
   remembered briefly so a broken Contacts setup does not slow every read.
 - Every response carries ``contact_names_status``: ``ok``,
   ``permission_denied`` (macOS denied Contacts access to this process) or
-  ``unavailable`` (access not yet granted, helper or script failure, timeout).
+  ``unavailable`` (access not yet granted, helper not built yet, AppleScript
+  backend selected, helper failure or timeout).
 """
 
 from __future__ import annotations
 
-import re
 import threading
 import time
 from collections.abc import Callable, Iterable
 from typing import Any
 
 from apple_contacts_mcp.models import ContactSummary
+from apple_contacts_mcp.phone_matching import normalize_email, normalize_phone
+from apple_messages_mcp.models import ContactNamesStatus
 
 CACHE_TTL_SECONDS = 300.0
+MAX_HANDLES_PER_LOOKUP = 500
 FAILURE_BACKOFF_SECONDS = 60.0
-STATUS_OK = "ok"
-STATUS_PERMISSION_DENIED = "permission_denied"
-STATUS_UNAVAILABLE = "unavailable"
+STATUS_OK: ContactNamesStatus = "ok"
+STATUS_PERMISSION_DENIED: ContactNamesStatus = "permission_denied"
+STATUS_UNAVAILABLE: ContactNamesStatus = "unavailable"
 
 NameMatch = tuple[str, str]  # (contact_id, display_name)
-
-
-def _digits(value: str) -> str:
-    return re.sub(r"\D+", "", value)
 
 
 def contact_display_name(contact: ContactSummary) -> str | None:
@@ -56,16 +56,19 @@ def contact_display_name(contact: ContactSummary) -> str | None:
 
 
 def normalize_handle(address: str | None) -> str | None:
-    """The cache key for a Messages handle: lower-cased email, or digits-only phone."""
-    if not address:
-        return None
-    value = address.strip()
+    """The cache key for a Messages handle, or None when it is neither an email nor a phone.
+
+    Emails are lower-cased; phones are ``phone_matching.normalize_phone`` digits
+    (with any extension), so two handles share a key only when they are the same
+    number written differently. Other handles (business chat ids) are never sent
+    to Contacts.
+    """
+    value = (address or "").strip()
     if not value:
         return None
     if "@" in value:
-        return value.lower()
-    digits = _digits(value)
-    return digits or None
+        return normalize_email(value)
+    return normalize_phone(value)
 
 
 class ContactNameResolver:
@@ -82,9 +85,9 @@ class ContactNameResolver:
         self._clock = clock
         self._lock = threading.Lock()
         self._cache: dict[str, tuple[NameMatch | None, float]] = {}
-        self._failure: tuple[str, float] | None = None
+        self._failure: tuple[ContactNamesStatus, float] | None = None
 
-    def resolve(self, addresses: Iterable[str | None]) -> tuple[dict[str, NameMatch], str]:
+    def resolve(self, addresses: Iterable[str | None]) -> tuple[dict[str, NameMatch], ContactNamesStatus]:
         """Names for the given handles plus the status of the Contacts side.
 
         Returns ``(matches keyed by normalized handle, status)``. With no handles
@@ -93,8 +96,8 @@ class ContactNameResolver:
         keys: dict[str, str] = {}
         for address in addresses:
             key = normalize_handle(address)
-            if key is not None and key not in keys:
-                keys[key] = address.strip()  # type: ignore[union-attr]
+            if address is not None and key is not None and key not in keys:
+                keys[key] = address.strip()
         if not keys:
             return {}, STATUS_OK
         with self._lock:
@@ -110,6 +113,9 @@ class ContactNameResolver:
                     pending[key] = raw
             if not pending:
                 return found, STATUS_OK
+            # One bounded helper call per response; handles past the cap stay
+            # unnamed and uncached, so a later, smaller response can name them.
+            pending = dict(list(pending.items())[:MAX_HANDLES_PER_LOOKUP])
             if self._failure is not None and now < self._failure[1]:
                 return found, self._failure[0]
             status, resolved = self._fetch(list(pending.values()))
@@ -129,7 +135,7 @@ class ContactNameResolver:
             self._cache.clear()
             self._failure = None
 
-    def _fetch(self, handles: list[str]) -> tuple[str, dict[str, NameMatch]]:
+    def _fetch(self, handles: list[str]) -> tuple[ContactNamesStatus, dict[str, NameMatch]]:
         try:
             response = self._lookup(handles)
         except Exception:
@@ -185,7 +191,7 @@ def _finish_conversation(conversation: Any, names: dict[str, NameMatch]) -> None
             conversation.display_name = participants[0].display_name
 
 
-def annotate_conversations(conversations: Iterable[Any], resolver: ContactNameResolver) -> str:
+def annotate_conversations(conversations: Iterable[Any], resolver: ContactNameResolver) -> ContactNamesStatus:
     """Fill names on every participant and sender in ``conversations``; returns the status."""
     items = list(conversations)
     handles: list[str] = []
@@ -197,7 +203,7 @@ def annotate_conversations(conversations: Iterable[Any], resolver: ContactNameRe
     return status
 
 
-def annotate_messages(messages: Iterable[Any], resolver: ContactNameResolver) -> str:
+def annotate_messages(messages: Iterable[Any], resolver: ContactNameResolver) -> ContactNamesStatus:
     """Fill names on the senders of ``messages``; returns the status."""
     items = list(messages)
     names, status = resolver.resolve(_participants_needing_names(getattr(message, "sender", None) for message in items))

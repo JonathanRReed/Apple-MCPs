@@ -3037,7 +3037,8 @@ async def apple_completion(
             values = [] if isinstance(response, NotesErrorResponse) else [item.note_id for item in response.notes]
             return types.Completion(values=values, total=len(values), has_more=False)
         if uri == "messages://conversation/{chat_id}" and argument.name == "chat_id":
-            response = messages_list_conversations(limit=50, offset=0)
+            # Only chat ids are completed, so skip the Contacts name lookup.
+            response = _messages_list_conversations(limit=50, offset=0)
             values = [] if isinstance(response, MessagesErrorResponse) else [item.chat_id for item in response.conversations]
             return types.Completion(values=values, total=len(values), has_more=False)
         if uri == "shortcuts://folder/{folder_name}" and argument.name == "folder_name":

@@ -249,3 +249,53 @@ def test_wrappers_skip_contacts_entirely_when_nothing_needs_a_name(monkeypatch) 
 
     assert tools.messages_list_conversations().contact_names_status == "ok"
     assert contacts.calls == []
+
+
+def test_normalize_handle_keeps_extensions_and_skips_non_phone_handles() -> None:
+    assert normalize_handle("+1 415 555 0100 x12") == "14155550100;ext=12"
+    assert normalize_handle("urn:biz:1234567-abcd") is None
+
+
+def test_resolver_caps_one_lookup_and_does_not_cache_the_overflow(monkeypatch) -> None:
+    import apple_agent_mcp.contact_names as contact_names
+
+    monkeypatch.setattr(contact_names, "MAX_HANDLES_PER_LOOKUP", 2)
+    contacts = FakeContacts()
+    resolver = ContactNameResolver(contacts)
+
+    resolver.resolve(["+61402797945", "ana@example.com", "+12125551234"])
+    names, _ = resolver.resolve(["+12125551234"])
+
+    assert contacts.calls == [["+61402797945", "ana@example.com"], ["+12125551234"]]
+    assert names == {"12125551234": ("c-mom", "Mom")}
+
+
+def test_end_to_end_a_stranger_never_gets_a_saved_contacts_name(monkeypatch) -> None:
+    """+1 312 555 1234 is not "Mom" when Mom is (212) 555-1234, through the real bridge and matcher."""
+    from pathlib import Path
+
+    import apple_contacts_mcp.tools as contacts_tools
+    from apple_contacts_mcp.contacts_bridge import AppleContactsBridge
+
+    package = Path(contacts_tools.__file__).resolve().parent
+    bridge = AppleContactsBridge(package / "applescripts", helper_source=package / "contacts_bridge.swift", helper_build_dir=Path("/nonexistent"))
+    mom = {"contact_id": "c-mom", "name": "Mom", "phones": [{"label": "mobile", "value": "(212) 555-1234"}], "emails": []}
+    helper_calls: list[str] = []
+
+    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+        helper_calls.append(script_name)
+        return {"items": [mom]}  # the helper's cheap last-7-digits candidate set includes Mom for both
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+    monkeypatch.setattr(bridge, "helper_built", lambda: True)
+    monkeypatch.setattr(contacts_tools, "_bridge", lambda: bridge)
+    resolver = ContactNameResolver(contacts_tools.contacts_lookup_handles)
+    stranger = ConversationSummary(chat_id="any;-;+13125551234", display_name="+13125551234", participants=[_participant("+13125551234")], unread_count=0)
+    family = ConversationSummary(chat_id="any;-;+12125551234", display_name="+12125551234", participants=[_participant("+12125551234")], unread_count=0)
+
+    assert annotate_conversations([stranger, family], resolver) == "ok"
+
+    assert stranger.participants[0].display_name is None
+    assert stranger.display_name == "+13125551234"
+    assert family.participants[0].display_name == "Mom"
+    assert helper_calls == ["lookup_handles.applescript"]

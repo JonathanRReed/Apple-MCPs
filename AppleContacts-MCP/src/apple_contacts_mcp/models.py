@@ -31,6 +31,13 @@ class ContactSummary(BaseModel):
     emails: list[ContactMethod] = Field(default_factory=list)
 
 
+class HandleLookupResponse(BaseModel):
+    """Owners of Messages handles, keyed by the handle as given. Unresolved handles are absent."""
+
+    ok: Literal[True] = True
+    contacts: dict[str, ContactSummary] = Field(default_factory=dict)
+
+
 class ContactDetail(ContactSummary):
     note: str = ""
 

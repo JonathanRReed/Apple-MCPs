@@ -134,6 +134,8 @@ Contacts uses `CNContactStore` by default, so reads and writes do not wait for C
 
 Set `APPLE_CONTACTS_MCP_BACKEND=applescript` to use the previous backend. The native backend returns first and last names directly and preserves phone/email update semantics: omit a collection to keep it, or pass `[]` to clear it. Contact notes require a separate macOS entitlement; a nonempty `note` is rejected before a native write. The AppleScript backend remains available for notes.
 
+The helper also answers `lookup_handles` (a JSON array of phone numbers or email addresses) with the contacts that could own them, in one pass over the directory. Unlike the other commands it never asks for access: without a grant it returns `PERMISSION_DENIED` or `AUTHORIZATION_UNKNOWN`. `AppleContactsBridge.lookup_handles` applies the `phone_matching` exact-owner rules to that set, and Apple-Tools-MCP uses it to name Messages handles, only when the helper is already built. It is not exposed as an MCP tool.
+
 The native helper compiles an immutable source snapshot into a bundle named by its full SHA-256 hash. A source change during compilation is rejected, and a concurrent build cannot replace an installed bundle. Different source versions keep separate executables with the same bundle identifier. The helper is ad-hoc signed, so macOS may ask once more after an update that changes its source.
 
 The native helper is adapted from Jaume Puig's work in [JaumeAP/Apple-MCPs](https://github.com/JaumeAP/Apple-MCPs).

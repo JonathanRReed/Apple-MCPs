@@ -132,6 +132,7 @@ claude mcp add --transport stdio --scope user apple-tools -- uvx apple-tools-mcp
 - Mail thread tools: get, reply, archive
 - Contacts mutation: create, update, delete with labeled methods
 - Calendar and Messages permission diagnostics
+- Contacts names on Messages: participants and senders carry `display_name` / `contact_id` when Contacts access is already granted, and every Messages response says why names are missing in `contact_names_status` (`ok`, `permission_denied`, `unavailable`). Only exact owners are named; a number in a different area code never borrows a contact's name.
 - Launch and recovery: `apple_health`, `apple_permission_guide`, `apple_recheck_permissions`
 
 ## Assistant Defaults
@@ -189,6 +190,7 @@ Archive discovery stays within the selected account. An explicit account overrid
 - Reminders needs Reminders access
 - Messages needs Automation access to Messages, plus Full Disk Access for history
 - Contacts needs Contacts access
+- Contacts names on Messages responses need an explicit Contacts tool to run first (it builds the Contacts helper and asks for access); Messages reads never build the helper or ask for access, they report `contact_names_status` instead
 - Notes needs Automation access to Notes
 - Shortcuts usually works without a separate privacy prompt
 - Files access is controlled by `APPLE_FILES_MCP_ALLOWED_ROOTS`, not by a macOS privacy prompt

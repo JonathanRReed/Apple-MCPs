@@ -14,12 +14,14 @@ from typing import Any, Literal
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSummary, CreateContactResponse, DeleteContactResponse, DuplicateCandidateGroup, DuplicateEvidence, ResolvedRecipientResponse
 from apple_contacts_mcp.phone_matching import MIN_PHONE_DIGITS, is_email, normalize_email, normalize_phone, phone_parts, same_email, same_phone
-from apple_mcp_common.native import HelperBundle, NativeHelperError, ensure_helper_bundle
+from apple_mcp_common.native import HelperBundle, NativeHelperError, ensure_helper_bundle, helper_bundle_executable
 
 METHOD_FIELD_SEPARATOR = "\x1f"
 METHOD_RECORD_SEPARATOR = "\x1e"
 NO_CHANGE_SENTINEL = "__NOCHANGE__"
 SCRIPT_TIMEOUT_SECONDS = 30
+# Name lookups decorate Messages reads; give up quickly instead of stalling them.
+LOOKUP_HANDLES_TIMEOUT_SECONDS = 5
 MAX_SCRIPT_OUTPUT_BYTES = 8 * 1024 * 1024
 MAX_CONTACTS_PER_REQUEST = 1000
 MAX_DIRECTORY_CONTACTS = 100_000
@@ -79,6 +81,15 @@ class AppleContactsBridge:
             )
         except ContactsBridgeError as exc:
             return False, exc
+
+    def helper_built(self) -> bool:
+        """Whether the native helper for this source is already compiled, without building it."""
+        if self.helper_source is None or self.helper_build_dir is None:
+            return False
+        try:
+            return helper_bundle_executable(self.helper_source, self.helper_build_dir, CONTACTS_HELPER_BUNDLE).is_file()
+        except OSError:
+            return False
 
     def list_contacts(self, limit: int = MAX_CONTACTS_PER_REQUEST, offset: int = 0) -> list[ContactSummary]:
         bounded_limit = max(1, min(limit, MAX_CONTACTS_PER_REQUEST))
@@ -425,7 +436,8 @@ class AppleContactsBridge:
             yield from items
             offset += len(items)
 
-    def _run_script(self, script_name: str, *args: str) -> dict[str, Any]:
+    def _run_script(self, script_name: str, *args: str, timeout: float | None = None) -> dict[str, Any]:
+        timeout = SCRIPT_TIMEOUT_SECONDS if timeout is None else timeout
         if self.helper_source is not None:
             command = [str(self._ensure_native_helper()), script_name.removesuffix(".applescript"), *args]
         else:
@@ -445,12 +457,12 @@ class AppleContactsBridge:
                     stdout=stdout_file,
                     stderr=stderr_file,
                 )
-                deadline = time.monotonic() + SCRIPT_TIMEOUT_SECONDS
+                deadline = time.monotonic() + timeout
                 while process.poll() is None:
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         self._stop_process(process)
-                        raise self._timeout_error()
+                        raise self._timeout_error(timeout)
                     if stdout_file.tell() > MAX_SCRIPT_OUTPUT_BYTES or stderr_file.tell() > MAX_SCRIPT_OUTPUT_BYTES:
                         self._stop_process(process)
                         raise self._output_too_large_error()
@@ -497,16 +509,17 @@ class AppleContactsBridge:
             )
         return payload
 
-    def _timeout_error(self) -> ContactsBridgeError:
+    def _timeout_error(self, timeout: float | None = None) -> ContactsBridgeError:
+        timeout = SCRIPT_TIMEOUT_SECONDS if timeout is None else timeout
         if self.helper_source is None:
             return ContactsBridgeError(
                 "APPLESCRIPT_TIMEOUT",
-                f"AppleScript exceeded the {SCRIPT_TIMEOUT_SECONDS}-second timeout.",
+                f"AppleScript exceeded the {timeout:g}-second timeout.",
                 "Ensure Contacts.app is responsive and try again.",
             )
         return ContactsBridgeError(
             "HELPER_TIMEOUT",
-            f"The native Contacts helper exceeded the {SCRIPT_TIMEOUT_SECONDS}-second timeout.",
+            f"The native Contacts helper exceeded the {timeout:g}-second timeout.",
             "If a macOS Contacts permission prompt is open, answer it and retry. Otherwise retry with a smaller limit.",
         )
 
@@ -639,6 +652,47 @@ class AppleContactsBridge:
             seen.add(contact.contact_id)
             result.append(contact)
         return result
+
+    def lookup_handles(self, handles: list[str]) -> dict[str, ContactSummary]:
+        """Contacts that own the given Messages handles (phone numbers or email addresses).
+
+        Only exact owners are returned: an email must match ignoring case, a phone
+        must be the same number under ``phone_matching.same_phone`` (a missing
+        country calling code is allowed, a different area code is not, and a short
+        code under 7 digits matches digit for digit only). A handle whose owners are
+        two different contacts is left out rather than guessed. Handles with no
+        owner are absent from the result.
+        """
+        wanted: list[str] = []
+        seen: set[str] = set()
+        for handle in handles:
+            key = handle.strip()
+            if key and key not in seen:
+                seen.add(key)
+                wanted.append(key)
+        if not wanted:
+            return {}
+        if self.helper_source is not None:
+            payload = self._run_script("lookup_handles.applescript", json.dumps(wanted), timeout=LOOKUP_HANDLES_TIMEOUT_SECONDS)
+            candidates = [self._normalize_summary(item) for item in payload.get("items", []) if isinstance(item, dict)]
+        else:
+            candidates = list(self._iter_all_contacts())
+        resolved: dict[str, ContactSummary] = {}
+        for handle in wanted:
+            owners: dict[str, ContactSummary] = {}
+            for contact in candidates:
+                if self._owns_handle(contact, handle):
+                    owners.setdefault(contact.contact_id, contact)
+            if len(owners) == 1:
+                resolved[handle] = next(iter(owners.values()))
+        return resolved
+
+    @staticmethod
+    def _owns_handle(contact: ContactSummary, handle: str) -> bool:
+        """Whether one of the contact's methods is the handle under ``phone_matching``."""
+        if "@" in handle:
+            return any(same_email(handle, method.value) for method in contact.emails)
+        return any(same_phone(handle, method.value) for method in contact.phones)
 
     @staticmethod
     def _phone_query_parts(value: str) -> tuple[str, str | None] | None:

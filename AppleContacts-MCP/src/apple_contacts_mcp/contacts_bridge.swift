@@ -10,6 +10,7 @@
 //   permission_check
 //   list_contacts LIMIT OFFSET
 //   search_contacts QUERY LIMIT
+//   lookup_handles HANDLES_JSON   (JSON array of phone numbers / email addresses; never prompts)
 //   get_contact ID
 //   create_contact FIRST LAST ORG PHONES EMAILS NOTE
 //   update_contact ID FIRST LAST ORG PHONES EMAILS NOTE
@@ -231,6 +232,19 @@ func requireAccess() {
     }
 }
 
+/// Fails with PERMISSION_DENIED or AUTHORIZATION_UNKNOWN instead of asking for access.
+func requireAccessWithoutPrompt() {
+    relaunchIfContactsAccessMissing()
+    let status = CNContactStore.authorizationStatus(for: .contacts)
+    if contactsAccessGranted(status) { return }
+    if status == .denied || status == .restricted {
+        failPermission("PERMISSION_DENIED", "macOS denied Contacts access to '\(responsibleAppName())'.",
+                       privacyGuidance(pane: "Contacts", tccService: "AddressBook"))
+    }
+    failPermission("AUTHORIZATION_UNKNOWN", "Contacts access has not been granted to '\(responsibleAppName())'.",
+                   "Run a Contacts tool and choose Allow in the macOS prompt for '\(responsibleAppName())'.")
+}
+
 // The note field is deliberately absent: reading it needs an entitlement that an
 // unsigned command-line tool cannot have, and the AppleScript version never
 // returned it either.
@@ -278,6 +292,47 @@ func methods(_ raw: String) -> [(label: String, value: String)] {
 func displayName(_ contact: CNContact) -> String {
     let formatted = CNContactFormatter.string(from: contact, style: .fullName) ?? ""
     return formatted.isEmpty ? contact.organizationName : formatted
+}
+
+func digitsOnly(_ value: String) -> String {
+    return value.filter { $0.isNumber }
+}
+
+/// Contacts that could own one of the given handles. Emails must match exactly
+/// (ignoring case and surrounding whitespace). A phone is a candidate when its digits equal the handle's, or
+/// when both have at least 7 digits and the same last 7 digits (a country code or
+/// trunk 0 in front does not matter here). The Python bridge applies
+/// phone_matching.same_phone to these candidates, so this only has to be cheap
+/// and a superset of its matches, never precise.
+func candidateOwners(of handles: [String]) -> [CNContact] {
+    var emails = Set<String>()
+    var exactPhones = Set<String>()
+    var phoneTails = Set<String>()
+    for handle in handles {
+        let trimmed = handle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.contains("@") {
+            emails.insert(trimmed.lowercased())
+        } else {
+            let digits = digitsOnly(trimmed)
+            if digits.isEmpty { continue }
+            exactPhones.insert(digits)
+            if digits.count >= 7 { phoneTails.insert(String(digits.suffix(7))) }
+        }
+    }
+    if emails.isEmpty && exactPhones.isEmpty { return [] }
+    return allContacts().filter { contact in
+        for email in contact.emailAddresses
+        where emails.contains((email.value as String).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()) {
+            return true
+        }
+        for phone in contact.phoneNumbers {
+            let stored = digitsOnly(phone.value.stringValue)
+            if stored.isEmpty { continue }
+            if exactPhones.contains(stored) { return true }
+            if stored.count >= 7 && phoneTails.contains(String(stored.suffix(7))) { return true }
+        }
+        return false
+    }
 }
 
 func personJSON(_ contact: CNContact) -> [String: Any] {
@@ -360,7 +415,14 @@ struct NativeContactsBridge {
             emit(result)
             return
         }
-        requireAccess()
+        if command == "lookup_handles" {
+            // Messages reads call this to name handles, so it must stay passive:
+            // check the grant (relaunching silently when only this helper holds
+            // it) and never call requestAccess, which could show a prompt.
+            requireAccessWithoutPrompt()
+        } else {
+            requireAccess()
+        }
 
         switch command {
         case "list_contacts":
@@ -379,6 +441,14 @@ struct NativeContactsBridge {
                     || $0.organizationName.range(of: query, options: .caseInsensitive) != nil
             }
             emit(["items": matches.prefix(limit).map(personJSON)])
+
+        case "lookup_handles":
+            guard let data = argument(args, 0).data(using: .utf8),
+                  let parsed = try? JSONSerialization.jsonObject(with: data),
+                  let handles = parsed as? [String] else {
+                fail("HANDLES_JSON must be a JSON array of strings.")
+            }
+            emit(["items": candidateOwners(of: handles).map(personJSON)])
 
         case "get_contact":
             if let contact = findContact(argument(args, 0)) {

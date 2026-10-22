@@ -18,6 +18,7 @@ from apple_contacts_mcp.models import (
     DeleteContactResponse,
     DuplicateContactListResponse,
     ErrorResponse,
+    HandleLookupResponse,
     HealthResponse,
     ResolvedRecipientResponse,
     ToolError,
@@ -241,6 +242,32 @@ def contacts_get_contact(contact_id: Annotated[str, Field(description=_CONTACT_I
         return ContactResponse(contact=_bridge().get_contact(contact_id))
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
+    except ContactsBridgeError as exc:
+        return _error_response(exc.error_code, exc.message, exc.suggestion)
+
+
+def contacts_lookup_handles(handles: list[str]) -> HandleLookupResponse | ErrorResponse:
+    """Owners of Messages handles, for callers that already hold the handles (not an MCP tool).
+
+    Passive by design, so a Messages read elsewhere never raises a macOS prompt:
+    it never compiles the native helper, never runs the AppleScript backend (which
+    would launch Contacts.app), and the helper's ``lookup_handles`` command
+    returns PERMISSION_DENIED or AUTHORIZATION_UNKNOWN instead of requesting
+    access. One helper process per call.
+    """
+    bridge = _bridge()
+    if bridge.helper_source is None:
+        return _error_response(
+            "AUTHORIZATION_UNKNOWN", "Handle lookups need the native Contacts helper.",
+            "Unset APPLE_CONTACTS_MCP_BACKEND=applescript to name Messages handles.",
+        )
+    if not bridge.helper_built():
+        return _error_response(
+            "HELPER_NOT_BUILT", "The native Contacts helper has not been built yet.",
+            "Run any Contacts tool once; it builds the helper and asks for Contacts access.",
+        )
+    try:
+        return HandleLookupResponse(contacts=bridge.lookup_handles(handles))
     except ContactsBridgeError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
 

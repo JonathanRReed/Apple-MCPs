@@ -40,11 +40,18 @@ class HealthResponse(BaseModel):
     transport: str
 
 
+# Why Contacts names are or are not present on a Messages response (Apple-Tools-MCP only).
+ContactNamesStatus = Literal["ok", "permission_denied", "unavailable"]
+
+
 class ParticipantRecord(BaseModel):
     handle_id: str
     address: str
     service: str | None = None
     uncanonicalized_address: str | None = None
+    # Filled by Apple-Tools-MCP from Contacts; the standalone server leaves them unset.
+    display_name: str | None = None
+    contact_id: str | None = None
 
 
 class AttachmentRecord(BaseModel):
@@ -87,22 +94,30 @@ class ConversationListResponse(BaseModel):
     ok: Literal[True] = True
     conversations: list[ConversationSummary]
     count: int
+    # Set by Apple-Tools-MCP. Unset (null) in the standalone server.
+    contact_names_status: ContactNamesStatus | None = None
 
 
 class ConversationResponse(BaseModel):
     ok: Literal[True] = True
     conversation: ConversationRecord
+    # Set by Apple-Tools-MCP. Unset (null) in the standalone server.
+    contact_names_status: ContactNamesStatus | None = None
 
 
 class MessageResponse(BaseModel):
     ok: Literal[True] = True
     message: MessageRecord
+    # Set by Apple-Tools-MCP. Unset (null) in the standalone server.
+    contact_names_status: ContactNamesStatus | None = None
 
 
 class MessageSearchResponse(BaseModel):
     ok: Literal[True] = True
     messages: list[MessageRecord]
     count: int
+    # Set by Apple-Tools-MCP. Unset (null) in the standalone server.
+    contact_names_status: ContactNamesStatus | None = None
 
 
 class AttachmentListResponse(BaseModel):

@@ -190,7 +190,7 @@ Archive discovery stays within the selected account. An explicit account overrid
 - Reminders needs Reminders access
 - Messages needs Automation access to Messages, plus Full Disk Access for history
 - Contacts needs Contacts access
-- Contacts names on Messages responses need Contacts access that was granted by an explicit Contacts tool first; Messages reads never ask for it, they report `contact_names_status` instead
+- Contacts names on Messages responses need an explicit Contacts tool to run first (it builds the Contacts helper and asks for access); Messages reads never build the helper or ask for access, they report `contact_names_status` instead
 - Notes needs Automation access to Notes
 - Shortcuts usually works without a separate privacy prompt
 - Files access is controlled by `APPLE_FILES_MCP_ALLOWED_ROOTS`, not by a macOS privacy prompt

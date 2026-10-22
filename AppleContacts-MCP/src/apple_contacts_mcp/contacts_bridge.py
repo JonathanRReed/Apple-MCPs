@@ -13,6 +13,7 @@ from typing import Any, Literal
 
 from apple_contacts_mcp.config import load_settings
 from apple_contacts_mcp.models import ContactDetail, ContactMethod, ContactSummary, CreateContactResponse, DeleteContactResponse, DuplicateCandidateGroup, DuplicateEvidence, ResolvedRecipientResponse
+from apple_contacts_mcp.phone_matching import MIN_PHONE_DIGITS, is_email, normalize_email, normalize_phone, phone_parts, same_email, same_phone
 from apple_mcp_common.native import HelperBundle, NativeHelperError, ensure_helper_bundle
 
 METHOD_FIELD_SEPARATOR = "\x1f"
@@ -129,7 +130,18 @@ class AppleContactsBridge:
     def resolve_message_recipient(self, query: str, channel: str = "phone") -> ResolvedRecipientResponse:
         if channel not in {"phone", "email", "any"}:
             raise ContactsBridgeError("INVALID_INPUT", f"Unsupported channel '{channel}'.", "Use 'phone', 'email', or 'any'.")
-        matches = self.search_contacts(query, limit=10)
+        # A complete email or phone names one method: only its exact owners count,
+        # never a contact whose stored value merely contains it.
+        matches = self._exact_method_matches(query)
+        if matches is None:
+            matches = self.search_contacts(query, limit=10)
+        elif not matches and self._is_short_code(query) and self.search_contacts(query, limit=1):
+            # A short code that only matches part of a stored number never picks a person.
+            raise ContactsBridgeError(
+                "AMBIGUOUS_PHONE_NUMBER",
+                f"'{query.strip()}' has fewer than {MIN_PHONE_DIGITS} digits and only matches part of a stored phone number.",
+                "Give the complete phone number, or use contacts_search_contacts and choose a specific contact_id.",
+            )
         if not matches:
             raise ContactsBridgeError("CONTACT_NOT_FOUND", f"No contact matched '{query}'.", "Search contacts first to discover a valid contact.")
 
@@ -302,28 +314,10 @@ class AppleContactsBridge:
         ]
 
     def _choose_recipient(self, contact: ContactDetail, channel: str, *, query: str | None = None) -> tuple[Literal["phone", "email"], ContactMethod]:
-        parts = self._phone_query_parts(query) if query is not None else None
-        if channel in {"phone", "any"} and query is not None and parts is not None and parts[1] is not None:
-            normalized_query = self._normalize_lookup_value(query)
-            exact = [method for method in contact.phones if self._normalize_lookup_value(method.value) == normalized_query]
-            matching = exact or [
-                method for method in contact.phones
-                if self._extension_phone_matches(parts, self._phone_query_parts(method.value))
-            ]
-            unique: dict[str, ContactMethod] = {}
-            for method in matching:
-                unique.setdefault(self._normalize_lookup_value(method.value), method)
-            if len(unique) == 1:
-                return "phone", next(iter(unique.values()))
-            if len(unique) > 1:
-                raise ContactsBridgeError(
-                    "AMBIGUOUS_PHONE_NUMBER", "Multiple phone methods match the requested extension.",
-                    "Provide the complete phone number and extension.",
-                )
-            raise ContactsBridgeError(
-                "NO_PHONE_NUMBER_MATCH", "No phone method matches the requested extension.",
-                "Choose a matching phone method explicitly.",
-            )
+        if query is not None:
+            matched = self._matched_method(contact, channel, query)
+            if matched is not None:
+                return matched
         if channel == "phone":
             if contact.phones:
                 return "phone", contact.phones[0]
@@ -349,6 +343,37 @@ class AppleContactsBridge:
             f"Contact '{contact.name}' does not have a phone number or email address.",
             "Use a different contact.",
         )
+
+    def _matched_method(self, contact: ContactDetail, channel: str, query: str) -> tuple[Literal["phone", "email"], ContactMethod] | None:
+        """The contact's phone or email that the query names, so the caller gets the method asked for."""
+        if is_email(query):
+            if channel == "phone":
+                return None
+            return next((("email", method) for method in contact.emails if same_email(query, method.value)), None)
+        parts = phone_parts(query)
+        if parts is None or channel == "email":
+            return None
+        normalized_query = normalize_phone(query)
+        matching = sorted(
+            (method for method in contact.phones if same_phone(query, method.value)),
+            key=lambda method: normalize_phone(method.value) != normalized_query,
+        )
+        # same_phone is not transitive (a national number can match two different
+        # international ones), so the matches only count as one number when every
+        # pair of them is the same number.
+        if any(not same_phone(a.value, b.value) for index, a in enumerate(matching) for b in matching[index + 1:]):
+            raise ContactsBridgeError(
+                "AMBIGUOUS_PHONE_NUMBER", f"Multiple phone numbers of '{contact.name}' match '{query.strip()}'.",
+                "Provide the complete phone number, including the country code and any extension.",
+            )
+        if matching:
+            return "phone", matching[0]
+        if parts[1] is not None:
+            raise ContactsBridgeError(
+                "NO_PHONE_NUMBER_MATCH", "No phone method matches the requested extension.",
+                "Choose a matching phone method explicitly.",
+            )
+        return None
 
     def _iter_all_contacts(self) -> Iterator[ContactSummary]:
         offset = 0
@@ -583,12 +608,16 @@ class AppleContactsBridge:
     def _is_exact_match(self, contact: ContactSummary, query_text: str, normalized_query: str) -> bool:
         parts = self._phone_query_parts(query_text)
         if parts is not None and parts[1] is not None:
-            return any(self._normalize_lookup_value(method.value) == normalized_query for method in contact.phones)
+            # Same rule as every other phone lookup, so two owners of one number
+            # with an extension are both exact and the result is ambiguous.
+            return any(same_phone(query_text, method.value) for method in contact.phones)
         if query_text in {contact.name.lower(), contact.first_name.lower(), contact.last_name.lower()}:
             return True
         if contact.organization and query_text == contact.organization.lower():
             return True
-        return any(self._normalize_lookup_value(method.value) == normalized_query for method in [*contact.phones, *contact.emails])
+        if any(self._normalize_lookup_value(method.value) == normalized_query for method in [*contact.phones, *contact.emails]):
+            return True
+        return parts is not None and any(same_phone(query_text, method.value) for method in contact.phones)
 
     def _is_partial_match(self, contact: ContactSummary, query_text: str, normalized_query: str) -> bool:
         parts = self._phone_query_parts(query_text)
@@ -613,15 +642,7 @@ class AppleContactsBridge:
 
     @staticmethod
     def _phone_query_parts(value: str) -> tuple[str, str | None] | None:
-        compact = re.sub(r"\s+", "", value.strip().lower())
-        match = re.fullmatch(
-            r"(?:tel:)?(?=[+\d()./-]*\d)(?P<base>[+\d()./-]+)"
-            r"(?:(?:ext(?:ension|n)?\.?[:=]?|x[:=]?|#|;ext=)(?P<extension>\d+))?",
-            compact,
-        )
-        if match is None:
-            return None
-        return re.sub(r"\D+", "", match.group("base")), match.group("extension")
+        return phone_parts(value)
 
     @staticmethod
     def _extension_phone_matches(
@@ -633,15 +654,34 @@ class AppleContactsBridge:
             and method_parts[0].endswith(query_parts[0])
         )
 
+    @staticmethod
+    def _is_short_code(query: str) -> bool:
+        parts = phone_parts(query)
+        return parts is not None and len(parts[0]) < MIN_PHONE_DIGITS
+
+    def _exact_method_matches(self, query: str) -> list[ContactSummary] | None:
+        """Contacts holding the email or phone number given, or None for other queries.
+
+        Phone numbers compare under ``phone_matching.same_phone``, so a short code
+        (under 7 digits) only matches the same digits exactly.
+        """
+        query_text = query.strip()
+        email = is_email(query_text)
+        if not email and phone_parts(query_text) is None:
+            return None
+        return [
+            contact
+            for contact in self._iter_all_contacts()
+            if any(
+                same_email(query_text, method.value) if email else same_phone(query_text, method.value)
+                for method in (contact.emails if email else contact.phones)
+            )
+        ]
+
     def _normalize_lookup_value(self, value: str) -> str:
-        lowered = value.strip().lower()
-        if "@" in lowered:
-            return lowered
-        parts = self._phone_query_parts(lowered)
-        if parts is not None:
-            base, extension = parts
-            return base if extension is None else f"{base};ext={extension}"
-        return re.sub(r"\D+", "", lowered)
+        if "@" in value:
+            return normalize_email(value)
+        return normalize_phone(value) or re.sub(r"\D+", "", value)
 
     def _normalize_name_key(self, value: str) -> str:
         lowered = re.sub(r"\s+", " ", value.strip().lower())
@@ -680,6 +720,9 @@ class AppleContactsBridge:
             return ""
         rows: list[str] = []
         for method in methods:
+            # A blank value would replace the whole method set with one empty entry.
+            if not method.value.strip():
+                raise ContactsBridgeError("INVALID_INPUT", "A phone or email value must not be empty.", "Omit the array to keep the current phones or emails, or give every entry a value.")
             label = method.label.replace(METHOD_FIELD_SEPARATOR, " ").replace(METHOD_RECORD_SEPARATOR, " ")
             value = method.value.replace(METHOD_FIELD_SEPARATOR, " ").replace(METHOD_RECORD_SEPARATOR, " ")
             rows.append(f"{label}{METHOD_FIELD_SEPARATOR}{value}")

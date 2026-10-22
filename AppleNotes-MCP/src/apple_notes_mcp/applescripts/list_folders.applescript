@@ -11,17 +11,85 @@ on run argv
 				-- skip
 			else
 				set accId to my safe_text(id of acc)
-				repeat with fld in folders of acc
-					set folderRecord to my folder_json(accId, accName, fld)
-					if folderRecord is not "" then
-						set end of jsonItems to folderRecord
-					end if
-				end repeat
+				set jsonItems to jsonItems & my account_folders_json(accId, accName, acc)
 			end if
 		end repeat
 	end tell
 	return "{" & quote & "items" & quote & ":[" & my join_list(jsonItems, ",") & "]}"
 end run
+
+on account_folders_json(accountId, accountName, acc)
+	-- Read each property for every folder of the account in one Apple Event,
+	-- instead of several events per folder. The id list is read again at the
+	-- end; if the folders changed in between, the columns may not line up,
+	-- so retry.
+	repeat 3 times
+		try
+			tell application "Notes"
+				set folderIds to id of folders of acc
+				if (count of folderIds) is 0 then return {}
+				set folderNames to name of folders of acc
+				set folderSharedValues to shared of folders of acc
+				set parentClasses to class of container of folders of acc
+				set parentIds to id of container of folders of acc
+				set parentNames to name of container of folders of acc
+				set folderIdsAfter to id of folders of acc
+				-- Compare inside Notes' context, where `folder` is its folder class.
+				set parentIsFolderFlags to {}
+				repeat with parentClass in parentClasses
+					set end of parentIsFolderFlags to ((contents of parentClass) is folder)
+				end repeat
+			end tell
+			set folderCount to count of folderIds
+			set columnsMatch to (count of folderNames) is folderCount and (count of folderSharedValues) is folderCount and (count of parentClasses) is folderCount and (count of parentIds) is folderCount and (count of parentNames) is folderCount
+			considering case
+				set idsStable to folderIdsAfter = folderIds
+			end considering
+			if columnsMatch and idsStable then
+				set folderItems to {}
+				repeat with i from 1 to folderCount
+					set end of folderItems to my folder_json_from_values(accountId, accountName, item i of folderIds, item i of folderNames, item i of folderSharedValues, item i of parentIsFolderFlags, item i of parentIds, item i of parentNames)
+				end repeat
+				return folderItems
+			end if
+		end try
+	end repeat
+	-- Fall back to reading folder by folder.
+	set folderItems to {}
+	tell application "Notes"
+		repeat with fld in folders of acc
+			set folderRecord to my folder_json(accountId, accountName, fld)
+			if folderRecord is not "" then
+				set end of folderItems to folderRecord
+			end if
+		end repeat
+	end tell
+	return folderItems
+end account_folders_json
+
+on folder_json_from_values(accountId, accountName, rawFolderId, rawFolderName, rawSharedValue, parentIsFolder, rawParentId, rawParentName)
+	set folderId to ""
+	set folderName to ""
+	set sharedValue to false
+	set parentFolderId to ""
+	set parentFolderName to ""
+	try
+		set folderId to my safe_text(rawFolderId)
+	end try
+	try
+		set folderName to my safe_text(rawFolderName)
+	end try
+	try
+		set sharedValue to rawSharedValue
+	end try
+	try
+		if parentIsFolder then
+			set parentFolderId to my safe_text(rawParentId)
+			set parentFolderName to my safe_text(rawParentName)
+		end if
+	end try
+	return my folder_record_json(accountId, accountName, folderId, folderName, sharedValue, parentFolderId, parentFolderName)
+end folder_json_from_values
 
 on folder_json(accountId, accountName, fld)
 	set folderId to ""
@@ -39,11 +107,22 @@ on folder_json(accountId, accountName, fld)
 		set sharedValue to shared of fld
 	end try
 	try
-		if class of container of fld is folder then
-			set parentFolderId to my safe_text(id of container of fld)
-			set parentFolderName to my safe_text(name of container of fld)
+		tell application "Notes"
+			set parentIsFolder to (class of container of fld is folder)
+			if parentIsFolder then
+				set rawParentId to id of container of fld
+				set rawParentName to name of container of fld
+			end if
+		end tell
+		if parentIsFolder then
+			set parentFolderId to my safe_text(rawParentId)
+			set parentFolderName to my safe_text(rawParentName)
 		end if
 	end try
+	return my folder_record_json(accountId, accountName, folderId, folderName, sharedValue, parentFolderId, parentFolderName)
+end folder_json
+
+on folder_record_json(accountId, accountName, folderId, folderName, sharedValue, parentFolderId, parentFolderName)
 	return "{" & ¬
 		quote & "folder_id" & quote & ":" & my json_string(folderId) & "," & ¬
 		quote & "name" & quote & ":" & my json_string(folderName) & "," & ¬
@@ -52,7 +131,7 @@ on folder_json(accountId, accountName, fld)
 		quote & "parent_folder_id" & quote & ":" & my nullable_json_string(parentFolderId) & "," & ¬
 		quote & "parent_folder_name" & quote & ":" & my nullable_json_string(parentFolderName) & "," & ¬
 		quote & "shared" & quote & ":" & my json_boolean(sharedValue) & "}"
-end folder_json
+end folder_record_json
 
 on safe_text(valueText)
 	try

@@ -20,9 +20,7 @@ on run argv
 					if folderFilter is not "" and fldId is not folderFilter then
 						-- skip
 					else
-						repeat with n in notes of fld
-							set end of jsonItems to my note_json(accId, accName, fldId, fldName, n)
-						end repeat
+						set jsonItems to jsonItems & my folder_notes_json(accId, accName, fldId, fldName, fld)
 					end if
 				end repeat
 			end if
@@ -30,6 +28,77 @@ on run argv
 	end tell
 	return "{" & quote & "items" & quote & ":[" & my join_list(jsonItems, ",") & "]}"
 end run
+
+on folder_notes_json(accountId, accountName, folderId, folderName, fld)
+	-- Read each property for every note of the folder in one Apple Event.
+	-- Reading per note costs one event per property per note, which timed out
+	-- on large stores. The id list is read again at the end; if the folder
+	-- changed in between, the columns may not line up, so retry.
+	repeat 3 times
+		try
+			tell application "Notes"
+				set noteIds to id of every note of fld
+				if (count of noteIds) is 0 then return {}
+				set noteTitles to name of every note of fld
+				set notePlainTexts to plaintext of every note of fld
+				set noteCreatedDates to creation date of every note of fld
+				set noteModifiedDates to modification date of every note of fld
+				set noteSharedValues to shared of every note of fld
+				set noteAttachmentIds to id of every attachment of every note of fld
+				set noteIdsAfter to id of every note of fld
+			end tell
+			set noteCount to count of noteIds
+			set columnsMatch to (count of noteTitles) is noteCount and (count of notePlainTexts) is noteCount and (count of noteCreatedDates) is noteCount and (count of noteModifiedDates) is noteCount and (count of noteSharedValues) is noteCount and (count of noteAttachmentIds) is noteCount
+			considering case
+				set idsStable to noteIdsAfter = noteIds
+			end considering
+			if columnsMatch and idsStable then
+				set folderItems to {}
+				repeat with i from 1 to noteCount
+					set end of folderItems to my note_json_from_values(accountId, accountName, folderId, folderName, item i of noteIds, item i of noteTitles, item i of notePlainTexts, item i of noteCreatedDates, item i of noteModifiedDates, item i of noteSharedValues, item i of noteAttachmentIds)
+				end repeat
+				return folderItems
+			end if
+		end try
+	end repeat
+	-- Fall back to reading note by note.
+	set folderItems to {}
+	tell application "Notes"
+		repeat with n in notes of fld
+			set end of folderItems to my note_json(accountId, accountName, folderId, folderName, n)
+		end repeat
+	end tell
+	return folderItems
+end folder_notes_json
+
+on note_json_from_values(accountId, accountName, folderId, folderName, rawNoteId, rawTitleText, rawPlainText, rawCreatedDate, rawModifiedDate, rawSharedValue, rawAttachmentIds)
+	set noteId to my safe_text(rawNoteId)
+	set titleText to ""
+	set plainText to ""
+	set createdEpoch to 0
+	set modifiedEpoch to 0
+	set sharedValue to false
+	set attachmentCount to 0
+	try
+		set titleText to my safe_text(rawTitleText)
+	end try
+	try
+		set plainText to my safe_text(rawPlainText)
+	end try
+	try
+		set createdEpoch to my date_to_epoch(rawCreatedDate)
+	end try
+	try
+		set modifiedEpoch to my date_to_epoch(rawModifiedDate)
+	end try
+	try
+		set sharedValue to rawSharedValue
+	end try
+	try
+		set attachmentCount to count of rawAttachmentIds
+	end try
+	return my note_record_json(accountId, accountName, folderId, folderName, noteId, titleText, plainText, createdEpoch, modifiedEpoch, sharedValue, attachmentCount)
+end note_json_from_values
 
 on note_json(accountId, accountName, folderId, folderName, n)
 	tell application "Notes" to set rawNoteId to id of n
@@ -62,7 +131,11 @@ on note_json(accountId, accountName, folderId, folderName, n)
 	try
 		tell application "Notes" to set attachmentCount to count of attachments of n
 	end try
-	set noteJson to "{" & ¬
+	return my note_record_json(accountId, accountName, folderId, folderName, noteId, titleText, plainText, createdEpoch, modifiedEpoch, sharedValue, attachmentCount)
+end note_json
+
+on note_record_json(accountId, accountName, folderId, folderName, noteId, titleText, plainText, createdEpoch, modifiedEpoch, sharedValue, attachmentCount)
+	return "{" & ¬
 		quote & "note_id" & quote & ":" & my json_string(noteId) & "," & ¬
 		quote & "title" & quote & ":" & my json_string(titleText) & "," & ¬
 		quote & "account_id" & quote & ":" & my json_string(accountId) & "," & ¬
@@ -74,8 +147,7 @@ on note_json(accountId, accountName, folderId, folderName, n)
 			quote & "shared" & quote & ":" & my json_boolean(sharedValue) & "," & ¬
 		quote & "attachment_count" & quote & ":" & attachmentCount & "," & ¬
 		quote & "plaintext" & quote & ":" & my json_string(plainText) & "}"
-	return noteJson
-end note_json
+end note_record_json
 
 on date_to_epoch(dateValue)
 	-- NSDate's epoch is an absolute UTC instant, independent of local timezone.

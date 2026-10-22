@@ -50,7 +50,14 @@ async def check_server(binary: str, mode: str, parameters: StdioServerParameters
         assert json.loads(text) == data, (binary, "text and structured output differ")
         unknown = await client.call_tool("release_check_missing_tool", {})
         assert unknown.is_error, (binary, "unknown tool did not return a tool error")
-        print(f"PASS {binary} mode={mode}: {len(names)} tools, schemas, call, structured output, error", flush=True)
+        # A tool that runs but fails reports isError while keeping its structured payload.
+        failed = await client.call_tool("get_tool_info", {"name": "release_check_missing_tool"})
+        assert failed.is_error, (binary, "ok=false result did not set isError")
+        failure = failed.structured_content
+        assert isinstance(failure, dict) and failure["ok"] is False and failure["error"]["code"] == "UNKNOWN_TOOL", (binary, failure)
+        failed_text = next(item.text for item in failed.content if item.type == "text")
+        assert json.loads(failed_text) == failure, (binary, "failure text and structured output differ")
+        print(f"PASS {binary} mode={mode}: {len(names)} tools, schemas, call, structured output, errors", flush=True)
 
 
 async def main() -> None:

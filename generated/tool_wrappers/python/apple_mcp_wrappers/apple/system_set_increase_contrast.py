@@ -9,9 +9,9 @@ async def system_set_increase_contrast(
     client: MCPToolCaller,
     enabled: bool
 ) -> Any:
-    """System Set Increase Contrast
+    """Set Increase Contrast
 
-    Delegated Apple domain tool 'system_set_increase_contrast' exposed through Apple-Tools-MCP.
+    Enable or disable macOS increase contrast accessibility mode.
 
     Example:
         await system_set_increase_contrast(client, enabled=False)

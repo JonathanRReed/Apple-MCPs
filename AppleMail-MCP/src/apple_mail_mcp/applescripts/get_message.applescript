@@ -93,7 +93,7 @@ on run argv
         try
             set targetMessage to (get first message of sourceMailbox whose id is numericMessageId)
         on error errorMessage number errorNumber
-            if errorNumber is -1728 then error "MESSAGE_NOT_FOUND"
+            if errorNumber is in {-1728, -1719} then error "MESSAGE_NOT_FOUND"
             error errorMessage number errorNumber
         end try
         if (id of targetMessage) is not numericMessageId then error "MESSAGE_ID_MISMATCH"

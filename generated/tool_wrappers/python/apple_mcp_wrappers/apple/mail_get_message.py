@@ -9,9 +9,9 @@ async def mail_get_message(
     client: MCPToolCaller,
     message_id: str
 ) -> Any:
-    """Mail Get Message
+    """Get Email
 
-    Delegated Apple domain tool 'mail_get_message' exposed through Apple-Tools-MCP.
+    Fetch a single Apple Mail message by message_id.
 
     Example:
         await mail_get_message(client, message_id='example_message_id')

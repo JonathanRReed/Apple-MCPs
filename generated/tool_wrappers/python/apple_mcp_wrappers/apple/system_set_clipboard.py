@@ -9,9 +9,9 @@ async def system_set_clipboard(
     client: MCPToolCaller,
     text: str
 ) -> Any:
-    """System Set Clipboard
+    """Set Clipboard
 
-    Delegated Apple domain tool 'system_set_clipboard' exposed through Apple-Tools-MCP.
+    Write text into the macOS clipboard.
 
     Example:
         await system_set_clipboard(client, text='example_text')

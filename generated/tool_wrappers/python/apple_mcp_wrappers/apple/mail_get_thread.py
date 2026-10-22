@@ -10,9 +10,9 @@ async def mail_get_thread(
     message_id: str,
     limit: int | None = None
 ) -> Any:
-    """Mail Get Thread
+    """Get Thread
 
-    Delegated Apple domain tool 'mail_get_thread' exposed through Apple-Tools-MCP.
+    Find related messages in the same mailbox thread by normalized subject, anchored on a message_id.
 
     Example:
         await mail_get_thread(client, message_id='example_message_id', limit=1)

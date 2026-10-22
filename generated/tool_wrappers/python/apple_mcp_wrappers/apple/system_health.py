@@ -10,7 +10,7 @@ async def system_health(
 ) -> Any:
     """System Health
 
-    Delegated Apple domain tool 'system_health' exposed through Apple-Tools-MCP.
+    Report the active Apple System MCP configuration.
 
     Example:
         await system_health(client)

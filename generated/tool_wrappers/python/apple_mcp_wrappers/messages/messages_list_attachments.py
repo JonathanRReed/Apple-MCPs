@@ -12,7 +12,7 @@ async def messages_list_attachments(
     limit: int | None = None,
     offset: int | None = None
 ) -> Any:
-    """List Attachments
+    """List Message Attachments
 
     List Apple Messages attachments by chat or message.
 

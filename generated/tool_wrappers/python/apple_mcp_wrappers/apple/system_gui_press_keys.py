@@ -12,9 +12,9 @@ async def system_gui_press_keys(
     application: str | None = None,
     bundle_id: str | None = None
 ) -> Any:
-    """System Gui Press Keys
+    """Press Keys
 
-    Delegated Apple domain tool 'system_gui_press_keys' exposed through Apple-Tools-MCP.
+    Press a key or key chord in a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed.
 
     Example:
         await system_gui_press_keys(client, key='example_key', modifiers=[])

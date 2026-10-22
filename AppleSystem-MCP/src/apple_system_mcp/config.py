@@ -2,6 +2,10 @@ import os
 from dataclasses import dataclass
 from functools import lru_cache
 
+GUI_ALLOWED_APPS_ENV_VAR = "APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS"
+# Title of the matching Claude Desktop extension setting (MCPB user_config).
+GUI_ALLOWED_APPS_TITLE = "Apps that accept GUI input"
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -12,6 +16,7 @@ class Settings:
     host: str
     port: int
     log_level: str
+    gui_allowed_apps: frozenset[str]
 
 
 def _parse_int(value: str | None, default: int) -> int:
@@ -36,4 +41,7 @@ def load_settings() -> Settings:
         host=os.environ.get("APPLE_SYSTEM_MCP_HOST", "127.0.0.1"),
         port=_parse_int(os.environ.get("APPLE_SYSTEM_MCP_PORT"), 8000),
         log_level=os.environ.get("APPLE_SYSTEM_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",
+        gui_allowed_apps=frozenset(
+            item.strip().lower() for item in os.environ.get(GUI_ALLOWED_APPS_ENV_VAR, "").split(",") if item.strip()
+        ),
     )

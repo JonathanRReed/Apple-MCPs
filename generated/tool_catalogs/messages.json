@@ -365,7 +365,7 @@
         "attachment",
         "message"
       ],
-      "title": "List Attachments",
+      "title": "List Message Attachments",
       "usage_intent": "List Apple Messages attachments by chat or message."
     },
     {
@@ -397,7 +397,7 @@
       ],
       "name": "messages_send_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "messages_send_message",
       "tags": [
         "messages",
@@ -453,7 +453,7 @@
       ],
       "name": "messages_reply_in_conversation",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "messages_reply_in_conversation",
       "tags": [
         "messages",
@@ -510,7 +510,7 @@
       ],
       "name": "messages_send_attachment",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "messages_send_attachment",
       "tags": [
         "messages",

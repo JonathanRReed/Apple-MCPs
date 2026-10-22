@@ -752,7 +752,7 @@
       ],
       "name": "system_set_appearance_mode",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_appearance_mode",
       "tags": [
         "system",
@@ -799,7 +799,7 @@
       ],
       "name": "system_set_show_all_extensions",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_show_all_extensions",
       "tags": [
         "system",
@@ -848,7 +848,7 @@
       ],
       "name": "system_set_show_hidden_files",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_show_hidden_files",
       "tags": [
         "system",
@@ -896,7 +896,7 @@
       ],
       "name": "system_set_finder_path_bar",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_finder_path_bar",
       "tags": [
         "system",
@@ -943,7 +943,7 @@
       ],
       "name": "system_set_finder_status_bar",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_finder_status_bar",
       "tags": [
         "system",
@@ -991,7 +991,7 @@
       ],
       "name": "system_set_dock_autohide",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_dock_autohide",
       "tags": [
         "system",
@@ -1037,7 +1037,7 @@
       ],
       "name": "system_set_dock_show_recents",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_dock_show_recents",
       "tags": [
         "system",
@@ -1087,7 +1087,7 @@
       ],
       "name": "system_set_reduce_motion",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_reduce_motion",
       "tags": [
         "system",
@@ -1136,7 +1136,7 @@
       ],
       "name": "system_set_increase_contrast",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_increase_contrast",
       "tags": [
         "system",
@@ -1185,7 +1185,7 @@
       ],
       "name": "system_set_reduce_transparency",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_reduce_transparency",
       "tags": [
         "system",
@@ -1279,7 +1279,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Click a menu path in an application, for example ['File', 'New Window']. This is a GUI fallback tool.",
+      "description": "Click a menu path in a named application, for example ['File', 'New Window']. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed.",
       "domain": "system",
       "example_calls": [
         {
@@ -1292,7 +1292,7 @@
       ],
       "name": "system_gui_click_menu_path",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_click_menu_path",
       "tags": [
         "system",
@@ -1306,6 +1306,7 @@
         "click",
         "menu",
         "path",
+        "named",
         "application",
         "example",
         "file",
@@ -1313,11 +1314,10 @@
         "window",
         "this",
         "thi",
-        "fallback",
-        "tool"
+        "fallback"
       ],
       "title": "Click Menu Path",
-      "usage_intent": "Click a menu path in an application, for example ['File', 'New Window']. This is a GUI fallback tool."
+      "usage_intent": "Click a menu path in a named application, for example ['File', 'New Window']. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed."
     },
     {
       "aliases": [
@@ -1337,7 +1337,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Press a key or key chord in the target application. This is a GUI fallback tool.",
+      "description": "Press a key or key chord in a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed.",
       "domain": "system",
       "example_calls": [
         {
@@ -1350,7 +1350,7 @@
       ],
       "name": "system_gui_press_keys",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_press_keys",
       "tags": [
         "system",
@@ -1366,15 +1366,16 @@
         "keys",
         "key",
         "chord",
-        "target",
+        "named",
         "application",
         "this",
         "thi",
         "fallback",
-        "tool"
+        "tool",
+        "requires"
       ],
       "title": "Press Keys",
-      "usage_intent": "Press a key or key chord in the target application. This is a GUI fallback tool."
+      "usage_intent": "Press a key or key chord in a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed."
     },
     {
       "aliases": [
@@ -1393,7 +1394,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Type text into the frontmost focused control. This is a GUI fallback tool.",
+      "description": "Type text into the focused control of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed.",
       "domain": "system",
       "example_calls": [
         {
@@ -1406,7 +1407,7 @@
       ],
       "name": "system_gui_type_text",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_type_text",
       "tags": [
         "system",
@@ -1419,16 +1420,19 @@
         "gui",
         "type",
         "text",
-        "frontmost",
         "focused",
         "control",
+        "named",
+        "application",
         "this",
         "thi",
         "fallback",
-        "tool"
+        "tool",
+        "requires",
+        "requir"
       ],
       "title": "Type Text",
-      "usage_intent": "Type text into the frontmost focused control. This is a GUI fallback tool."
+      "usage_intent": "Type text into the focused control of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed."
     },
     {
       "aliases": [
@@ -1449,7 +1453,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Click a named button in the frontmost window. This is a GUI fallback tool.",
+      "description": "Click a named button in the front window of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed.",
       "domain": "system",
       "example_calls": [
         {
@@ -1462,7 +1466,7 @@
       ],
       "name": "system_gui_click_button",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_click_button",
       "tags": [
         "system",
@@ -1476,15 +1480,18 @@
         "click",
         "button",
         "named",
-        "frontmost",
+        "front",
         "window",
+        "application",
         "this",
         "thi",
         "fallback",
-        "tool"
+        "tool",
+        "requires",
+        "requir"
       ],
       "title": "Click Button",
-      "usage_intent": "Click a named button in the frontmost window. This is a GUI fallback tool."
+      "usage_intent": "Click a named button in the front window of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed."
     },
     {
       "aliases": [
@@ -1505,7 +1512,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Choose a value from a named pop-up button in the frontmost window. This is a GUI fallback tool.",
+      "description": "Choose a value from a named pop-up button in the front window of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed.",
       "domain": "system",
       "example_calls": [
         {
@@ -1518,7 +1525,7 @@
       ],
       "name": "system_gui_choose_popup_value",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_choose_popup_value",
       "tags": [
         "system",
@@ -1535,15 +1542,15 @@
         "pop",
         "named",
         "button",
-        "frontmost",
+        "front",
         "window",
+        "application",
         "this",
         "thi",
-        "fallback",
-        "tool"
+        "fallback"
       ],
       "title": "Choose Pop-Up Value",
-      "usage_intent": "Choose a value from a named pop-up button in the frontmost window. This is a GUI fallback tool."
+      "usage_intent": "Choose a value from a named pop-up button in the front window of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed."
     },
     {
       "aliases": [
@@ -1572,7 +1579,7 @@
       ],
       "name": "system_set_clipboard",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_clipboard",
       "tags": [
         "system",

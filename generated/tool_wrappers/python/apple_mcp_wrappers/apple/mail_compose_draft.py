@@ -15,9 +15,9 @@ async def mail_compose_draft(
     attachments: list[Any] | None = None,
     from_account: str | None = None
 ) -> Any:
-    """Mail Compose Draft
+    """Compose Draft
 
-    Delegated Apple domain tool 'mail_compose_draft' exposed through Apple-Tools-MCP.
+    Create a draft message in Apple Mail without sending it. Optionally specify from_account as an email address or account name to set the sender.
 
     Example:
         await mail_compose_draft(client, to=[], cc=[])

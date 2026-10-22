@@ -94,6 +94,16 @@ server never leaves you guessing:
   target folder and check for the title first, otherwise you may create a
   duplicate.
 
+## Mail: timeouts and sends
+
+Every AppleScript call the Mail server makes is bounded by
+`APPLE_MAIL_MCP_SCRIPT_TIMEOUT_SECONDS` (default `120`, minimum `5`). Sending
+is not idempotent, and stopping a timed-out script does not cancel a send Mail
+has already started. So a timeout in `mail_send_message`, `mail_reply_message`,
+`mail_reply_latest_in_thread` or a sending `mail_forward_message` returns
+`SEND_STATUS_UNKNOWN`. **Do not retry blindly**: search the account's Sent
+mailbox (`Sent Messages`, or `Sent Items` on Exchange) for the subject first.
+
 ## Common error codes
 
 | Code | Meaning | What to do |
@@ -102,6 +112,7 @@ server never leaves you guessing:
 | `APPLESCRIPT_TIMEOUT` | The target app stalled past the deadline | The app may be busy or syncing; verify state before retrying a mutation |
 | `HELPER_TIMEOUT` | The native Contacts helper passed its deadline | Answer any open macOS permission prompt, then retry; verify state before retrying a mutation |
 | `NOTE_CREATE_STATUS_UNKNOWN` | Create timed out and could not be verified | Check the target folder for the title before creating again |
+| `SEND_STATUS_UNKNOWN` | A Mail send, reply or forward timed out; it may have gone out | Check the account's Sent mailbox before sending again |
 | `CALENDAR_NOT_FOUND` / `EVENT_NOT_FOUND` | Id did not resolve | List calendars/events first — ids change shape under Add Only access |
 | `WRITE_BLOCKED` / `SAFETY_RESTRICTION` / `SAFETY_POLICY_BLOCK` | The server's safety mode does not allow this tool | The error's `suggestion` names the setting and value. Ask the user, change it in the client's `env` block (Claude Desktop: Settings > Extensions > the extension > Configure), then restart the client |
 | `*_BLOCKED` (calendar, list, account, folder) | The target is outside a configured allowlist | The `suggestion` names the allowlist setting; use an allowed target or ask the user to change the setting |

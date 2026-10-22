@@ -12,9 +12,9 @@ async def messages_send_attachment(
     text: str | None = None,
     service_name: str | None = None
 ) -> Any:
-    """Messages Send Attachment
+    """Send Attachment
 
-    Delegated Apple domain tool 'messages_send_attachment' exposed through Apple-Tools-MCP.
+    Send a file attachment via Apple Messages to a recipient. Optionally include a text message.
 
     Example:
         await messages_send_attachment(client, recipient='Example Person', file_path='/path/to/item')

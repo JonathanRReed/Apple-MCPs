@@ -2,7 +2,7 @@ import json
 import os
 from typing import Annotated
 
-from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 from pydantic import Field
 
@@ -16,11 +16,29 @@ from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.privacy import helper_permission_guide
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
 from apple_mcp_common.safety import safety_mode_warning
+from apple_mcp_common.server import AppleMCPServer
 
 _CALENDAR_ID_DESCRIPTION = (
     "Select the calendar by name and source in calendar_list_calendars, then pass its calendar_id unchanged. "
     "Re-list after Calendar access changes to obtain native IDs when EventKit is available."
 )
+_ISO_DATETIME = "ISO 8601 datetime such as 2026-10-22T09:00:00-05:00; without an offset the Mac's local time zone is used."
+_EVENT_ID_DESCRIPTION = "Event ID returned by calendar_list_events or calendar_get_event; pass it unchanged."
+_LIMIT_DESCRIPTION = "Maximum number of events to return (1 or more)."
+_TITLE_DESCRIPTION = "Event title shown in Calendar."
+_NOTES_DESCRIPTION = "Plain-text event notes."
+_LOCATION_DESCRIPTION = "Free-text event location."
+_RECURRENCE_DESCRIPTION = (
+    "Repeat rule object: {frequency: daily|weekly|monthly|yearly, interval: N (default 1), "
+    "end_date: optional ISO 8601 date}. Requires native EventKit access."
+)
+_ALARMS_DESCRIPTION = (
+    "List of alarms, each exactly one of {minutes_before: whole minutes 0-525600} or "
+    "{absolute_iso: ISO 8601 datetime with Z or an offset}; at most 100."
+)
+_OMIT_UNCHANGED = "Omit to leave unchanged."
+_PROMPT_NAME_DESCRIPTION = "Prompt name from calendar_list_prompts."
+_PROMPT_ARGUMENTS_DESCRIPTION = "Prompt arguments as a JSON object string; omit when the prompt takes none."
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Calendar on macOS. "
@@ -28,7 +46,7 @@ SERVER_INSTRUCTIONS = (
     "Prefer list and get tools before mutations when ids or calendar ids are unknown."
 )
 
-mcp = MCPServer("Apple Calendar", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+mcp = AppleMCPServer("Apple Calendar", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def _bridge() -> CalendarBridge:
@@ -190,7 +208,7 @@ def calendar_prepare_agenda_prompt() -> str:
 @mcp.tool(
     title="Calendar Health",
     description="Report the active Apple Calendar server configuration.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def calendar_health() -> HealthResponse:
@@ -242,7 +260,7 @@ def calendar_health() -> HealthResponse:
 @mcp.tool(
     title="Calendar Permission Guide",
     description="Explain how to grant Apple Calendar permission on macOS.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def calendar_permission_guide() -> dict[str, object]:
@@ -252,7 +270,7 @@ def calendar_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="Calendar Recheck Permissions",
     description="Recheck Calendar access after the user changes macOS permissions, and notify the client that Calendar resources changed.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 async def calendar_recheck_permissions(ctx: Context) -> HealthResponse:
@@ -266,7 +284,7 @@ async def calendar_recheck_permissions(ctx: Context) -> HealthResponse:
 @mcp.tool(
     title="List Calendars",
     description="List available Apple Calendar calendars. Select by name and source, then pass the returned calendar_id unchanged. Re-list after Calendar access changes to refresh identifiers.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def calendar_list_calendars() -> CalendarListResponse | ErrorResponse:
@@ -281,10 +299,15 @@ def calendar_list_calendars() -> CalendarListResponse | ErrorResponse:
 @mcp.tool(
     title="List Events",
     description="List calendar events in a time window, optionally filtered to one calendar. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def calendar_list_events(start_iso: str, end_iso: str, calendar_id: Annotated[str | None, Field(description=_CALENDAR_ID_DESCRIPTION)] = None, limit: int | str = 100) -> EventListResponse | ErrorResponse:
+def calendar_list_events(
+    start_iso: Annotated[str, Field(description=f"Start of the time window. {_ISO_DATETIME}")],
+    end_iso: Annotated[str, Field(description=f"End of the time window; must be later than start_iso. {_ISO_DATETIME}")],
+    calendar_id: Annotated[str | None, Field(description=_CALENDAR_ID_DESCRIPTION)] = None,
+    limit: Annotated[int | str, Field(description=_LIMIT_DESCRIPTION)] = 100,
+) -> EventListResponse | ErrorResponse:
     try:
         limit_value = _coerce_int_arg("limit", limit, minimum=1)
         ensure_action_allowed("calendar_list_events", _calendar_name_from_id(calendar_id))
@@ -302,10 +325,10 @@ def calendar_list_events(start_iso: str, end_iso: str, calendar_id: Annotated[st
 @mcp.tool(
     title="Get Event",
     description="Fetch full details for a calendar event by event_id.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def calendar_get_event(event_id: str) -> EventResponse | ErrorResponse:
+def calendar_get_event(event_id: Annotated[str, Field(description=_EVENT_ID_DESCRIPTION)]) -> EventResponse | ErrorResponse:
     try:
         ensure_action_allowed("calendar_get_event")
         event = _bridge().get_event(event_id)
@@ -324,15 +347,18 @@ def calendar_get_event(event_id: str) -> EventResponse | ErrorResponse:
     structured_output=True,
 )
 def calendar_create_event(
-    title: str,
-    start_iso: str,
-    end_iso: str,
+    title: Annotated[str, Field(description=_TITLE_DESCRIPTION)],
+    start_iso: Annotated[str, Field(description=f"Event start. {_ISO_DATETIME}")],
+    end_iso: Annotated[str, Field(description=f"Event end; must be later than start_iso. {_ISO_DATETIME}")],
     calendar_id: Annotated[str, Field(description=_CALENDAR_ID_DESCRIPTION)],
-    notes: str | None = None,
-    location: str | None = None,
-    all_day: bool = False,
-    recurrence: dict[str, object] | None = None,
-    alarms: list[dict[str, object]] | None = None,
+    notes: Annotated[str | None, Field(description=_NOTES_DESCRIPTION)] = None,
+    location: Annotated[str | None, Field(description=_LOCATION_DESCRIPTION)] = None,
+    all_day: Annotated[bool, Field(description="True for an all-day event spanning the start and end dates.")] = False,
+    recurrence: Annotated[dict[str, object] | None, Field(description=f"{_RECURRENCE_DESCRIPTION} Omit for a single event.")] = None,
+    alarms: Annotated[
+        list[dict[str, object]] | None,
+        Field(description=f"{_ALARMS_DESCRIPTION} Omit to set no explicit alarms."),
+    ] = None,
 ) -> EventResponse | ErrorResponse:
     try:
         if not title.strip():
@@ -363,7 +389,7 @@ def calendar_create_event(
 @mcp.tool(
     title="Update Event",
     description="Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
-    annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=False),
+    annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
 def calendar_update_event(
@@ -371,15 +397,21 @@ def calendar_update_event(
         "Event ID returned by calendar_list_events. For full alarm edits, list with a native calendar_id "
         "and use the returned native event_id; existing applescript:: IDs use automation."
     ))],
-    title: str | None = None,
-    start_iso: str | None = None,
-    end_iso: str | None = None,
-    calendar_id: Annotated[str | None, Field(description=_CALENDAR_ID_DESCRIPTION)] = None,
-    notes: str | None = None,
-    location: str | None = None,
-    all_day: bool | None = None,
-    recurrence: dict[str, object] | None = None,
-    alarms: list[dict[str, object]] | None = None,
+    title: Annotated[str | None, Field(description=f"New title. {_OMIT_UNCHANGED}")] = None,
+    start_iso: Annotated[str | None, Field(description=f"New start. {_ISO_DATETIME} {_OMIT_UNCHANGED}")] = None,
+    end_iso: Annotated[str | None, Field(description=f"New end. {_ISO_DATETIME} {_OMIT_UNCHANGED}")] = None,
+    calendar_id: Annotated[
+        str | None,
+        Field(description=f"Destination calendar to move the event to. {_CALENDAR_ID_DESCRIPTION} {_OMIT_UNCHANGED}"),
+    ] = None,
+    notes: Annotated[str | None, Field(description=f"Replacement notes. {_OMIT_UNCHANGED}")] = None,
+    location: Annotated[str | None, Field(description=f"Replacement location. {_OMIT_UNCHANGED}")] = None,
+    all_day: Annotated[bool | None, Field(description=f"True for all-day, false for timed. {_OMIT_UNCHANGED}")] = None,
+    recurrence: Annotated[dict[str, object] | None, Field(description=f"{_RECURRENCE_DESCRIPTION} Replaces the existing rule. {_OMIT_UNCHANGED}")] = None,
+    alarms: Annotated[
+        list[dict[str, object]] | None,
+        Field(description=f"{_ALARMS_DESCRIPTION} Replaces existing alarms; pass [] to clear them, or omit to leave them unchanged."),
+    ] = None,
 ) -> EventResponse | ErrorResponse:
     try:
         ensure_action_allowed("calendar_update_event", _event_owner_calendar(event_id))
@@ -416,7 +448,7 @@ def calendar_update_event(
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def calendar_delete_event(event_id: str) -> DeleteEventResponse | ErrorResponse:
+def calendar_delete_event(event_id: Annotated[str, Field(description=_EVENT_ID_DESCRIPTION)]) -> DeleteEventResponse | ErrorResponse:
     try:
         ensure_action_allowed("calendar_delete_event", _event_owner_calendar(event_id))
         deleted = _bridge().delete_event(event_id)
@@ -440,7 +472,7 @@ def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, 
 @mcp.tool(
     title="Calendar List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def calendar_list_prompts() -> dict[str, object]:
@@ -455,10 +487,13 @@ async def calendar_list_prompts() -> dict[str, object]:
 @mcp.tool(
     title="Calendar Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-async def calendar_get_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+async def calendar_get_prompt(
+    name: Annotated[str, Field(description=_PROMPT_NAME_DESCRIPTION)],
+    arguments_json: Annotated[str | None, Field(description=_PROMPT_ARGUMENTS_DESCRIPTION)] = None,
+) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
     if isinstance(prompt, InputRequiredResult):

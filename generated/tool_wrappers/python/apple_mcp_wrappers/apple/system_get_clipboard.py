@@ -8,9 +8,9 @@ from .client import MCPToolCaller, call_tool_json
 async def system_get_clipboard(
     client: MCPToolCaller
 ) -> Any:
-    """System Get Clipboard
+    """Get Clipboard
 
-    Delegated Apple domain tool 'system_get_clipboard' exposed through Apple-Tools-MCP.
+    Read the current text clipboard contents.
 
     Example:
         await system_get_clipboard(client)

@@ -10,7 +10,7 @@ async def system_status(
 ) -> Any:
     """System Status
 
-    Delegated Apple domain tool 'system_status' exposed through Apple-Tools-MCP.
+    Return current battery, frontmost app, and running app count.
 
     Example:
         await system_status(client)

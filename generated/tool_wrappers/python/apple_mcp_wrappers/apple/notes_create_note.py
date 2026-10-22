@@ -12,9 +12,9 @@ async def notes_create_note(
     body_html: str | None = None,
     tags: list[Any] | None = None
 ) -> Any:
-    """Notes Create Note
+    """Create Note
 
-    Delegated Apple domain tool 'notes_create_note' exposed through Apple-Tools-MCP.
+    Create a new note in a folder.
 
     Example:
         await notes_create_note(client, title='example_title', folder_id='example_folder_id')

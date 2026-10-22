@@ -2,23 +2,30 @@ from __future__ import annotations
 
 import json
 import subprocess
-from typing import Literal
+from typing import Annotated, Literal
 
-from mcp.server.mcpserver import MCPServer
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
+from pydantic import Field
 
 from apple_maps_mcp.config import load_settings
 from apple_maps_mcp.maps_bridge import AppleMapsBridge, MapsBridgeError, build_bridge
 from apple_maps_mcp.models import DirectionsResponse, ErrorResponse, HealthResponse, MapsLinkResponse, OpenMapsResponse, PlaceRecord, PlaceSearchResponse, ToolError
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import require_loopback_host
+from apple_mcp_common.server import AppleMCPServer
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Maps and travel context on macOS. "
     "Search here when the user wants to find a place, estimate travel time, build an Apple Maps link, or open directions in Apple Maps."
 )
 
-mcp = MCPServer("Apple Maps MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
+_TRANSPORT_DESCRIPTION = "Travel mode: driving, walking or transit. Any other value is treated as driving."
+_PLACE_DESCRIPTION = "Place name, address or point of interest, as you would type it into Apple Maps."
+_LINK_ORIGIN_DESCRIPTION = "Optional starting place name or address. Omit to start from the user's current location in Maps."
+_PROMPT_NAME_DESCRIPTION = "Prompt name from maps_list_prompts."
+_PROMPT_ARGUMENTS_DESCRIPTION = "Optional JSON object string of prompt arguments, for example '{\"destination\": \"SFO\"}'."
+
+mcp = AppleMCPServer("Apple Maps MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)
 
 
 def _bridge() -> AppleMapsBridge:
@@ -63,7 +70,7 @@ def maps_plan_route_prompt() -> str:
 @mcp.tool(
     title="Maps Health",
     description="Report the active Apple Maps MCP configuration.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def maps_health() -> HealthResponse:
@@ -90,7 +97,7 @@ def maps_health() -> HealthResponse:
 @mcp.tool(
     title="Maps Permission Guide",
     description="Explain Apple Maps MCP local helper requirements on macOS.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 def maps_permission_guide() -> dict[str, object]:
@@ -110,10 +117,13 @@ def maps_permission_guide() -> dict[str, object]:
 @mcp.tool(
     title="Search Places",
     description="Search Apple Maps for matching places.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True),
     structured_output=True,
 )
-def maps_search_places(query: str, limit: int = 5) -> PlaceSearchResponse | ErrorResponse:
+def maps_search_places(
+    query: Annotated[str, Field(description="What to search for, such as a business name, category (\"coffee near Union Square\") or address.")],
+    limit: Annotated[int, Field(description="Maximum number of places to return.")] = 5,
+) -> PlaceSearchResponse | ErrorResponse:
     try:
         payload = _bridge().search_places(query=query, limit=limit)
         places = [PlaceRecord(**item) for item in payload.get("places", [])]
@@ -125,10 +135,14 @@ def maps_search_places(query: str, limit: int = 5) -> PlaceSearchResponse | Erro
 @mcp.tool(
     title="Get Directions",
     description="Get Apple Maps route details between an origin and destination.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True),
     structured_output=True,
 )
-def maps_get_directions(origin: str, destination: str, transport: str = "driving") -> DirectionsResponse | ErrorResponse:
+def maps_get_directions(
+    origin: Annotated[str, Field(description="Starting place name or address; the first Apple Maps match is used.")],
+    destination: Annotated[str, Field(description="Destination place name or address; the first Apple Maps match is used.")],
+    transport: Annotated[str, Field(description=_TRANSPORT_DESCRIPTION)] = "driving",
+) -> DirectionsResponse | ErrorResponse:
     try:
         payload = _bridge().directions(origin=origin, destination=destination, transport=transport)
         return DirectionsResponse(
@@ -147,10 +161,14 @@ def maps_get_directions(origin: str, destination: str, transport: str = "driving
 @mcp.tool(
     title="Build Maps Link",
     description="Build an Apple Maps URL for a destination or route.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-def maps_build_maps_link(destination: str, origin: str | None = None, transport: str = "driving") -> MapsLinkResponse:
+def maps_build_maps_link(
+    destination: Annotated[str, Field(description=_PLACE_DESCRIPTION)],
+    origin: Annotated[str | None, Field(description=_LINK_ORIGIN_DESCRIPTION)] = None,
+    transport: Annotated[str, Field(description=_TRANSPORT_DESCRIPTION)] = "driving",
+) -> MapsLinkResponse:
     return MapsLinkResponse(url=_bridge().maps_url(destination=destination, origin=origin, transport=transport))
 
 
@@ -160,7 +178,11 @@ def maps_build_maps_link(destination: str, origin: str | None = None, transport:
     annotations=ToolAnnotations(destructive_hint=False, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )
-def maps_open_directions_in_maps(destination: str, origin: str | None = None, transport: str = "driving") -> OpenMapsResponse | ErrorResponse:
+def maps_open_directions_in_maps(
+    destination: Annotated[str, Field(description=_PLACE_DESCRIPTION)],
+    origin: Annotated[str | None, Field(description=_LINK_ORIGIN_DESCRIPTION)] = None,
+    transport: Annotated[str, Field(description=_TRANSPORT_DESCRIPTION)] = "driving",
+) -> OpenMapsResponse | ErrorResponse:
     try:
         url = _bridge().maps_url(destination=destination, origin=origin, transport=transport)
         subprocess.run(["open", url], capture_output=True, check=True, text=True)
@@ -186,7 +208,7 @@ def _serialize_prompt_messages(messages: list[PromptMessage]) -> list[dict[str, 
 @mcp.tool(
     title="Maps List Prompts",
     description="Fallback prompt discovery tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
 async def maps_list_prompts() -> dict[str, object]:
@@ -202,10 +224,13 @@ async def maps_list_prompts() -> dict[str, object]:
     name="maps_get_prompt",
     title="Maps Get Prompt",
     description="Fallback prompt rendering tool for tool-only MCP clients.",
-    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+    annotations=ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False),
     structured_output=True,
 )
-async def maps_get_prompt_prompt(name: str, arguments_json: str | None = None) -> dict[str, object]:
+async def maps_get_prompt_prompt(
+    name: Annotated[str, Field(description=_PROMPT_NAME_DESCRIPTION)],
+    arguments_json: Annotated[str | None, Field(description=_PROMPT_ARGUMENTS_DESCRIPTION)] = None,
+) -> dict[str, object]:
     arguments = json.loads(arguments_json) if arguments_json else None
     prompt = await mcp.get_prompt(name, arguments)
     if isinstance(prompt, InputRequiredResult):

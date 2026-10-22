@@ -11,9 +11,9 @@ async def messages_get_conversation(
     limit: int | None = None,
     offset: int | None = None
 ) -> Any:
-    """Messages Get Conversation
+    """Get Conversation
 
-    Delegated Apple domain tool 'messages_get_conversation' exposed through Apple-Tools-MCP.
+    Fetch a single Apple Messages conversation with paginated messages.
 
     Example:
         await messages_get_conversation(client, chat_id='example_chat_id', limit=1)

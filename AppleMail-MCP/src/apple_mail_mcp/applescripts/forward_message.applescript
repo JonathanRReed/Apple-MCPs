@@ -52,15 +52,18 @@ on resolveAccountBySender(senderRaw)
         return missing value
     end if
     tell application "Mail"
-        repeat with theAccount in every account
+        -- Return a concrete account, not a live `item N of every account`
+        -- loop reference (issue #23).
+        repeat with accountRef in (get every account)
+            set candidateAccount to contents of accountRef
             try
-                if (name of theAccount as text) is senderRaw then
-                    return theAccount
+                if (name of candidateAccount as text) is senderRaw then
+                    return candidateAccount
                 end if
             end try
             try
-                if (email addresses of theAccount) contains senderRaw then
-                    return theAccount
+                if (email addresses of candidateAccount) contains senderRaw then
+                    return candidateAccount
                 end if
             end try
         end repeat
@@ -154,10 +157,134 @@ on selectSenderPopup(senderRaw, senderEmail)
     error "ACCOUNT_MENU_ITEM_NOT_FOUND"
 end selectSenderPopup
 
+on fullNameForAccount(theAccount)
+    tell application "Mail"
+        try
+            return (full name of theAccount) as text
+        end try
+    end tell
+    return ""
+end fullNameForAccount
+
+on emailForAccount(theAccount, senderRaw)
+    tell application "Mail"
+        try
+            set addressList to email addresses of theAccount
+            if senderRaw contains "@" then
+                repeat with addressRef in addressList
+                    if (addressRef as text) is senderRaw then
+                        return addressRef as text
+                    end if
+                end repeat
+            end if
+            return item 1 of addressList as text
+        end try
+    end tell
+    return ""
+end emailForAccount
+
+on quotedDisplayName(senderName)
+    -- RFC 5322: a display name with specials such as a comma or quote must be
+    -- a quoted string, or "Reed, Jonathan <a@b>" reads as two addresses.
+    set needsQuotes to false
+    repeat with specialChar in {",", "\"", ";", ":", "<", ">", "(", ")", "[", "]", "@", "\\"}
+        if senderName contains (specialChar as text) then
+            set needsQuotes to true
+            exit repeat
+        end if
+    end repeat
+    if not needsQuotes then
+        return senderName
+    end if
+    set escapedName to my replaceText(senderName, "\\", "\\\\")
+    set escapedName to my replaceText(escapedName, "\"", "\\\"")
+    return "\"" & escapedName & "\""
+end quotedDisplayName
+
+on senderStringForAccount(senderEmail, senderName)
+    -- Never fall back to the raw account name: Mail ignores it, and the
+    -- read-back could still "match" it. An empty result sends applySender
+    -- to the From pop-up instead.
+    if senderEmail is "" then
+        return ""
+    end if
+    if senderName is "" then
+        return senderEmail
+    end if
+    return my quotedDisplayName(senderName) & " <" & senderEmail & ">"
+end senderStringForAccount
+
+on senderAddress(senderText)
+    -- "Full Name <addr>" -> "addr"; a bare address is returned unchanged.
+    set addressText to senderText as text
+    if addressText contains "<" and addressText contains ">" then
+        set previousDelimiters to AppleScript's text item delimiters
+        set AppleScript's text item delimiters to "<"
+        set addressText to last text item of addressText
+        set AppleScript's text item delimiters to ">"
+        set addressText to first text item of addressText
+        set AppleScript's text item delimiters to previousDelimiters
+    end if
+    repeat while addressText starts with " "
+        set addressText to text 2 thru -1 of addressText
+    end repeat
+    repeat while addressText ends with " "
+        set addressText to text 1 thru -2 of addressText
+    end repeat
+    return addressText
+end senderAddress
+
+on applySender(theMessage, senderRaw, senderEmail, senderString)
+    -- Mail honours its own `sender` property when the address belongs to a
+    -- configured account, so set it first. Only drive the From pop-up through
+    -- System Events (separate Automation + Accessibility consent, and a hang
+    -- while that consent is pending) when Mail did not take the value.
+    if senderEmail is not "" then
+        set currentSender to ""
+        tell application "Mail"
+            set sender of theMessage to senderString
+            delay 0.2
+            try
+                set currentSender to (sender of theMessage) as text
+            end try
+        end tell
+        -- Compare the whole address, not a substring: "a@x.com" must not
+        -- accept "ba@x.com". Addresses compare case-insensitively.
+        ignoring case
+            if my senderAddress(currentSender) is senderEmail then
+                return currentSender
+            end if
+        end ignoring
+    end if
+    -- The account's address could not be read, or Mail did not take it.
+    return my selectSenderPopup(senderRaw, senderEmail)
+end applySender
+
+on parseMessageID(rawId)
+    try
+        set numericId to rawId as integer
+    on error
+        error "INVALID_MESSAGE_ID"
+    end try
+    -- Reject coercions such as 1.5 -> 2; never mutate a different message.
+    if numericId < 0 or (numericId as text) is not rawId then
+        error "INVALID_MESSAGE_ID"
+    end if
+    return numericId
+end parseMessageID
+
+on requireSingleMatch(matchedItems, missingCode, ambiguousCode)
+    if (count of matchedItems) is 0 then error missingCode
+    if (count of matchedItems) is not 1 then error ambiguousCode
+    -- The caller supplies Mail's evaluated result, not a live every-item specifier.
+    return contents of item 1 of matchedItems
+end requireSingleMatch
+
 on run argv
     set accountName to item 1 of argv
     set mailboxName to item 2 of argv
     set appleId to item 3 of argv
+    set numericMessageId to my parseMessageID(appleId)
     set toRaw to item 4 of argv
     set forwardBody to item 5 of argv
     set senderRaw to item 6 of argv
@@ -172,39 +299,29 @@ on run argv
 
     set resolvedAccountLabel to ""
     set senderEmail to ""
+    set senderString to ""
 
     tell application "Mail"
-        set targetAccount to missing value
-        repeat with theAccount in every account
-            if (name of theAccount) is accountName then
-                set targetAccount to theAccount
-                exit repeat
-            end if
-        end repeat
-        if targetAccount is missing value then
-            error "ACCOUNT_NOT_FOUND"
-        end if
+        -- Resolve concrete Mail objects and look the message up by id in one
+        -- Apple event. Walking `id of` every message took minutes on a
+        -- mailbox of a few thousand messages (issue #23 pattern, as in
+        -- get_message.applescript).
+        set sourceAccount to my requireSingleMatch((get every account whose name is accountName), "ACCOUNT_NOT_FOUND", "ACCOUNT_AMBIGUOUS")
+        set sourceMailbox to my requireSingleMatch((get every mailbox of sourceAccount whose name is mailboxName), "MAILBOX_NOT_FOUND", "MAILBOX_AMBIGUOUS")
+        try
+            set targetMessage to (get first message of sourceMailbox whose id is numericMessageId)
+        on error errorMessage number errorNumber
+            if errorNumber is in {-1728, -1719} then error "MESSAGE_NOT_FOUND"
+            error errorMessage number errorNumber
+        end try
+        if (id of targetMessage) is not numericMessageId then error "MESSAGE_ID_MISMATCH"
 
-        set targetMailbox to missing value
-        repeat with theMailbox in every mailbox of targetAccount
-            if (name of theMailbox) is mailboxName then
-                set targetMailbox to theMailbox
-                exit repeat
-            end if
-        end repeat
-        if targetMailbox is missing value then
-            error "MAILBOX_NOT_FOUND"
-        end if
-
-        set targetMessage to missing value
-        repeat with theMessage in messages of targetMailbox
-            if ((id of theMessage) as text) is appleId then
-                set targetMessage to theMessage
-                exit repeat
-            end if
-        end repeat
-        if targetMessage is missing value then
-            error "MESSAGE_NOT_FOUND"
+        -- Resolve the sender before opening a compose window, so an unknown
+        -- account fails with ACCOUNT_NOT_FOUND without leaving a stray draft.
+        if senderRaw is not "" then
+            set matchedAccount to my resolveAccountBySender(senderRaw)
+            set senderEmail to my emailForAccount(matchedAccount, senderRaw)
+            set senderString to my senderStringForAccount(senderEmail, my fullNameForAccount(matchedAccount))
         end if
 
         set forwardMessage to forward targetMessage with opening window
@@ -213,12 +330,6 @@ on run argv
             set content of forwardMessage to forwardBody & return & return & content of forwardMessage
         end if
 
-        if senderRaw is not "" then
-            set matchedAccount to my resolveAccountBySender(senderRaw)
-            set senderEmail to my primaryEmailForAccount(matchedAccount)
-            set sender of forwardMessage to senderRaw
-            delay 0.2
-        end if
 
         tell forwardMessage
             repeat with addressText in toList
@@ -230,7 +341,7 @@ on run argv
     end tell
 
     if senderRaw is not "" then
-        set resolvedAccountLabel to my sanitizeText(my selectSenderPopup(senderRaw, senderEmail))
+        set resolvedAccountLabel to my sanitizeText(my applySender(forwardMessage, senderRaw, senderEmail, senderString))
     end if
 
     tell application "Mail"

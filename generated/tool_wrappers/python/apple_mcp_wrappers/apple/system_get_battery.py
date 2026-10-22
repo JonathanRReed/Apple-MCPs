@@ -8,9 +8,9 @@ from .client import MCPToolCaller, call_tool_json
 async def system_get_battery(
     client: MCPToolCaller
 ) -> Any:
-    """System Get Battery
+    """Get Battery
 
-    Delegated Apple domain tool 'system_get_battery' exposed through Apple-Tools-MCP.
+    Get the current battery state from macOS.
 
     Example:
         await system_get_battery(client)

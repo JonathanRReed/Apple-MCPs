@@ -11,9 +11,9 @@ async def maps_open_directions_in_maps(
     origin: str | None = None,
     transport: str | None = None
 ) -> Any:
-    """Maps Open Directions In Maps
+    """Open Directions In Maps
 
-    Delegated Apple domain tool 'maps_open_directions_in_maps' exposed through Apple-Tools-MCP.
+    Open directions in the Apple Maps app.
 
     Example:
         await maps_open_directions_in_maps(client, destination='example_destination', origin='example_origin')

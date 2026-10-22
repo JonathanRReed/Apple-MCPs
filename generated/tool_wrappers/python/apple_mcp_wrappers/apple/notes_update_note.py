@@ -13,9 +13,9 @@ async def notes_update_note(
     folder_id: str | None = None,
     tags: list[Any] | None = None
 ) -> Any:
-    """Notes Update Note
+    """Update Note
 
-    Delegated Apple domain tool 'notes_update_note' exposed through Apple-Tools-MCP.
+    Update an existing note.
 
     Example:
         await notes_update_note(client, note_id='example_note_id', title='example_title')

@@ -13,7 +13,20 @@ from pathlib import Path
 import pytest
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "apple_mail_mcp" / "applescripts"
-LOOKUP_SCRIPTS = ("delete_message.applescript", "move_message.applescript", "get_message.applescript")
+LOOKUP_SCRIPTS = (
+    "delete_message.applescript",
+    "move_message.applescript",
+    "get_message.applescript",
+    "mark_message.applescript",
+    "reply_message.applescript",
+    "forward_message.applescript",
+)
+SENDER_SCRIPTS = (
+    "compose_draft.applescript",
+    "send_message.applescript",
+    "reply_message.applescript",
+    "forward_message.applescript",
+)
 
 
 @pytest.mark.parametrize("name", LOOKUP_SCRIPTS)
@@ -24,7 +37,9 @@ def test_lookup_resolves_objects_instead_of_retaining_live_loop_references(name)
     assert "(get every account whose name is accountName)" in code
     assert "(get every mailbox of sourceAccount whose name is mailboxName)" in code
     assert "(get first message of sourceMailbox whose id is numericMessageId)" in code
-    assert 'error "MESSAGE_NOT_FOUND"' in code
+    assert 'if errorNumber is in {-1728, -1719} then error "MESSAGE_NOT_FOUND"' in code
+    # Walking `id of` every message took minutes on a few-thousand-message mailbox.
+    assert not re.search(r"id of \w+\) as text\) is appleId", code)
     assert 'error "INVALID_MESSAGE_ID"' in code
     assert 'if (id of targetMessage) is not numericMessageId then error "MESSAGE_ID_MISMATCH"' in code
     if name == "move_message.applescript":
@@ -89,3 +104,99 @@ def test_native_message_id_rejects_invalid_values(compiled_script, value):
     result = run_pure_handler(compiled_script, "return subjectScript's parseMessageID(item 2 of argv)", value)
     assert result.returncode != 0
     assert "INVALID_MESSAGE_ID" in result.stderr
+
+
+@pytest.mark.parametrize("name", SENDER_SCRIPTS)
+def test_sender_scripts_set_mail_sender_before_touching_system_events(name):
+    """`from_account` must go through Mail's `sender` property; System Events is a fallback only."""
+    source = (SCRIPTS / name).read_text()
+    code = "\n".join(line.split("--", 1)[0] for line in source.splitlines())
+    assert "on applySender(theMessage, senderRaw, senderEmail, senderString)" in code
+    assert "set sender of theMessage to senderString" in code
+    # The raw account name is never written to `sender`; Mail ignores it.
+    assert not re.search(r"set sender of \w+ to senderRaw", code)
+    # The GUI pop-up path is reached only from applySender, after the direct set failed.
+    assert code.count("my selectSenderPopup(") == 1
+    assert "my applySender(" in code
+    assert "my senderStringForAccount(senderEmail, my fullNameForAccount(matchedAccount))" in code
+    assert "my emailForAccount(matchedAccount, senderRaw)" in code
+    # Without a readable account address, skip the direct set and use the pop-up.
+    assert 'if senderEmail is not "" then\n        set currentSender to ""' in code
+    assert "if my senderAddress(currentSender) is senderEmail then" in code
+    assert "my senderMatches(currentSender" not in code
+
+
+@pytest.mark.parametrize("name", SENDER_SCRIPTS)
+def test_sender_scripts_resolve_the_account_before_opening_a_compose_window(name):
+    code = (SCRIPTS / name).read_text()
+    run_handler = code[code.index("on run argv"):]
+    resolve = run_handler.index("my resolveAccountBySender(senderRaw)")
+    compose = min(
+        run_handler.index(marker)
+        for marker in ("make new outgoing message", "reply targetMessage", "forward targetMessage")
+        if marker in run_handler
+    )
+    assert resolve < compose
+
+
+@pytest.mark.parametrize("name", SENDER_SCRIPTS)
+def test_sender_scripts_compile(name, tmp_path):
+    if sys.platform != "darwin":
+        pytest.skip("AppleScript compilation requires macOS")
+    # Compile only. Nothing here opens Mail or sends Apple events.
+    result = subprocess.run(
+        ["osacompile", "-o", str(tmp_path / (name + ".scpt")), str(SCRIPTS / name)],
+        capture_output=True, text=True, timeout=45, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.fixture(scope="module", params=SENDER_SCRIPTS)
+def compiled_sender_script(request, tmp_path_factory):
+    if sys.platform != "darwin":
+        pytest.skip("AppleScript compilation and execution require macOS")
+    destination = tmp_path_factory.mktemp("mail-sender-script") / (request.param + ".scpt")
+    # Compile only; the tests below run pure text handlers, never Mail.
+    result = subprocess.run(
+        ["osacompile", "-o", str(destination), str(SCRIPTS / request.param)],
+        capture_output=True, text=True, timeout=45, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    return destination
+
+
+@pytest.mark.parametrize(
+    ("email", "name", "expected"),
+    [
+        ("me@example.com", "Jonathan Reed", "Jonathan Reed <me@example.com>"),
+        ("me@example.com", "", "me@example.com"),
+        ("me@example.com", "Reed, Jonathan", '"Reed, Jonathan" <me@example.com>'),
+        ("me@example.com", 'Jon "JR" Reed', '"Jon \\"JR\\" Reed" <me@example.com>'),
+        # No readable address: never hand back the account name for `sender`.
+        ("", "Jonathan Reed", ""),
+    ],
+)
+def test_sender_string_quotes_display_names_and_never_uses_the_account_name(compiled_sender_script, email, name, expected):
+    result = run_pure_handler(
+        compiled_sender_script,
+        "return subjectScript's senderStringForAccount(item 2 of argv, item 3 of argv)",
+        email,
+        name,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.rstrip("\n") == expected
+
+
+@pytest.mark.parametrize(
+    ("sender", "expected"),
+    [
+        ("Jonathan Reed <me@example.com>", "me@example.com"),
+        ('"Reed, Jonathan" <me@example.com>', "me@example.com"),
+        ("  me@example.com ", "me@example.com"),
+        ("", ""),
+    ],
+)
+def test_sender_address_extracts_the_angle_bracket_address(compiled_sender_script, sender, expected):
+    result = run_pure_handler(compiled_sender_script, "return subjectScript's senderAddress(item 2 of argv)", sender)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.rstrip("\n") == expected

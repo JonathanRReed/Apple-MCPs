@@ -10,9 +10,9 @@ async def notes_rename_folder(
     folder_id: str,
     folder_name: str
 ) -> Any:
-    """Notes Rename Folder
+    """Rename Folder
 
-    Delegated Apple domain tool 'notes_rename_folder' exposed through Apple-Tools-MCP.
+    Rename an existing folder.
 
     Example:
         await notes_rename_folder(client, folder_id='example_folder_id', folder_name='example_folder_name')

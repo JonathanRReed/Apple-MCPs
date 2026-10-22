@@ -505,7 +505,7 @@
       ],
       "name": "contacts_update_contact",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "contacts_update_contact",
       "tags": [
         "contacts",

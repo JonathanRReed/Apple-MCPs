@@ -65,7 +65,7 @@
       ],
       "name": "apple_detect_defaults",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "apple_detect_defaults",
       "tags": [
         "assistant",
@@ -124,7 +124,7 @@
       ],
       "name": "apple_update_preferences",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "apple_update_preferences",
       "tags": [
         "assistant",
@@ -170,8 +170,8 @@
         }
       ],
       "name": "apple_detect_digest_folder",
-      "read_only": true,
-      "risk_level": "low",
+      "read_only": false,
+      "risk_level": "high",
       "schema_ref": "apple_detect_digest_folder",
       "tags": [
         "assistant",
@@ -219,7 +219,7 @@
       ],
       "name": "apple_set_digest_folder",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "apple_set_digest_folder",
       "tags": [
         "assistant",
@@ -325,7 +325,7 @@
       ],
       "name": "apple_update_contact_preferences",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "apple_update_contact_preferences",
       "tags": [
         "assistant",
@@ -738,7 +738,7 @@
       ],
       "name": "apple_archive_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "apple_archive_message",
       "tags": [
         "assistant",
@@ -827,7 +827,7 @@
       ],
       "name": "apple_undo_action",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "apple_undo_action",
       "tags": [
         "assistant",
@@ -1322,7 +1322,7 @@
       ],
       "name": "apple_route_or_run_shortcut",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "apple_route_or_run_shortcut",
       "tags": [
         "assistant",
@@ -1581,7 +1581,7 @@
       ],
       "name": "apple_tag_file",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "apple_tag_file",
       "tags": [
         "assistant",
@@ -1628,7 +1628,7 @@
       ],
       "name": "apple_update_system_setting",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "apple_update_system_setting",
       "tags": [
         "assistant",
@@ -1665,7 +1665,7 @@
         "text: string (optional)",
         "label: string (optional)"
       ],
-      "description": "Use the unified Apple control plane for bounded GUI fallback actions when a native app-domain tool cannot complete the task.",
+      "description": "Use the unified Apple control plane for bounded GUI fallback actions when a native app-domain tool cannot complete the task. Input actions (click_menu_path, press_keys, type_text, click_button, choose_popup_value) require application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty), and that app must come to the front before any input is sent. Terminals, script editors and automation apps are always refused, even if allow-listed.",
       "domain": "apple",
       "example_calls": [
         {
@@ -1678,7 +1678,7 @@
       ],
       "name": "apple_control_frontmost_app",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "apple_control_frontmost_app",
       "tags": [
         "assistant",
@@ -1698,10 +1698,12 @@
         "tool",
         "cannot",
         "complete",
-        "task"
+        "task",
+        "input",
+        "click"
       ],
       "title": "Apple Control Frontmost App",
-      "usage_intent": "Use the unified Apple control plane for bounded GUI fallback actions when a native app-domain tool cannot complete the task."
+      "usage_intent": "Use the unified Apple control plane for bounded GUI fallback actions when a native app-domain tool cannot complete the task. Input actions (click_menu_path, press_keys, type_text, click_button, choose_popup_value) require application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty), and that app must come to the front before any input is sent. Terminals, script editors and automation apps are always refused, even if allow-listed."
     },
     {
       "aliases": [
@@ -2349,7 +2351,7 @@
       ],
       "name": "apple_send_message_interactive",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "apple_send_message_interactive",
       "tags": [
         "assistant",
@@ -2660,7 +2662,7 @@
         "mail health"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'mail_health' exposed through Apple-Tools-MCP.",
+      "description": "Report the active Apple Mail MCP configuration.",
       "domain": "apple",
       "example_calls": [
         {
@@ -2678,15 +2680,13 @@
         "cross-app",
         "mail",
         "health",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "report",
+        "active",
+        "mcp",
+        "configuration"
       ],
       "title": "Mail Health",
-      "usage_intent": "Delegated Apple domain tool 'mail_health' exposed through Apple-Tools-MCP."
+      "usage_intent": "Report the active Apple Mail MCP configuration."
     },
     {
       "aliases": [
@@ -2699,7 +2699,7 @@
       "argument_summary": [
         "account: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'mail_list_mailboxes' exposed through Apple-Tools-MCP.",
+      "description": "List Apple Mail mailboxes, optionally filtered by account.",
       "domain": "apple",
       "example_calls": [
         {
@@ -2720,15 +2720,12 @@
         "mail",
         "mailboxes",
         "mailbox",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "optionally",
+        "filtered",
+        "account"
       ],
-      "title": "Mail List Mailboxes",
-      "usage_intent": "Delegated Apple domain tool 'mail_list_mailboxes' exposed through Apple-Tools-MCP."
+      "title": "List Mailboxes",
+      "usage_intent": "List Apple Mail mailboxes, optionally filtered by account."
     },
     {
       "aliases": [
@@ -2745,7 +2742,7 @@
         "limit: integer (optional)",
         "account: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'mail_search_messages' exposed through Apple-Tools-MCP.",
+      "description": "Search Apple Mail messages by query with optional account, mailbox and unread filters. Without account, accounts are searched in Mail's order and the limit can be filled by the first one; pass account (as returned by mail_list_mailboxes) to search a specific account.",
       "domain": "apple",
       "example_calls": [
         {
@@ -2768,15 +2765,22 @@
         "search",
         "messages",
         "messag",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "query",
+        "optional",
+        "account",
+        "mailbox",
+        "unread",
+        "filters",
+        "filter",
+        "without",
+        "accounts",
+        "are",
+        "searched",
+        "order",
+        "limit"
       ],
-      "title": "Mail Search Messages",
-      "usage_intent": "Delegated Apple domain tool 'mail_search_messages' exposed through Apple-Tools-MCP."
+      "title": "Search Mail",
+      "usage_intent": "Search Apple Mail messages by query with optional account, mailbox and unread filters. Without account, accounts are searched in Mail's order and the limit can be filled by the first one; pass account (as returned by mail_list_mailboxes) to search a specific account."
     },
     {
       "aliases": [
@@ -2789,7 +2793,7 @@
       "argument_summary": [
         "message_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'mail_get_message' exposed through Apple-Tools-MCP.",
+      "description": "Fetch a single Apple Mail message by message_id.",
       "domain": "apple",
       "example_calls": [
         {
@@ -2809,15 +2813,12 @@
         "cross-app",
         "mail",
         "message",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "email",
+        "fetch",
+        "single"
       ],
-      "title": "Mail Get Message",
-      "usage_intent": "Delegated Apple domain tool 'mail_get_message' exposed through Apple-Tools-MCP."
+      "title": "Get Email",
+      "usage_intent": "Fetch a single Apple Mail message by message_id."
     },
     {
       "aliases": [
@@ -2831,7 +2832,7 @@
         "message_id: string (required)",
         "limit: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'mail_get_thread' exposed through Apple-Tools-MCP.",
+      "description": "Find related messages in the same mailbox thread by normalized subject, anchored on a message_id.",
       "domain": "apple",
       "example_calls": [
         {
@@ -2852,15 +2853,19 @@
         "cross-app",
         "mail",
         "thread",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "find",
+        "related",
+        "messages",
+        "messag",
+        "same",
+        "mailbox",
+        "normalized",
+        "subject",
+        "anchored",
+        "message"
       ],
-      "title": "Mail Get Thread",
-      "usage_intent": "Delegated Apple domain tool 'mail_get_thread' exposed through Apple-Tools-MCP."
+      "title": "Get Thread",
+      "usage_intent": "Find related messages in the same mailbox thread by normalized subject, anchored on a message_id."
     },
     {
       "aliases": [
@@ -2879,7 +2884,7 @@
         "attachments: array (optional)",
         "from_account: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'mail_compose_draft' exposed through Apple-Tools-MCP.",
+      "description": "Create a draft message in Apple Mail without sending it. Optionally specify from_account as an email address or account name to set the sender.",
       "domain": "apple",
       "example_calls": [
         {
@@ -2901,15 +2906,22 @@
         "mail",
         "compose",
         "draft",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "create",
+        "message",
+        "without",
+        "sending",
+        "optionally",
+        "specify",
+        "account",
+        "email",
+        "address",
+        "addres",
+        "name",
+        "set",
+        "sender"
       ],
-      "title": "Mail Compose Draft",
-      "usage_intent": "Delegated Apple domain tool 'mail_compose_draft' exposed through Apple-Tools-MCP."
+      "title": "Compose Draft",
+      "usage_intent": "Create a draft message in Apple Mail without sending it. Optionally specify from_account as an email address or account name to set the sender."
     },
     {
       "aliases": [
@@ -2925,7 +2937,7 @@
         "reply_all: boolean (optional)",
         "from_account: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'mail_reply_message' exposed through Apple-Tools-MCP.",
+      "description": "Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account.",
       "domain": "apple",
       "example_calls": [
         {
@@ -2938,7 +2950,7 @@
       ],
       "name": "mail_reply_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_reply_message",
       "tags": [
         "assistant",
@@ -2947,15 +2959,22 @@
         "mail",
         "reply",
         "message",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "existing",
+        "email",
+        "provide",
+        "body",
+        "text",
+        "set",
+        "all",
+        "true",
+        "recipients",
+        "recipient",
+        "optionally",
+        "specify",
+        "account"
       ],
-      "title": "Mail Reply Message",
-      "usage_intent": "Delegated Apple domain tool 'mail_reply_message' exposed through Apple-Tools-MCP."
+      "title": "Reply to Message",
+      "usage_intent": "Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account."
     },
     {
       "aliases": [
@@ -2972,7 +2991,7 @@
         "from_account: string (optional)",
         "limit: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'mail_reply_latest_in_thread' exposed through Apple-Tools-MCP.",
+      "description": "Find the latest related message in the same mailbox thread and reply to that message.",
       "domain": "apple",
       "example_calls": [
         {
@@ -2985,7 +3004,7 @@
       ],
       "name": "mail_reply_latest_in_thread",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_reply_latest_in_thread",
       "tags": [
         "assistant",
@@ -2995,15 +3014,15 @@
         "reply",
         "latest",
         "thread",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "find",
+        "related",
+        "message",
+        "same",
+        "mailbox",
+        "that"
       ],
-      "title": "Mail Reply Latest In Thread",
-      "usage_intent": "Delegated Apple domain tool 'mail_reply_latest_in_thread' exposed through Apple-Tools-MCP."
+      "title": "Reply To Latest In Thread",
+      "usage_intent": "Find the latest related message in the same mailbox thread and reply to that message."
     },
     {
       "aliases": [
@@ -3019,7 +3038,7 @@
         "body: string (optional)",
         "from_account: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'mail_forward_message' exposed through Apple-Tools-MCP.",
+      "description": "Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account. In full_access the forward is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result).",
       "domain": "apple",
       "example_calls": [
         {
@@ -3032,7 +3051,7 @@
       ],
       "name": "mail_forward_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_forward_message",
       "tags": [
         "assistant",
@@ -3041,15 +3060,23 @@
         "mail",
         "forward",
         "message",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "existing",
+        "email",
+        "new",
+        "recipients",
+        "recipient",
+        "provide",
+        "optionally",
+        "prepend",
+        "body",
+        "text",
+        "specify",
+        "account",
+        "full",
+        "access"
       ],
-      "title": "Mail Forward Message",
-      "usage_intent": "Delegated Apple domain tool 'mail_forward_message' exposed through Apple-Tools-MCP."
+      "title": "Forward Message",
+      "usage_intent": "Forward an existing email message to new recipients. Provide a message_id and the to list. Optionally prepend body text and specify from_account. In full_access the forward is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result)."
     },
     {
       "aliases": [
@@ -3063,7 +3090,7 @@
         "message_id: string (required)",
         "is_read: boolean (required)"
       ],
-      "description": "Delegated Apple domain tool 'mail_mark_message' exposed through Apple-Tools-MCP.",
+      "description": "Set the read status of an email message. Pass is_read=true to mark as read, is_read=false to mark as unread.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3076,7 +3103,7 @@
       ],
       "name": "mail_mark_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_mark_message",
       "tags": [
         "assistant",
@@ -3085,15 +3112,18 @@
         "mail",
         "mark",
         "message",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "unread",
+        "set",
+        "status",
+        "statu",
+        "email",
+        "pass",
+        "pas",
+        "true",
+        "false"
       ],
-      "title": "Mail Mark Message",
-      "usage_intent": "Delegated Apple domain tool 'mail_mark_message' exposed through Apple-Tools-MCP."
+      "title": "Mark Message Read/Unread",
+      "usage_intent": "Set the read status of an email message. Pass is_read=true to mark as read, is_read=false to mark as unread."
     },
     {
       "aliases": [
@@ -3108,7 +3138,7 @@
         "target_mailbox: string (required)",
         "target_account: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'mail_move_message' exposed through Apple-Tools-MCP.",
+      "description": "Move an email message to a different mailbox. Optionally specify target_account if the mailbox is in a different account.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3121,7 +3151,7 @@
       ],
       "name": "mail_move_message",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_move_message",
       "tags": [
         "assistant",
@@ -3130,15 +3160,16 @@
         "mail",
         "move",
         "message",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "email",
+        "different",
+        "mailbox",
+        "optionally",
+        "specify",
+        "target",
+        "account"
       ],
-      "title": "Mail Move Message",
-      "usage_intent": "Delegated Apple domain tool 'mail_move_message' exposed through Apple-Tools-MCP."
+      "title": "Move Message",
+      "usage_intent": "Move an email message to a different mailbox. Optionally specify target_account if the mailbox is in a different account."
     },
     {
       "aliases": [
@@ -3154,7 +3185,7 @@
         "archive_account: string (optional)",
         "limit: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'mail_archive_thread' exposed through Apple-Tools-MCP.",
+      "description": "Move related messages in the same mailbox thread to the target archive mailbox.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3167,7 +3198,7 @@
       ],
       "name": "mail_archive_thread",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "mail_archive_thread",
       "tags": [
         "assistant",
@@ -3176,15 +3207,16 @@
         "mail",
         "archive",
         "thread",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "move",
+        "related",
+        "messages",
+        "messag",
+        "same",
+        "mailbox",
+        "target"
       ],
-      "title": "Mail Archive Thread",
-      "usage_intent": "Delegated Apple domain tool 'mail_archive_thread' exposed through Apple-Tools-MCP."
+      "title": "Archive Thread",
+      "usage_intent": "Move related messages in the same mailbox thread to the target archive mailbox."
     },
     {
       "aliases": [
@@ -3197,7 +3229,7 @@
       "argument_summary": [
         "message_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'mail_delete_message' exposed through Apple-Tools-MCP.",
+      "description": "Delete (trash) an email message by its message_id.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3218,15 +3250,12 @@
         "mail",
         "delete",
         "message",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "trash",
+        "email",
+        "its"
       ],
-      "title": "Mail Delete Message",
-      "usage_intent": "Delegated Apple domain tool 'mail_delete_message' exposed through Apple-Tools-MCP."
+      "title": "Delete Message",
+      "usage_intent": "Delete (trash) an email message by its message_id."
     },
     {
       "aliases": [
@@ -3245,7 +3274,7 @@
         "attachments: array (optional)",
         "from_account: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'mail_send_message' exposed through Apple-Tools-MCP.",
+      "description": "Send an email immediately via Apple Mail. Optionally specify from_account as an email address or account name to set the sender.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3267,15 +3296,20 @@
         "mail",
         "send",
         "message",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "email",
+        "immediately",
+        "via",
+        "optionally",
+        "specify",
+        "account",
+        "address",
+        "addres",
+        "name",
+        "set",
+        "sender"
       ],
-      "title": "Mail Send Message",
-      "usage_intent": "Delegated Apple domain tool 'mail_send_message' exposed through Apple-Tools-MCP."
+      "title": "Send Email",
+      "usage_intent": "Send an email immediately via Apple Mail. Optionally specify from_account as an email address or account name to set the sender."
     },
     {
       "aliases": [
@@ -3286,7 +3320,7 @@
         "calendar health"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'calendar_health' exposed through Apple-Tools-MCP.",
+      "description": "Report the active Apple Calendar server configuration.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3304,15 +3338,13 @@
         "cross-app",
         "calendar",
         "health",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "report",
+        "active",
+        "server",
+        "configuration"
       ],
       "title": "Calendar Health",
-      "usage_intent": "Delegated Apple domain tool 'calendar_health' exposed through Apple-Tools-MCP."
+      "usage_intent": "Report the active Apple Calendar server configuration."
     },
     {
       "aliases": [
@@ -3357,7 +3389,7 @@
         "chang",
         "refresh"
       ],
-      "title": "Calendar List Calendars",
+      "title": "List Calendars",
       "usage_intent": "List available Apple Calendar calendars. Select by name and source, then pass the returned calendar_id unchanged. Re-list after Calendar access changes to refresh identifiers."
     },
     {
@@ -3374,7 +3406,7 @@
         "calendar_id: string (optional)",
         "limit: integer (optional)"
       ],
-      "description": "List Apple Calendar events in a date range, including their alarm metadata. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits.",
+      "description": "List calendar events in a time window, optionally filtered to one calendar. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3396,12 +3428,11 @@
         "calendar",
         "events",
         "event",
-        "date",
-        "range",
-        "including",
-        "their",
-        "alarm",
-        "metadata",
+        "time",
+        "window",
+        "optionally",
+        "filtered",
+        "one",
         "calendars",
         "listing",
         "native",
@@ -3409,10 +3440,11 @@
         "returns",
         "ids",
         "full",
+        "alarm",
         "edits"
       ],
-      "title": "Calendar List Events",
-      "usage_intent": "List Apple Calendar events in a date range, including their alarm metadata. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits."
+      "title": "List Events",
+      "usage_intent": "List calendar events in a time window, optionally filtered to one calendar. Use calendar_id from calendar_list_calendars. Listing through native EventKit returns native event IDs for full alarm edits."
     },
     {
       "aliases": [
@@ -3425,7 +3457,7 @@
       "argument_summary": [
         "event_id: string (required)"
       ],
-      "description": "Read an Apple Calendar event, including relative, absolute, and location-based alarms.",
+      "description": "Fetch full details for a calendar event by event_id.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3445,16 +3477,13 @@
         "cross-app",
         "calendar",
         "event",
-        "including",
-        "relative",
-        "absolute",
-        "location",
-        "based",
-        "alarms",
-        "alarm"
+        "fetch",
+        "full",
+        "details",
+        "detail"
       ],
-      "title": "Calendar Get Event",
-      "usage_intent": "Read an Apple Calendar event, including relative, absolute, and location-based alarms."
+      "title": "Get Event",
+      "usage_intent": "Fetch full details for a calendar event by event_id."
     },
     {
       "aliases": [
@@ -3474,7 +3503,7 @@
         "all_day: boolean (optional)",
         "recurrence: object (optional)"
       ],
-      "description": "Create an Apple Calendar event. Use the exact calendar_id returned by calendar_list_calendars. With native access, a unique calendar name resolves to its native calendar; duplicate names return AMBIGUOUS_CALENDAR. Optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
+      "description": "Create a new event in a specific Apple Calendar calendar. Use the exact calendar_id returned by calendar_list_calendars. With native access, a unique calendar name resolves to its native calendar; duplicate names return AMBIGUOUS_CALENDAR. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3498,6 +3527,8 @@
         "calendar",
         "create",
         "event",
+        "new",
+        "specific",
         "exact",
         "returned",
         "calendars",
@@ -3509,12 +3540,10 @@
         "resolves",
         "resolv",
         "its",
-        "duplicate",
-        "names",
-        "nam"
+        "duplicate"
       ],
-      "title": "Calendar Create Event",
-      "usage_intent": "Create an Apple Calendar event. Use the exact calendar_id returned by calendar_list_calendars. With native access, a unique calendar name resolves to its native calendar; duplicate names return AMBIGUOUS_CALENDAR. Optional alarms: {minutes_before: N} or {absolute_iso: ISO datetime with timezone}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access."
+      "title": "Create Event",
+      "usage_intent": "Create a new event in a specific Apple Calendar calendar. Use the exact calendar_id returned by calendar_list_calendars. With native access, a unique calendar name resolves to its native calendar; duplicate names return AMBIGUOUS_CALENDAR. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}. Automation can add initial display alerts only when no inherited alerts need removal; full alarm editing requires native EventKit access."
     },
     {
       "aliases": [
@@ -3534,7 +3563,7 @@
         "location: string (optional)",
         "all_day: boolean (optional)"
       ],
-      "description": "Update an Apple Calendar event and its alarms. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
+      "description": "Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3547,7 +3576,7 @@
       ],
       "name": "calendar_update_event",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "calendar_update_event",
       "tags": [
         "assistant",
@@ -3556,23 +3585,23 @@
         "calendar",
         "update",
         "event",
-        "its",
-        "alarms",
-        "alarm",
+        "one",
+        "more",
+        "fields",
+        "field",
+        "existing",
         "full",
+        "alarm",
         "edits",
         "edit",
         "events",
         "using",
         "native",
         "pass",
-        "pas",
-        "returned",
-        "existing",
-        "applescript"
+        "pas"
       ],
-      "title": "Calendar Update Event",
-      "usage_intent": "Update an Apple Calendar event and its alarms. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Pass [] to clear alarms, or omit alarms to preserve them. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty."
+      "title": "Update Event",
+      "usage_intent": "Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty."
     },
     {
       "aliases": [
@@ -3585,7 +3614,7 @@
       "argument_summary": [
         "event_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'calendar_delete_event' exposed through Apple-Tools-MCP.",
+      "description": "Delete a calendar event by event_id.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3605,16 +3634,10 @@
         "cross-app",
         "calendar",
         "delete",
-        "event",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "event"
       ],
-      "title": "Calendar Delete Event",
-      "usage_intent": "Delegated Apple domain tool 'calendar_delete_event' exposed through Apple-Tools-MCP."
+      "title": "Delete Event",
+      "usage_intent": "Delete a calendar event by event_id."
     },
     {
       "aliases": [
@@ -3625,7 +3648,7 @@
         "reminders health"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'reminders_health' exposed through Apple-Tools-MCP.",
+      "description": "Report the active Apple Reminders MCP server configuration.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3644,15 +3667,14 @@
         "reminders",
         "reminder",
         "health",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "report",
+        "active",
+        "mcp",
+        "server",
+        "configuration"
       ],
       "title": "Reminders Health",
-      "usage_intent": "Delegated Apple domain tool 'reminders_health' exposed through Apple-Tools-MCP."
+      "usage_intent": "Report the active Apple Reminders MCP server configuration."
     },
     {
       "aliases": [
@@ -3663,7 +3685,7 @@
         "reminders list lists"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'reminders_list_lists' exposed through Apple-Tools-MCP.",
+      "description": "List available Apple Reminders lists.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3682,15 +3704,10 @@
         "reminders",
         "reminder",
         "lists",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "available"
       ],
-      "title": "Reminders List Lists",
-      "usage_intent": "Delegated Apple domain tool 'reminders_list_lists' exposed through Apple-Tools-MCP."
+      "title": "List Reminder Lists",
+      "usage_intent": "List available Apple Reminders lists."
     },
     {
       "aliases": [
@@ -3703,7 +3720,7 @@
       "argument_summary": [
         "title: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'reminders_create_list' exposed through Apple-Tools-MCP.",
+      "description": "Create a new Apple Reminders list.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3724,15 +3741,10 @@
         "reminders",
         "reminder",
         "create",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "new"
       ],
-      "title": "Reminders Create List",
-      "usage_intent": "Delegated Apple domain tool 'reminders_create_list' exposed through Apple-Tools-MCP."
+      "title": "Create Reminder List",
+      "usage_intent": "Create a new Apple Reminders list."
     },
     {
       "aliases": [
@@ -3745,7 +3757,7 @@
       "argument_summary": [
         "list_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'reminders_delete_list' exposed through Apple-Tools-MCP.",
+      "description": "Delete a reminder list entirely. Requires full_access safety mode.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3766,15 +3778,17 @@
         "reminders",
         "reminder",
         "delete",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "entirely",
+        "requires",
+        "requir",
+        "full",
+        "access",
+        "acces",
+        "safety",
+        "mode"
       ],
-      "title": "Reminders Delete List",
-      "usage_intent": "Delegated Apple domain tool 'reminders_delete_list' exposed through Apple-Tools-MCP."
+      "title": "Delete Reminder List",
+      "usage_intent": "Delete a reminder list entirely. Requires full_access safety mode."
     },
     {
       "aliases": [
@@ -3792,7 +3806,7 @@
         "due_after: string (optional)",
         "due_before: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'reminders_list_reminders' exposed through Apple-Tools-MCP.",
+      "description": "List reminders with optional list and due-date filters.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3813,15 +3827,14 @@
         "cross-app",
         "reminders",
         "reminder",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "optional",
+        "due",
+        "date",
+        "filters",
+        "filter"
       ],
-      "title": "Reminders List Reminders",
-      "usage_intent": "Delegated Apple domain tool 'reminders_list_reminders' exposed through Apple-Tools-MCP."
+      "title": "List Reminders",
+      "usage_intent": "List reminders with optional list and due-date filters."
     },
     {
       "aliases": [
@@ -3834,7 +3847,7 @@
       "argument_summary": [
         "reminder_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'reminders_get_reminder' exposed through Apple-Tools-MCP.",
+      "description": "Fetch full details for a reminder by reminder_id.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3854,15 +3867,13 @@
         "cross-app",
         "reminders",
         "reminder",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "fetch",
+        "full",
+        "details",
+        "detail"
       ],
-      "title": "Reminders Get Reminder",
-      "usage_intent": "Delegated Apple domain tool 'reminders_get_reminder' exposed through Apple-Tools-MCP."
+      "title": "Get Reminder",
+      "usage_intent": "Fetch full details for a reminder by reminder_id."
     },
     {
       "aliases": [
@@ -3882,7 +3893,7 @@
         "priority: integer (optional)",
         "parent_reminder_id: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'reminders_create_reminder' exposed through Apple-Tools-MCP.",
+      "description": "Create a new reminder in a specific Apple Reminders list.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3904,15 +3915,11 @@
         "reminders",
         "reminder",
         "create",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "new",
+        "specific"
       ],
-      "title": "Reminders Create Reminder",
-      "usage_intent": "Delegated Apple domain tool 'reminders_create_reminder' exposed through Apple-Tools-MCP."
+      "title": "Create Reminder",
+      "usage_intent": "Create a new reminder in a specific Apple Reminders list."
     },
     {
       "aliases": [
@@ -3932,7 +3939,7 @@
         "remind_at: string (optional)",
         "priority: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'reminders_update_reminder' exposed through Apple-Tools-MCP.",
+      "description": "Update one or more fields on an existing reminder.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3945,7 +3952,7 @@
       ],
       "name": "reminders_update_reminder",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "reminders_update_reminder",
       "tags": [
         "assistant",
@@ -3954,15 +3961,14 @@
         "reminders",
         "reminder",
         "update",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "one",
+        "more",
+        "fields",
+        "field",
+        "existing"
       ],
-      "title": "Reminders Update Reminder",
-      "usage_intent": "Delegated Apple domain tool 'reminders_update_reminder' exposed through Apple-Tools-MCP."
+      "title": "Update Reminder",
+      "usage_intent": "Update one or more fields on an existing reminder."
     },
     {
       "aliases": [
@@ -3975,7 +3981,7 @@
       "argument_summary": [
         "reminder_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'reminders_complete_reminder' exposed through Apple-Tools-MCP.",
+      "description": "Mark a reminder as completed.",
       "domain": "apple",
       "example_calls": [
         {
@@ -3987,7 +3993,7 @@
       ],
       "name": "reminders_complete_reminder",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "reminders_complete_reminder",
       "tags": [
         "assistant",
@@ -3996,15 +4002,11 @@
         "reminders",
         "reminder",
         "complete",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "mark",
+        "completed"
       ],
-      "title": "Reminders Complete Reminder",
-      "usage_intent": "Delegated Apple domain tool 'reminders_complete_reminder' exposed through Apple-Tools-MCP."
+      "title": "Complete Reminder",
+      "usage_intent": "Mark a reminder as completed."
     },
     {
       "aliases": [
@@ -4017,7 +4019,7 @@
       "argument_summary": [
         "reminder_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'reminders_uncomplete_reminder' exposed through Apple-Tools-MCP.",
+      "description": "Mark a reminder as not completed.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4029,7 +4031,7 @@
       ],
       "name": "reminders_uncomplete_reminder",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "reminders_uncomplete_reminder",
       "tags": [
         "assistant",
@@ -4038,15 +4040,12 @@
         "reminders",
         "reminder",
         "uncomplete",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "mark",
+        "not",
+        "completed"
       ],
-      "title": "Reminders Uncomplete Reminder",
-      "usage_intent": "Delegated Apple domain tool 'reminders_uncomplete_reminder' exposed through Apple-Tools-MCP."
+      "title": "Uncomplete Reminder",
+      "usage_intent": "Mark a reminder as not completed."
     },
     {
       "aliases": [
@@ -4059,7 +4058,7 @@
       "argument_summary": [
         "reminder_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'reminders_delete_reminder' exposed through Apple-Tools-MCP.",
+      "description": "Delete a reminder by reminder_id.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4079,16 +4078,10 @@
         "cross-app",
         "reminders",
         "reminder",
-        "delete",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "delete"
       ],
-      "title": "Reminders Delete Reminder",
-      "usage_intent": "Delegated Apple domain tool 'reminders_delete_reminder' exposed through Apple-Tools-MCP."
+      "title": "Delete Reminder",
+      "usage_intent": "Delete a reminder by reminder_id."
     },
     {
       "aliases": [
@@ -4099,7 +4092,7 @@
         "shortcuts health"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'shortcuts_health' exposed through Apple-Tools-MCP.",
+      "description": "Report the active Apple Shortcuts MCP configuration.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4118,15 +4111,13 @@
         "shortcuts",
         "shortcut",
         "health",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "report",
+        "active",
+        "mcp",
+        "configuration"
       ],
       "title": "Shortcuts Health",
-      "usage_intent": "Delegated Apple domain tool 'shortcuts_health' exposed through Apple-Tools-MCP."
+      "usage_intent": "Report the active Apple Shortcuts MCP configuration."
     },
     {
       "aliases": [
@@ -4139,7 +4130,7 @@
       "argument_summary": [
         "folder_name: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'shortcuts_list_shortcuts' exposed through Apple-Tools-MCP.",
+      "description": "List Apple Shortcuts, optionally restricted to one folder.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4159,15 +4150,13 @@
         "cross-app",
         "shortcuts",
         "shortcut",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "optionally",
+        "restricted",
+        "one",
+        "folder"
       ],
-      "title": "Shortcuts List Shortcuts",
-      "usage_intent": "Delegated Apple domain tool 'shortcuts_list_shortcuts' exposed through Apple-Tools-MCP."
+      "title": "List Shortcuts",
+      "usage_intent": "List Apple Shortcuts, optionally restricted to one folder."
     },
     {
       "aliases": [
@@ -4178,7 +4167,7 @@
         "shortcuts list folders"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'shortcuts_list_folders' exposed through Apple-Tools-MCP.",
+      "description": "List Apple Shortcuts folders.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4197,16 +4186,10 @@
         "shortcuts",
         "shortcut",
         "folders",
-        "folder",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "folder"
       ],
-      "title": "Shortcuts List Folders",
-      "usage_intent": "Delegated Apple domain tool 'shortcuts_list_folders' exposed through Apple-Tools-MCP."
+      "title": "List Shortcut Folders",
+      "usage_intent": "List Apple Shortcuts folders."
     },
     {
       "aliases": [
@@ -4219,7 +4202,7 @@
       "argument_summary": [
         "shortcut_name_or_identifier: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'shortcuts_view_shortcut' exposed through Apple-Tools-MCP.",
+      "description": "Open a shortcut in the Shortcuts app by name or identifier and return its metadata.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4240,15 +4223,14 @@
         "shortcuts",
         "shortcut",
         "view",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "open",
+        "name",
+        "identifier",
+        "its",
+        "metadata"
       ],
-      "title": "Shortcuts View Shortcut",
-      "usage_intent": "Delegated Apple domain tool 'shortcuts_view_shortcut' exposed through Apple-Tools-MCP."
+      "title": "View Shortcut",
+      "usage_intent": "Open a shortcut in the Shortcuts app by name or identifier and return its metadata."
     },
     {
       "aliases": [
@@ -4265,7 +4247,7 @@
         "output_type: string (optional)",
         "input_text: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'shortcuts_run_shortcut' exposed through Apple-Tools-MCP.",
+      "description": "Run a shortcut by name or identifier with optional input and output arguments.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4278,7 +4260,7 @@
       ],
       "name": "shortcuts_run_shortcut",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "shortcuts_run_shortcut",
       "tags": [
         "assistant",
@@ -4287,15 +4269,16 @@
         "shortcuts",
         "shortcut",
         "run",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "name",
+        "identifier",
+        "optional",
+        "input",
+        "output",
+        "arguments",
+        "argument"
       ],
-      "title": "Shortcuts Run Shortcut",
-      "usage_intent": "Delegated Apple domain tool 'shortcuts_run_shortcut' exposed through Apple-Tools-MCP."
+      "title": "Run Shortcut",
+      "usage_intent": "Run a shortcut by name or identifier with optional input and output arguments."
     },
     {
       "aliases": [
@@ -4306,7 +4289,7 @@
         "files health"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'files_health' exposed through Apple-Tools-MCP.",
+      "description": "Report the active Apple Files MCP configuration.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4325,15 +4308,13 @@
         "files",
         "fil",
         "health",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "report",
+        "active",
+        "mcp",
+        "configuration"
       ],
       "title": "Files Health",
-      "usage_intent": "Delegated Apple domain tool 'files_health' exposed through Apple-Tools-MCP."
+      "usage_intent": "Report the active Apple Files MCP configuration."
     },
     {
       "aliases": [
@@ -4344,7 +4325,7 @@
         "files list allowed roots"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'files_list_allowed_roots' exposed through Apple-Tools-MCP.",
+      "description": "List the file system roots the server may access.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4365,15 +4346,15 @@
         "allowed",
         "roots",
         "root",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "file",
+        "system",
+        "server",
+        "may",
+        "access",
+        "acces"
       ],
-      "title": "Files List Allowed Roots",
-      "usage_intent": "Delegated Apple domain tool 'files_list_allowed_roots' exposed through Apple-Tools-MCP."
+      "title": "List Allowed Roots",
+      "usage_intent": "List the file system roots the server may access."
     },
     {
       "aliases": [
@@ -4386,7 +4367,7 @@
       "argument_summary": [
         "path: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'files_list_directory' exposed through Apple-Tools-MCP.",
+      "description": "List files and folders inside an allowed directory path.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4407,15 +4388,13 @@
         "files",
         "fil",
         "directory",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "folders",
+        "folder",
+        "allowed",
+        "path"
       ],
-      "title": "Files List Directory",
-      "usage_intent": "Delegated Apple domain tool 'files_list_directory' exposed through Apple-Tools-MCP."
+      "title": "List Directory",
+      "usage_intent": "List files and folders inside an allowed directory path."
     },
     {
       "aliases": [
@@ -4430,7 +4409,7 @@
         "base_path: string (optional)",
         "limit: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'files_search_files' exposed through Apple-Tools-MCP.",
+      "description": "Search file and folder names inside the allowed roots.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4452,15 +4431,16 @@
         "files",
         "fil",
         "search",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "file",
+        "folder",
+        "names",
+        "nam",
+        "allowed",
+        "roots",
+        "root"
       ],
-      "title": "Files Search Files",
-      "usage_intent": "Delegated Apple domain tool 'files_search_files' exposed through Apple-Tools-MCP."
+      "title": "Search Files",
+      "usage_intent": "Search file and folder names inside the allowed roots."
     },
     {
       "aliases": [
@@ -4473,7 +4453,7 @@
       "argument_summary": [
         "path: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'files_get_file_info' exposed through Apple-Tools-MCP.",
+      "description": "Get metadata for a file or folder inside the allowed roots.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4495,15 +4475,14 @@
         "fil",
         "file",
         "info",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "metadata",
+        "folder",
+        "allowed",
+        "roots",
+        "root"
       ],
-      "title": "Files Get File Info",
-      "usage_intent": "Delegated Apple domain tool 'files_get_file_info' exposed through Apple-Tools-MCP."
+      "title": "Get File Info",
+      "usage_intent": "Get metadata for a file or folder inside the allowed roots."
     },
     {
       "aliases": [
@@ -4517,7 +4496,7 @@
         "path: string (required)",
         "max_bytes: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'files_read_text_file' exposed through Apple-Tools-MCP.",
+      "description": "Read a UTF-8 text file inside the allowed roots.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4529,8 +4508,8 @@
         }
       ],
       "name": "files_read_text_file",
-      "read_only": false,
-      "risk_level": "medium",
+      "read_only": true,
+      "risk_level": "low",
       "schema_ref": "files_read_text_file",
       "tags": [
         "assistant",
@@ -4540,15 +4519,13 @@
         "fil",
         "text",
         "file",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "utf",
+        "allowed",
+        "roots",
+        "root"
       ],
-      "title": "Files Read Text File",
-      "usage_intent": "Delegated Apple domain tool 'files_read_text_file' exposed through Apple-Tools-MCP."
+      "title": "Read Text File",
+      "usage_intent": "Read a UTF-8 text file inside the allowed roots."
     },
     {
       "aliases": [
@@ -4561,7 +4538,7 @@
       "argument_summary": [
         "limit: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'files_recent_files' exposed through Apple-Tools-MCP.",
+      "description": "List recently modified files inside the allowed roots.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4572,8 +4549,8 @@
         }
       ],
       "name": "files_recent_files",
-      "read_only": false,
-      "risk_level": "medium",
+      "read_only": true,
+      "risk_level": "low",
       "schema_ref": "files_recent_files",
       "tags": [
         "assistant",
@@ -4582,15 +4559,14 @@
         "files",
         "fil",
         "recent",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "recently",
+        "modified",
+        "allowed",
+        "roots",
+        "root"
       ],
-      "title": "Files Recent Files",
-      "usage_intent": "Delegated Apple domain tool 'files_recent_files' exposed through Apple-Tools-MCP."
+      "title": "Recent Files",
+      "usage_intent": "List recently modified files inside the allowed roots."
     },
     {
       "aliases": [
@@ -4603,7 +4579,7 @@
       "argument_summary": [
         "path: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'files_get_tags' exposed through Apple-Tools-MCP.",
+      "description": "Read Finder tags for a file or folder inside the allowed roots.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4625,15 +4601,15 @@
         "fil",
         "tags",
         "tag",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "finder",
+        "file",
+        "folder",
+        "allowed",
+        "roots",
+        "root"
       ],
-      "title": "Files Get Tags",
-      "usage_intent": "Delegated Apple domain tool 'files_get_tags' exposed through Apple-Tools-MCP."
+      "title": "Get Tags",
+      "usage_intent": "Read Finder tags for a file or folder inside the allowed roots."
     },
     {
       "aliases": [
@@ -4646,7 +4622,7 @@
       "argument_summary": [
         "limit: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'files_list_recent_locations' exposed through Apple-Tools-MCP.",
+      "description": "List recently active parent folders across the allowed roots, including iCloud-aware metadata.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4669,15 +4645,21 @@
         "recent",
         "locations",
         "location",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "recently",
+        "active",
+        "parent",
+        "folders",
+        "folder",
+        "across",
+        "acros",
+        "allowed",
+        "roots",
+        "root",
+        "including",
+        "icloud"
       ],
-      "title": "Files List Recent Locations",
-      "usage_intent": "Delegated Apple domain tool 'files_list_recent_locations' exposed through Apple-Tools-MCP."
+      "title": "List Recent Locations",
+      "usage_intent": "List recently active parent folders across the allowed roots, including iCloud-aware metadata."
     },
     {
       "aliases": [
@@ -4688,7 +4670,7 @@
         "files get icloud status"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'files_get_icloud_status' exposed through Apple-Tools-MCP.",
+      "description": "Report whether local iCloud Drive is available and whether it is part of the current allowed roots.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4709,15 +4691,18 @@
         "icloud",
         "status",
         "statu",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "report",
+        "whether",
+        "drive",
+        "available",
+        "part",
+        "current",
+        "allowed",
+        "roots",
+        "root"
       ],
-      "title": "Files Get Icloud Status",
-      "usage_intent": "Delegated Apple domain tool 'files_get_icloud_status' exposed through Apple-Tools-MCP."
+      "title": "Get iCloud Status",
+      "usage_intent": "Report whether local iCloud Drive is available and whether it is part of the current allowed roots."
     },
     {
       "aliases": [
@@ -4730,7 +4715,7 @@
       "argument_summary": [
         "path: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'files_create_folder' exposed through Apple-Tools-MCP.",
+      "description": "Create a folder inside the allowed roots.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4752,15 +4737,12 @@
         "fil",
         "create",
         "folder",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "allowed",
+        "roots",
+        "root"
       ],
-      "title": "Files Create Folder",
-      "usage_intent": "Delegated Apple domain tool 'files_create_folder' exposed through Apple-Tools-MCP."
+      "title": "Create Folder",
+      "usage_intent": "Create a folder inside the allowed roots."
     },
     {
       "aliases": [
@@ -4774,7 +4756,7 @@
         "source: string (required)",
         "destination: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'files_move_path' exposed through Apple-Tools-MCP.",
+      "description": "Move or rename a file or folder inside the allowed roots.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4787,7 +4769,7 @@
       ],
       "name": "files_move_path",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "files_move_path",
       "tags": [
         "assistant",
@@ -4797,15 +4779,15 @@
         "fil",
         "move",
         "path",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "rename",
+        "file",
+        "folder",
+        "allowed",
+        "roots",
+        "root"
       ],
-      "title": "Files Move Path",
-      "usage_intent": "Delegated Apple domain tool 'files_move_path' exposed through Apple-Tools-MCP."
+      "title": "Move Path",
+      "usage_intent": "Move or rename a file or folder inside the allowed roots."
     },
     {
       "aliases": [
@@ -4818,7 +4800,7 @@
       "argument_summary": [
         "path: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'files_open_path' exposed through Apple-Tools-MCP.",
+      "description": "Open a file or folder in the default app. Requires safe_manage or full_access safety mode.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4840,15 +4822,21 @@
         "fil",
         "open",
         "path",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "file",
+        "folder",
+        "default",
+        "requires",
+        "requir",
+        "safe",
+        "manage",
+        "full",
+        "access",
+        "acces",
+        "safety",
+        "mode"
       ],
-      "title": "Files Open Path",
-      "usage_intent": "Delegated Apple domain tool 'files_open_path' exposed through Apple-Tools-MCP."
+      "title": "Open Path",
+      "usage_intent": "Open a file or folder in the default app. Requires safe_manage or full_access safety mode."
     },
     {
       "aliases": [
@@ -4861,7 +4849,7 @@
       "argument_summary": [
         "path: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'files_reveal_in_finder' exposed through Apple-Tools-MCP.",
+      "description": "Reveal a file or folder in Finder. Requires safe_manage or full_access safety mode.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4883,15 +4871,20 @@
         "fil",
         "reveal",
         "finder",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "file",
+        "folder",
+        "requires",
+        "requir",
+        "safe",
+        "manage",
+        "full",
+        "access",
+        "acces",
+        "safety",
+        "mode"
       ],
-      "title": "Files Reveal In Finder",
-      "usage_intent": "Delegated Apple domain tool 'files_reveal_in_finder' exposed through Apple-Tools-MCP."
+      "title": "Reveal In Finder",
+      "usage_intent": "Reveal a file or folder in Finder. Requires safe_manage or full_access safety mode."
     },
     {
       "aliases": [
@@ -4905,7 +4898,7 @@
         "path: string (required)",
         "tags: array (required)"
       ],
-      "description": "Delegated Apple domain tool 'files_set_tags' exposed through Apple-Tools-MCP.",
+      "description": "Replace Finder tags for a file or folder. Requires safe_manage or full_access safety mode.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4918,7 +4911,7 @@
       ],
       "name": "files_set_tags",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "files_set_tags",
       "tags": [
         "assistant",
@@ -4929,15 +4922,21 @@
         "set",
         "tags",
         "tag",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "replace",
+        "finder",
+        "file",
+        "folder",
+        "requires",
+        "requir",
+        "safe",
+        "manage",
+        "full",
+        "access",
+        "acces",
+        "safety"
       ],
-      "title": "Files Set Tags",
-      "usage_intent": "Delegated Apple domain tool 'files_set_tags' exposed through Apple-Tools-MCP."
+      "title": "Set Tags",
+      "usage_intent": "Replace Finder tags for a file or folder. Requires safe_manage or full_access safety mode."
     },
     {
       "aliases": [
@@ -4951,7 +4950,7 @@
         "path: string (required)",
         "tags: array (required)"
       ],
-      "description": "Delegated Apple domain tool 'files_add_tags' exposed through Apple-Tools-MCP.",
+      "description": "Add Finder tags to a file or folder. Requires safe_manage or full_access safety mode.",
       "domain": "apple",
       "example_calls": [
         {
@@ -4975,15 +4974,21 @@
         "add",
         "tags",
         "tag",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "finder",
+        "file",
+        "folder",
+        "requires",
+        "requir",
+        "safe",
+        "manage",
+        "full",
+        "access",
+        "acces",
+        "safety",
+        "mode"
       ],
-      "title": "Files Add Tags",
-      "usage_intent": "Delegated Apple domain tool 'files_add_tags' exposed through Apple-Tools-MCP."
+      "title": "Add Tags",
+      "usage_intent": "Add Finder tags to a file or folder. Requires safe_manage or full_access safety mode."
     },
     {
       "aliases": [
@@ -4997,7 +5002,7 @@
         "path: string (required)",
         "tags: array (required)"
       ],
-      "description": "Delegated Apple domain tool 'files_remove_tags' exposed through Apple-Tools-MCP.",
+      "description": "Remove Finder tags from a file or folder. Requires safe_manage or full_access safety mode.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5010,7 +5015,7 @@
       ],
       "name": "files_remove_tags",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "files_remove_tags",
       "tags": [
         "assistant",
@@ -5021,15 +5026,21 @@
         "remove",
         "tags",
         "tag",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "finder",
+        "file",
+        "folder",
+        "requires",
+        "requir",
+        "safe",
+        "manage",
+        "full",
+        "access",
+        "acces",
+        "safety",
+        "mode"
       ],
-      "title": "Files Remove Tags",
-      "usage_intent": "Delegated Apple domain tool 'files_remove_tags' exposed through Apple-Tools-MCP."
+      "title": "Remove Tags",
+      "usage_intent": "Remove Finder tags from a file or folder. Requires safe_manage or full_access safety mode."
     },
     {
       "aliases": [
@@ -5042,7 +5053,7 @@
       "argument_summary": [
         "path: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'files_delete_path' exposed through Apple-Tools-MCP.",
+      "description": "Delete a file or empty folder inside the allowed roots. Requires full_access safety mode.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5064,15 +5075,22 @@
         "fil",
         "delete",
         "path",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "file",
+        "empty",
+        "folder",
+        "allowed",
+        "roots",
+        "root",
+        "requires",
+        "requir",
+        "full",
+        "access",
+        "acces",
+        "safety",
+        "mode"
       ],
-      "title": "Files Delete Path",
-      "usage_intent": "Delegated Apple domain tool 'files_delete_path' exposed through Apple-Tools-MCP."
+      "title": "Delete Path",
+      "usage_intent": "Delete a file or empty folder inside the allowed roots. Requires full_access safety mode."
     },
     {
       "aliases": [
@@ -5083,7 +5101,7 @@
         "system health"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_health' exposed through Apple-Tools-MCP.",
+      "description": "Report the active Apple System MCP configuration.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5101,15 +5119,13 @@
         "cross-app",
         "system",
         "health",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "report",
+        "active",
+        "mcp",
+        "configuration"
       ],
       "title": "System Health",
-      "usage_intent": "Delegated Apple domain tool 'system_health' exposed through Apple-Tools-MCP."
+      "usage_intent": "Report the active Apple System MCP configuration."
     },
     {
       "aliases": [
@@ -5120,7 +5136,7 @@
         "system status"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_status' exposed through Apple-Tools-MCP.",
+      "description": "Return current battery, frontmost app, and running app count.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5129,8 +5145,8 @@
         }
       ],
       "name": "system_status",
-      "read_only": false,
-      "risk_level": "medium",
+      "read_only": true,
+      "risk_level": "low",
       "schema_ref": "system_status",
       "tags": [
         "assistant",
@@ -5139,15 +5155,14 @@
         "system",
         "status",
         "statu",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "current",
+        "battery",
+        "frontmost",
+        "running",
+        "count"
       ],
       "title": "System Status",
-      "usage_intent": "Delegated Apple domain tool 'system_status' exposed through Apple-Tools-MCP."
+      "usage_intent": "Return current battery, frontmost app, and running app count."
     },
     {
       "aliases": [
@@ -5158,7 +5173,7 @@
         "system get battery"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_get_battery' exposed through Apple-Tools-MCP.",
+      "description": "Get the current battery state from macOS.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5176,15 +5191,12 @@
         "cross-app",
         "system",
         "battery",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "current",
+        "state",
+        "maco"
       ],
-      "title": "System Get Battery",
-      "usage_intent": "Delegated Apple domain tool 'system_get_battery' exposed through Apple-Tools-MCP."
+      "title": "Get Battery",
+      "usage_intent": "Get the current battery state from macOS."
     },
     {
       "aliases": [
@@ -5195,7 +5207,7 @@
         "system get frontmost app"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_get_frontmost_app' exposed through Apple-Tools-MCP.",
+      "description": "Get the name of the current frontmost application.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5213,15 +5225,12 @@
         "cross-app",
         "system",
         "frontmost",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "name",
+        "current",
+        "application"
       ],
-      "title": "System Get Frontmost App",
-      "usage_intent": "Delegated Apple domain tool 'system_get_frontmost_app' exposed through Apple-Tools-MCP."
+      "title": "Get Frontmost App",
+      "usage_intent": "Get the name of the current frontmost application."
     },
     {
       "aliases": [
@@ -5232,7 +5241,7 @@
         "system list running apps"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_list_running_apps' exposed through Apple-Tools-MCP.",
+      "description": "List currently running foreground applications.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5251,15 +5260,13 @@
         "system",
         "running",
         "apps",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "currently",
+        "foreground",
+        "applications",
+        "application"
       ],
-      "title": "System List Running Apps",
-      "usage_intent": "Delegated Apple domain tool 'system_list_running_apps' exposed through Apple-Tools-MCP."
+      "title": "List Running Apps",
+      "usage_intent": "List currently running foreground applications."
     },
     {
       "aliases": [
@@ -5270,7 +5277,7 @@
         "system get clipboard"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_get_clipboard' exposed through Apple-Tools-MCP.",
+      "description": "Read the current text clipboard contents.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5288,15 +5295,13 @@
         "cross-app",
         "system",
         "clipboard",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "current",
+        "text",
+        "contents",
+        "content"
       ],
-      "title": "System Get Clipboard",
-      "usage_intent": "Delegated Apple domain tool 'system_get_clipboard' exposed through Apple-Tools-MCP."
+      "title": "Get Clipboard",
+      "usage_intent": "Read the current text clipboard contents."
     },
     {
       "aliases": [
@@ -5307,7 +5312,7 @@
         "system list settings domains"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_list_settings_domains' exposed through Apple-Tools-MCP.",
+      "description": "List the common macOS preference domains exposed by Apple System MCP.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5328,14 +5333,14 @@
         "setting",
         "domains",
         "domain",
-        "delegated",
-        "tool",
+        "common",
+        "maco",
+        "preference",
         "exposed",
-        "tools",
         "mcp"
       ],
-      "title": "System List Settings Domains",
-      "usage_intent": "Delegated Apple domain tool 'system_list_settings_domains' exposed through Apple-Tools-MCP."
+      "title": "List Settings Domains",
+      "usage_intent": "List the common macOS preference domains exposed by Apple System MCP."
     },
     {
       "aliases": [
@@ -5346,7 +5351,7 @@
         "system get appearance settings"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_get_appearance_settings' exposed through Apple-Tools-MCP.",
+      "description": "Read current macOS appearance settings such as light or dark mode and accent color.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5366,15 +5371,17 @@
         "appearance",
         "settings",
         "setting",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "current",
+        "maco",
+        "such",
+        "light",
+        "dark",
+        "mode",
+        "accent",
+        "color"
       ],
-      "title": "System Get Appearance Settings",
-      "usage_intent": "Delegated Apple domain tool 'system_get_appearance_settings' exposed through Apple-Tools-MCP."
+      "title": "Get Appearance Settings",
+      "usage_intent": "Read current macOS appearance settings such as light or dark mode and accent color."
     },
     {
       "aliases": [
@@ -5385,7 +5392,7 @@
         "system get accessibility settings"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_get_accessibility_settings' exposed through Apple-Tools-MCP.",
+      "description": "Read common macOS accessibility settings such as reduce motion and increase contrast.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5405,15 +5412,16 @@
         "accessibility",
         "settings",
         "setting",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "common",
+        "maco",
+        "such",
+        "reduce",
+        "motion",
+        "increase",
+        "contrast"
       ],
-      "title": "System Get Accessibility Settings",
-      "usage_intent": "Delegated Apple domain tool 'system_get_accessibility_settings' exposed through Apple-Tools-MCP."
+      "title": "Get Accessibility Settings",
+      "usage_intent": "Read common macOS accessibility settings such as reduce motion and increase contrast."
     },
     {
       "aliases": [
@@ -5424,7 +5432,7 @@
         "system get dock settings"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_get_dock_settings' exposed through Apple-Tools-MCP.",
+      "description": "Read common macOS Dock settings such as autohide, magnification, and orientation.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5444,15 +5452,15 @@
         "dock",
         "settings",
         "setting",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "common",
+        "maco",
+        "such",
+        "autohide",
+        "magnification",
+        "orientation"
       ],
-      "title": "System Get Dock Settings",
-      "usage_intent": "Delegated Apple domain tool 'system_get_dock_settings' exposed through Apple-Tools-MCP."
+      "title": "Get Dock Settings",
+      "usage_intent": "Read common macOS Dock settings such as autohide, magnification, and orientation."
     },
     {
       "aliases": [
@@ -5463,7 +5471,7 @@
         "system get finder settings"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_get_finder_settings' exposed through Apple-Tools-MCP.",
+      "description": "Read common macOS Finder settings such as path bar, status bar, and preferred view style.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5483,15 +5491,19 @@
         "finder",
         "settings",
         "setting",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "common",
+        "maco",
+        "such",
+        "path",
+        "bar",
+        "status",
+        "statu",
+        "preferred",
+        "view",
+        "style"
       ],
-      "title": "System Get Finder Settings",
-      "usage_intent": "Delegated Apple domain tool 'system_get_finder_settings' exposed through Apple-Tools-MCP."
+      "title": "Get Finder Settings",
+      "usage_intent": "Read common macOS Finder settings such as path bar, status bar, and preferred view style."
     },
     {
       "aliases": [
@@ -5502,7 +5514,7 @@
         "system get settings snapshot"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_get_settings_snapshot' exposed through Apple-Tools-MCP.",
+      "description": "Return a combined read-only snapshot of appearance, accessibility, Dock, and Finder settings.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5522,15 +5534,15 @@
         "settings",
         "setting",
         "snapshot",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "combined",
+        "only",
+        "appearance",
+        "accessibility",
+        "dock",
+        "finder"
       ],
-      "title": "System Get Settings Snapshot",
-      "usage_intent": "Delegated Apple domain tool 'system_get_settings_snapshot' exposed through Apple-Tools-MCP."
+      "title": "Get Settings Snapshot",
+      "usage_intent": "Return a combined read-only snapshot of appearance, accessibility, Dock, and Finder settings."
     },
     {
       "aliases": [
@@ -5541,7 +5553,7 @@
         "system get focus status"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_get_focus_status' exposed through Apple-Tools-MCP.",
+      "description": "Return truthful Focus support metadata and the best available current Focus state.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5562,15 +5574,16 @@
         "focu",
         "status",
         "statu",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "truthful",
+        "support",
+        "metadata",
+        "best",
+        "available",
+        "current",
+        "state"
       ],
-      "title": "System Get Focus Status",
-      "usage_intent": "Delegated Apple domain tool 'system_get_focus_status' exposed through Apple-Tools-MCP."
+      "title": "Get Focus Status",
+      "usage_intent": "Return truthful Focus support metadata and the best available current Focus state."
     },
     {
       "aliases": [
@@ -5581,7 +5594,7 @@
         "system get context snapshot"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'system_get_context_snapshot' exposed through Apple-Tools-MCP.",
+      "description": "Return a richer macOS context snapshot, including battery, frontmost app, and Focus metadata.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5600,15 +5613,17 @@
         "system",
         "context",
         "snapshot",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "richer",
+        "maco",
+        "including",
+        "battery",
+        "frontmost",
+        "focus",
+        "focu",
+        "metadata"
       ],
-      "title": "System Get Context Snapshot",
-      "usage_intent": "Delegated Apple domain tool 'system_get_context_snapshot' exposed through Apple-Tools-MCP."
+      "title": "Get System Context Snapshot",
+      "usage_intent": "Return a richer macOS context snapshot, including battery, frontmost app, and Focus metadata."
     },
     {
       "aliases": [
@@ -5622,7 +5637,7 @@
         "domain: string (required)",
         "current_host: boolean (optional)"
       ],
-      "description": "Delegated Apple domain tool 'system_read_preference_domain' exposed through Apple-Tools-MCP.",
+      "description": "Read a macOS preference domain through defaults export for a production-safe, structured settings view.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5634,8 +5649,8 @@
         }
       ],
       "name": "system_read_preference_domain",
-      "read_only": false,
-      "risk_level": "medium",
+      "read_only": true,
+      "risk_level": "low",
       "schema_ref": "system_read_preference_domain",
       "tags": [
         "assistant",
@@ -5644,14 +5659,19 @@
         "system",
         "preference",
         "domain",
-        "delegated",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "maco",
+        "defaults",
+        "default",
+        "export",
+        "production",
+        "safe",
+        "structured",
+        "settings",
+        "setting",
+        "view"
       ],
-      "title": "System Read Preference Domain",
-      "usage_intent": "Delegated Apple domain tool 'system_read_preference_domain' exposed through Apple-Tools-MCP."
+      "title": "Read Preference Domain",
+      "usage_intent": "Read a macOS preference domain through defaults export for a production-safe, structured settings view."
     },
     {
       "aliases": [
@@ -5664,7 +5684,7 @@
       "argument_summary": [
         "mode: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'system_set_appearance_mode' exposed through Apple-Tools-MCP.",
+      "description": "Set macOS appearance mode to light or dark.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5676,7 +5696,7 @@
       ],
       "name": "system_set_appearance_mode",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_appearance_mode",
       "tags": [
         "assistant",
@@ -5686,15 +5706,12 @@
         "set",
         "appearance",
         "mode",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "maco",
+        "light",
+        "dark"
       ],
-      "title": "System Set Appearance Mode",
-      "usage_intent": "Delegated Apple domain tool 'system_set_appearance_mode' exposed through Apple-Tools-MCP."
+      "title": "Set Appearance Mode",
+      "usage_intent": "Set macOS appearance mode to light or dark."
     },
     {
       "aliases": [
@@ -5707,7 +5724,7 @@
       "argument_summary": [
         "enabled: boolean (required)"
       ],
-      "description": "Delegated Apple domain tool 'system_set_show_all_extensions' exposed through Apple-Tools-MCP.",
+      "description": "Show or hide filename extensions in macOS.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5719,7 +5736,7 @@
       ],
       "name": "system_set_show_all_extensions",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_show_all_extensions",
       "tags": [
         "assistant",
@@ -5731,15 +5748,12 @@
         "all",
         "extensions",
         "extension",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "hide",
+        "filename",
+        "maco"
       ],
-      "title": "System Set Show All Extensions",
-      "usage_intent": "Delegated Apple domain tool 'system_set_show_all_extensions' exposed through Apple-Tools-MCP."
+      "title": "Set Show All Extensions",
+      "usage_intent": "Show or hide filename extensions in macOS."
     },
     {
       "aliases": [
@@ -5752,7 +5766,7 @@
       "argument_summary": [
         "enabled: boolean (required)"
       ],
-      "description": "Delegated Apple domain tool 'system_set_show_hidden_files' exposed through Apple-Tools-MCP.",
+      "description": "Show or hide hidden files in Finder.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5764,7 +5778,7 @@
       ],
       "name": "system_set_show_hidden_files",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_show_hidden_files",
       "tags": [
         "assistant",
@@ -5776,15 +5790,11 @@
         "hidden",
         "files",
         "fil",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "hide",
+        "finder"
       ],
-      "title": "System Set Show Hidden Files",
-      "usage_intent": "Delegated Apple domain tool 'system_set_show_hidden_files' exposed through Apple-Tools-MCP."
+      "title": "Set Show Hidden Files",
+      "usage_intent": "Show or hide hidden files in Finder."
     },
     {
       "aliases": [
@@ -5797,7 +5807,7 @@
       "argument_summary": [
         "enabled: boolean (required)"
       ],
-      "description": "Delegated Apple domain tool 'system_set_finder_path_bar' exposed through Apple-Tools-MCP.",
+      "description": "Show or hide the Finder path bar.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5809,7 +5819,7 @@
       ],
       "name": "system_set_finder_path_bar",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_finder_path_bar",
       "tags": [
         "assistant",
@@ -5820,15 +5830,11 @@
         "finder",
         "path",
         "bar",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "show",
+        "hide"
       ],
-      "title": "System Set Finder Path Bar",
-      "usage_intent": "Delegated Apple domain tool 'system_set_finder_path_bar' exposed through Apple-Tools-MCP."
+      "title": "Set Finder Path Bar",
+      "usage_intent": "Show or hide the Finder path bar."
     },
     {
       "aliases": [
@@ -5841,7 +5847,7 @@
       "argument_summary": [
         "enabled: boolean (required)"
       ],
-      "description": "Delegated Apple domain tool 'system_set_finder_status_bar' exposed through Apple-Tools-MCP.",
+      "description": "Show or hide the Finder status bar.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5853,7 +5859,7 @@
       ],
       "name": "system_set_finder_status_bar",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_finder_status_bar",
       "tags": [
         "assistant",
@@ -5865,15 +5871,11 @@
         "status",
         "statu",
         "bar",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "show",
+        "hide"
       ],
-      "title": "System Set Finder Status Bar",
-      "usage_intent": "Delegated Apple domain tool 'system_set_finder_status_bar' exposed through Apple-Tools-MCP."
+      "title": "Set Finder Status Bar",
+      "usage_intent": "Show or hide the Finder status bar."
     },
     {
       "aliases": [
@@ -5886,7 +5888,7 @@
       "argument_summary": [
         "enabled: boolean (required)"
       ],
-      "description": "Delegated Apple domain tool 'system_set_dock_autohide' exposed through Apple-Tools-MCP.",
+      "description": "Enable or disable Dock autohide.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5898,7 +5900,7 @@
       ],
       "name": "system_set_dock_autohide",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_dock_autohide",
       "tags": [
         "assistant",
@@ -5908,15 +5910,11 @@
         "set",
         "dock",
         "autohide",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "enable",
+        "disable"
       ],
-      "title": "System Set Dock Autohide",
-      "usage_intent": "Delegated Apple domain tool 'system_set_dock_autohide' exposed through Apple-Tools-MCP."
+      "title": "Set Dock Autohide",
+      "usage_intent": "Enable or disable Dock autohide."
     },
     {
       "aliases": [
@@ -5929,7 +5927,7 @@
       "argument_summary": [
         "enabled: boolean (required)"
       ],
-      "description": "Delegated Apple domain tool 'system_set_dock_show_recents' exposed through Apple-Tools-MCP.",
+      "description": "Enable or disable recent applications in the Dock.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5941,7 +5939,7 @@
       ],
       "name": "system_set_dock_show_recents",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_dock_show_recents",
       "tags": [
         "assistant",
@@ -5953,15 +5951,13 @@
         "show",
         "recents",
         "recent",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "enable",
+        "disable",
+        "applications",
+        "application"
       ],
-      "title": "System Set Dock Show Recents",
-      "usage_intent": "Delegated Apple domain tool 'system_set_dock_show_recents' exposed through Apple-Tools-MCP."
+      "title": "Set Dock Show Recents",
+      "usage_intent": "Enable or disable recent applications in the Dock."
     },
     {
       "aliases": [
@@ -5974,7 +5970,7 @@
       "argument_summary": [
         "enabled: boolean (required)"
       ],
-      "description": "Delegated Apple domain tool 'system_set_reduce_motion' exposed through Apple-Tools-MCP.",
+      "description": "Enable or disable macOS reduce motion accessibility mode.",
       "domain": "apple",
       "example_calls": [
         {
@@ -5986,7 +5982,7 @@
       ],
       "name": "system_set_reduce_motion",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_reduce_motion",
       "tags": [
         "assistant",
@@ -5996,15 +5992,14 @@
         "set",
         "reduce",
         "motion",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "enable",
+        "disable",
+        "maco",
+        "accessibility",
+        "mode"
       ],
-      "title": "System Set Reduce Motion",
-      "usage_intent": "Delegated Apple domain tool 'system_set_reduce_motion' exposed through Apple-Tools-MCP."
+      "title": "Set Reduce Motion",
+      "usage_intent": "Enable or disable macOS reduce motion accessibility mode."
     },
     {
       "aliases": [
@@ -6017,7 +6012,7 @@
       "argument_summary": [
         "enabled: boolean (required)"
       ],
-      "description": "Delegated Apple domain tool 'system_set_increase_contrast' exposed through Apple-Tools-MCP.",
+      "description": "Enable or disable macOS increase contrast accessibility mode.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6029,7 +6024,7 @@
       ],
       "name": "system_set_increase_contrast",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_increase_contrast",
       "tags": [
         "assistant",
@@ -6039,15 +6034,14 @@
         "set",
         "increase",
         "contrast",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "enable",
+        "disable",
+        "maco",
+        "accessibility",
+        "mode"
       ],
-      "title": "System Set Increase Contrast",
-      "usage_intent": "Delegated Apple domain tool 'system_set_increase_contrast' exposed through Apple-Tools-MCP."
+      "title": "Set Increase Contrast",
+      "usage_intent": "Enable or disable macOS increase contrast accessibility mode."
     },
     {
       "aliases": [
@@ -6060,7 +6054,7 @@
       "argument_summary": [
         "enabled: boolean (required)"
       ],
-      "description": "Delegated Apple domain tool 'system_set_reduce_transparency' exposed through Apple-Tools-MCP.",
+      "description": "Enable or disable macOS reduce transparency accessibility mode.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6072,7 +6066,7 @@
       ],
       "name": "system_set_reduce_transparency",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_reduce_transparency",
       "tags": [
         "assistant",
@@ -6082,15 +6076,14 @@
         "set",
         "reduce",
         "transparency",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "enable",
+        "disable",
+        "maco",
+        "accessibility",
+        "mode"
       ],
-      "title": "System Set Reduce Transparency",
-      "usage_intent": "Delegated Apple domain tool 'system_set_reduce_transparency' exposed through Apple-Tools-MCP."
+      "title": "Set Reduce Transparency",
+      "usage_intent": "Enable or disable macOS reduce transparency accessibility mode."
     },
     {
       "aliases": [
@@ -6103,7 +6096,7 @@
       "argument_summary": [
         "text: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'system_set_clipboard' exposed through Apple-Tools-MCP.",
+      "description": "Write text into the macOS clipboard.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6115,7 +6108,7 @@
       ],
       "name": "system_set_clipboard",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_set_clipboard",
       "tags": [
         "assistant",
@@ -6124,15 +6117,12 @@
         "system",
         "set",
         "clipboard",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "write",
+        "text",
+        "maco"
       ],
-      "title": "System Set Clipboard",
-      "usage_intent": "Delegated Apple domain tool 'system_set_clipboard' exposed through Apple-Tools-MCP."
+      "title": "Set Clipboard",
+      "usage_intent": "Write text into the macOS clipboard."
     },
     {
       "aliases": [
@@ -6147,7 +6137,7 @@
         "body: string (required)",
         "subtitle: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'system_show_notification' exposed through Apple-Tools-MCP.",
+      "description": "Display a local macOS notification.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6169,15 +6159,11 @@
         "system",
         "show",
         "notification",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "display",
+        "maco"
       ],
-      "title": "System Show Notification",
-      "usage_intent": "Delegated Apple domain tool 'system_show_notification' exposed through Apple-Tools-MCP."
+      "title": "Show Notification",
+      "usage_intent": "Display a local macOS notification."
     },
     {
       "aliases": [
@@ -6191,7 +6177,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'system_open_application' exposed through Apple-Tools-MCP.",
+      "description": "Open an application by name using macOS.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6213,15 +6199,12 @@
         "system",
         "open",
         "application",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "name",
+        "using",
+        "maco"
       ],
-      "title": "System Open Application",
-      "usage_intent": "Delegated Apple domain tool 'system_open_application' exposed through Apple-Tools-MCP."
+      "title": "Open Application",
+      "usage_intent": "Open an application by name using macOS."
     },
     {
       "aliases": [
@@ -6235,7 +6218,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'system_gui_list_menu_bar_items' exposed through Apple-Tools-MCP.",
+      "description": "List the top-level menu bar items for an application. This is a GUI fallback tool.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6247,8 +6230,8 @@
         }
       ],
       "name": "system_gui_list_menu_bar_items",
-      "read_only": true,
-      "risk_level": "low",
+      "read_only": false,
+      "risk_level": "medium",
       "schema_ref": "system_gui_list_menu_bar_items",
       "tags": [
         "assistant",
@@ -6260,15 +6243,16 @@
         "bar",
         "items",
         "item",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "top",
+        "level",
+        "application",
+        "this",
+        "thi",
+        "fallback",
+        "tool"
       ],
-      "title": "System Gui List Menu Bar Items",
-      "usage_intent": "Delegated Apple domain tool 'system_gui_list_menu_bar_items' exposed through Apple-Tools-MCP."
+      "title": "List Menu Bar Items",
+      "usage_intent": "List the top-level menu bar items for an application. This is a GUI fallback tool."
     },
     {
       "aliases": [
@@ -6283,7 +6267,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'system_gui_click_menu_path' exposed through Apple-Tools-MCP.",
+      "description": "Click a menu path in a named application, for example ['File', 'New Window']. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6296,7 +6280,7 @@
       ],
       "name": "system_gui_click_menu_path",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_click_menu_path",
       "tags": [
         "assistant",
@@ -6307,15 +6291,21 @@
         "click",
         "menu",
         "path",
-        "delegated",
-        "domain",
+        "named",
+        "application",
+        "example",
+        "file",
+        "new",
+        "window",
+        "this",
+        "thi",
+        "fallback",
         "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "requires",
+        "requir"
       ],
-      "title": "System Gui Click Menu Path",
-      "usage_intent": "Delegated Apple domain tool 'system_gui_click_menu_path' exposed through Apple-Tools-MCP."
+      "title": "Click Menu Path",
+      "usage_intent": "Click a menu path in a named application, for example ['File', 'New Window']. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed."
     },
     {
       "aliases": [
@@ -6331,7 +6321,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'system_gui_press_keys' exposed through Apple-Tools-MCP.",
+      "description": "Press a key or key chord in a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6344,7 +6334,7 @@
       ],
       "name": "system_gui_press_keys",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_press_keys",
       "tags": [
         "assistant",
@@ -6356,15 +6346,20 @@
         "pres",
         "keys",
         "key",
-        "delegated",
-        "domain",
+        "chord",
+        "named",
+        "application",
+        "this",
+        "thi",
+        "fallback",
         "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "requires",
+        "requir",
+        "bundle",
+        "naming"
       ],
-      "title": "System Gui Press Keys",
-      "usage_intent": "Delegated Apple domain tool 'system_gui_press_keys' exposed through Apple-Tools-MCP."
+      "title": "Press Keys",
+      "usage_intent": "Press a key or key chord in a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed."
     },
     {
       "aliases": [
@@ -6379,7 +6374,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'system_gui_type_text' exposed through Apple-Tools-MCP.",
+      "description": "Type text into the focused control of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6392,7 +6387,7 @@
       ],
       "name": "system_gui_type_text",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_type_text",
       "tags": [
         "assistant",
@@ -6402,15 +6397,22 @@
         "gui",
         "type",
         "text",
-        "delegated",
-        "domain",
+        "focused",
+        "control",
+        "named",
+        "application",
+        "this",
+        "thi",
+        "fallback",
         "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "requires",
+        "requir",
+        "bundle",
+        "naming",
+        "running"
       ],
-      "title": "System Gui Type Text",
-      "usage_intent": "Delegated Apple domain tool 'system_gui_type_text' exposed through Apple-Tools-MCP."
+      "title": "Type Text",
+      "usage_intent": "Type text into the focused control of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed."
     },
     {
       "aliases": [
@@ -6427,7 +6429,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'system_gui_click_button' exposed through Apple-Tools-MCP.",
+      "description": "Click a named button in the front window of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6440,7 +6442,7 @@
       ],
       "name": "system_gui_click_button",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_click_button",
       "tags": [
         "assistant",
@@ -6450,15 +6452,22 @@
         "gui",
         "click",
         "button",
-        "delegated",
-        "domain",
+        "named",
+        "front",
+        "window",
+        "application",
+        "this",
+        "thi",
+        "fallback",
         "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "requires",
+        "requir",
+        "bundle",
+        "naming",
+        "running"
       ],
-      "title": "System Gui Click Button",
-      "usage_intent": "Delegated Apple domain tool 'system_gui_click_button' exposed through Apple-Tools-MCP."
+      "title": "Click Button",
+      "usage_intent": "Click a named button in the front window of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed."
     },
     {
       "aliases": [
@@ -6475,7 +6484,7 @@
         "application: string (optional)",
         "bundle_id: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'system_gui_choose_popup_value' exposed through Apple-Tools-MCP.",
+      "description": "Choose a value from a named pop-up button in the front window of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6488,7 +6497,7 @@
       ],
       "name": "system_gui_choose_popup_value",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "system_gui_choose_popup_value",
       "tags": [
         "assistant",
@@ -6499,15 +6508,21 @@
         "choose",
         "popup",
         "value",
-        "delegated",
-        "domain",
+        "pop",
+        "named",
+        "button",
+        "front",
+        "window",
+        "application",
+        "this",
+        "thi",
+        "fallback",
         "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "requires",
+        "requir"
       ],
-      "title": "System Gui Choose Popup Value",
-      "usage_intent": "Delegated Apple domain tool 'system_gui_choose_popup_value' exposed through Apple-Tools-MCP."
+      "title": "Choose Pop-Up Value",
+      "usage_intent": "Choose a value from a named pop-up button in the front window of a named application. This is a GUI fallback tool. Requires application or bundle_id naming a running app whose bundle id is listed in APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS (comma-separated bundle ids; GUI input is off while it is empty). Input is never sent to the frontmost app implicitly. Terminals, script editors and automation apps are always refused, even if allow-listed."
     },
     {
       "aliases": [
@@ -6518,7 +6533,7 @@
         "maps health"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'maps_health' exposed through Apple-Tools-MCP.",
+      "description": "Report the active Apple Maps MCP configuration.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6537,15 +6552,13 @@
         "maps",
         "map",
         "health",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "report",
+        "active",
+        "mcp",
+        "configuration"
       ],
       "title": "Maps Health",
-      "usage_intent": "Delegated Apple domain tool 'maps_health' exposed through Apple-Tools-MCP."
+      "usage_intent": "Report the active Apple Maps MCP configuration."
     },
     {
       "aliases": [
@@ -6559,7 +6572,7 @@
         "query: string (required)",
         "limit: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'maps_search_places' exposed through Apple-Tools-MCP.",
+      "description": "Search Apple Maps for matching places.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6583,15 +6596,10 @@
         "search",
         "places",
         "plac",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "matching"
       ],
-      "title": "Maps Search Places",
-      "usage_intent": "Delegated Apple domain tool 'maps_search_places' exposed through Apple-Tools-MCP."
+      "title": "Search Places",
+      "usage_intent": "Search Apple Maps for matching places."
     },
     {
       "aliases": [
@@ -6606,7 +6614,7 @@
         "destination: string (required)",
         "transport: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'maps_get_directions' exposed through Apple-Tools-MCP.",
+      "description": "Get Apple Maps route details between an origin and destination.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6629,15 +6637,15 @@
         "map",
         "directions",
         "direction",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "route",
+        "details",
+        "detail",
+        "between",
+        "origin",
+        "destination"
       ],
-      "title": "Maps Get Directions",
-      "usage_intent": "Delegated Apple domain tool 'maps_get_directions' exposed through Apple-Tools-MCP."
+      "title": "Get Directions",
+      "usage_intent": "Get Apple Maps route details between an origin and destination."
     },
     {
       "aliases": [
@@ -6652,7 +6660,7 @@
         "origin: string (optional)",
         "transport: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'maps_build_maps_link' exposed through Apple-Tools-MCP.",
+      "description": "Build an Apple Maps URL for a destination or route.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6664,8 +6672,8 @@
         }
       ],
       "name": "maps_build_maps_link",
-      "read_only": false,
-      "risk_level": "medium",
+      "read_only": true,
+      "risk_level": "low",
       "schema_ref": "maps_build_maps_link",
       "tags": [
         "assistant",
@@ -6675,15 +6683,12 @@
         "map",
         "build",
         "link",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "url",
+        "destination",
+        "route"
       ],
-      "title": "Maps Build Maps Link",
-      "usage_intent": "Delegated Apple domain tool 'maps_build_maps_link' exposed through Apple-Tools-MCP."
+      "title": "Build Maps Link",
+      "usage_intent": "Build an Apple Maps URL for a destination or route."
     },
     {
       "aliases": [
@@ -6698,7 +6703,7 @@
         "origin: string (optional)",
         "transport: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'maps_open_directions_in_maps' exposed through Apple-Tools-MCP.",
+      "description": "Open directions in the Apple Maps app.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6721,16 +6726,10 @@
         "map",
         "open",
         "directions",
-        "direction",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "direction"
       ],
-      "title": "Maps Open Directions In Maps",
-      "usage_intent": "Delegated Apple domain tool 'maps_open_directions_in_maps' exposed through Apple-Tools-MCP."
+      "title": "Open Directions In Maps",
+      "usage_intent": "Open directions in the Apple Maps app."
     },
     {
       "aliases": [
@@ -6741,7 +6740,7 @@
         "contacts health"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'contacts_health' exposed through Apple-Tools-MCP.",
+      "description": "Report the active Apple Contacts MCP configuration.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6760,15 +6759,13 @@
         "contacts",
         "contact",
         "health",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "report",
+        "active",
+        "mcp",
+        "configuration"
       ],
       "title": "Contacts Health",
-      "usage_intent": "Delegated Apple domain tool 'contacts_health' exposed through Apple-Tools-MCP."
+      "usage_intent": "Report the active Apple Contacts MCP configuration."
     },
     {
       "aliases": [
@@ -6782,7 +6779,7 @@
         "limit: integer (optional)",
         "offset: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'contacts_list_contacts' exposed through Apple-Tools-MCP.",
+      "description": "List Apple Contacts entries.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6803,15 +6800,11 @@
         "cross-app",
         "contacts",
         "contact",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "entries",
+        "entry"
       ],
-      "title": "Contacts List Contacts",
-      "usage_intent": "Delegated Apple domain tool 'contacts_list_contacts' exposed through Apple-Tools-MCP."
+      "title": "List Contacts",
+      "usage_intent": "List Apple Contacts entries."
     },
     {
       "aliases": [
@@ -6829,7 +6822,7 @@
         "emails: array (optional)",
         "note: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'contacts_create_contact' exposed through Apple-Tools-MCP.",
+      "description": "Create a new contact in Apple Contacts with a first name (required) and optional last name, organization, and note.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6851,15 +6844,17 @@
         "contacts",
         "contact",
         "create",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "new",
+        "first",
+        "name",
+        "required",
+        "optional",
+        "last",
+        "organization",
+        "note"
       ],
-      "title": "Contacts Create Contact",
-      "usage_intent": "Delegated Apple domain tool 'contacts_create_contact' exposed through Apple-Tools-MCP."
+      "title": "Create Contact",
+      "usage_intent": "Create a new contact in Apple Contacts with a first name (required) and optional last name, organization, and note."
     },
     {
       "aliases": [
@@ -6878,7 +6873,7 @@
         "emails: array (optional)",
         "note: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'contacts_update_contact' exposed through Apple-Tools-MCP.",
+      "description": "Update an existing contact's information. Only the fields you provide will be changed.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6891,7 +6886,7 @@
       ],
       "name": "contacts_update_contact",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "contacts_update_contact",
       "tags": [
         "assistant",
@@ -6900,15 +6895,18 @@
         "contacts",
         "contact",
         "update",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "existing",
+        "information",
+        "only",
+        "fields",
+        "field",
+        "you",
+        "provide",
+        "will",
+        "changed"
       ],
-      "title": "Contacts Update Contact",
-      "usage_intent": "Delegated Apple domain tool 'contacts_update_contact' exposed through Apple-Tools-MCP."
+      "title": "Update Contact",
+      "usage_intent": "Update an existing contact's information. Only the fields you provide will be changed."
     },
     {
       "aliases": [
@@ -6921,7 +6919,7 @@
       "argument_summary": [
         "contact_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'contacts_delete_contact' exposed through Apple-Tools-MCP.",
+      "description": "Permanently delete a contact by contact_id. Requires full_access safety mode.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6942,15 +6940,17 @@
         "contacts",
         "contact",
         "delete",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "permanently",
+        "requires",
+        "requir",
+        "full",
+        "access",
+        "acces",
+        "safety",
+        "mode"
       ],
-      "title": "Contacts Delete Contact",
-      "usage_intent": "Delegated Apple domain tool 'contacts_delete_contact' exposed through Apple-Tools-MCP."
+      "title": "Delete Contact",
+      "usage_intent": "Permanently delete a contact by contact_id. Requires full_access safety mode."
     },
     {
       "aliases": [
@@ -6964,7 +6964,7 @@
         "query: string (required)",
         "limit: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'contacts_search_contacts' exposed through Apple-Tools-MCP.",
+      "description": "Search Apple Contacts by name, phone number, or email address.",
       "domain": "apple",
       "example_calls": [
         {
@@ -6986,15 +6986,15 @@
         "contacts",
         "contact",
         "search",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "name",
+        "phone",
+        "number",
+        "email",
+        "address",
+        "addres"
       ],
-      "title": "Contacts Search Contacts",
-      "usage_intent": "Delegated Apple domain tool 'contacts_search_contacts' exposed through Apple-Tools-MCP."
+      "title": "Search Contacts",
+      "usage_intent": "Search Apple Contacts by name, phone number, or email address."
     },
     {
       "aliases": [
@@ -7007,7 +7007,7 @@
       "argument_summary": [
         "contact_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'contacts_get_contact' exposed through Apple-Tools-MCP.",
+      "description": "Fetch full details for an Apple Contacts record by contact_id.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7027,15 +7027,14 @@
         "cross-app",
         "contacts",
         "contact",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "fetch",
+        "full",
+        "details",
+        "detail",
+        "record"
       ],
-      "title": "Contacts Get Contact",
-      "usage_intent": "Delegated Apple domain tool 'contacts_get_contact' exposed through Apple-Tools-MCP."
+      "title": "Get Contact",
+      "usage_intent": "Fetch full details for an Apple Contacts record by contact_id."
     },
     {
       "aliases": [
@@ -7049,7 +7048,7 @@
         "query: string (required)",
         "channel: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'contacts_resolve_message_recipient' exposed through Apple-Tools-MCP.",
+      "description": "Resolve a contact into a message-ready phone number or email address.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7073,15 +7072,15 @@
         "resolve",
         "message",
         "recipient",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "ready",
+        "phone",
+        "number",
+        "email",
+        "address",
+        "addres"
       ],
-      "title": "Contacts Resolve Message Recipient",
-      "usage_intent": "Delegated Apple domain tool 'contacts_resolve_message_recipient' exposed through Apple-Tools-MCP."
+      "title": "Resolve Message Recipient",
+      "usage_intent": "Resolve a contact into a message-ready phone number or email address."
     },
     {
       "aliases": [
@@ -7092,7 +7091,7 @@
         "notes health"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'notes_health' exposed through Apple-Tools-MCP.",
+      "description": "Report the active Apple Notes MCP configuration.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7111,15 +7110,13 @@
         "notes",
         "not",
         "health",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "report",
+        "active",
+        "mcp",
+        "configuration"
       ],
       "title": "Notes Health",
-      "usage_intent": "Delegated Apple domain tool 'notes_health' exposed through Apple-Tools-MCP."
+      "usage_intent": "Report the active Apple Notes MCP configuration."
     },
     {
       "aliases": [
@@ -7130,7 +7127,7 @@
         "notes list accounts"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'notes_list_accounts' exposed through Apple-Tools-MCP.",
+      "description": "List Apple Notes accounts.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7149,16 +7146,10 @@
         "notes",
         "not",
         "accounts",
-        "account",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "account"
       ],
-      "title": "Notes List Accounts",
-      "usage_intent": "Delegated Apple domain tool 'notes_list_accounts' exposed through Apple-Tools-MCP."
+      "title": "List Accounts",
+      "usage_intent": "List Apple Notes accounts."
     },
     {
       "aliases": [
@@ -7173,7 +7164,7 @@
         "limit: integer (optional)",
         "offset: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'notes_list_folders' exposed through Apple-Tools-MCP.",
+      "description": "List Apple Notes folders.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7195,16 +7186,10 @@
         "notes",
         "not",
         "folders",
-        "folder",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "folder"
       ],
-      "title": "Notes List Folders",
-      "usage_intent": "Delegated Apple domain tool 'notes_list_folders' exposed through Apple-Tools-MCP."
+      "title": "List Folders",
+      "usage_intent": "List Apple Notes folders."
     },
     {
       "aliases": [
@@ -7220,7 +7205,7 @@
         "limit: integer (optional)",
         "offset: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'notes_list_notes' exposed through Apple-Tools-MCP.",
+      "description": "List notes, optionally scoped to a folder or account.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7241,15 +7226,13 @@
         "cross-app",
         "notes",
         "not",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "optionally",
+        "scoped",
+        "folder",
+        "account"
       ],
-      "title": "Notes List Notes",
-      "usage_intent": "Delegated Apple domain tool 'notes_list_notes' exposed through Apple-Tools-MCP."
+      "title": "List Notes",
+      "usage_intent": "List notes, optionally scoped to a folder or account."
     },
     {
       "aliases": [
@@ -7262,7 +7245,7 @@
       "argument_summary": [
         "note_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'notes_get_note' exposed through Apple-Tools-MCP.",
+      "description": "Fetch full details for an Apple Notes note by note_id.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7283,15 +7266,13 @@
         "notes",
         "not",
         "note",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "fetch",
+        "full",
+        "details",
+        "detail"
       ],
-      "title": "Notes Get Note",
-      "usage_intent": "Delegated Apple domain tool 'notes_get_note' exposed through Apple-Tools-MCP."
+      "title": "Get Note",
+      "usage_intent": "Fetch full details for an Apple Notes note by note_id."
     },
     {
       "aliases": [
@@ -7308,7 +7289,7 @@
         "limit: integer (optional)",
         "offset: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'notes_search_notes' exposed through Apple-Tools-MCP.",
+      "description": "Search notes by text, folder, or account.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7330,15 +7311,12 @@
         "notes",
         "not",
         "search",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "text",
+        "folder",
+        "account"
       ],
-      "title": "Notes Search Notes",
-      "usage_intent": "Delegated Apple domain tool 'notes_search_notes' exposed through Apple-Tools-MCP."
+      "title": "Search Notes",
+      "usage_intent": "Search notes by text, folder, or account."
     },
     {
       "aliases": [
@@ -7354,7 +7332,7 @@
         "body_html: string (optional)",
         "tags: array (optional)"
       ],
-      "description": "Delegated Apple domain tool 'notes_create_note' exposed through Apple-Tools-MCP.",
+      "description": "Create a new note in a folder.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7377,15 +7355,11 @@
         "not",
         "create",
         "note",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "new",
+        "folder"
       ],
-      "title": "Notes Create Note",
-      "usage_intent": "Delegated Apple domain tool 'notes_create_note' exposed through Apple-Tools-MCP."
+      "title": "Create Note",
+      "usage_intent": "Create a new note in a folder."
     },
     {
       "aliases": [
@@ -7399,7 +7373,7 @@
         "note_id: string (required)",
         "body: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'notes_append_to_note' exposed through Apple-Tools-MCP.",
+      "description": "Append plain text to an existing note without replacing its current content. Pass the text as body.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7422,15 +7396,20 @@
         "not",
         "append",
         "note",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "plain",
+        "text",
+        "existing",
+        "without",
+        "replacing",
+        "its",
+        "current",
+        "content",
+        "pass",
+        "pas",
+        "body"
       ],
-      "title": "Notes Append To Note",
-      "usage_intent": "Delegated Apple domain tool 'notes_append_to_note' exposed through Apple-Tools-MCP."
+      "title": "Append to Note",
+      "usage_intent": "Append plain text to an existing note without replacing its current content. Pass the text as body."
     },
     {
       "aliases": [
@@ -7447,7 +7426,7 @@
         "folder_id: string (optional)",
         "tags: array (optional)"
       ],
-      "description": "Delegated Apple domain tool 'notes_update_note' exposed through Apple-Tools-MCP.",
+      "description": "Update an existing note.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7460,7 +7439,7 @@
       ],
       "name": "notes_update_note",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "notes_update_note",
       "tags": [
         "assistant",
@@ -7470,15 +7449,10 @@
         "not",
         "update",
         "note",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "existing"
       ],
-      "title": "Notes Update Note",
-      "usage_intent": "Delegated Apple domain tool 'notes_update_note' exposed through Apple-Tools-MCP."
+      "title": "Update Note",
+      "usage_intent": "Update an existing note."
     },
     {
       "aliases": [
@@ -7491,7 +7465,7 @@
       "argument_summary": [
         "note_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'notes_delete_note' exposed through Apple-Tools-MCP.",
+      "description": "Delete a note by note_id.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7512,16 +7486,10 @@
         "notes",
         "not",
         "delete",
-        "note",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "note"
       ],
-      "title": "Notes Delete Note",
-      "usage_intent": "Delegated Apple domain tool 'notes_delete_note' exposed through Apple-Tools-MCP."
+      "title": "Delete Note",
+      "usage_intent": "Delete a note by note_id."
     },
     {
       "aliases": [
@@ -7535,7 +7503,7 @@
         "note_id: string (required)",
         "folder_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'notes_move_note' exposed through Apple-Tools-MCP.",
+      "description": "Move a note to a different folder.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7548,7 +7516,7 @@
       ],
       "name": "notes_move_note",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "notes_move_note",
       "tags": [
         "assistant",
@@ -7558,15 +7526,11 @@
         "not",
         "move",
         "note",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "different",
+        "folder"
       ],
-      "title": "Notes Move Note",
-      "usage_intent": "Delegated Apple domain tool 'notes_move_note' exposed through Apple-Tools-MCP."
+      "title": "Move Note",
+      "usage_intent": "Move a note to a different folder."
     },
     {
       "aliases": [
@@ -7581,7 +7545,7 @@
         "account_name: string (required)",
         "parent_folder_id: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'notes_create_folder' exposed through Apple-Tools-MCP.",
+      "description": "Create a new folder in an Apple Notes account or nested folder.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7604,15 +7568,12 @@
         "not",
         "create",
         "folder",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "new",
+        "account",
+        "nested"
       ],
-      "title": "Notes Create Folder",
-      "usage_intent": "Delegated Apple domain tool 'notes_create_folder' exposed through Apple-Tools-MCP."
+      "title": "Create Notes Folder",
+      "usage_intent": "Create a new folder in an Apple Notes account or nested folder."
     },
     {
       "aliases": [
@@ -7626,7 +7587,7 @@
         "folder_id: string (required)",
         "folder_name: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'notes_rename_folder' exposed through Apple-Tools-MCP.",
+      "description": "Rename an existing folder.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7639,7 +7600,7 @@
       ],
       "name": "notes_rename_folder",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "notes_rename_folder",
       "tags": [
         "assistant",
@@ -7649,15 +7610,10 @@
         "not",
         "rename",
         "folder",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "existing"
       ],
-      "title": "Notes Rename Folder",
-      "usage_intent": "Delegated Apple domain tool 'notes_rename_folder' exposed through Apple-Tools-MCP."
+      "title": "Rename Folder",
+      "usage_intent": "Rename an existing folder."
     },
     {
       "aliases": [
@@ -7670,7 +7626,7 @@
       "argument_summary": [
         "folder_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'notes_delete_folder' exposed through Apple-Tools-MCP.",
+      "description": "Delete an Apple Notes folder.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7691,16 +7647,10 @@
         "notes",
         "not",
         "delete",
-        "folder",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "folder"
       ],
-      "title": "Notes Delete Folder",
-      "usage_intent": "Delegated Apple domain tool 'notes_delete_folder' exposed through Apple-Tools-MCP."
+      "title": "Delete Folder",
+      "usage_intent": "Delete an Apple Notes folder."
     },
     {
       "aliases": [
@@ -7713,7 +7663,7 @@
       "argument_summary": [
         "note_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'notes_list_attachments' exposed through Apple-Tools-MCP.",
+      "description": "List attachments for a note.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7735,15 +7685,10 @@
         "not",
         "attachments",
         "attachment",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "note"
       ],
-      "title": "Notes List Attachments",
-      "usage_intent": "Delegated Apple domain tool 'notes_list_attachments' exposed through Apple-Tools-MCP."
+      "title": "List Note Attachments",
+      "usage_intent": "List attachments for a note."
     },
     {
       "aliases": [
@@ -7754,7 +7699,7 @@
         "messages health"
       ],
       "argument_summary": [],
-      "description": "Delegated Apple domain tool 'messages_health' exposed through Apple-Tools-MCP.",
+      "description": "Report Messages server configuration and capability status.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7773,15 +7718,15 @@
         "messages",
         "messag",
         "health",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "report",
+        "server",
+        "configuration",
+        "capability",
+        "status",
+        "statu"
       ],
       "title": "Messages Health",
-      "usage_intent": "Delegated Apple domain tool 'messages_health' exposed through Apple-Tools-MCP."
+      "usage_intent": "Report Messages server configuration and capability status."
     },
     {
       "aliases": [
@@ -7796,7 +7741,7 @@
         "offset: integer (optional)",
         "unread_only: boolean (optional)"
       ],
-      "description": "Delegated Apple domain tool 'messages_list_conversations' exposed through Apple-Tools-MCP.",
+      "description": "List recent Apple Messages conversations.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7819,15 +7764,10 @@
         "messag",
         "conversations",
         "conversation",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "recent"
       ],
-      "title": "Messages List Conversations",
-      "usage_intent": "Delegated Apple domain tool 'messages_list_conversations' exposed through Apple-Tools-MCP."
+      "title": "List Conversations",
+      "usage_intent": "List recent Apple Messages conversations."
     },
     {
       "aliases": [
@@ -7842,7 +7782,7 @@
         "limit: integer (optional)",
         "offset: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'messages_get_conversation' exposed through Apple-Tools-MCP.",
+      "description": "Fetch a single Apple Messages conversation with paginated messages.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7864,15 +7804,12 @@
         "messages",
         "messag",
         "conversation",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "fetch",
+        "single",
+        "paginated"
       ],
-      "title": "Messages Get Conversation",
-      "usage_intent": "Delegated Apple domain tool 'messages_get_conversation' exposed through Apple-Tools-MCP."
+      "title": "Get Conversation",
+      "usage_intent": "Fetch a single Apple Messages conversation with paginated messages."
     },
     {
       "aliases": [
@@ -7891,7 +7828,7 @@
         "limit: integer (optional)",
         "offset: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'messages_search_messages' exposed through Apple-Tools-MCP.",
+      "description": "Search Apple Messages text history.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7913,15 +7850,11 @@
         "messages",
         "messag",
         "search",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "text",
+        "history"
       ],
-      "title": "Messages Search Messages",
-      "usage_intent": "Delegated Apple domain tool 'messages_search_messages' exposed through Apple-Tools-MCP."
+      "title": "Search Messages",
+      "usage_intent": "Search Apple Messages text history."
     },
     {
       "aliases": [
@@ -7934,7 +7867,7 @@
       "argument_summary": [
         "message_id: string (required)"
       ],
-      "description": "Delegated Apple domain tool 'messages_get_message' exposed through Apple-Tools-MCP.",
+      "description": "Fetch a single Apple Messages message by message_id.",
       "domain": "apple",
       "example_calls": [
         {
@@ -7955,15 +7888,11 @@
         "messages",
         "messag",
         "message",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "fetch",
+        "single"
       ],
-      "title": "Messages Get Message",
-      "usage_intent": "Delegated Apple domain tool 'messages_get_message' exposed through Apple-Tools-MCP."
+      "title": "Get Message",
+      "usage_intent": "Fetch a single Apple Messages message by message_id."
     },
     {
       "aliases": [
@@ -7979,7 +7908,7 @@
         "limit: integer (optional)",
         "offset: integer (optional)"
       ],
-      "description": "Delegated Apple domain tool 'messages_list_attachments' exposed through Apple-Tools-MCP.",
+      "description": "List Apple Messages attachments by chat or message.",
       "domain": "apple",
       "example_calls": [
         {
@@ -8002,15 +7931,11 @@
         "messag",
         "attachments",
         "attachment",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "message",
+        "chat"
       ],
-      "title": "Messages List Attachments",
-      "usage_intent": "Delegated Apple domain tool 'messages_list_attachments' exposed through Apple-Tools-MCP."
+      "title": "List Message Attachments",
+      "usage_intent": "List Apple Messages attachments by chat or message."
     },
     {
       "aliases": [
@@ -8025,7 +7950,7 @@
         "text: string (required)",
         "service_name: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'messages_send_message' exposed through Apple-Tools-MCP.",
+      "description": "Send a new message through Messages.app. Sends as iMessage unless service_name is set: SMS or RCS go through the iPhone's carrier and need Text Message Forwarding enabled for this Mac.",
       "domain": "apple",
       "example_calls": [
         {
@@ -8048,15 +7973,22 @@
         "messag",
         "send",
         "message",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "new",
+        "sends",
+        "imessage",
+        "unless",
+        "unles",
+        "service",
+        "name",
+        "set",
+        "sms",
+        "rcs",
+        "iphone",
+        "carrier",
+        "need"
       ],
-      "title": "Messages Send Message",
-      "usage_intent": "Delegated Apple domain tool 'messages_send_message' exposed through Apple-Tools-MCP."
+      "title": "Send Message",
+      "usage_intent": "Send a new message through Messages.app. Sends as iMessage unless service_name is set: SMS or RCS go through the iPhone's carrier and need Text Message Forwarding enabled for this Mac."
     },
     {
       "aliases": [
@@ -8071,7 +8003,7 @@
         "text: string (required)",
         "service_name: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'messages_reply_in_conversation' exposed through Apple-Tools-MCP.",
+      "description": "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats. One-to-one replies use the service of the thread's latest message (SMS/RCS threads stay SMS/RCS) unless service_name is set. Group replies always use the group's existing service; service_name is rejected for groups unless it matches.",
       "domain": "apple",
       "example_calls": [
         {
@@ -8084,7 +8016,7 @@
       ],
       "name": "messages_reply_in_conversation",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "messages_reply_in_conversation",
       "tags": [
         "assistant",
@@ -8094,15 +8026,22 @@
         "messag",
         "reply",
         "conversation",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "using",
+        "its",
+        "chat",
+        "supports",
+        "support",
+        "both",
+        "one",
+        "group",
+        "chats",
+        "replies",
+        "service",
+        "thread",
+        "latest"
       ],
-      "title": "Messages Reply In Conversation",
-      "usage_intent": "Delegated Apple domain tool 'messages_reply_in_conversation' exposed through Apple-Tools-MCP."
+      "title": "Reply In Conversation",
+      "usage_intent": "Reply to an Apple Messages conversation using its chat_id. Supports both one-to-one and group chats. One-to-one replies use the service of the thread's latest message (SMS/RCS threads stay SMS/RCS) unless service_name is set. Group replies always use the group's existing service; service_name is rejected for groups unless it matches."
     },
     {
       "aliases": [
@@ -8118,7 +8057,7 @@
         "text: string (optional)",
         "service_name: string (optional)"
       ],
-      "description": "Delegated Apple domain tool 'messages_send_attachment' exposed through Apple-Tools-MCP.",
+      "description": "Send a file attachment via Apple Messages to a recipient. Optionally include a text message.",
       "domain": "apple",
       "example_calls": [
         {
@@ -8131,7 +8070,7 @@
       ],
       "name": "messages_send_attachment",
       "read_only": false,
-      "risk_level": "medium",
+      "risk_level": "high",
       "schema_ref": "messages_send_attachment",
       "tags": [
         "assistant",
@@ -8141,15 +8080,16 @@
         "messag",
         "send",
         "attachment",
-        "delegated",
-        "domain",
-        "tool",
-        "exposed",
-        "tools",
-        "mcp"
+        "file",
+        "via",
+        "recipient",
+        "optionally",
+        "include",
+        "text",
+        "message"
       ],
-      "title": "Messages Send Attachment",
-      "usage_intent": "Delegated Apple domain tool 'messages_send_attachment' exposed through Apple-Tools-MCP."
+      "title": "Send Attachment",
+      "usage_intent": "Send a file attachment via Apple Messages to a recipient. Optionally include a text message."
     },
     {
       "aliases": [

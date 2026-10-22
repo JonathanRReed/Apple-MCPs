@@ -8,9 +8,9 @@ from .client import MCPToolCaller, call_tool_json
 async def files_list_allowed_roots(
     client: MCPToolCaller
 ) -> Any:
-    """Files List Allowed Roots
+    """List Allowed Roots
 
-    Delegated Apple domain tool 'files_list_allowed_roots' exposed through Apple-Tools-MCP.
+    List the file system roots the server may access.
 
     Example:
         await files_list_allowed_roots(client)

@@ -227,6 +227,27 @@ def test_search_attributed_body_is_case_insensitive_for_non_ascii(tmp_path) -> N
     assert [message.message_id for message in bridge.search_messages(query="CAFÉ")] == ["msg-5"]
 
 
+def test_search_attributed_body_matches_case_folded_ascii_queries(tmp_path) -> None:
+    # Release review: an ASCII byte prefilter dropped matches that only exist
+    # after case folding, so STRASSE never found Straße.
+    db_path = tmp_path / "chat.db"
+    _build_fixture(db_path)
+    _add_attributed_body_messages(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO message (ROWID, guid, handle_id, text, subject, service, date, is_from_me, is_read,"
+        " cache_has_attachments, attributedBody) VALUES (6, 'msg-6', 1, NULL, NULL, 'iMessage', 6, 0, 1, 0, ?)",
+        (_attributed_body("Meet at the Straße corner"),),
+    )
+    conn.execute("INSERT INTO chat_message_join VALUES (1, 6)")
+    conn.commit()
+    conn.close()
+    bridge = MessagesDBBridge(db_path)
+
+    assert [message.message_id for message in bridge.search_messages(query="STRASSE")] == ["msg-6"]
+    assert [message.message_id for message in bridge.search_messages(query="straße")] == ["msg-6"]
+
+
 def test_latest_service_for_chat_returns_most_recent_service(tmp_path) -> None:
     db_path = tmp_path / "chat.db"
     _build_fixture(db_path)

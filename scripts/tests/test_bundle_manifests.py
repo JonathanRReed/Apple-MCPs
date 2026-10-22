@@ -48,7 +48,8 @@ PREVIOUS_BUNDLE_ENV: dict[str, dict[str, str]] = {
     },
 }
 
-# Settings whose blank value means "no restriction"; blank must equal unset.
+# Settings whose blank value behaves exactly like unset: "no restriction" for the
+# allowlists below, "GUI input off" for APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS.
 BLANK_MEANS_UNSET = {
     "APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT",
     "APPLE_CALENDAR_MCP_ALLOWED_CALENDARS",
@@ -56,6 +57,7 @@ BLANK_MEANS_UNSET = {
     "APPLE_REMINDERS_MCP_ALLOWED_LISTS",
     "APPLE_NOTES_MCP_ALLOWED_ACCOUNTS",
     "APPLE_NOTES_MCP_ALLOWED_FOLDERS",
+    "APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS",
 }
 
 # Titles quoted by error suggestions, so a user can find the right field.
@@ -63,6 +65,7 @@ SUGGESTION_TITLES = {
     "Apple-Calendar-MCP/src/apple_calendar_mcp/permissions.py": ["Allowed calendars", "Calendars the assistant may change"],
     "AppleReminders-MCP/src/apple_reminders_mcp/permissions.py": ["Allowed reminder lists"],
     "AppleNotes-MCP/src/apple_notes_mcp/permissions.py": ["Allowed Notes accounts", "Allowed Notes folders"],
+    "AppleSystem-MCP/src/apple_system_mcp/config.py": ["Apps that accept GUI input"],
 }
 
 

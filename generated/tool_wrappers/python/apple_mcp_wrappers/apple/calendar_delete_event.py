@@ -9,9 +9,9 @@ async def calendar_delete_event(
     client: MCPToolCaller,
     event_id: str
 ) -> Any:
-    """Calendar Delete Event
+    """Delete Event
 
-    Delegated Apple domain tool 'calendar_delete_event' exposed through Apple-Tools-MCP.
+    Delete a calendar event by event_id.
 
     Example:
         await calendar_delete_event(client, event_id='example_event_id')

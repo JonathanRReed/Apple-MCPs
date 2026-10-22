@@ -127,9 +127,9 @@ def test_bulk_note_values_build_the_same_json_as_before(tmp_path) -> None:
 @on_macos
 def test_bulk_folder_values_build_the_same_json_as_before(tmp_path) -> None:
     run_body = """
-	tell application "Notes" to set accountClass to account
-	set item1 to my folder_json_from_values("acc-1", "iCloud", "fld-1", "Work " & quote & "A" & quote, true, accountClass, "acc-1", "iCloud")
-	return "{" & quote & "items" & quote & ":[" & item1 & "]}"
+	set item1 to my folder_json_from_values("acc-1", "iCloud", "fld-1", "Work " & quote & "A" & quote, true, false, "acc-1", "iCloud")
+	set item2 to my folder_json_from_values("acc-1", "iCloud", "fld-2", "Child", false, true, "fld-1", "Work")
+	return "{" & quote & "items" & quote & ":[" & item1 & "," & item2 & "]}"
 """
     handlers = _handlers(
         "list_folders",
@@ -141,7 +141,9 @@ def test_bulk_folder_values_build_the_same_json_as_before(tmp_path) -> None:
         "json_string",
         "replace_text",
     )
-    (item,) = _run_probe(tmp_path, run_body, handlers)["items"]
+    item, child = _run_probe(tmp_path, run_body, handlers)["items"]
+    # A folder inside another folder reports its parent (review follow-up).
+    assert (child["parent_folder_id"], child["parent_folder_name"]) == ("fld-1", "Work")
     assert item == {
         "folder_id": "fld-1",
         "name": 'Work "A"',

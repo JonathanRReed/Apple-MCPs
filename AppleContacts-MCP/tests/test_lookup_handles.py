@@ -38,7 +38,7 @@ DIRECTORY = [
 def native_bridge(monkeypatch, directory: list[dict[str, object]], calls: list[tuple[str, tuple[str, ...]]] | None = None) -> AppleContactsBridge:
     bridge = AppleContactsBridge(SCRIPTS_DIR, helper_source=HELPER_SOURCE, helper_build_dir=Path("/nonexistent"))
 
-    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+    def fake_run_script(script_name: str, *args: str, **kwargs: object) -> dict[str, object]:
         if calls is not None:
             calls.append((script_name, args))
         assert script_name == "lookup_handles.applescript"
@@ -122,7 +122,7 @@ def test_applescript_backend_scans_the_directory_pages(monkeypatch) -> None:
     bridge = AppleContactsBridge(SCRIPTS_DIR)
     scripts: list[str] = []
 
-    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+    def fake_run_script(script_name: str, *args: str, **kwargs: object) -> dict[str, object]:
         scripts.append(script_name)
         assert script_name == "list_contacts.applescript"
         return {"total": len(DIRECTORY), "items": DIRECTORY}
@@ -212,7 +212,7 @@ def test_tool_passes_the_helpers_permission_state_through(monkeypatch, error_cod
     monkeypatch.setattr(bridge, "helper_built", lambda: True)
     helper_stderr = json.dumps({"ok": False, "error_code": error_code, "message": "no access", "suggestion": "Allow it."})
 
-    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+    def fake_run_script(script_name: str, *args: str, **kwargs: object) -> dict[str, object]:
         raise bridge._map_script_error(helper_stderr)
 
     monkeypatch.setattr(bridge, "_run_script", fake_run_script)
@@ -248,3 +248,22 @@ def test_tool_reports_bridge_failures_as_errors(monkeypatch) -> None:
 
     assert isinstance(result, ErrorResponse)
     assert result.error.error_code == "HELPER_TIMEOUT"
+
+
+def test_lookup_handles_uses_a_short_timeout(monkeypatch) -> None:
+    # Name lookups decorate Messages reads, so a stuck helper must not stall
+    # them for the full 30-second script timeout.
+    from apple_contacts_mcp.contacts_bridge import LOOKUP_HANDLES_TIMEOUT_SECONDS
+
+    bridge = AppleContactsBridge(SCRIPTS_DIR, helper_source=HELPER_SOURCE, helper_build_dir=Path("/nonexistent"))
+    seen: dict[str, object] = {}
+
+    def fake_run_script(script_name: str, *args: str, **kwargs: object) -> dict[str, object]:
+        seen.update(kwargs)
+        return {"items": []}
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+    bridge.lookup_handles(["+12125551234"])
+
+    assert seen.get("timeout") == LOOKUP_HANDLES_TIMEOUT_SECONDS
+    assert LOOKUP_HANDLES_TIMEOUT_SECONDS <= 5

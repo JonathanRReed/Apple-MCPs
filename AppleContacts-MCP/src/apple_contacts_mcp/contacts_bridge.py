@@ -20,6 +20,8 @@ METHOD_FIELD_SEPARATOR = "\x1f"
 METHOD_RECORD_SEPARATOR = "\x1e"
 NO_CHANGE_SENTINEL = "__NOCHANGE__"
 SCRIPT_TIMEOUT_SECONDS = 30
+# Name lookups decorate Messages reads; give up quickly instead of stalling them.
+LOOKUP_HANDLES_TIMEOUT_SECONDS = 5
 MAX_SCRIPT_OUTPUT_BYTES = 8 * 1024 * 1024
 MAX_CONTACTS_PER_REQUEST = 1000
 MAX_DIRECTORY_CONTACTS = 100_000
@@ -434,7 +436,8 @@ class AppleContactsBridge:
             yield from items
             offset += len(items)
 
-    def _run_script(self, script_name: str, *args: str) -> dict[str, Any]:
+    def _run_script(self, script_name: str, *args: str, timeout: float | None = None) -> dict[str, Any]:
+        timeout = SCRIPT_TIMEOUT_SECONDS if timeout is None else timeout
         if self.helper_source is not None:
             command = [str(self._ensure_native_helper()), script_name.removesuffix(".applescript"), *args]
         else:
@@ -454,12 +457,12 @@ class AppleContactsBridge:
                     stdout=stdout_file,
                     stderr=stderr_file,
                 )
-                deadline = time.monotonic() + SCRIPT_TIMEOUT_SECONDS
+                deadline = time.monotonic() + timeout
                 while process.poll() is None:
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         self._stop_process(process)
-                        raise self._timeout_error()
+                        raise self._timeout_error(timeout)
                     if stdout_file.tell() > MAX_SCRIPT_OUTPUT_BYTES or stderr_file.tell() > MAX_SCRIPT_OUTPUT_BYTES:
                         self._stop_process(process)
                         raise self._output_too_large_error()
@@ -506,16 +509,17 @@ class AppleContactsBridge:
             )
         return payload
 
-    def _timeout_error(self) -> ContactsBridgeError:
+    def _timeout_error(self, timeout: float | None = None) -> ContactsBridgeError:
+        timeout = SCRIPT_TIMEOUT_SECONDS if timeout is None else timeout
         if self.helper_source is None:
             return ContactsBridgeError(
                 "APPLESCRIPT_TIMEOUT",
-                f"AppleScript exceeded the {SCRIPT_TIMEOUT_SECONDS}-second timeout.",
+                f"AppleScript exceeded the {timeout:g}-second timeout.",
                 "Ensure Contacts.app is responsive and try again.",
             )
         return ContactsBridgeError(
             "HELPER_TIMEOUT",
-            f"The native Contacts helper exceeded the {SCRIPT_TIMEOUT_SECONDS}-second timeout.",
+            f"The native Contacts helper exceeded the {timeout:g}-second timeout.",
             "If a macOS Contacts permission prompt is open, answer it and retry. Otherwise retry with a smaller limit.",
         )
 
@@ -669,7 +673,7 @@ class AppleContactsBridge:
         if not wanted:
             return {}
         if self.helper_source is not None:
-            payload = self._run_script("lookup_handles.applescript", json.dumps(wanted))
+            payload = self._run_script("lookup_handles.applescript", json.dumps(wanted), timeout=LOOKUP_HANDLES_TIMEOUT_SECONDS)
             candidates = [self._normalize_summary(item) for item in payload.get("items", []) if isinstance(item, dict)]
         else:
             candidates = list(self._iter_all_contacts())

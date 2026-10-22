@@ -282,7 +282,7 @@ def test_end_to_end_a_stranger_never_gets_a_saved_contacts_name(monkeypatch) -> 
     mom = {"contact_id": "c-mom", "name": "Mom", "phones": [{"label": "mobile", "value": "(212) 555-1234"}], "emails": []}
     helper_calls: list[str] = []
 
-    def fake_run_script(script_name: str, *args: str) -> dict[str, object]:
+    def fake_run_script(script_name: str, *args: str, **kwargs: object) -> dict[str, object]:
         helper_calls.append(script_name)
         return {"items": [mom]}  # the helper's cheap last-7-digits candidate set includes Mom for both
 

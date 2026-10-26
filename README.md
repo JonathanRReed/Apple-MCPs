@@ -126,7 +126,7 @@ APPLE_AGENT_MCP_CONFORMANCE_MODE=1 \
 ```
 
 ```bash
-npx -y @modelcontextprotocol/conformance@0.2.0-alpha.11 server --url http://127.0.0.1:8765/mcp --requirements 2026-07-28
+npx -y @modelcontextprotocol/conformance@0.2.0-alpha.12 server --url http://127.0.0.1:8765/mcp --requirements 2026-07-28
 ```
 
 Conformance mode registers test fixtures. Use it only for protocol validation. [CI](.github/workflows) runs lint, macOS and Linux tests, generated-file checks, Inspector smoke checks, and conformance tests.

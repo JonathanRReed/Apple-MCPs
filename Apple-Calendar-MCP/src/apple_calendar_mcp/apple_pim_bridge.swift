@@ -705,12 +705,14 @@ struct ApplePIMBridge {
         let removed = scope == .series ? try seriesFirstOccurrence(store: store, event: event) : target
         let calendar: EKCalendar = event.calendar
         let key = seriesKey(event)
+        let removedItem = removed.calendarItemIdentifier
         try store.remove(removed, span: span(for: scope), commit: true)
         store.reset()
         // Report what is actually gone: the targeted occurrence, or the whole event or series.
         let survived: Bool
         if let occurrenceStart {
-            survived = occurrence(store: store, calendar: calendar, seriesKey: key, start: occurrenceStart) != nil
+            survived = occurrences(store: store, calendar: calendar, seriesKey: key, start: occurrenceStart)
+                .contains { $0.calendarItemIdentifier == removedItem }
         } else if scope == .series {
             survived = !seriesEvents(store: store, calendar: calendar, seriesKey: key).isEmpty
         } else {
@@ -814,25 +816,38 @@ struct ApplePIMBridge {
     }
 
     // The occurrence of `event`'s series that starts, or originally started, at `start`.
+    // An edited occurrence moved onto another occurrence's start matches too, so the
+    // event the caller named wins, and a remaining tie is refused rather than guessed.
     static func eventOccurrence(store: EKEventStore, event: EKEvent, start: Date) throws -> EKEvent {
-        guard let match = occurrence(store: store, calendar: event.calendar, seriesKey: seriesKey(event), start: start) else {
+        let matches = occurrences(store: store, calendar: event.calendar, seriesKey: seriesKey(event), start: start)
+        let named = matches.filter { $0.calendarItemIdentifier == event.calendarItemIdentifier }
+        let candidates = named.isEmpty ? matches : named
+        guard candidates.count == 1 else {
+            let title = event.title ?? "This event"
+            if candidates.isEmpty {
+                throw BridgeFailure(
+                    errorCode: "OCCURRENCE_NOT_FOUND",
+                    message: "'\(title)' has no occurrence starting at \(isoString(start)).",
+                    suggestion: "List calendar events and pass that occurrence's start exactly as occurrence_start_iso."
+                )
+            }
             throw BridgeFailure(
-                errorCode: "OCCURRENCE_NOT_FOUND",
-                message: "'\(event.title ?? "This event")' has no occurrence starting at \(isoString(start)).",
-                suggestion: "List calendar events and pass that occurrence's start exactly as occurrence_start_iso."
+                errorCode: "OCCURRENCE_AMBIGUOUS",
+                message: "\(candidates.count) occurrences of '\(title)' start at \(isoString(start)).",
+                suggestion: "List calendar events and pass the event_id of the occurrence you mean; an occurrence edited on its own has its own event_id."
             )
         }
-        return match
+        return candidates[0]
     }
 
-    static func occurrence(store: EKEventStore, calendar: EKCalendar, seriesKey: String, start: Date) -> EKEvent? {
+    static func occurrences(store: EKEventStore, calendar: EKCalendar, seriesKey: String, start: Date) -> [EKEvent] {
         let window = store.predicateForEvents(
             withStart: start.addingTimeInterval(-86_400),
             end: start.addingTimeInterval(86_400),
             calendars: [calendar]
         )
         let startsAt = { (date: Date?) in date.map { abs($0.timeIntervalSince(start)) < 1 } ?? false }
-        return store.events(matching: window).first { candidate in
+        return store.events(matching: window).filter { candidate in
             Self.seriesKey(candidate) == seriesKey && (startsAt(candidate.startDate) || startsAt(candidate.occurrenceDate))
         }
     }

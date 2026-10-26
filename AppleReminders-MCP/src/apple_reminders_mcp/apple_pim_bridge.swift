@@ -190,6 +190,7 @@ struct EventRecord: Encodable {
     let location: String?
     let notes: String?
     let recurrence_rule: RecurrenceInfo?
+    let recurring: Bool
     let attendees: [AttendeeInfo]?
     let alarms: [AlarmInfo]?
 }
@@ -226,6 +227,22 @@ struct ReminderListMutationPayload: Encodable {
 struct BooleanMutationPayload: Encodable {
     let deleted: Bool
     let object_id: String
+}
+
+struct EventDeletionPayload: Encodable {
+    let deleted: Bool
+    let object_id: String
+    let scope: String?
+    let occurrence_start: String?
+}
+
+// Which events of a repeating series a write applies to. EventKit has only
+// this-event and future-events spans; `series` is future-events applied from the
+// series' first occurrence.
+enum EventScope: String {
+    case occurrence
+    case following
+    case series
 }
 
 struct ListPayload<T: Encodable>: Encodable {
@@ -407,10 +424,11 @@ struct ApplePIMBridge {
         case "delete-calendar-event":
             let store = EKEventStore()
             try ensureAccess(store: store, entityType: .event)
-            guard arguments.count == 1 else {
+            guard arguments.count == 1 || arguments.count == 2 else {
                 throw usageError(command)
             }
-            return try encode(try deleteEvent(store: store, eventID: arguments[0]))
+            let options = arguments.count == 2 ? try decodeJSONObject(arguments[1]) : [:]
+            return try encode(try deleteEvent(store: store, eventID: arguments[0], options: options))
         case "create-reminder-list":
             let store = EKEventStore()
             try ensureAccess(store: store, entityType: .reminder)
@@ -652,22 +670,186 @@ struct ApplePIMBridge {
 
     static func updateEvent(store: EKEventStore, eventID: String, payload: [String: Any]) throws -> EventRecord {
         let event = try resolveEvent(store: store, eventID: eventID)
-        try applyEventFields(store: store, event: event, payload: payload, isCreate: false)
-        guard event.endDate > event.startDate else {
+        let (target, scope) = try scopedEvent(store: store, event: event, options: payload, action: "updated")
+        var fields = payload
+        let saveTarget: EKEvent
+        if scope == .series {
+            let first = try seriesFirstOccurrence(store: store, event: event)
+            // Times given for one occurrence move the whole series by the same amount.
+            if let start = try optionalDate(payload, field: "start") {
+                fields["start"] = isoString(first.startDate.addingTimeInterval(start.timeIntervalSince(target.startDate)))
+            }
+            if let end = try optionalDate(payload, field: "end") {
+                fields["end"] = isoString(first.endDate.addingTimeInterval(end.timeIntervalSince(target.endDate)))
+            }
+            saveTarget = first
+        } else {
+            saveTarget = target
+        }
+        try applyEventFields(store: store, event: saveTarget, payload: fields, isCreate: false)
+        guard saveTarget.endDate > saveTarget.startDate else {
             throw BridgeFailure(
                 errorCode: "INVALID_INPUT",
                 message: "The end date must be later than the start date.",
                 suggestion: "Provide a valid start and end."
             )
         }
-        try store.save(event, span: .thisEvent, commit: true)
-        return eventRecord(event)
+        try store.save(saveTarget, span: span(for: scope), commit: true)
+        return eventRecord(saveTarget)
     }
 
-    static func deleteEvent(store: EKEventStore, eventID: String) throws -> BooleanMutationPayload {
+    static func deleteEvent(store: EKEventStore, eventID: String, options: [String: Any]) throws -> EventDeletionPayload {
         let event = try resolveEvent(store: store, eventID: eventID)
-        try store.remove(event, span: .thisEvent, commit: true)
-        return BooleanMutationPayload(deleted: true, object_id: eventID)
+        let (target, scope) = try scopedEvent(store: store, event: event, options: options, action: "deleted")
+        let occurrenceStart: Date? = scope == .series || scope == nil ? nil : target.startDate
+        let removed = scope == .series ? try seriesFirstOccurrence(store: store, event: event) : target
+        let calendar: EKCalendar = event.calendar
+        let key = seriesKey(event)
+        let removedItem = removed.calendarItemIdentifier
+        try store.remove(removed, span: span(for: scope), commit: true)
+        store.reset()
+        // Report what is actually gone: the targeted occurrence, or the whole event or series.
+        let survived: Bool
+        if let occurrenceStart {
+            survived = occurrences(store: store, calendar: calendar, seriesKey: key, start: occurrenceStart)
+                .contains { $0.calendarItemIdentifier == removedItem }
+        } else if scope == .series {
+            survived = !seriesEvents(store: store, calendar: calendar, seriesKey: key).isEmpty
+        } else {
+            survived = (try? resolveEvent(store: store, eventID: eventID)) != nil
+        }
+        return EventDeletionPayload(
+            deleted: !survived,
+            object_id: eventID,
+            scope: scope?.rawValue,
+            occurrence_start: occurrenceStart.map(isoString)
+        )
+    }
+
+    static func span(for scope: EventScope?) -> EKSpan {
+        switch scope {
+        case .following, .series: return .futureEvents
+        case .occurrence, nil: return .thisEvent
+        }
+    }
+
+    // A write to a repeating event must say which occurrences it covers, so a
+    // caller cannot change or delete the wrong ones by passing only the series id.
+    // Non-repeating events ignore the scope.
+    static func scopedEvent(
+        store: EKEventStore, event: EKEvent, options: [String: Any], action: String
+    ) throws -> (EKEvent, EventScope?) {
+        var scope: EventScope? = nil
+        if let raw = stringValue(options, field: "scope") {
+            guard let parsed = EventScope(rawValue: raw) else {
+                throw BridgeFailure(
+                    errorCode: "INVALID_INPUT",
+                    message: "Unknown scope '\(raw)'.",
+                    suggestion: "Use scope 'occurrence', 'following' or 'series'."
+                )
+            }
+            scope = parsed
+        }
+        guard isInSeries(event) else {
+            return (event, nil)
+        }
+        let title = event.title ?? "This event"
+        guard let scope else {
+            throw BridgeFailure(
+                errorCode: "RECURRING_EVENT_SCOPE_REQUIRED",
+                message: "'\(title)' repeats, so nothing was \(action).",
+                suggestion: "Ask the user whether they mean one occurrence, that occurrence and all following ones, or the whole series. "
+                    + "Then call again with scope 'occurrence', 'following' or 'series', and for 'occurrence' or 'following' "
+                    + "pass occurrence_start_iso set to that occurrence's start from calendar_list_events."
+            )
+        }
+        guard let rawStart = stringValue(options, field: "occurrence_start") else {
+            // A detached occurrence's own id already names one occurrence.
+            if scope == .series || event.isDetached {
+                return (event, scope)
+            }
+            throw BridgeFailure(
+                errorCode: "OCCURRENCE_REQUIRED",
+                message: "'\(title)' repeats; scope '\(scope.rawValue)' needs the occurrence to start from, so nothing was \(action).",
+                suggestion: "Pass occurrence_start_iso set to the occurrence's start from calendar_list_events, or use scope 'series' for every occurrence."
+            )
+        }
+        return (try eventOccurrence(store: store, event: event, start: try parseDate(rawStart)), scope)
+    }
+
+    // Calendar.app's UID, shared by a series and its detached occurrences (which
+    // get their own calendar item identifiers once edited on their own). Local
+    // calendars append "/RID=<recurrence id>" to a detached occurrence's UID.
+    static func seriesKey(_ event: EKEvent) -> String {
+        guard let external = event.calendarItemExternalIdentifier else {
+            return event.calendarItemIdentifier
+        }
+        return external.components(separatedBy: "/RID=").first ?? external
+    }
+
+    static func isInSeries(_ event: EKEvent) -> Bool {
+        event.hasRecurrenceRules || event.isDetached
+    }
+
+    static func seriesEvents(store: EKEventStore, calendar: EKCalendar, seriesKey: String) -> [EKEvent] {
+        store.calendarItems(withExternalIdentifier: seriesKey)
+            .compactMap { $0 as? EKEvent }
+            .filter { $0.calendar.calendarIdentifier == calendar.calendarIdentifier }
+    }
+
+    // The series' own first occurrence, reached even from a detached occurrence,
+    // so a series-wide write covers every occurrence rather than starting midway.
+    static func seriesFirstOccurrence(store: EKEventStore, event: EKEvent) throws -> EKEvent {
+        guard event.isDetached else {
+            return event
+        }
+        let candidates = seriesEvents(store: store, calendar: event.calendar, seriesKey: seriesKey(event))
+            .filter { !$0.isDetached }
+        guard let first = candidates.min(by: { $0.startDate < $1.startDate }) else {
+            throw BridgeFailure(
+                errorCode: "EVENT_NOT_FOUND",
+                message: "Could not find the series that '\(event.title ?? "this event")' belongs to.",
+                suggestion: "List calendar events again and retry with an event_id from the series."
+            )
+        }
+        return first
+    }
+
+    // The occurrence of `event`'s series that starts, or originally started, at `start`.
+    // An edited occurrence moved onto another occurrence's start matches too, so the
+    // event the caller named wins, and a remaining tie is refused rather than guessed.
+    static func eventOccurrence(store: EKEventStore, event: EKEvent, start: Date) throws -> EKEvent {
+        let matches = occurrences(store: store, calendar: event.calendar, seriesKey: seriesKey(event), start: start)
+        let named = matches.filter { $0.calendarItemIdentifier == event.calendarItemIdentifier }
+        let candidates = named.isEmpty ? matches : named
+        guard candidates.count == 1 else {
+            let title = event.title ?? "This event"
+            if candidates.isEmpty {
+                throw BridgeFailure(
+                    errorCode: "OCCURRENCE_NOT_FOUND",
+                    message: "'\(title)' has no occurrence starting at \(isoString(start)).",
+                    suggestion: "List calendar events and pass that occurrence's start exactly as occurrence_start_iso."
+                )
+            }
+            throw BridgeFailure(
+                errorCode: "OCCURRENCE_AMBIGUOUS",
+                message: "\(candidates.count) occurrences of '\(title)' start at \(isoString(start)).",
+                suggestion: "List calendar events and pass the event_id of the occurrence you mean; an occurrence edited on its own has its own event_id."
+            )
+        }
+        return candidates[0]
+    }
+
+    static func occurrences(store: EKEventStore, calendar: EKCalendar, seriesKey: String, start: Date) -> [EKEvent] {
+        let window = store.predicateForEvents(
+            withStart: start.addingTimeInterval(-86_400),
+            end: start.addingTimeInterval(86_400),
+            calendars: [calendar]
+        )
+        let startsAt = { (date: Date?) in date.map { abs($0.timeIntervalSince(start)) < 1 } ?? false }
+        return store.events(matching: window).filter { candidate in
+            Self.seriesKey(candidate) == seriesKey && (startsAt(candidate.startDate) || startsAt(candidate.occurrenceDate))
+        }
     }
 
     static func applyReminderFields(store: EKEventStore, reminder: EKReminder, payload: [String: Any], isCreate: Bool) throws {
@@ -872,6 +1054,7 @@ struct ApplePIMBridge {
             location: emptyToNil(event.location),
             notes: emptyToNil(event.notes),
             recurrence_rule: recurrence,
+            recurring: isInSeries(event),
             attendees: attendeeList,
             alarms: alarmList
         )

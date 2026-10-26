@@ -336,6 +336,10 @@ class SearchFirstDiscovery:
     def _example_value(self, name: str, definition: Mapping[str, Any]) -> Any:
         if definition.get("enum"):
             return definition["enum"][0]
+        # Optional enums render as anyOf [{enum}, {null}].
+        for option in definition.get("anyOf", ()):
+            if isinstance(option, Mapping) and option.get("enum"):
+                return option["enum"][0]
         schema_type = self._schema_type_name(definition)
         if schema_type == "boolean":
             return False

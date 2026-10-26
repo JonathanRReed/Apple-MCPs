@@ -6,7 +6,11 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Upgrade notes
+- **Calendar: updating or deleting a repeating event now needs `scope`.** Without it, nothing changes. If the client supports MCP forms, the user is asked; otherwise the call returns `RECURRING_EVENT_SCOPE_REQUIRED`, and its `suggestion` says exactly what to pass. Before, these calls changed or deleted only the series' first occurrence while reporting success. Events that don't repeat are unaffected.
+
 ### Fixed
+- Calendar: repeating events can now be deleted and edited correctly (#79). `calendar_delete_event` and `calendar_update_event` take `scope` (`occurrence`, `following` or `series`) and `occurrence_start_iso`, the occurrence's `start` from `calendar_list_events`. Previously every write was pinned to the series' first occurrence, so a series could never be deleted, edits to a series detached the first occurrence, and a repeated delete kept answering `deleted: true` while the events remained. When the scope is missing and the client supports MCP elicitation, the server asks the user which occurrences they mean, so a model can't guess its way into deleting a whole series. `deleted` is now checked after the delete instead of assumed, and the response reports the `scope` and `occurrence_start` it applied. Listed events report `recurring`, and an occurrence edited on its own (which has its own `event_id`) is handled as part of its series. Thanks @vlasovpe-sg for the report and root-cause analysis.
 - Calendar: a date-only recurrence `end_date` (for example `2026-11-24`) now includes occurrences on that day, matching Calendar.app's "End on" date. Previously the series stopped at midnight that morning, so a weekly event ending on the 24th lost its occurrence on the 24th. Timestamps are still used exactly as given. Found while reproducing #79.
 
 ### Security

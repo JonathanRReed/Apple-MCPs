@@ -174,7 +174,7 @@ def test_delete_event_falls_back_on_event_not_found(monkeypatch) -> None:
     monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
     monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
 
-    assert bridge.delete_event("applescript-uid-1") is True
+    assert bridge.delete_event("applescript-uid-1").deleted is True
 
 
 def test_not_found_skips_jxa_fallback_with_full_read_access(monkeypatch) -> None:
@@ -1198,7 +1198,7 @@ def test_jxa_scoped_tokens_avoid_same_uid_in_another_calendar(monkeypatch, tmp_p
     event_id = _listed_ids(bridge)[0]
     assert bridge.get_events([event_id])[event_id].calendar_name == "Work"
     assert bridge.update_event(event_id, title="correct").calendar_name == "Work"
-    assert bridge.delete_event(event_id) is True
+    assert bridge.delete_event(event_id).deleted is True
     assert [write["id"] for write in state["writes"]] == ["work-event", "work-event"]
     assert "update-calendar-event" not in state["native"]
     assert "delete-calendar-event" not in state["native"]
@@ -2189,6 +2189,77 @@ def test_calendar_name_uses_automation_when_eventkit_cannot_read_calendars(monke
     assert "list-calendar-calendars" not in commands
     assert jxa_args[0][0] == "Termine"
     assert event.event_id == "applescript-uid-1"
+
+
+def test_delete_event_sends_the_scope_and_reports_what_was_deleted(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    sent: list[tuple[str, ...]] = []
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        sent.append((command, *args))
+        return {"deleted": True, "object_id": "series-1", "scope": "occurrence", "occurrence_start": "2026-11-17T16:00:00Z"}
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+
+    result = bridge.delete_event("series-1", scope="occurrence", occurrence_start_iso="2026-11-17T16:00:00Z")
+
+    assert result == (True, "occurrence", "2026-11-17T16:00:00Z")
+    assert sent[0][0] == "delete-calendar-event"
+    assert json.loads(sent[0][2]) == {"scope": "occurrence", "occurrence_start": "2026-11-17T16:00:00Z"}
+
+
+def test_unscoped_write_to_a_series_is_not_retried_through_automation(monkeypatch) -> None:
+    # Issue #79: the old helper "deleted" one occurrence and reported success.
+    # Its refusal now has to reach the caller instead of falling back to JXA.
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        raise CalendarBridgeError("RECURRING_EVENT_SCOPE_REQUIRED", "'Standup' repeats, so nothing was deleted.")
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        raise AssertionError("a recurring-scope refusal must not fall back to automation")
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    with pytest.raises(CalendarBridgeError) as error:
+        bridge.delete_event("series-1")
+    assert error.value.error_code == "RECURRING_EVENT_SCOPE_REQUIRED"
+
+
+def test_automation_cannot_apply_a_recurring_scope(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        raise CalendarBridgeError("PERMISSION_DENIED", "no access")
+
+    def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
+        raise AssertionError("automation would delete the wrong occurrences")
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+    monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+
+    for event_id in ("series-1", "applescript::v2::token"):
+        with pytest.raises(CalendarBridgeError) as error:
+            bridge.delete_event(event_id, scope="series")
+        assert error.value.error_code == "UNSUPPORTED_OPERATION"
+        with pytest.raises(CalendarBridgeError) as error:
+            bridge.update_event(event_id, title="Sync", scope="series")
+        assert error.value.error_code == "UNSUPPORTED_OPERATION"
+
+
+def test_listed_events_say_whether_they_repeat(monkeypatch) -> None:
+    bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+
+    def fake_run_helper(command: str, *args: str) -> dict[str, object]:
+        if command == "calendar-access-status":
+            return {"status": "full_access", "can_read_events": True, "can_write_events": True}
+        return {"items": [{**_EVENT_PAYLOAD, "recurring": True}, {**_EVENT_PAYLOAD, "event_id": "single", "recurring": False}]}
+
+    monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
+
+    events = bridge.list_events("2026-03-27T00:00:00-05:00", "2026-03-28T00:00:00-05:00")
+    assert [event.recurring for event in events] == [True, False]
 
 
 def test_date_only_recurrence_end_includes_that_day(monkeypatch) -> None:

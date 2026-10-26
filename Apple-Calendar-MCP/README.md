@@ -177,3 +177,16 @@ Event detail and list responses include alarm metadata. EventKit reports relativ
 `calendar_health` reports `alarm_edit_backend: "native_eventkit"` and `can_edit_existing_alarms`, based on native read/write permission. Calendar writability and server safety rules still apply to each edit.
 
 Thanks to LightSpeedSpirit for the original event-alarm contribution in [PR #26](https://github.com/JonathanRReed/Apple-MCPs/pull/26).
+
+### Repeating events
+
+Every occurrence of a repeating event shares one `event_id`, so `calendar_update_event` and `calendar_delete_event` take two optional arguments that say which occurrences a write covers. `calendar_list_events` marks these events with `recurring: true`.
+
+- `scope`: `"occurrence"` for one occurrence, `"following"` for that occurrence and every later one, or `"series"` for every occurrence.
+- `occurrence_start_iso`: for `"occurrence"` and `"following"`, the occurrence's `start` exactly as `calendar_list_events` returned it.
+
+A write to a repeating event without `scope` changes nothing. If the client supports MCP forms (elicitation) and the call names an occurrence, the server asks the user to choose: only this occurrence, this and all following, or the whole series. Otherwise it returns `RECURRING_EVENT_SCOPE_REQUIRED`, telling the agent to ask the user and call again. The user, not the model, makes the choice, so an agent can't delete a whole series by guessing. A user who declines the question gets `CANCELLED_BY_USER`. Events that don't repeat work exactly as before.
+
+An occurrence edited on its own gets its own `event_id`; writes through it accept the same `scope`. With `"series"`, a new `start_iso`/`end_iso` moves every occurrence by the same amount. `deleted` in the response reports whether the targeted occurrences are actually gone. Scopes need native EventKit access; Calendar automation returns `UNSUPPORTED_OPERATION`.
+
+Thanks to vlasovpe-sg for the detailed report and root-cause analysis in [issue #79](https://github.com/JonathanRReed/Apple-MCPs/issues/79).

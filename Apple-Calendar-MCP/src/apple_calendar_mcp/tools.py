@@ -1,10 +1,15 @@
+import contextlib
 import json
 import os
-from typing import Annotated
+from datetime import datetime
+from typing import Annotated, Any, Literal
 
+from mcp.server.elicitation import AcceptedElicitation, ElicitationResult
 from mcp.server.mcpserver import Context
+from mcp.server.mcpserver.resolve import Elicit, Resolve
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
-from pydantic import Field
+from mcp_types.version import is_version_at_least
+from pydantic import BaseModel, Field, WithJsonSchema
 
 from apple_calendar_mcp.alarm_validation import coerce_alarm_minutes, validate_alarms
 from apple_calendar_mcp.calendar_bridge import CALENDAR_HELPER_BUNDLE, CalendarBridge, CalendarBridgeError, match_calendar
@@ -38,6 +43,40 @@ _ALARMS_DESCRIPTION = (
     "{absolute_iso: ISO 8601 datetime with Z or an offset}; at most 100."
 )
 _OMIT_UNCHANGED = "Omit to leave unchanged."
+_SCOPE_DESCRIPTION = (
+    "Required when the event repeats (recurring: true): 'occurrence' for one occurrence, 'following' for that "
+    "occurrence and every later one, or 'series' for every occurrence. Use 'series' only when the user asked for "
+    "all of them; when unsure, ask the user. Ignored for events that do not repeat."
+)
+_OCCURRENCE_START_DESCRIPTION = (
+    "With scope 'occurrence' or 'following': the occurrence's start exactly as calendar_list_events returned it."
+)
+_RECURRING_SCOPE_NOTE = (
+    "For a repeating event (recurring: true in calendar_list_events), pass scope and, for one occurrence or "
+    "those following it, occurrence_start_iso. Without scope, the user is asked to choose when the client "
+    "supports forms; otherwise the call returns RECURRING_EVENT_SCOPE_REQUIRED and nothing changes."
+)
+
+RecurringScope = Literal["occurrence", "following", "series"]
+
+
+class RecurringScopeChoice(BaseModel):
+    scope: Annotated[
+        RecurringScope,
+        WithJsonSchema({
+            "type": "string",
+            "title": "Which events",
+            "oneOf": [
+                {"const": "occurrence", "title": "Only this occurrence"},
+                {"const": "following", "title": "This occurrence and all following ones"},
+                {"const": "series", "title": "Every occurrence in the series"},
+            ],
+        }),
+    ]
+
+
+# Default for direct calls, where no resolver runs: nothing was asked.
+_NOT_ASKED: ElicitationResult[RecurringScopeChoice] = AcceptedElicitation[Any].model_construct(data=None)
 _PROMPT_NAME_DESCRIPTION = "Prompt name from calendar_list_prompts."
 _PROMPT_ARGUMENTS_DESCRIPTION = "Prompt arguments as a JSON object string; omit when the prompt takes none."
 
@@ -120,6 +159,71 @@ def _calendar_name_from_id(calendar_id: str | None) -> str | None:
         if exc.error_code == "CALENDAR_NOT_FOUND":
             return None
         raise
+
+
+def _client_answers_forms(ctx: Context) -> bool:
+    capabilities = ctx.client_capabilities
+    elicitation = capabilities.elicitation if capabilities is not None else None
+    if elicitation is None or (elicitation.form is None and elicitation.url is not None):
+        return False
+    # Before 2026-07-28 the question is a server-to-client request mid-call.
+    version = ctx.protocol_version
+    return (version is not None and is_version_at_least(version, "2026-07-28")) or ctx.session.can_send_request
+
+
+def _scope_question(
+    tool_name: str, verb: str, event_id: str, scope: str | None, occurrence_start_iso: str | None, ctx: Context,
+) -> Elicit[RecurringScopeChoice] | None:
+    """Ask the user which occurrences a write covers, when the event repeats and the caller didn't say.
+
+    Asking here, rather than leaving the choice to the model, keeps a model that
+    would guess from deleting or changing occurrences the user meant to keep.
+    Returns None when there is nothing to ask or no way to ask; the helper then
+    rejects an unscoped write to a repeating event with RECURRING_EVENT_SCOPE_REQUIRED.
+    """
+    if scope is not None or not _client_answers_forms(ctx):
+        return None
+    try:
+        event = _bridge().get_event(event_id)
+        ensure_action_allowed(tool_name, event.calendar_name)
+    except (CalendarBridgeError, SafetyError):
+        return None
+    detached = event.recurring and event.recurrence_rule is None
+    if not event.recurring or (occurrence_start_iso is None and not detached):
+        return None
+    when = occurrence_start_iso or event.start
+    with contextlib.suppress(ValueError):
+        when = datetime.fromisoformat(when.replace("Z", "+00:00")).astimezone().strftime("%A, %B %-d, %Y at %-I:%M %p")
+    return Elicit(
+        f"'{event.title}' repeats. You picked the occurrence on {when}. Which events should be {verb}?",
+        RecurringScopeChoice,
+    )
+
+
+def _ask_delete_scope(
+    event_id: str, scope: str | None, occurrence_start_iso: str | None, ctx: Context,
+) -> Elicit[RecurringScopeChoice] | None:
+    return _scope_question("calendar_delete_event", "deleted", event_id, scope, occurrence_start_iso, ctx)
+
+
+def _ask_update_scope(
+    event_id: str, scope: str | None, occurrence_start_iso: str | None, ctx: Context,
+) -> Elicit[RecurringScopeChoice] | None:
+    return _scope_question("calendar_update_event", "changed", event_id, scope, occurrence_start_iso, ctx)
+
+
+def _chosen_scope(choice: ElicitationResult[RecurringScopeChoice], scope: str | None) -> str | None:
+    if isinstance(choice, AcceptedElicitation) and isinstance(choice.data, RecurringScopeChoice):
+        return choice.data.scope
+    return scope
+
+
+def _declined(verb: str) -> ErrorResponse:
+    return _error_response(
+        "CANCELLED_BY_USER",
+        f"The user chose not to pick which occurrences to change, so nothing was {verb}.",
+        "Do not retry unless the user asks again.",
+    )
 
 
 def _event_owner_calendar(event_id: str) -> str | None:
@@ -389,7 +493,7 @@ def calendar_create_event(
 
 @mcp.tool(
     title="Update Event",
-    description="Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
+    description="Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty. " + _RECURRING_SCOPE_NOTE,
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
@@ -413,9 +517,14 @@ def calendar_update_event(
         list[dict[str, object]] | None,
         Field(description=f"{_ALARMS_DESCRIPTION} Replaces existing alarms; pass [] to clear them, or omit to leave them unchanged."),
     ] = None,
+    scope: Annotated[RecurringScope | None, Field(description=_SCOPE_DESCRIPTION)] = None,
+    occurrence_start_iso: Annotated[str | None, Field(description=_OCCURRENCE_START_DESCRIPTION)] = None,
+    choice: Annotated[ElicitationResult[RecurringScopeChoice], Resolve(_ask_update_scope)] = _NOT_ASKED,
 ) -> EventResponse | ErrorResponse:
     try:
         ensure_action_allowed("calendar_update_event", _event_owner_calendar(event_id))
+        if not isinstance(choice, AcceptedElicitation):
+            return _declined("changed")
         if calendar_id is not None:
             # A move is a write to the destination as much as to the source, so the
             # destination is checked too -- otherwise an allowlisted calendar's events
@@ -433,6 +542,8 @@ def calendar_update_event(
             all_day=all_day,
             recurrence=recurrence,
             alarms=alarms_value,
+            scope=_chosen_scope(choice, scope),
+            occurrence_start_iso=occurrence_start_iso,
         )
         return EventResponse(event=event)
     except SafetyError as exc:
@@ -445,15 +556,26 @@ def calendar_update_event(
 
 @mcp.tool(
     title="Delete Event",
-    description="Delete a calendar event by event_id.",
+    description=f"Delete a calendar event by event_id. {_RECURRING_SCOPE_NOTE}",
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=False),
     structured_output=True,
 )
-def calendar_delete_event(event_id: Annotated[str, Field(description=_EVENT_ID_DESCRIPTION)]) -> DeleteEventResponse | ErrorResponse:
+def calendar_delete_event(
+    event_id: Annotated[str, Field(description=_EVENT_ID_DESCRIPTION)],
+    scope: Annotated[RecurringScope | None, Field(description=_SCOPE_DESCRIPTION)] = None,
+    occurrence_start_iso: Annotated[str | None, Field(description=_OCCURRENCE_START_DESCRIPTION)] = None,
+    choice: Annotated[ElicitationResult[RecurringScopeChoice], Resolve(_ask_delete_scope)] = _NOT_ASKED,
+) -> DeleteEventResponse | ErrorResponse:
     try:
         ensure_action_allowed("calendar_delete_event", _event_owner_calendar(event_id))
-        deleted = _bridge().delete_event(event_id)
-        return DeleteEventResponse(deleted=deleted, event_id=event_id)
+        if not isinstance(choice, AcceptedElicitation):
+            return _declined("deleted")
+        result = _bridge().delete_event(
+            event_id, scope=_chosen_scope(choice, scope), occurrence_start_iso=occurrence_start_iso,
+        )
+        return DeleteEventResponse(
+            deleted=result.deleted, event_id=event_id, scope=result.scope, occurrence_start=result.occurrence_start,
+        )
     except SafetyError as exc:
         return _error_response(exc.error_code, exc.message, exc.suggestion)
     except CalendarBridgeError as exc:

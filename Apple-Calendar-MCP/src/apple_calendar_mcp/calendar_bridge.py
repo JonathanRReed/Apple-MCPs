@@ -4,7 +4,7 @@ import subprocess
 from collections.abc import Sequence
 from datetime import date, datetime, time
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 from urllib.parse import unquote
 
 from apple_calendar_mcp.alarm_validation import validate_alarms
@@ -18,6 +18,29 @@ class CalendarBridgeError(Exception):
         self.error_code = error_code
         self.message = message
         self.suggestion = suggestion
+
+
+class EventDeletion(NamedTuple):
+    deleted: bool
+    scope: str | None = None
+    occurrence_start: str | None = None
+
+
+def _scope_request(scope: str | None, occurrence_start_iso: str | None) -> dict[str, object]:
+    request: dict[str, object] = {}
+    if scope is not None:
+        request["scope"] = scope
+    if occurrence_start_iso is not None:
+        request["occurrence_start"] = occurrence_start_iso
+    return request
+
+
+def _automation_scope_error() -> CalendarBridgeError:
+    return CalendarBridgeError(
+        "UNSUPPORTED_OPERATION",
+        "Choosing which occurrences of a repeating event to change needs native EventKit access; Calendar automation cannot do it.",
+        "Grant full Calendar access, list the events again, and retry with the returned native event_id.",
+    )
 
 
 _DATE_ONLY = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -412,6 +435,8 @@ class CalendarBridge:
         all_day: bool | None = None,
         recurrence: dict[str, object] | None = None,
         alarms: list[dict[str, object]] | None = None,
+        scope: str | None = None,
+        occurrence_start_iso: str | None = None,
     ) -> EventDetail:
         request: dict[str, object] = {}
         if title is not None:
@@ -433,9 +458,12 @@ class CalendarBridge:
         alarms = validate_alarms(alarms)
         if alarms is not None:
             request["alarms"] = alarms
+        request.update(_scope_request(scope, occurrence_start_iso))
         if self._is_jxa_token(event_id):
             if recurrence is not None:
                 raise CalendarBridgeError("UNSUPPORTED_OPERATION", "Automation cannot apply recurrence.", None)
+            if scope is not None:
+                raise _automation_scope_error()
             return self._normalize_detail(self._fallback_update_event(
                 event_id, title=title, calendar_id=calendar_id, start_iso=start_iso, end_iso=end_iso,
                 notes=notes, location=location, all_day=all_day, alarms=alarms,
@@ -447,6 +475,8 @@ class CalendarBridge:
         except CalendarBridgeError as exc:
             if not self._should_use_fallback(exc, event_id):
                 raise
+            if scope is not None:
+                raise _automation_scope_error() from exc
             payload = self._fallback_update_event(
                 event_id,
                 title=title,
@@ -460,16 +490,30 @@ class CalendarBridge:
             )
         return self._normalize_detail(payload)
 
-    def delete_event(self, event_id: str) -> bool:
+    def delete_event(
+        self, event_id: str, *, scope: str | None = None, occurrence_start_iso: str | None = None,
+    ) -> EventDeletion:
         if self._is_jxa_token(event_id):
-            return bool(self._fallback_delete_event(event_id).get("deleted", False))
+            if scope is not None:
+                raise _automation_scope_error()
+            return EventDeletion(bool(self._fallback_delete_event(event_id).get("deleted", False)))
         try:
-            payload = self._run_helper("delete-calendar-event", event_id)
+            payload = self._run_helper(
+                "delete-calendar-event", event_id, json.dumps(_scope_request(scope, occurrence_start_iso)),
+            )
         except CalendarBridgeError as exc:
             if not self._should_use_fallback(exc, event_id):
                 raise
+            if scope is not None:
+                raise _automation_scope_error() from exc
             payload = self._fallback_delete_event(event_id)
-        return bool(payload.get("deleted", False))
+        scope_value = payload.get("scope")
+        occurrence_start = payload.get("occurrence_start")
+        return EventDeletion(
+            bool(payload.get("deleted", False)),
+            scope_value if isinstance(scope_value, str) else None,
+            occurrence_start if isinstance(occurrence_start, str) else None,
+        )
 
     def _native_write_calendar_id(self, calendar_id: str) -> str:
         """Resolve a write target to its EventKit identifier when EventKit can list calendars.
@@ -1296,6 +1340,7 @@ function run(argv) {
             location=self._optional_text(raw_event.get("location")),
             availability=None,
             alarms=raw_event.get("alarms"),
+            recurring=raw_event["recurring"] if isinstance(raw_event.get("recurring"), bool) else None,
         )
 
     def _normalize_detail(

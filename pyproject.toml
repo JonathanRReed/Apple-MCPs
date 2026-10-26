@@ -22,7 +22,7 @@ addopts = "--import-mode=importlib"
 [dependency-groups]
 # Workspace-level tooling; `uv sync` installs the dev group by default.
 dev = [
-  "ty==0.0.90",
+  "ty==0.0.91",
 ]
 
 [tool.ty.environment]

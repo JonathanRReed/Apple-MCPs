@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Security
+- Maintainer tooling only, with no change to installed servers: the Inspector smoke checks now use `@modelcontextprotocol/inspector@2.12.0`, which fixes advisories GHSA-q978-78c7-phqw, GHSA-vcc9-3xgm-p9v4 and GHSA-m5pj-3536-3xcp in 2.0.0–2.11.0. Releases publish with `mcp-publisher` 1.8.5, and CI runs the conformance suite with `0.2.0-alpha.12` against the same frozen `2026-07-28` requirements.
+
 ## [1.1.3] - 2026-10-21
 
 ### Upgrade notes

@@ -35,7 +35,8 @@ _NOTES_DESCRIPTION = "Plain-text event notes."
 _LOCATION_DESCRIPTION = "Free-text event location."
 _RECURRENCE_DESCRIPTION = (
     "Repeat rule object: {frequency: daily|weekly|monthly|yearly, interval: N (default 1), "
-    "end_date: optional ISO 8601 date}. Requires native EventKit access."
+    "end_date: optional last day as yyyy-MM-dd, which includes occurrences on that day, or an ISO 8601 timestamp}. "
+    "Requires native EventKit access."
 )
 _ALARMS_DESCRIPTION = (
     "List of alarms, each exactly one of {minutes_before: whole minutes 0-525600} or "

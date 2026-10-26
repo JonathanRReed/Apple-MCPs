@@ -1,7 +1,8 @@
 import json
+import re
 import subprocess
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import Any, NamedTuple
 from urllib.parse import unquote
@@ -40,6 +41,27 @@ def _automation_scope_error() -> CalendarBridgeError:
         "Choosing which occurrences of a repeating event to change needs native EventKit access; Calendar automation cannot do it.",
         "Grant full Calendar access, list the events again, and retry with the returned native event_id.",
     )
+
+
+_DATE_ONLY = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def inclusive_recurrence_end(recurrence: dict[str, object]) -> dict[str, object]:
+    """Make a date-only recurrence end_date cover that whole local day.
+
+    Calendar.app's "End on" date is inclusive, but EventKit ends a rule at the
+    exact instant it is given, so a bare yyyy-MM-dd (local midnight) dropped the
+    occurrence on the end date itself. Timestamps pass through unchanged.
+    """
+    end_date = recurrence.get("end_date")
+    text = end_date.strip() if isinstance(end_date, str) else ""
+    if not _DATE_ONLY.fullmatch(text):
+        return recurrence
+    try:
+        day = date.fromisoformat(text)
+    except ValueError:  # e.g. 2026-13-45: left for the helper to reject
+        return recurrence
+    return {**recurrence, "end_date": datetime.combine(day, time(23, 59, 59)).astimezone().isoformat()}
 
 
 def _normalized_title(value: str) -> str:
@@ -375,7 +397,7 @@ class CalendarBridge:
             "all_day": all_day,
         }
         if recurrence is not None:
-            request["recurrence"] = recurrence
+            request["recurrence"] = inclusive_recurrence_end(recurrence)
         alarms = validate_alarms(alarms)
         if alarms is not None:
             request["alarms"] = alarms
@@ -432,7 +454,7 @@ class CalendarBridge:
         if all_day is not None:
             request["all_day"] = all_day
         if recurrence is not None:
-            request["recurrence"] = recurrence
+            request["recurrence"] = inclusive_recurrence_end(recurrence)
         alarms = validate_alarms(alarms)
         if alarms is not None:
             request["alarms"] = alarms

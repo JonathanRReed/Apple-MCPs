@@ -2,6 +2,7 @@ import json
 import shutil
 import subprocess
 import tempfile
+from datetime import date, datetime, time
 from pathlib import Path
 from urllib.parse import quote, unquote
 
@@ -2259,3 +2260,37 @@ def test_listed_events_say_whether_they_repeat(monkeypatch) -> None:
 
     events = bridge.list_events("2026-03-27T00:00:00-05:00", "2026-03-28T00:00:00-05:00")
     assert [event.recurring for event in events] == [True, False]
+
+
+def test_date_only_recurrence_end_includes_that_day(monkeypatch) -> None:
+    # Issue #79: a weekly series ending "2026-11-24" lost its 10:00 occurrence on
+    # the 24th, because EventKit stopped the rule at local midnight that morning.
+    captured: dict[str, object] = {}
+    bridge = _capture_bridge(monkeypatch, captured)
+    bridge.create_event(
+        title="Standup",
+        calendar_id="calendar-1",
+        start_iso="2026-11-03T10:00:00-06:00",
+        end_iso="2026-11-03T10:30:00-06:00",
+        recurrence={"frequency": "weekly", "interval": 1, "end_date": "2026-11-24"},
+    )
+    request = captured["request"]
+    assert isinstance(request, dict)
+    end = datetime.fromisoformat(request["recurrence"]["end_date"])
+    assert end.tzinfo is not None
+    assert (end.date(), end.time()) == (date(2026, 11, 24), time(23, 59, 59))
+    assert request["recurrence"]["frequency"] == "weekly"
+
+
+def test_update_recurrence_end_date_is_inclusive_but_timestamps_are_kept(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    bridge = _capture_bridge(monkeypatch, captured)
+    bridge.update_event("event-123", recurrence={"frequency": "daily", "end_date": "2026-12-01"})
+    request = captured["request"]
+    assert isinstance(request, dict)
+    assert datetime.fromisoformat(request["recurrence"]["end_date"]).time() == time(23, 59, 59)
+
+    bridge.update_event("event-123", recurrence={"frequency": "daily", "end_date": "2026-12-01T08:00:00Z"})
+    request = captured["request"]
+    assert isinstance(request, dict)
+    assert request["recurrence"]["end_date"] == "2026-12-01T08:00:00Z"

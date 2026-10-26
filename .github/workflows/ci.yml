@@ -230,7 +230,7 @@ jobs:
 
       - name: Run official MCP conformance suite
         run: |
-          npx -y @modelcontextprotocol/conformance@0.2.0-alpha.11 server \
+          npx -y @modelcontextprotocol/conformance@0.2.0-alpha.12 server \
             --url http://127.0.0.1:8765/mcp \
             --requirements 2026-07-28
 

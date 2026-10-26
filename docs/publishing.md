@@ -78,7 +78,7 @@ sequence.
 
 The registry job downloads the same `release-assets` artifact used for the
 GitHub release. It requires exactly 11 `*.server.json` files and validates all
-of them before publishing any record. It uses `mcp-publisher` v1.8.1, verifies
+of them before publishing any record. It uses `mcp-publisher` v1.8.5, verifies
 the Linux archive against its pinned upstream SHA-256, and authenticates through
 GitHub OIDC. The job needs no registry secret or browser session.
 

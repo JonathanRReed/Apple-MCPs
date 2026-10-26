@@ -73,8 +73,13 @@ class FakeBridge:
         all_day: bool | None = None,
         recurrence=None,
         alarms=None,
+        scope=None,
+        occurrence_start_iso=None,
     ) -> EventDetail:
-        self.calls.append({"method": "update_event", "calendar_id": calendar_id, "alarms": alarms})
+        self.calls.append({
+            "method": "update_event", "calendar_id": calendar_id, "alarms": alarms,
+            "scope": scope, "occurrence_start_iso": occurrence_start_iso,
+        })
         return EventDetail(
             event_id=event_id,
             title=title or "Planning",

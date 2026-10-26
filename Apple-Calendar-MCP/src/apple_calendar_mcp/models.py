@@ -81,6 +81,10 @@ class EventSummary(BaseModel):
     location: str | None = None
     availability: str | None = None
     alarms: list[AlarmInfo] | None = None
+    recurring: bool | None = Field(
+        default=None,
+        description="True when the event repeats or is one edited occurrence of a repeating event; null when unknown",
+    )
 
 
 class EventDetail(EventSummary):
@@ -105,6 +109,8 @@ class DeleteEventResponse(BaseModel):
     ok: Literal[True] = True
     deleted: bool
     event_id: str
+    scope: str | None = Field(default=None, description="Which occurrences of a repeating event were deleted: occurrence, following or series")
+    occurrence_start: str | None = Field(default=None, description="Start of the occurrence the deletion applied from")
 
 
 class UpdateEventResponse(BaseModel):

@@ -16,11 +16,13 @@ async def calendar_update_event(
     location: str | None = None,
     all_day: bool | None = None,
     recurrence: dict[str, Any] | None = None,
-    alarms: list[Any] | None = None
+    alarms: list[Any] | None = None,
+    scope: str | None = None,
+    occurrence_start_iso: str | None = None
 ) -> Any:
     """Update Event
 
-    Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.
+    Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty. For a repeating event (recurring: true in calendar_list_events), pass scope and, for one occurrence or those following it, occurrence_start_iso. Without scope, the user is asked to choose when the client supports forms; otherwise the call returns RECURRING_EVENT_SCOPE_REQUIRED and nothing changes.
 
     Example:
         await calendar_update_event(client, event_id='example_event_id', title='example_title')
@@ -36,6 +38,8 @@ async def calendar_update_event(
         "all_day": all_day,
         "recurrence": recurrence,
         "alarms": alarms,
+        "scope": scope,
+        "occurrence_start_iso": occurrence_start_iso,
     }
     payload = {key: value for key, value in arguments.items() if value is not None}
     return await call_tool_json(client, "calendar_update_event", payload)

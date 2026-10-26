@@ -366,7 +366,7 @@
         "location: string (optional)",
         "all_day: boolean (optional)"
       ],
-      "description": "Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty.",
+      "description": "Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty. For a repeating event (recurring: true in calendar_list_events), pass scope and, for one occurrence or those following it, occurrence_start_iso. Without scope, the user is asked to choose when the client supports forms; otherwise the call returns RECURRING_EVENT_SCOPE_REQUIRED and nothing changes.",
       "domain": "calendar",
       "example_calls": [
         {
@@ -404,7 +404,7 @@
         "pas"
       ],
       "title": "Update Event",
-      "usage_intent": "Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty."
+      "usage_intent": "Update one or more fields on an existing calendar event. For full alarm edits, list events using a native calendar_id and pass the returned native event_id. Existing applescript:: IDs continue to use automation after access changes. Optional alarms: list of {minutes_before: N} or {absolute_iso: ISO datetime}; pass [] to clear alarms, omit to leave unchanged. Replacing or clearing existing alarms, or combining explicit alarms with other field edits, requires native EventKit access. Automation rejects combined requests before any mutation, including [] or unchanged field values. Omit alarms for ordinary field edits; alarm-only initial alerts or [] no-ops require all alert collections verified empty. For a repeating event (recurring: true in calendar_list_events), pass scope and, for one occurrence or those following it, occurrence_start_iso. Without scope, the user is asked to choose when the client supports forms; otherwise the call returns RECURRING_EVENT_SCOPE_REQUIRED and nothing changes."
     },
     {
       "aliases": [
@@ -418,14 +418,17 @@
         "calendar delete event"
       ],
       "argument_summary": [
-        "event_id: string (required)"
+        "event_id: string (required)",
+        "scope: string (optional)",
+        "occurrence_start_iso: string (optional)"
       ],
-      "description": "Delete a calendar event by event_id.",
+      "description": "Delete a calendar event by event_id. For a repeating event (recurring: true in calendar_list_events), pass scope and, for one occurrence or those following it, occurrence_start_iso. Without scope, the user is asked to choose when the client supports forms; otherwise the call returns RECURRING_EVENT_SCOPE_REQUIRED and nothing changes.",
       "domain": "calendar",
       "example_calls": [
         {
           "arguments": {
-            "event_id": "example_event_id"
+            "event_id": "example_event_id",
+            "scope": "occurrence"
           },
           "tool": "calendar_delete_event"
         }
@@ -441,10 +444,23 @@
         "meeting",
         "meetings",
         "schedule",
-        "delete"
+        "delete",
+        "repeating",
+        "recurring",
+        "true",
+        "pass",
+        "pas",
+        "scope",
+        "one",
+        "occurrence",
+        "those",
+        "following",
+        "start",
+        "iso",
+        "without"
       ],
       "title": "Delete Event",
-      "usage_intent": "Delete a calendar event by event_id."
+      "usage_intent": "Delete a calendar event by event_id. For a repeating event (recurring: true in calendar_list_events), pass scope and, for one occurrence or those following it, occurrence_start_iso. Without scope, the user is asked to choose when the client supports forms; otherwise the call returns RECURRING_EVENT_SCOPE_REQUIRED and nothing changes."
     },
     {
       "aliases": [

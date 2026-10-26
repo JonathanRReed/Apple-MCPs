@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Fixed
+- Calendar: a date-only recurrence `end_date` (for example `2026-11-24`) now includes occurrences on that day, matching Calendar.app's "End on" date. Previously the series stopped at midnight that morning, so a weekly event ending on the 24th lost its occurrence on the 24th. Timestamps are still used exactly as given. Found while reproducing #79.
+
 ## [1.1.3] - 2026-10-21
 
 ### Upgrade notes

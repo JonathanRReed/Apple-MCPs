@@ -462,11 +462,9 @@ class CalendarBridge:
         if self._is_jxa_token(event_id):
             if recurrence is not None:
                 raise CalendarBridgeError("UNSUPPORTED_OPERATION", "Automation cannot apply recurrence.", None)
-            if scope is not None:
-                raise _automation_scope_error()
             return self._normalize_detail(self._fallback_update_event(
                 event_id, title=title, calendar_id=calendar_id, start_iso=start_iso, end_iso=end_iso,
-                notes=notes, location=location, all_day=all_day, alarms=alarms,
+                notes=notes, location=location, all_day=all_day, alarms=alarms, scoped=scope is not None,
             ))
         if calendar_id is not None:
             request["calendar_id"] = self._native_write_calendar_id(calendar_id)
@@ -475,8 +473,6 @@ class CalendarBridge:
         except CalendarBridgeError as exc:
             if not self._should_use_fallback(exc, event_id):
                 raise
-            if scope is not None:
-                raise _automation_scope_error() from exc
             payload = self._fallback_update_event(
                 event_id,
                 title=title,
@@ -487,6 +483,7 @@ class CalendarBridge:
                 location=location,
                 all_day=all_day,
                 alarms=alarms,
+                scoped=scope is not None,
             )
         return self._normalize_detail(payload)
 
@@ -494,9 +491,7 @@ class CalendarBridge:
         self, event_id: str, *, scope: str | None = None, occurrence_start_iso: str | None = None,
     ) -> EventDeletion:
         if self._is_jxa_token(event_id):
-            if scope is not None:
-                raise _automation_scope_error()
-            return EventDeletion(bool(self._fallback_delete_event(event_id).get("deleted", False)))
+            return EventDeletion(bool(self._fallback_delete_event(event_id, scoped=scope is not None).get("deleted", False)))
         try:
             payload = self._run_helper(
                 "delete-calendar-event", event_id, json.dumps(_scope_request(scope, occurrence_start_iso)),
@@ -504,9 +499,7 @@ class CalendarBridge:
         except CalendarBridgeError as exc:
             if not self._should_use_fallback(exc, event_id):
                 raise
-            if scope is not None:
-                raise _automation_scope_error() from exc
-            payload = self._fallback_delete_event(event_id)
+            payload = self._fallback_delete_event(event_id, scoped=scope is not None)
         scope_value = payload.get("scope")
         occurrence_start = payload.get("occurrence_start")
         return EventDeletion(
@@ -988,6 +981,12 @@ function findEventByUid(app, identifier, calendarNameHint, requireStable) {
   return null;
 }
 
+// true, false, or null when Calendar's scripting dictionary can't say.
+function eventRepeats(evt) {
+  try { return Boolean(evt.recurrence && evt.recurrence()); }
+  catch (_) { return null; }
+}
+
 function eventRecord(cal, evt) {
   const startDate = evt.startDate();
   const endDate = evt.endDate();
@@ -1002,7 +1001,8 @@ function eventRecord(cal, evt) {
       endDate.getHours() === 23 && endDate.getMinutes() === 59,
     location: evt.location ? (evt.location() || null) : null,
     notes: evt.description ? (evt.description() || null) : null,
-    alarms: eventAlarms(evt)
+    alarms: eventAlarms(evt),
+    recurring: eventRepeats(evt)
   };
 }
 """
@@ -1098,8 +1098,10 @@ function run(argv) {
         location: str | None,
         all_day: bool | None,
         alarms: list[dict[str, object]] | None = None,
+        scoped: bool = False,
     ) -> dict[str, Any]:
         fields = {
+            "scoped": scoped,
             "title": title,
             "calendar_id": calendar_id,
             "start": start_iso,
@@ -1117,6 +1119,9 @@ function run(argv) {
   const found = findEventByUid(app, eventId, "", true);
   if (!found) {
     return JSON.stringify({__error__: "EVENT_NOT_FOUND"});
+  }
+  if (fields.scoped && eventRepeats(found.event) !== false) {
+    return JSON.stringify({__error__: "RECURRING_SCOPE_NEEDS_NATIVE"});
   }
   let cal = found.calendar;
   let evt = found.event;
@@ -1177,7 +1182,7 @@ function run(argv) {
 """
         return self._run_jxa_event(script, event_id, json.dumps(fields), mutation=True)
 
-    def _fallback_delete_event(self, event_id: str) -> dict[str, Any]:
+    def _fallback_delete_event(self, event_id: str, *, scoped: bool = False) -> dict[str, Any]:
         script = self._JXA_FIND_EVENT + """
 function run(argv) {
   const app = Application("Calendar");
@@ -1185,11 +1190,14 @@ function run(argv) {
   if (!found) {
     return JSON.stringify({__error__: "EVENT_NOT_FOUND"});
   }
+  if (argv[1] === "scoped" && eventRepeats(found.event) !== false) {
+    return JSON.stringify({__error__: "RECURRING_SCOPE_NEEDS_NATIVE"});
+  }
   found.event.delete();
   return JSON.stringify({deleted: true});
 }
 """
-        return self._run_jxa_event(script, event_id, mutation=True)
+        return self._run_jxa_event(script, event_id, "scoped" if scoped else "", mutation=True)
 
     def _run_jxa_event(self, script: str, *args: str, mutation: bool = False) -> dict[str, Any]:
         try:
@@ -1203,6 +1211,8 @@ function run(argv) {
             raise CalendarBridgeError("INVALID_HELPER_OUTPUT", "Calendar returned no mutation result.",
                 "The mutation outcome is unknown. Inspect Calendar.app before retrying.")
         error_code = payload.get("__error__")
+        if error_code == "RECURRING_SCOPE_NEEDS_NATIVE":
+            raise _automation_scope_error()
         if error_code == "ALARM_EDIT_REQUIRES_NATIVE":
             raise CalendarBridgeError(
                 "ALARM_EDIT_REQUIRES_NATIVE",

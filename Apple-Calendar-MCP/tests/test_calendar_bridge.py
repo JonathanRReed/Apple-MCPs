@@ -2227,17 +2227,42 @@ def test_unscoped_write_to_a_series_is_not_retried_through_automation(monkeypatc
     assert error.value.error_code == "RECURRING_EVENT_SCOPE_REQUIRED"
 
 
-def test_automation_cannot_apply_a_recurring_scope(monkeypatch) -> None:
+def _automation_bridge(monkeypatch, *, recurring: bool) -> tuple[CalendarBridge, list[str]]:
+    """A bridge whose native helper is denied, so every write goes through automation."""
     bridge = CalendarBridge(Path("/tmp/source.swift"), Path("/tmp/helper"))
+    mutations: list[str] = []
 
     def fake_run_helper(command: str, *args: str) -> dict[str, object]:
         raise CalendarBridgeError("PERMISSION_DENIED", "no access")
 
     def fake_run_jxa(script: str, *args: str, timeout: int | None = None) -> dict[str, object]:
-        raise AssertionError("automation would delete the wrong occurrences")
+        # Mirrors the scripts' guard: a scoped write to a repeating event stops before mutating.
+        deleting = ".delete()" in script
+        scoped = args[1] == "scoped" if deleting else json.loads(args[1])["scoped"]
+        assert "eventRepeats(found.event) !== false" in script
+        if scoped and recurring:
+            return {"__error__": "RECURRING_SCOPE_NEEDS_NATIVE"}
+        mutations.append("delete" if deleting else "update")
+        return {"deleted": True} if deleting else dict(_EVENT_PAYLOAD)
 
     monkeypatch.setattr(bridge, "_run_helper", fake_run_helper)
     monkeypatch.setattr(bridge, "_run_jxa", fake_run_jxa)
+    return bridge, mutations
+
+
+def test_automation_ignores_scope_for_events_that_do_not_repeat(monkeypatch) -> None:
+    # The scope parameter is documented as ignored for non-repeating events, and
+    # its discovery example passes one, so automation users must not be refused.
+    for event_id in ("event-1", "applescript::v2::token"):
+        bridge, mutations = _automation_bridge(monkeypatch, recurring=False)
+        assert bridge.delete_event(event_id, scope="occurrence").deleted is True
+        bridge.update_event(event_id, title="Sync", scope="occurrence")
+        assert mutations == ["delete", "update"]
+
+
+def test_automation_cannot_apply_a_recurring_scope(monkeypatch) -> None:
+    bridge, mutations = _automation_bridge(monkeypatch, recurring=True)
+
 
     for event_id in ("series-1", "applescript::v2::token"):
         with pytest.raises(CalendarBridgeError) as error:
@@ -2246,6 +2271,7 @@ def test_automation_cannot_apply_a_recurring_scope(monkeypatch) -> None:
         with pytest.raises(CalendarBridgeError) as error:
             bridge.update_event(event_id, title="Sync", scope="series")
         assert error.value.error_code == "UNSUPPORTED_OPERATION"
+    assert mutations == []
 
 
 def test_listed_events_say_whether_they_repeat(monkeypatch) -> None:

@@ -6,7 +6,11 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.1.4] - 2026-10-26
+
 ### Upgrade notes
+Most setups keep working unchanged.
+- **Calendar and Reminders may ask once more for access** in the name of "Apple Calendar MCP Helper" or "Apple Reminders MCP Helper", because the helper changed in this release. Choose Allow. This only happens when the helper, not the app running the server, holds the access.
 - **Calendar: updating or deleting a repeating event now needs `scope`.** Without it, nothing changes. If the client supports MCP forms, the user is asked; otherwise the call returns `RECURRING_EVENT_SCOPE_REQUIRED`, and its `suggestion` says exactly what to pass. Before, these calls changed or deleted only the series' first occurrence while reporting success. Events that don't repeat are unaffected.
 
 ### Fixed

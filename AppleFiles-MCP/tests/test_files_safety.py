@@ -86,6 +86,54 @@ def test_parent_link_cannot_escape_scope(tmp_path):
     assert target.read_text() == "keep"
 
 
+@pytest.mark.parametrize("operation", ["delete", "move"])
+@pytest.mark.parametrize("spelling", ["exact", "trailing-slash", "dot-leaf", "tilde"])
+def test_allowed_root_cannot_be_moved_or_deleted(tmp_path, monkeypatch, operation, spelling):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    root = tmp_path / "Documents"
+    root.mkdir()
+    path = {
+        "exact": str(root),
+        "trailing-slash": f"{root}/",
+        "dot-leaf": f"{root}/.",
+        "tilde": "~/Documents",
+    }[spelling]
+    bridge = FilesBridge((root,))
+    with pytest.raises(FilesBridgeError) as error:
+        if operation == "delete":
+            bridge.delete_path(path)
+        else:
+            bridge.move_path(path, str(root / "moved"))
+    assert error.value.error_code == "PATH_NOT_ALLOWED"
+    assert root.is_dir()
+
+
+@pytest.mark.parametrize("operation", ["delete", "move"])
+def test_folder_holding_a_nested_root_cannot_be_moved_or_deleted(tmp_path, operation):
+    outer = tmp_path / "outer"
+    inner = outer / "middle" / "inner"
+    inner.mkdir(parents=True)
+    bridge = FilesBridge((outer, inner))
+    with pytest.raises(FilesBridgeError) as error:
+        if operation == "delete":
+            bridge.delete_path(str(inner))
+        else:
+            bridge.move_path(str(outer / "middle"), str(outer / "moved"))
+    assert error.value.error_code == "PATH_NOT_ALLOWED"
+    assert inner.is_dir()
+
+
+def test_items_inside_a_root_can_still_be_moved_and_deleted(tmp_path):
+    root = tmp_path / "root"
+    (root / "folder").mkdir(parents=True)
+    (root / "empty").mkdir()
+    bridge = FilesBridge((root,))
+    bridge.move_path(str(root / "folder"), str(root / "renamed"))
+    bridge.delete_path(str(root / "empty"))
+    assert (root / "renamed").is_dir()
+    assert not (root / "empty").exists()
+
+
 def test_external_link_read_is_blocked(tmp_path):
     allowed = tmp_path / "allowed"
     allowed.mkdir()

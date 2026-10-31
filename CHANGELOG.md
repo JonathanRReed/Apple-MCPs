@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-10-31
+
+### Upgrade notes
+No action needed. Files now refuses to move or delete an allowed root, or a folder that contains one; items inside a root are unaffected.
+
 ### Security
 - Files: `files_move_path` and `files_delete_path` now refuse an allowed root, or a folder that contains one when roots are nested, with `PATH_NOT_ALLOWED`. Before, a root passed the scope check because it is inside itself, so in the default `safe_manage` mode a single call could move a whole root such as `~/Documents`, and `full_access` could delete an empty root. Items inside a root move and delete as before. This also applies to the same tools in Apple-Tools-MCP. (#86, thanks @mattabate)
 

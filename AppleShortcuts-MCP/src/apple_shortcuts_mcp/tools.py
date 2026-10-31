@@ -259,7 +259,7 @@ def shortcuts_run_shortcut(
     ] = None,
     output_path: Annotated[
         str | None,
-        Field(description="Optional absolute file path where the shortcut's output is written. Omit to get the output as text."),
+        Field(description="Optional absolute file path where the shortcut's output is written. It must be inside the allowed folders. Omit to get the output as text."),
     ] = None,
     output_type: Annotated[
         str | None,

@@ -81,3 +81,60 @@ def test_run_shortcut_passes_input_text(monkeypatch) -> None:
     assert result.exit_code == 0
     assert captured["args"] == ["run", "9A2D4AFE-D4B5-418E-814A-DB97BAB3BE4D"]
     assert captured["input_data"] == "hello from stdin"
+
+
+def _bridge_with_root(monkeypatch, root, captured):
+    bridge = ShortcutsBridge(shortcuts_command="shortcuts", timeout_seconds=5, allowed_roots=(root,))
+    monkeypatch.setattr(
+        bridge,
+        "resolve_shortcut",
+        lambda value: __import__("apple_shortcuts_mcp.models", fromlist=["ShortcutInfo"]).ShortcutInfo(
+            name=value, identifier="9A2D4AFE-D4B5-418E-814A-DB97BAB3BE4D"
+        ),
+    )
+
+    def fake_run_cli(args, input_data=None):
+        captured.append(args)
+        return Completed(0, "", "")
+
+    monkeypatch.setattr(bridge, "_run_cli", fake_run_cli)
+    return bridge
+
+
+def test_run_shortcut_writes_output_inside_allowed_folder(monkeypatch, tmp_path) -> None:
+    root = tmp_path / "allowed"
+    root.mkdir()
+    captured: list[list[str]] = []
+    bridge = _bridge_with_root(monkeypatch, root, captured)
+
+    result = bridge.run_shortcut("Open Trunk", output_path=str(root / "sub" / ".." / "out.txt"))
+
+    expected = str(root.resolve() / "out.txt")
+    assert captured == [["run", "9A2D4AFE-D4B5-418E-814A-DB97BAB3BE4D", "--output-path", expected]]
+    assert result.artifacts[0].path == expected
+
+
+def test_run_shortcut_refuses_output_outside_allowed_folders(monkeypatch, tmp_path) -> None:
+    root = tmp_path / "allowed"
+    root.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (root / "link").symlink_to(outside)
+    captured: list[list[str]] = []
+    bridge = _bridge_with_root(monkeypatch, root, captured)
+
+    for path in (
+        str(outside / "out.txt"),
+        str(root / ".." / "outside" / "out.txt"),
+        str(root / "link" / "out.txt"),
+        str(root),
+        str(root) + "/",
+        str(tmp_path / "allowed-extra" / "out.txt"),
+    ):
+        try:
+            bridge.run_shortcut("Open Trunk", output_path=path)
+        except ShortcutsBridgeError as exc:
+            assert exc.error_code == "PATH_NOT_ALLOWED", path
+        else:
+            raise AssertionError(f"Expected PATH_NOT_ALLOWED for {path}")
+    assert captured == []

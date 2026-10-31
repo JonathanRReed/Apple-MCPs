@@ -20,6 +20,7 @@ class Settings:
     shortcuts_command: str
     command_timeout_seconds: int
     scripts_root: Path
+    allowed_roots: tuple[Path, ...]
 
 
 def _parse_int(value: str | None, default: int) -> int:
@@ -29,6 +30,26 @@ def _parse_int(value: str | None, default: int) -> int:
         return int(value)
     except ValueError:
         return default
+
+
+def _default_roots() -> tuple[Path, ...]:
+    home = Path.home()
+    candidates = (
+        home / "Desktop",
+        home / "Documents",
+        home / "Downloads",
+        home / "Library" / "Mobile Documents" / "com~apple~CloudDocs",
+    )
+    existing = [path for path in candidates if path.exists()]
+    return tuple(existing or [home / "Downloads"])
+
+
+def _parse_roots(value: str | None) -> tuple[Path, ...]:
+    # Shortcuts writes output only inside these folders. With no Shortcuts
+    # setting it follows the Files server's allowed roots, then the same
+    # defaults, so the unified server keeps one set of allowed folders.
+    roots = tuple(Path(raw.strip()).expanduser() for raw in (value or "").split(",") if raw.strip())
+    return roots or _default_roots()
 
 
 @lru_cache(maxsize=1)
@@ -49,4 +70,7 @@ def load_settings() -> Settings:
         shortcuts_command=os.environ.get("APPLE_SHORTCUTS_MCP_SHORTCUTS_COMMAND", "shortcuts").strip() or "shortcuts",
         command_timeout_seconds=_parse_int(os.environ.get("APPLE_SHORTCUTS_MCP_COMMAND_TIMEOUT_SECONDS"), 300),
         scripts_root=root_dir,
+        allowed_roots=_parse_roots(
+            os.environ.get("APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS") or os.environ.get("APPLE_FILES_MCP_ALLOWED_ROOTS")
+        ),
     )

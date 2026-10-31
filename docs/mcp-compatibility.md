@@ -50,14 +50,20 @@ records validate with `mcp-publisher` 1.8.5.
 
 ## Upgrade check
 
-1.1.5 changes only Files path checks and the development lockfile. The 12
-published 1.1.4 packages were installed from PyPI into a clean virtual
-environment, then upgraded in place to the 1.1.5 wheels. Across all 11 servers
-(369 tools), tools, input and output schemas, annotations, prompts and resources
-were compared over stdio before and after; the only difference was the reported
-version. Through the installed 1.1.5 Files server, `files_move_path` with an
-allowed root as its source returned `PATH_NOT_ALLOWED` and left the folder in
-place.
+1.1.5 changes only Files and Shortcuts path checks and the development
+lockfile. The 12 published 1.1.4 packages were installed from PyPI into a clean
+virtual environment, then upgraded in place to the 1.1.5 wheels. Across all 11
+servers (369 tools), tools, input and output schemas, annotations, prompts and
+resources were compared over stdio before and after. The only differences were
+the reported version and the `output_path` description on
+`shortcuts_run_shortcut`, in Apple-Shortcuts-MCP and Apple-Tools-MCP, which now
+says the path must be inside the allowed folders. No tool, parameter or output
+field was added, removed, renamed or retyped. Through the installed 1.1.5
+servers, `files_move_path` with an allowed root as its source returned
+`PATH_NOT_ALLOWED` and left the folder in place, and `shortcuts_run_shortcut`
+returned `PATH_NOT_ALLOWED` for an `output_path` outside the allowed folders,
+including one that used `..` to leave them, in both the Shortcuts and unified
+servers.
 
 For 1.1.4, the 12 published 1.1.3 packages were installed from PyPI into a clean virtual
 environment, then upgraded in place to the 1.1.4 wheels. Every server's tools,

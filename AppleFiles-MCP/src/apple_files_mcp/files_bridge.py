@@ -368,16 +368,30 @@ class FilesBridge:
                 raise FilesBridgeError("UNSUPPORTED_OPERATION", "This filesystem cannot safely move files without replacing a destination.") from error
             raise FilesBridgeError("MOVE_FAILED", f"Could not move path: {error.strerror}", "Check the source and destination paths.") from error
 
+    def _ensure_not_root(self, path: Path) -> None:
+        # A root passes _ensure_allowed because it is relative to itself, so
+        # without this check a move or delete could relocate or remove a whole
+        # allowed root, or a folder that holds one when roots are nested.
+        for root in self.allowed_roots:
+            if root.is_relative_to(path):
+                raise FilesBridgeError(
+                    "PATH_NOT_ALLOWED",
+                    f"Allowed roots and folders that contain them cannot be moved or deleted: {path}",
+                    "Move or delete items inside the root instead.",
+                )
+
     def move_path(self, source: str, destination: str) -> tuple[str, str]:
         self._validate_path(source)
         self._validate_path(destination)
         source_path = self._ensure_allowed(source, follow_leaf=False)
+        self._ensure_not_root(source_path)
         destination_path = self._ensure_allowed(destination, allow_missing=True, follow_leaf=False)
         self._rename_without_replace(source_path, destination_path)
         return str(source_path), str(destination_path)
 
     def delete_path(self, path: str) -> str:
         target = self._ensure_allowed(path, follow_leaf=False)
+        self._ensure_not_root(target)
         if target.is_dir() and not target.is_symlink():
             if any(target.iterdir()):
                 raise FilesBridgeError("DIRECTORY_NOT_EMPTY", f"Directory is not empty: {target}", "Move or delete the contents first.")

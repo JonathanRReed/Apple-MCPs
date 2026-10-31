@@ -28,10 +28,17 @@ class ShortcutCLIResult:
 
 
 class ShortcutsBridge:
-    def __init__(self, shortcuts_command: str | None = None, timeout_seconds: int | None = None) -> None:
+    def __init__(
+        self,
+        shortcuts_command: str | None = None,
+        timeout_seconds: int | None = None,
+        allowed_roots: tuple[Path, ...] | None = None,
+    ) -> None:
         settings = load_settings()
         self.shortcuts_command = shortcuts_command or settings.shortcuts_command
         self.timeout_seconds = timeout_seconds or settings.command_timeout_seconds
+        roots = settings.allowed_roots if allowed_roots is None else allowed_roots
+        self.allowed_roots = tuple(path.expanduser().resolve(strict=False) for path in roots)
 
     def cli_available(self) -> bool:
         return shutil.which(self.shortcuts_command) is not None
@@ -69,6 +76,8 @@ class ShortcutsBridge:
         output_type: str | None = None,
         input_text: str | None = None,
     ) -> ShortcutRunResponse:
+        if output_path is not None:
+            output_path = str(self._ensure_output_allowed(output_path))
         shortcut = self.resolve_shortcut(shortcut_name_or_identifier)
         args = ["run", shortcut.identifier or shortcut.name]
         for path in input_paths or []:
@@ -155,6 +164,19 @@ class ShortcutsBridge:
             "shortcuts": [shortcut.model_dump() for shortcut in shortcuts],
             "count": len(shortcuts),
         }
+
+    def _ensure_output_allowed(self, path: str) -> Path:
+        resolved = Path(path).expanduser().resolve(strict=False)
+        for root in self.allowed_roots:
+            # Strictly inside: the output is a file, so a root itself is not a target.
+            if resolved != root and resolved.is_relative_to(root):
+                return resolved
+        roots = ", ".join(str(root) for root in self.allowed_roots)
+        raise ShortcutsBridgeError(
+            "PATH_NOT_ALLOWED",
+            f"Output path is outside the allowed folders: {resolved}",
+            f"Write the output inside one of these folders: {roots}. Set APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS to change them.",
+        )
 
     def _run_cli(self, args: list[str], input_data: str | None = None) -> ShortcutCLIResult:
         if not self.cli_available():

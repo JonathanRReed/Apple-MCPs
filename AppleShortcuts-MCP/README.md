@@ -87,6 +87,10 @@ claude mcp add --transport stdio --scope user apple-shortcuts -- uvx apple-short
 
 `stdio` is the default and recommended transport. Set `APPLE_SHORTCUTS_MCP_TRANSPORT=streamable-http` (with optional `APPLE_SHORTCUTS_MCP_HOST` and `APPLE_SHORTCUTS_MCP_PORT`) to serve Streamable HTTP instead.
 
+## Output Folders
+
+`shortcuts_run_shortcut` writes `output_path` only inside the allowed folders and returns `PATH_NOT_ALLOWED` for any other path. Set `APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS` to a comma-separated list of folders (`~` means your home folder). Without it, Shortcuts uses `APPLE_FILES_MCP_ALLOWED_ROOTS`, then the same defaults as Files: Desktop, Documents, Downloads and iCloud Drive, where they exist.
+
 ## macOS Requirements
 
 - the built-in `shortcuts` CLI must be available

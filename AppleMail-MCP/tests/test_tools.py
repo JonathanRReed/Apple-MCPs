@@ -129,8 +129,10 @@ class FakeBridge:
         body: str,
         reply_all: bool = False,
         from_account: str | None = None,
+        send: bool = True,
     ) -> ReplyRecord:
-        return ReplyRecord(sent=True, subject=f"Re:{message_id}", reply_all=reply_all, from_account=from_account)
+        self.reply_send = send
+        return ReplyRecord(sent=send, subject=f"Re:{message_id}", reply_all=reply_all, from_account=from_account, draft=not send)
 
     def forward_message(
         self,
@@ -586,3 +588,24 @@ def test_forward_sends_only_in_full_access() -> None:
     assert manage.sent is False and manage.draft is True
     assert "NOT sent" in manage.note
     assert "APPLE_MAIL_MCP_SAFETY_PROFILE=full_access" in manage.note
+
+
+def test_reply_sends_only_in_full_access() -> None:
+    # A reply reaches whoever wrote the message, so safe_manage keeps it as an
+    # unsent draft in Mail, for direct replies and thread replies alike.
+    bridge = FakeBridge()
+    full = mail_reply_message_tool(bridge, Settings(safety_profile=SafetyProfile.FULL_ACCESS), message_id="id-1", body="Hi")
+    assert bridge.reply_send is True
+    assert full.sent is True and full.draft is False and full.note is None
+
+    manage = Settings(safety_profile=SafetyProfile.SAFE_MANAGE)
+    for call in (
+        lambda: mail_reply_message_tool(bridge, manage, message_id="id-1", body="Hi", reply_all=True),
+        lambda: mail_reply_latest_in_thread_tool(bridge, manage, message_id="id-1", body="Hi"),
+    ):
+        bridge.reply_send = None
+        reply = call()
+        assert bridge.reply_send is False
+        assert reply.sent is False and reply.draft is True
+        assert "NOT sent" in reply.note
+        assert "APPLE_MAIL_MCP_SAFETY_PROFILE=full_access" in reply.note

@@ -285,22 +285,28 @@ class AppleMailBridge:
         body: str,
         reply_all: bool = False,
         from_account: str | None = None,
+        send: bool = True,
     ) -> ReplyRecord:
         account, mailbox, apple_id = decode_message_id(message_id)
         try:
             raw = self._run_script(
                 "reply_message.applescript",
-                [account, mailbox, apple_id, body, "true" if reply_all else "false", from_account or ""],
+                [account, mailbox, apple_id, body, "true" if reply_all else "false", from_account or "", "true" if send else "false"],
             )
         except MailScriptTimeoutError as exc:
+            # A draft-mode reply never sends, so its timeout is an ordinary failure.
+            if not send:
+                raise
             raise _send_status_unknown(exc, "sent the reply", from_account or account) from exc
         rows = _split_records(raw)
         if not rows or len(rows[0]) < 3:
             raise MailBridgeError("Reply payload was incomplete.")
         sent_flag, subject, reply_all_flag = rows[0][:3]
         resolved_from_account = _restore_text(rows[0][3]) if len(rows[0]) >= 4 and rows[0][3] else from_account
+        sent = _parse_bool(sent_flag)
         return ReplyRecord(
-            sent=_parse_bool(sent_flag),
+            sent=sent,
+            draft=not sent,
             subject=_restore_text(subject),
             reply_all=_parse_bool(reply_all_flag),
             from_account=resolved_from_account,

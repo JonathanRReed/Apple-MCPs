@@ -42,7 +42,7 @@
     "mail_safety_mode": {
       "type": "string",
       "title": "Mail safety mode",
-      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read and search only. safe_manage: also drafts, replies and forwards (these send immediately), mark, move, delete, and archive. full_access: also sends new messages. This bundle's default is full_access, matching earlier bundle releases (uvx and pip installs default to safe_manage). Sets APPLE_MAIL_MCP_SAFETY_PROFILE.",
+      "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read and search only. safe_manage: also drafts, mark, move, delete, and archive; replies and forwards are saved as drafts for you to send. full_access: also sends new messages, replies and forwards. This bundle's default is full_access, matching earlier bundle releases (uvx and pip installs default to safe_manage). Sets APPLE_MAIL_MCP_SAFETY_PROFILE.",
       "required": false,
       "default": "full_access"
     },

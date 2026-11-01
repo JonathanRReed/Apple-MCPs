@@ -2937,7 +2937,7 @@
         "reply_all: boolean (optional)",
         "from_account: string (optional)"
       ],
-      "description": "Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account.",
+      "description": "Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account. In full_access the reply is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result).",
       "domain": "apple",
       "example_calls": [
         {
@@ -2971,10 +2971,11 @@
         "recipient",
         "optionally",
         "specify",
-        "account"
+        "account",
+        "full"
       ],
       "title": "Reply to Message",
-      "usage_intent": "Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account."
+      "usage_intent": "Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account. In full_access the reply is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result)."
     },
     {
       "aliases": [
@@ -2991,7 +2992,7 @@
         "from_account: string (optional)",
         "limit: integer (optional)"
       ],
-      "description": "Find the latest related message in the same mailbox thread and reply to that message.",
+      "description": "Find the latest related message in the same mailbox thread and reply to that message. In full_access the reply is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result).",
       "domain": "apple",
       "example_calls": [
         {
@@ -3019,10 +3020,17 @@
         "message",
         "same",
         "mailbox",
-        "that"
+        "that",
+        "full",
+        "access",
+        "acces",
+        "sent",
+        "safe",
+        "manage",
+        "saved"
       ],
       "title": "Reply To Latest In Thread",
-      "usage_intent": "Find the latest related message in the same mailbox thread and reply to that message."
+      "usage_intent": "Find the latest related message in the same mailbox thread and reply to that message. In full_access the reply is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result)."
     },
     {
       "aliases": [

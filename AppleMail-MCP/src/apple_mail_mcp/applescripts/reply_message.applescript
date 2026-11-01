@@ -277,6 +277,9 @@ on run argv
     set replyBody to item 4 of argv
     set replyAllFlag to item 5 of argv
     set senderRaw to item 6 of argv
+    -- "false" leaves the reply open in Mail as an unsent draft for the user to review.
+    set sendNow to true
+    if (count of argv) ≥ 7 then set sendNow to ((item 7 of argv) is not "false")
 
     set fieldSeparator to ASCII character 31
     set recordSeparator to ASCII character 30
@@ -328,13 +331,20 @@ on run argv
     end if
 
     tell application "Mail"
-        send replyMessage
+        if sendNow then
+            send replyMessage
+        else
+            -- Keep the compose window open; Mail autosaves it to Drafts.
+            try
+                save replyMessage
+            end try
+        end if
 
         set subjectText to ""
         try
             set subjectText to my sanitizeText(subject of replyMessage)
         end try
 
-        return my boolText(true) & fieldSeparator & subjectText & fieldSeparator & my boolText(shouldReplyAll) & fieldSeparator & resolvedAccountLabel & recordSeparator
+        return my boolText(sendNow) & fieldSeparator & subjectText & fieldSeparator & my boolText(shouldReplyAll) & fieldSeparator & resolvedAccountLabel & recordSeparator
     end tell
 end run

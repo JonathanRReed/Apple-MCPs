@@ -200,3 +200,14 @@ def test_sender_address_extracts_the_angle_bracket_address(compiled_sender_scrip
     result = run_pure_handler(compiled_sender_script, "return subjectScript's senderAddress(item 2 of argv)", sender)
     assert result.returncode == 0, result.stderr
     assert result.stdout.rstrip("\n") == expected
+
+
+@pytest.mark.parametrize("name", ("reply_message.applescript", "forward_message.applescript"))
+def test_reply_and_forward_send_only_when_asked(name):
+    # The server passes "false" below full_access; the script must then save a
+    # draft and never reach an unguarded `send`.
+    code = "\n".join(line.split("--", 1)[0] for line in (SCRIPTS / name).read_text().splitlines())
+    assert 'if (count of argv) ≥ 7 then set sendNow to ((item 7 of argv) is not "false")' in code
+    assert re.findall(r"^\s*send \w+$", code, re.MULTILINE) == [re.search(r"^\s*send \w+$", code, re.MULTILINE).group(0)]
+    assert re.search(r"if sendNow then\n\s*send \w+\n\s*else\n\s*-?-?.*\n?\s*try\n\s*save \w+", (SCRIPTS / name).read_text())
+    assert "return my boolText(sendNow)" in code

@@ -11,10 +11,12 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ### Upgrade notes
 Most setups keep working unchanged.
 - Files now refuses to move or delete an allowed root, or a folder that contains one; items inside a root are unaffected.
+- **Mail: in `safe_manage`, `mail_reply_message` and `mail_reply_latest_in_thread` now save the reply as an unsent draft in Mail**, as forwards already do. The result reports `sent: false`, `draft: true` and a `note`. Set `APPLE_MAIL_MCP_SAFETY_PROFILE=full_access` (Claude Desktop extensions: "Mail safety mode") to send replies directly. `full_access`, the bundles' default, is unchanged.
 - **Shortcuts: `output_path` must now be inside the allowed folders.** These are `APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS`, or `APPLE_FILES_MCP_ALLOWED_ROOTS` when that is unset, or Desktop, Documents, Downloads and iCloud Drive. A run that wrote elsewhere now returns `PATH_NOT_ALLOWED`; set `APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS` to keep writing there.
 
 ### Security
 - Files: `files_move_path` and `files_delete_path` now refuse an allowed root, or a folder that contains one when roots are nested, with `PATH_NOT_ALLOWED`. Before, a root passed the scope check because it is inside itself, so in the default `safe_manage` mode a single call could move a whole root such as `~/Documents`, and `full_access` could delete an empty root. Items inside a root move and delete as before. This also applies to the same tools in Apple-Tools-MCP. (#86, thanks @mattabate)
+- Mail: `safe_manage` no longer sends mail. `mail_reply_message` and `mail_reply_latest_in_thread` sent the reply immediately, so in a mode that blocks new messages an agent could still mail whoever wrote a message, or with `reply_all` everyone on it, including the author of a message written to steer the agent. Replies in `safe_manage` are now saved as drafts for the user to send, matching forwards. This also applies to the same tools in Apple-Tools-MCP. Reported privately.
 - Shortcuts: `shortcuts_run_shortcut` now writes `output_path` only inside the allowed folders and returns `PATH_NOT_ALLOWED` otherwise. Before, in the default `full_access` mode, a run could write its output to any path the server's user can write, which no other server allows. The path is resolved, so `..` and symbolic links cannot leave the folders. This also applies to the same tool in Apple-Tools-MCP.
 
 ## [1.1.4] - 2026-10-26

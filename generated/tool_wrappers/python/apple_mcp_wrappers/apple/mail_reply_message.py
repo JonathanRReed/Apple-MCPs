@@ -14,7 +14,7 @@ async def mail_reply_message(
 ) -> Any:
     """Reply to Message
 
-    Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account.
+    Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account. In full_access the reply is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result).
 
     Example:
         await mail_reply_message(client, message_id='example_message_id', body='example_body')

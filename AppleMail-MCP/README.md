@@ -95,7 +95,7 @@ claude mcp add --transport stdio --scope user apple-mail -- uvx apple-mcp-mail
 Set the mode with `APPLE_MAIL_MCP_SAFETY_PROFILE`:
 
 - `safe_readonly`, read and search only
-- `safe_manage`, read, create drafts, reply, forward as a draft, mark, move, delete, and archive threads; new-message sending is blocked. Replies are sent immediately, so this mode can still send mail to people already in a thread. Forwards can go to any address, so they are saved as unsent drafts in Mail for the user to review; switch to `full_access` to send forwards directly
+- `safe_manage`, read, create drafts, reply and forward as drafts, mark, move, delete, and archive threads; this mode sends no mail. Replies and forwards are saved as unsent drafts in Mail for the user to review; switch to `full_access` to send them directly
 - `full_access`, full Mail tool surface in this repo, including new-message sending
 
 Deleting or archiving does not require switching from `safe_manage` to `full_access`.
@@ -153,7 +153,7 @@ Restart the MCP client after upgrading. A fix merged on GitHub is not available 
 - When Mail must send from a specific identity, pass the exact sender email in `from_account`.
 - `from_account` is applied through Mail's own `sender` property (`Full Name <address>`, with the name quoted when it contains a comma or quote), which needs no extra macOS permissions. Only if Mail does not accept it does the server fall back to picking the From pop-up via System Events, which additionally needs Automation consent for System Events and Accessibility for the process running the server.
 - Every AppleScript call is bounded by `APPLE_MAIL_MCP_SCRIPT_TIMEOUT_SECONDS` (whole seconds, default `120`, minimum `5`; an invalid or smaller value uses the default) so a pending macOS consent prompt surfaces as an error instead of a hung request. The default leaves room for slow but legitimate searches: a subject/sender search of a 4,900-message Exchange mailbox took about 56 seconds.
-- If `mail_send_message`, `mail_reply_message`, `mail_reply_latest_in_thread` or a sending `mail_forward_message` times out, the result is `SEND_STATUS_UNKNOWN`, not a failure: Mail may already have sent it. Check the account's Sent mailbox (`mail_search_messages` with `mailbox` set to `Sent Messages`, or the name `mail_list_mailboxes` shows, such as `Sent Items`) before retrying, or the message can go out twice.
+- If `mail_send_message`, or a sending `mail_reply_message`, `mail_reply_latest_in_thread` or `mail_forward_message`, times out, the result is `SEND_STATUS_UNKNOWN`, not a failure: Mail may already have sent it. Check the account's Sent mailbox (`mail_search_messages` with `mailbox` set to `Sent Messages`, or the name `mail_list_mailboxes` shows, such as `Sent Items`) before retrying, or the message can go out twice.
 
 ## Related
 

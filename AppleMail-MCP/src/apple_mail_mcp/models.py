@@ -168,6 +168,8 @@ class ReplyRecord:
     subject: str
     reply_all: bool = False
     from_account: str | None = None
+    draft: bool = False
+    note: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -175,6 +177,8 @@ class ReplyRecord:
             "subject": self.subject,
             "reply_all": self.reply_all,
             "from_account": self.from_account,
+            "draft": self.draft,
+            "note": self.note,
         }
 
 

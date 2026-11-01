@@ -274,13 +274,24 @@ def mail_reply_message_tool(
     from_account: str | None = None,
 ) -> ReplyRecord:
     ensure_tool_allowed(settings.safety_profile, "mail_reply_message")
+    # A reply goes to whoever wrote the message, and reply_all to everyone on
+    # it, so like a forward it is only sent directly in full_access. Below that
+    # it is left in Mail as a draft, which keeps safe_manage from sending mail.
+    send = settings.safety_profile == SafetyProfile.FULL_ACCESS
     result = bridge.reply_message(
         message_id=message_id,
         body=body,
         reply_all=reply_all,
         from_account=from_account,
+        send=send,
     )
-    LOGGER.info("mail_reply_message ok message_id=%s reply_all=%s", message_id, reply_all)
+    if not result.sent:
+        result.note = (
+            f"Reply saved as a draft in Mail and NOT sent, because {SAFETY_ENV_VAR} is "
+            f"'{settings.safety_profile.value}'. Ask the user to review and send it in Mail. "
+            f"To send replies directly, {how_to_set(SAFETY_ENV_VAR, SafetyProfile.FULL_ACCESS.value)}."
+        )
+    LOGGER.info("mail_reply_message ok message_id=%s reply_all=%s sent=%s", message_id, reply_all, result.sent)
     return result
 
 
@@ -959,7 +970,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
     @mcp.tool(
         name="mail_reply_message",
         title="Reply to Message",
-        description="Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account.",
+        description="Reply to an existing email message. Provide a message_id and body text. Set reply_all=true to reply to all recipients. Optionally specify from_account. In full_access the reply is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result).",
         annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
         structured_output=True,
     )
@@ -1057,7 +1068,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
     @mcp.tool(
         name="mail_reply_latest_in_thread",
         title="Reply To Latest In Thread",
-        description="Find the latest related message in the same mailbox thread and reply to that message.",
+        description="Find the latest related message in the same mailbox thread and reply to that message. In full_access the reply is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result).",
         annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
         structured_output=True,
     )

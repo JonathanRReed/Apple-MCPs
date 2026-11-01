@@ -15,7 +15,7 @@ async def mail_reply_latest_in_thread(
 ) -> Any:
     """Reply To Latest In Thread
 
-    Find the latest related message in the same mailbox thread and reply to that message.
+    Find the latest related message in the same mailbox thread and reply to that message. In full_access the reply is sent; in safe_manage it is saved as an unsent draft in Mail for the user to review (check `sent` and `note` in the result).
 
     Example:
         await mail_reply_latest_in_thread(client, message_id='example_message_id', body='example_body')

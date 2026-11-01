@@ -38,7 +38,8 @@ structured results, missing-tool errors, and reported versions. The same checks
 run against unpacked bundles through each manifest's launch command with
 `python scripts/bundle_smoke.py` after building the bundles. All 22 runs of each
 passed for 1.1.4. For 1.1.5 the 22 protocol runs passed; the bundle runs were
-not repeated, because 1.1.5 changes no manifest or launch command.
+not repeated, because 1.1.5 changes no launch command; its only manifest change
+is the Mail safety mode description.
 
 CI runs current and legacy conformance separately, plus protocol and Inspector
 checks. MCPB packaging uses `@anthropic-ai/mcpb@2.1.2` and Inspector uses
@@ -50,20 +51,22 @@ records validate with `mcp-publisher` 1.8.5.
 
 ## Upgrade check
 
-1.1.5 changes only Files and Shortcuts path checks and the development
+1.1.5 changes only Files, Shortcuts and Mail safety checks and the development
 lockfile. The 12 published 1.1.4 packages were installed from PyPI into a clean
 virtual environment, then upgraded in place to the 1.1.5 wheels. Across all 11
 servers (369 tools), tools, input and output schemas, annotations, prompts and
 resources were compared over stdio before and after. The only differences were
-the reported version and the `output_path` description on
-`shortcuts_run_shortcut`, in Apple-Shortcuts-MCP and Apple-Tools-MCP, which now
-says the path must be inside the allowed folders. No tool, parameter or output
-field was added, removed, renamed or retyped. Through the installed 1.1.5
-servers, `files_move_path` with an allowed root as its source returned
-`PATH_NOT_ALLOWED` and left the folder in place, and `shortcuts_run_shortcut`
-returned `PATH_NOT_ALLOWED` for an `output_path` outside the allowed folders,
-including one that used `..` to leave them, in both the Shortcuts and unified
-servers.
+the reported version; the `output_path` description on `shortcuts_run_shortcut`,
+which now says the path must be inside the allowed folders; and on
+`mail_reply_message` and `mail_reply_latest_in_thread`, a description sentence
+on `safe_manage` drafts and two new output fields, `draft` and `note`, as
+`mail_forward_message` already has. Each change appears in both the domain
+server and Apple-Tools-MCP. No tool or parameter was added, removed, renamed or
+retyped. Through the installed 1.1.5 servers, `files_move_path` with an allowed
+root as its source returned `PATH_NOT_ALLOWED` and left the folder in place, and
+`shortcuts_run_shortcut` returned `PATH_NOT_ALLOWED` for an `output_path`
+outside the allowed folders, including one that used `..` to leave them, in both
+the Shortcuts and unified servers.
 
 For 1.1.4, the 12 published 1.1.3 packages were installed from PyPI into a clean virtual
 environment, then upgraded in place to the 1.1.4 wheels. Every server's tools,

@@ -38,7 +38,8 @@ on joinRecipientAddresses(recipientItems, separatorValue)
     set addresses to {}
     repeat with recipientItem in recipientItems
         try
-            set end of addresses to my sanitizeText(address of recipientItem)
+            tell application "Mail" to set recipientAddress to address of recipientItem
+            set end of addresses to my sanitizeText(recipientAddress)
         end try
     end repeat
     return my joinText(addresses, separatorValue)

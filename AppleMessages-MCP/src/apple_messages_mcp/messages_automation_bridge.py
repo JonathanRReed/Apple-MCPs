@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import platform
+import shutil
 import subprocess
+import tempfile
+import time
 from pathlib import Path
 from typing import Required, TypedDict
 
@@ -29,6 +32,12 @@ class MessagesAutomationBridgeError(Exception):
 SERVICE_NAMES = {"imessage": "iMessage", "sms": "SMS", "rcs": "RCS"}
 DEFAULT_SERVICE = "iMessage"
 _NO_ACCOUNT_ERROR_NUMBER = 9001
+# `send` returns before a file is transferred, so a send waits this long for
+# Messages to report how the transfer ended.
+_TRANSFER_WAIT_SECONDS = 20
+_TRANSFER_POLL_SECONDS = 1
+# After these a send may still be in progress or may already have gone out.
+_UNCERTAIN_SEND_CODES = frozenset({"SEND_STATUS_UNKNOWN", "AUTOMATION_TIMEOUT"})
 # Messages' scripting dictionary gained the RCS service type in macOS 15.
 _RCS_MIN_MACOS = 15
 _ENABLE_FORWARDING = (
@@ -154,22 +163,49 @@ class MessagesAutomationBridge:
             raise MessagesAutomationBridgeError("INVALID_INPUT", "recipient must not be empty", "Provide an explicit iMessage address or phone number.")
         if not file_path.strip():
             raise MessagesAutomationBridgeError("INVALID_INPUT", "file_path must not be empty", "Provide a valid file path.")
+        # osascript can't take a NUL, and the text goes out after the file, so
+        # this has to fail before anything is sent.
+        if "\0" in f"{recipient}{file_path}{text or ''}":
+            raise MessagesAutomationBridgeError("INVALID_INPUT", "recipient, file_path and text must not contain a NUL character", "Remove the character and retry.")
 
         attachment = self._ensure_attachment_allowed(file_path)
         wanted, _ = self._service_preference(service_name, None)
-        send_parts = [f'send POSIX file "{self._escape(str(attachment))}" to targetParticipant']
-        if text and text.strip():
-            send_parts.append(f'send "{self._escape(text)}" to targetParticipant')
-
+        try:
+            known_transfers = set(self._outgoing_transfers())
+        except MessagesAutomationBridgeError as exc:
+            raise MessagesAutomationBridgeError(exc.error_code, f"Nothing was sent: {exc.message}", "It is safe to retry.") from exc
+        staged = self._stage_attachment(attachment)
         script = f'''
         tell application "Messages"
 {self._account_selection(wanted)}
             set targetParticipant to participant "{self._escape(recipient)}" of targetAccount
-            {chr(10).join(send_parts)}
+            send POSIX file "{self._escape(str(staged))}" to targetParticipant
             return usedService
         end tell
         '''
-        used = self._run_send_script(script, wanted, None)
+        try:
+            used = self._run_send_script(script, wanted, None)
+            self._confirm_transfer(staged, attachment, known_transfers)
+        except MessagesAutomationBridgeError as exc:
+            # A send that may still be in progress may need its file, so that one stays.
+            if staged != attachment and exc.error_code not in _UNCERTAIN_SEND_CODES:
+                shutil.rmtree(staged.parent, ignore_errors=True)
+            raise
+        # The text follows only a confirmed file, so a failed send leaves no
+        # caption for a file that never arrived.
+        if text and text.strip():
+            try:
+                self.send_message(recipient, text, service_name=used)
+            except MessagesAutomationBridgeError as exc:
+                uncertain = exc.error_code in _UNCERTAIN_SEND_CODES
+                reason = exc.message.replace(" Nothing was sent.", "")
+                raise MessagesAutomationBridgeError(
+                    exc.error_code,
+                    f"The file was sent, but {'Messages did not confirm the text' if uncertain else 'the text was not'}: {reason}",
+                    "Check the conversation before sending the text again. Do not send the file again."
+                    if uncertain
+                    else "Send only the text. Do not send the file again.",
+                ) from exc
         return {
             "sent": True,
             "recipient": recipient,
@@ -177,6 +213,78 @@ class MessagesAutomationBridge:
             "text": text,
             "service_name": used,
         }
+
+    def _stage_attachment(self, attachment: Path) -> Path:
+        # Messages is sandboxed and can fail to read a file in a user folder
+        # such as Downloads, so it gets a private copy inside its own
+        # attachments folder. Each copy has its own folder to keep its file name.
+        # Without access to that folder, the transfer check reports the outcome.
+        try:
+            staging = Path.home() / "Library" / "Messages" / "Attachments" / "apple-mcp"
+            staging.mkdir(exist_ok=True)
+            folder = Path(tempfile.mkdtemp(dir=staging))
+        except OSError:
+            return attachment
+        staged = folder / attachment.name
+        try:
+            shutil.copyfile(attachment, staged)
+            return staged
+        except OSError:
+            shutil.rmtree(folder, ignore_errors=True)
+            return attachment
+
+    def _outgoing_transfers(self) -> dict[str, tuple[str, str]]:
+        """Return each outgoing file transfer's name and status by id."""
+        output = self._run_script('''
+        tell application "Messages"
+            set transferIds to id of every file transfer
+            set transferNames to name of every file transfer
+            set transferStates to transfer status of every file transfer
+            set transferDirections to direction of every file transfer
+        end tell
+        set output to ""
+        repeat with i from 1 to count of transferIds
+            if ((item i of transferDirections) as text) is "outgoing" then
+                set output to output & (item i of transferIds) & tab & (item i of transferNames) & tab & ((item i of transferStates) as text) & linefeed
+            end if
+        end repeat
+        return output
+        ''')
+        transfers = {}
+        # Only a linefeed ends a row; a file name can hold other line separators.
+        for line in output.split("\n"):
+            transfer_id, _, rest = line.partition("\t")
+            name, _, status = rest.rpartition("\t")
+            transfers[transfer_id] = (name, status)
+        return transfers
+
+    def _confirm_transfer(self, staged: Path, attachment: Path, known_transfers: set[str]) -> None:
+        deadline = time.monotonic() + _TRANSFER_WAIT_SECONDS
+        while True:
+            try:
+                transfers = self._outgoing_transfers()
+            except MessagesAutomationBridgeError:
+                transfers = {}
+            # Messages exposes no path or recipient to tie a transfer to this
+            # send, so a second new transfer of this name is treated as unknown.
+            statuses = [status for transfer_id, (name, status) in transfers.items() if transfer_id not in known_transfers and name == staged.name]
+            if statuses == ["failed"]:
+                raise MessagesAutomationBridgeError(
+                    "ATTACHMENT_NOT_DELIVERED",
+                    f"Messages could not send the file: {attachment}. No text was sent.",
+                    "The file could not be copied where Messages can read it. Turn on Full Disk Access for the app running this server if it is off, check free disk space, then retry."
+                    if staged == attachment
+                    else "Check that the file opens and that Messages is signed in, then retry.",
+                )
+            if statuses == ["finished"]:
+                return
+            if len(statuses) > 1 or time.monotonic() >= deadline:
+                raise MessagesAutomationBridgeError(
+                    "SEND_STATUS_UNKNOWN",
+                    f"Messages has not confirmed the file was sent: {attachment}. It may still go out. No text was sent.",
+                    "Check the conversation in Messages before sending again.",
+                )
+            time.sleep(_TRANSFER_POLL_SECONDS)
 
     def _ensure_attachment_allowed(self, path: str) -> Path:
         # An attachment leaves this Mac, so like every other file tool it stays

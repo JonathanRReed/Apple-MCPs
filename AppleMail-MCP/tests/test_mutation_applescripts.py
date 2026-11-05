@@ -202,6 +202,13 @@ def test_sender_address_extracts_the_angle_bracket_address(compiled_sender_scrip
     assert result.stdout.rstrip("\n") == expected
 
 
+def test_recipient_addresses_are_read_through_mail():
+    # Outside a Mail tell block `address` is not Mail's term, so the read fails
+    # inside its try and every message reports no recipients.
+    handler = (SCRIPTS / "get_message.applescript").read_text().split("on joinRecipientAddresses", 1)[1].split("end joinRecipientAddresses", 1)[0]
+    assert 'tell application "Mail" to set recipientAddress to address of recipientItem' in handler
+
+
 @pytest.mark.parametrize(("name", "variable"), (("reply_message.applescript", "replyMessage"), ("forward_message.applescript", "forwardMessage")))
 def test_reply_and_forward_never_read_the_outgoing_content(name, variable):
     # In Mail, reading `content` of a new reply or forward makes the next write

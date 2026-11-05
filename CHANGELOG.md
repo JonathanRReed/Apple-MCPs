@@ -17,6 +17,7 @@ Most setups keep working unchanged.
 
 ### Fixed
 - Mail: replies and forwards with a `body` no longer come out blank. `mail_reply_message`, `mail_reply_latest_in_thread` and `mail_forward_message` read the new message's text before writing it, and on macOS 27 (Mail 16) that makes Mail ignore the write and clear the message: the text, the quoted original, and on a forward the forwarded message and its attachments. The tools still reported success, so in `full_access` an empty message could be sent. Replies now hold the body above a quote of the original, and forwards hold it above the original with its attachments added back. If an attachment can't be copied, a forward with a `body` returns `FORWARD_ATTACHMENT_FAILED` and nothing is forwarded. Found by testing replies against real Mail. This also applies to the same tools in Apple-Tools-MCP.
+- Mail: `mail_get_message` now reports the message's `to` and `cc`. Both were always empty, so an agent couldn't see who else a `reply_all` would reach. This also applies to the same tool in Apple-Tools-MCP.
 
 ### Security
 - Files: `files_move_path` and `files_delete_path` now refuse an allowed root, or a folder that contains one when roots are nested, with `PATH_NOT_ALLOWED`. Before, a root passed the scope check because it is inside itself, so in the default `safe_manage` mode a single call could move a whole root such as `~/Documents`, and `full_access` could delete an empty root. Items inside a root move and delete as before. This also applies to the same tools in Apple-Tools-MCP. (#86, thanks @mattabate)

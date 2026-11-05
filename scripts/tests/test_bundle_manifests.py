@@ -53,6 +53,7 @@ PREVIOUS_BUNDLE_ENV: dict[str, dict[str, str]] = {
 BLANK_MEANS_UNSET = {
     "APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT",
     "APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS",
+    "APPLE_MESSAGES_MCP_ALLOWED_ROOTS",
     "APPLE_CALENDAR_MCP_ALLOWED_CALENDARS",
     "APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS",
     "APPLE_REMINDERS_MCP_ALLOWED_LISTS",
@@ -68,6 +69,7 @@ SUGGESTION_TITLES = {
     "AppleNotes-MCP/src/apple_notes_mcp/permissions.py": ["Allowed Notes accounts", "Allowed Notes folders"],
     "AppleSystem-MCP/src/apple_system_mcp/config.py": ["Apps that accept GUI input"],
     "AppleShortcuts-MCP/src/apple_shortcuts_mcp/shortcuts_bridge.py": ["Folders Shortcuts may write to"],
+    "AppleMessages-MCP/src/apple_messages_mcp/messages_automation_bridge.py": ["Folders Messages may send files from"],
 }
 
 

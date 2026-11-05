@@ -193,6 +193,7 @@ Archive discovery stays within the selected account. An explicit account overrid
 - Contacts names on Messages responses need an explicit Contacts tool to run first (it builds the Contacts helper and asks for access); Messages reads never build the helper or ask for access, they report `contact_names_status` instead
 - Notes needs Automation access to Notes
 - Shortcuts usually works without a separate privacy prompt; it writes run output only inside `APPLE_FILES_MCP_ALLOWED_ROOTS` unless `APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS` is set
+- Messages sends attachments only from inside `APPLE_FILES_MCP_ALLOWED_ROOTS` unless `APPLE_MESSAGES_MCP_ALLOWED_ROOTS` is set
 - Files access is controlled by `APPLE_FILES_MCP_ALLOWED_ROOTS`, not by a macOS privacy prompt
 - System actions may trigger System Events, Accessibility, or automation prompts depending on the host app
 - Focus status is best-effort and truthful on unsigned local installs

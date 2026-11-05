@@ -1,4 +1,7 @@
 import asyncio
+import subprocess
+
+import pytest
 
 from apple_messages_mcp import tools
 from apple_messages_mcp.config import load_settings
@@ -133,6 +136,19 @@ def test_messages_reply_in_group_conversation_returns_chat_id(monkeypatch) -> No
     assert result.ok is True
     assert result.chat_id == "group-chat-guid"
     assert result.recipient is None
+
+
+def test_messages_send_attachment_refuses_a_file_outside_the_allowed_folders(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("APPLE_MESSAGES_MCP_SAFETY_MODE", "full_access")
+    monkeypatch.setenv("APPLE_MESSAGES_MCP_ALLOWED_ROOTS", str(tmp_path))
+    load_settings.cache_clear()
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: pytest.fail("Messages must not be reached"))
+
+    result = tools.messages_send_attachment("+15551234567", "/etc/hosts")
+
+    load_settings.cache_clear()
+    assert result.ok is False
+    assert result.error.error_code == "PATH_NOT_ALLOWED"
 
 
 def test_messages_send_attachment_accepts_optional_text(monkeypatch) -> None:

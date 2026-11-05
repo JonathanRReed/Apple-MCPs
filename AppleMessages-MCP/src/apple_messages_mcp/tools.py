@@ -69,7 +69,7 @@ def _db_bridge() -> MessagesDBBridge:
 
 
 def _automation_bridge() -> MessagesAutomationBridge:
-    return MessagesAutomationBridge()
+    return MessagesAutomationBridge(load_settings().allowed_roots)
 
 
 def _error_response(error_code: str, message: str, suggestion: str | None = None) -> ErrorResponse:
@@ -465,7 +465,7 @@ def messages_reply_in_conversation(
 )
 def messages_send_attachment(
     recipient: Annotated[str, Field(description=_RECIPIENT)],
-    file_path: Annotated[str, Field(description="Absolute path of the local file to send.")],
+    file_path: Annotated[str, Field(description="Absolute path of the local file to send. It must be inside the allowed folders.")],
     text: Annotated[str | None, Field(description="Optional message text sent after the file.")] = None,
     service_name: Annotated[str | None, Field(description=_SERVICE_NAME)] = None,
 ) -> SendResponse | ErrorResponse:

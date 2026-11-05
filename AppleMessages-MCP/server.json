@@ -33,6 +33,12 @@
             "full_access"
           ],
           "default": "full_access"
+        },
+        {
+          "name": "APPLE_MESSAGES_MCP_ALLOWED_ROOTS",
+          "description": "Comma-separated folders messages_send_attachment may send files from. Unset uses the default folders.",
+          "isRequired": false,
+          "format": "string"
         }
       ]
     },

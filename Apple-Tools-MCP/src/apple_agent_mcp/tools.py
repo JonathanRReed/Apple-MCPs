@@ -20,6 +20,10 @@ from mcp.types import Annotations, ToolAnnotations
 from pydantic import BaseModel, Field
 
 from apple_agent_mcp.bootstrap import ensure_domain_paths
+
+# Modules below import the domain packages, which a plain venv loads from sibling folders.
+ensure_domain_paths()
+
 from apple_agent_mcp.config import load_settings
 from apple_agent_mcp.conformance import enable_conformance_mode
 from apple_agent_mcp.contact_names import ContactNameResolver, annotate_conversations, annotate_messages
@@ -49,12 +53,6 @@ from apple_agent_mcp.models import (
     SuggestionListResponse,
 )
 from apple_agent_mcp.state import StateStoreError, load_action_history, load_preferences, save_action_history, save_preferences
-from apple_mcp_common.discovery import install_search_first_discovery
-from apple_mcp_common.runtime import notify_resource_updated, notify_resources_changed, python_log_level, require_loopback_host
-from apple_mcp_common.server import AppleMCPServer
-
-ensure_domain_paths()
-
 from apple_calendar_mcp.models import ErrorResponse as CalendarErrorResponse
 from apple_calendar_mcp.models import EventResponse
 from apple_calendar_mcp.models import ToolError as CalendarToolError
@@ -237,6 +235,9 @@ from apple_maps_mcp.tools import (
     maps_permission_guide as standalone_maps_permission_guide,
 )
 from apple_maps_mcp.tools import mcp as maps_server
+from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.runtime import notify_resource_updated, notify_resources_changed, python_log_level, require_loopback_host
+from apple_mcp_common.server import AppleMCPServer
 from apple_messages_mcp.models import (
     ConversationListResponse,
     ConversationResponse,

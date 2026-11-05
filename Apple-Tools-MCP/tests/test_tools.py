@@ -1,6 +1,8 @@
 import asyncio
 import json
 import subprocess
+import sys
+import sysconfig
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -1531,6 +1533,16 @@ def test_messages_send_attachment_wrapper_passes_text(monkeypatch) -> None:
     tools.messages_send_attachment("+15551234567", "/tmp/test.png", text="hello", service_name="SMS")
 
     assert captured == {"recipient": "+15551234567", "file_path": "/tmp/test.png", "text": "hello", "service_name": "SMS"}
+
+
+def test_tools_import_without_the_domain_packages_installed() -> None:
+    # start.sh without uv installs only requirements.txt and finds the domain
+    # packages through ensure_domain_paths. -S skips the editable installs here.
+    root = Path(tools.__file__).resolve().parents[3]
+    paths = [sysconfig.get_path("purelib"), str(root / "AppleMCPCommon" / "src"), str(root / "Apple-Tools-MCP" / "src")]
+    code = f"import sys; sys.path[:0] = {paths!r}; import apple_agent_mcp.tools"
+    completed = subprocess.run([sys.executable, "-I", "-S", "-c", code], capture_output=True, text=True, check=False)
+    assert completed.returncode == 0, completed.stderr[-600:]
 
 
 def test_main_uses_streamable_http_settings(monkeypatch, tmp_path) -> None:

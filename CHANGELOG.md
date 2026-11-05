@@ -6,13 +6,17 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
-## [1.1.5] - 2026-10-31
+## [1.1.5] - 2026-11-05
 
 ### Upgrade notes
 Most setups keep working unchanged.
 - Files now refuses to move or delete an allowed root, or a folder that contains one; items inside a root are unaffected.
 - **Mail: in `safe_manage`, `mail_reply_message` and `mail_reply_latest_in_thread` now save the reply as an unsent draft in Mail**, as forwards already do. The result reports `sent: false`, `draft: true` and a `note`. Set `APPLE_MAIL_MCP_SAFETY_PROFILE=full_access` (Claude Desktop extensions: "Mail safety mode") to send replies directly. `full_access`, the bundles' default, is unchanged.
 - **Shortcuts: `output_path` must now be inside the allowed folders.** These are `APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS`, or `APPLE_FILES_MCP_ALLOWED_ROOTS` when that is unset, or Desktop, Documents, Downloads and iCloud Drive. A run that wrote elsewhere now returns `PATH_NOT_ALLOWED`; set `APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS` to keep writing there.
+- **Mail: a forward with a `body` now carries the original as plain text**, with its attachments, because Mail can't keep its own formatted copy once the note is added. Forward without a `body` to keep the original exactly as it is.
+
+### Fixed
+- Mail: replies and forwards with a `body` no longer come out blank. `mail_reply_message`, `mail_reply_latest_in_thread` and `mail_forward_message` read the new message's text before writing it, and on macOS 27 (Mail 16) that makes Mail ignore the write and clear the message: the text, the quoted original, and on a forward the forwarded message and its attachments. The tools still reported success, so in `full_access` an empty message could be sent. Replies now hold the body above a quote of the original, and forwards hold it above the original with its attachments added back. If an attachment can't be copied, a forward with a `body` returns `FORWARD_ATTACHMENT_FAILED` and nothing is forwarded. Found by testing replies against real Mail. This also applies to the same tools in Apple-Tools-MCP.
 
 ### Security
 - Files: `files_move_path` and `files_delete_path` now refuse an allowed root, or a folder that contains one when roots are nested, with `PATH_NOT_ALLOWED`. Before, a root passed the scope check because it is inside itself, so in the default `safe_manage` mode a single call could move a whole root such as `~/Documents`, and `full_access` could delete an empty root. Items inside a root move and delete as before. This also applies to the same tools in Apple-Tools-MCP. (#86, thanks @mattabate)

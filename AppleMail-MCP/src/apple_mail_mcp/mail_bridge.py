@@ -3,6 +3,7 @@ from __future__ import annotations
 from importlib.resources import as_file, files
 from pathlib import Path
 from subprocess import CompletedProcess, TimeoutExpired, run
+from tempfile import TemporaryDirectory
 from urllib.parse import quote, unquote
 
 from apple_mail_mcp.config import load_settings
@@ -322,10 +323,12 @@ class AppleMailBridge:
     ) -> ForwardRecord:
         account, mailbox, apple_id = decode_message_id(message_id)
         try:
-            raw = self._run_script(
-                "forward_message.applescript",
-                [account, mailbox, apple_id, LIST_SEPARATOR.join(to), body, from_account or "", "true" if send else "false"],
-            )
+            # A forward with a body copies the original's attachments here to add them back.
+            with TemporaryDirectory(prefix="apple-mail-mcp-") as attachment_dir:
+                raw = self._run_script(
+                    "forward_message.applescript",
+                    [account, mailbox, apple_id, LIST_SEPARATOR.join(to), body, from_account or "", "true" if send else "false", attachment_dir],
+                )
         except MailScriptTimeoutError as exc:
             # A draft-mode forward never sends, so its timeout is an ordinary failure.
             if not send:

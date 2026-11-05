@@ -280,6 +280,44 @@ on requireSingleMatch(matchedItems, missingCode, ambiguousCode)
     return contents of item 1 of matchedItems
 end requireSingleMatch
 
+-- Mail's own quoted text can't be kept. `content` of a new reply or forward reads
+-- as empty, reading it makes the next write to it do nothing, and any write
+-- replaces the whole compose body. So the original text is rebuilt from the
+-- source message, and `content` of the outgoing message is only ever set.
+on forwardedOriginal(theMessage)
+    tell application "Mail"
+        set originalSender to sender of theMessage
+        set originalSubject to subject of theMessage
+        set originalDate to (date sent of theMessage) as text
+        set originalText to (content of theMessage) as text
+    end tell
+    set originalText to my replaceText(originalText, character id 65532, "")
+    return "Begin forwarded message:" & linefeed & linefeed & "From: " & originalSender & linefeed & "Subject: " & originalSubject & linefeed & "Date: " & originalDate & linefeed & linefeed & originalText
+end forwardedOriginal
+
+-- Setting `content` also drops the forward's attachments, so they are copied
+-- out first and added back. Each gets its own folder to keep its file name.
+on saveAttachments(theMessage, attachmentDir)
+    set savedPaths to {}
+    set attachmentIndex to 0
+    try
+        tell application "Mail" to set attachmentRefs to mail attachments of theMessage
+        repeat with attachmentRef in attachmentRefs
+            set attachmentIndex to attachmentIndex + 1
+            set attachmentFolder to attachmentDir & "/" & attachmentIndex
+            do shell script "mkdir " & quoted form of attachmentFolder
+            tell application "Mail"
+                set attachmentPath to attachmentFolder & "/" & my replaceText((name of attachmentRef) as text, "/", "_")
+                save attachmentRef in (POSIX file attachmentPath)
+            end tell
+            set end of savedPaths to attachmentPath
+        end repeat
+    on error errorMessage
+        error "FORWARD_ATTACHMENT_FAILED: Could not copy an attachment of the original message, so nothing was forwarded. Forward without a body to keep it as is. " & errorMessage
+    end try
+    return savedPaths
+end saveAttachments
+
 on run argv
     set accountName to item 1 of argv
     set mailboxName to item 2 of argv
@@ -291,6 +329,8 @@ on run argv
     -- "false" leaves the forward open in Mail as an unsent draft for the user to review.
     set sendNow to true
     if (count of argv) ≥ 7 then set sendNow to ((item 7 of argv) is not "false")
+    set attachmentDir to ""
+    if (count of argv) ≥ 8 then set attachmentDir to item 8 of argv
 
     set listSeparator to ASCII character 29
     set fieldSeparator to ASCII character 31
@@ -324,10 +364,23 @@ on run argv
             set senderString to my senderStringForAccount(senderEmail, my fullNameForAccount(matchedAccount))
         end if
 
+        -- Do this before opening a compose window, so a failure leaves no stray draft.
+        set forwardText to ""
+        set savedAttachments to {}
+        if forwardBody is not "" then
+            set forwardText to forwardBody & linefeed & linefeed & my forwardedOriginal(targetMessage)
+            set savedAttachments to my saveAttachments(targetMessage, attachmentDir)
+        end if
+
         set forwardMessage to forward targetMessage with opening window
 
         if forwardBody is not "" then
-            set content of forwardMessage to forwardBody & return & return & content of forwardMessage
+            set content of forwardMessage to forwardText
+            repeat with attachmentPath in savedAttachments
+                tell content of forwardMessage
+                    make new attachment with properties {file name:(POSIX file (attachmentPath as text))} at after the last paragraph
+                end tell
+            end repeat
         end if
 
 

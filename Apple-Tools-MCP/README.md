@@ -97,7 +97,7 @@ This builds one uv workspace environment with the unified entrypoint at `.venv/b
 }
 ```
 
-These values are the defaults for `uvx` and `pip` installs, so you only need the lines you want to change. To let the assistant send new emails (not just replies and forwards), set `APPLE_MAIL_MCP_SAFETY_PROFILE` to `full_access`. The Claude Desktop bundle defaults Mail to `full_access`, as earlier bundles did; change it under Settings > Extensions > Apple Tools > Configure. Restart the client after changing `env`.
+These values are the defaults for `uvx` and `pip` installs, so you only need the lines you want to change. With these values, replies and forwards are saved as drafts for you to send. To let the assistant send email itself, set `APPLE_MAIL_MCP_SAFETY_PROFILE` to `full_access`. The Claude Desktop bundle defaults Mail to `full_access`, as earlier bundles did; change it under Settings > Extensions > Apple Tools > Configure. Restart the client after changing `env`.
 
 Running from a clone instead? Use `/path/to/Apple-MCPs/Apple-Tools-MCP/start.sh` as the command with empty `args`.
 

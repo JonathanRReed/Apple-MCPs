@@ -106,7 +106,7 @@ def test_forward_message_passes_send_flag_and_reports_draft(monkeypatch) -> None
 
     def fake_run_script(script_name: str, args: list[str]) -> str:
         calls.append(args)
-        sent = args[-1]
+        sent = args[6]
         return f"{sent}\x1fFwd: Hello\x1f\x1e"
 
     monkeypatch.setattr(bridge, "_run_script", fake_run_script)
@@ -115,9 +115,35 @@ def test_forward_message_passes_send_flag_and_reports_draft(monkeypatch) -> None
     draft = bridge.forward_message(message_id, to=["x@example.com"], send=False)
     sent = bridge.forward_message(message_id, to=["x@example.com"])
 
-    assert calls[0][-1] == "false" and calls[1][-1] == "true"
+    assert calls[0][6] == "false" and calls[1][6] == "true"
     assert draft.sent is False and draft.draft is True
     assert sent.sent is True and sent.draft is False
+
+
+@pytest.mark.parametrize("failure", (None, MailBridgeError("FORWARD_ATTACHMENT_FAILED")))
+def test_forward_message_removes_the_attachment_copies(monkeypatch, failure) -> None:
+    bridge = AppleMailBridge()
+    seen: list[Path] = []
+
+    def fake_run_script(script_name: str, args: list[str]) -> str:
+        attachment_dir = Path(args[7])
+        assert attachment_dir.is_dir()
+        (attachment_dir / "copy.pdf").write_text("private")
+        seen.append(attachment_dir)
+        if failure:
+            raise failure
+        return "true\x1fFwd: Hello\x1f\x1e"
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+    message_id = encode_message_id("iCloud", "INBOX", "42")
+
+    if failure:
+        with pytest.raises(MailBridgeError):
+            bridge.forward_message(message_id, to=["x@example.com"], body="FYI")
+    else:
+        bridge.forward_message(message_id, to=["x@example.com"], body="FYI")
+
+    assert seen and not seen[0].exists()
 
 
 def test_reply_message_passes_send_flag_and_reports_draft(monkeypatch) -> None:

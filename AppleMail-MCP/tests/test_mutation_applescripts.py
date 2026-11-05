@@ -202,6 +202,17 @@ def test_sender_address_extracts_the_angle_bracket_address(compiled_sender_scrip
     assert result.stdout.rstrip("\n") == expected
 
 
+@pytest.mark.parametrize(("name", "variable"), (("reply_message.applescript", "replyMessage"), ("forward_message.applescript", "forwardMessage")))
+def test_reply_and_forward_never_read_the_outgoing_content(name, variable):
+    # In Mail, reading `content` of a new reply or forward makes the next write
+    # to it do nothing, so the body is lost and a blank message goes out.
+    code = "\n".join(line.split("--", 1)[0] for line in (SCRIPTS / name).read_text().splitlines())
+    uses = re.findall(rf"^.*\bcontent of {variable}\b.*$", code, re.MULTILINE)
+    assert uses
+    for line in uses:
+        assert re.fullmatch(rf"\s*(set content of {variable} to \w+|tell content of {variable})", line), line
+
+
 @pytest.mark.parametrize("name", ("reply_message.applescript", "forward_message.applescript"))
 def test_reply_and_forward_send_only_when_asked(name):
     # The server passes "false" below full_access; the script must then save a

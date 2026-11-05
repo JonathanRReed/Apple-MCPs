@@ -4,12 +4,13 @@ import subprocess
 from types import SimpleNamespace
 
 import pytest
-from mcp import types
+from mcp import Client, types
 from mcp.server.mcpserver import MCPServer
 
 from apple_agent_mcp import tools
 from apple_agent_mcp.config import load_settings
 from apple_agent_mcp.conformance import enable_conformance_mode
+from apple_agent_mcp.state import StateStoreError
 from apple_contacts_mcp.models import (
     ContactDetail,
     ContactMethod,
@@ -18,7 +19,11 @@ from apple_contacts_mcp.models import (
     DuplicateEvidence,
     ResolvedRecipientResponse,
 )
+from apple_mail_mcp.models import MoveRecord, SendRecord
 from apple_messages_mcp.config import load_settings as messages_load_settings
+from apple_messages_mcp.models import SendResponse
+from apple_notes_mcp.models import NoteDetail, NoteResponse
+from apple_reminders_mcp.models import ReminderDetail, ReminderResponse
 
 
 def test_registered_tool_names_cover_core_domains() -> None:
@@ -1769,3 +1774,202 @@ def test_main_falls_back_to_info_for_unknown_log_level(monkeypatch) -> None:
     assert calls and calls[0]["transport"] == "streamable-http"
     assert server_tools.mcp.settings.log_level == "INFO"
     assert server_tools._mcp_log_level(" warn ") == "WARNING"
+
+
+def _break_history(path, how, monkeypatch) -> str:
+    """Break actions.json the way a real failure would, returning the expected error code."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if how == "corrupt":
+        path.write_text("{not json", encoding="utf-8")
+        return "STATE_INVALID_JSON"
+    if how == "not_utf8":
+        path.write_bytes(b"\xff\xfe\x00")
+        return "STATE_INVALID_JSON"
+    if how == "wrong_shape":
+        path.write_text("{}", encoding="utf-8")
+        return "STATE_INVALID_SHAPE"
+    if how == "unreadable":
+        path.mkdir()
+        return "STATE_READ_FAILED"
+
+    def fail_write(*args, **kwargs):
+        raise StateStoreError("STATE_WRITE_FAILED", f"Failed to write assistant action history to '{path}'.", "Check filesystem permissions and retry.")
+
+    monkeypatch.setattr(tools, "save_action_history", fail_write)
+    return "STATE_WRITE_FAILED"
+
+
+_HISTORY_FAILURES = ["corrupt", "not_utf8", "wrong_shape", "unreadable", "unwritable"]
+
+
+def _assert_warns_not_to_repeat(warnings, phrase, error_code) -> None:
+    assert len(warnings) == 1
+    assert phrase in warnings[0]
+    assert error_code in warnings[0]
+    assert "retry" not in warnings[0].lower()
+
+
+@pytest.fixture
+def stub_sends(monkeypatch, tmp_path):
+    """Route both channels to stubs and count sends, with real temporary state."""
+    monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(tmp_path / "prefs.json"))
+    load_settings.cache_clear()
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: pytest.fail("Apple apps must not be reached"))
+    sends: list[str] = []
+
+    def send_message(recipient, text):
+        sends.append("messages")
+        return SendResponse(sent=True, recipient=recipient, text=text)
+
+    def send_mail(to, subject="", body="", attachments=None, from_account=None):
+        sends.append("mail")
+        return SendRecord(subject=subject, to=to)
+
+    monkeypatch.setattr(tools, "messages_send_message", send_message)
+    monkeypatch.setattr(tools, "mail_send_message", send_mail)
+    monkeypatch.setattr(
+        tools,
+        "_communication_plan_for",
+        lambda recipient, preferred_channel=None: SimpleNamespace(recommended_channel=preferred_channel, recommended_target=recipient),
+    )
+    return tmp_path / "actions.json", sends
+
+
+@pytest.mark.parametrize("how", _HISTORY_FAILURES)
+@pytest.mark.parametrize(("channel", "phrase"), [("messages", "The message was sent; do not send it again."), ("mail", "The email was sent; do not send it again.")])
+def test_send_reports_success_when_history_cannot_be_saved(monkeypatch, stub_sends, channel, phrase, how) -> None:
+    history, sends = stub_sends
+    error_code = _break_history(history, how, monkeypatch)
+
+    result = tools.apple_send_communication("alice@example.com", "hello", preferred_channel=channel)
+
+    assert sends == [channel]
+    assert result.ok is True
+    assert result.channel == channel
+    assert result.action_id is None
+    assert result.result
+    _assert_warns_not_to_repeat(result.warnings, phrase, error_code)
+
+
+@pytest.mark.parametrize("channel", ["messages", "mail"])
+def test_send_records_history_without_a_warning_when_it_can(stub_sends, channel) -> None:
+    _, sends = stub_sends
+
+    result = tools.apple_send_communication("alice@example.com", "hello", preferred_channel=channel)
+
+    assert sends == [channel]
+    assert result.action_id == tools.apple_list_recent_actions().actions[0].action_id
+    assert result.warnings == []
+
+
+def test_send_still_fails_before_sending_when_preferences_are_corrupt(stub_sends, tmp_path) -> None:
+    _, sends = stub_sends
+    (tmp_path / "prefs.json").write_text("{not json", encoding="utf-8")
+
+    result = tools.apple_send_communication("alice@example.com", "hello", preferred_channel="mail")
+
+    assert sends == []
+    assert result.ok is False
+    assert result.error.error_code == "STATE_INVALID_JSON"
+
+
+def _reminder_response(**kwargs) -> ReminderResponse:
+    return ReminderResponse(reminder=ReminderDetail(reminder_id="rem-1", title=kwargs["title"], list_id=kwargs["list_id"], list_name="Reminders"))
+
+
+def _note_response(**kwargs) -> NoteResponse:
+    return NoteResponse(note=NoteDetail(note_id="note-1", title=kwargs["title"], account_id="acct-1", account_name="iCloud", folder_id=kwargs["folder_id"], folder_name="Notes"))
+
+
+def _counted(calls, name, result):
+    def call(*args, **kwargs):
+        calls.append(name)
+        return result(*args, **kwargs)
+
+    return call
+
+
+@pytest.fixture
+def stub_writes(monkeypatch, workflow_services):
+    """Stub the archive, reminder, and note writes on top of the workflow services."""
+    state_file, _ = workflow_services
+    tools.apple_update_preferences(
+        default_reminder_list_id="list-default", default_notes_folder_id="folder-default", default_archive_mailbox="Archive", default_archive_account="A",
+    )
+    calls: list[str] = []
+    monkeypatch.setattr(tools, "reminders_create_reminder", _counted(calls, "reminder", _reminder_response))
+    monkeypatch.setattr(tools, "notes_create_note", _counted(calls, "note", _note_response))
+    monkeypatch.setattr(tools, "mail_move_message", _counted(calls, "move", lambda message_id, target_mailbox, target_account=None: MoveRecord(message_id=message_id, moved=True, target_mailbox=target_mailbox)))
+    return state_file.with_name("actions.json"), calls
+
+
+_FINISHED_WRITES = [
+    ("apple_archive_message", {"message_id": "msg-1"}, "move", "The message was moved; do not move it again."),
+    ("apple_create_reminder_with_defaults", {"title": "Follow up"}, "reminder", "The reminder was created; do not create it again."),
+    ("apple_create_note_with_defaults", {"title": "Reference"}, "note", "The note was created; do not create it again."),
+]
+
+
+@pytest.mark.parametrize("how", _HISTORY_FAILURES)
+@pytest.mark.parametrize(("tool_name", "arguments", "call", "phrase"), _FINISHED_WRITES)
+def test_finished_write_reports_success_when_history_cannot_be_saved(monkeypatch, stub_writes, tool_name, arguments, call, phrase, how) -> None:
+    history, calls = stub_writes
+    error_code = _break_history(history, how, monkeypatch)
+
+    result = getattr(tools, tool_name)(**arguments)
+
+    assert calls == [call]
+    assert not isinstance(result, tools.AppleErrorResponse)
+    _assert_warns_not_to_repeat(result.warnings, phrase, error_code)
+
+
+@pytest.mark.parametrize(("tool_name", "arguments", "call", "phrase"), _FINISHED_WRITES)
+def test_history_warning_reaches_mcp_clients(stub_writes, tool_name, arguments, call, phrase) -> None:
+    history, calls = stub_writes
+    history.write_text("{not json", encoding="utf-8")
+
+    async def run():
+        async with Client(tools.mcp) as client:
+            return await client.call_tool(tool_name, arguments)
+
+    response = asyncio.run(run())
+
+    assert calls == [call]
+    assert response.is_error is False
+    _assert_warns_not_to_repeat(response.structured_content["result"]["warnings"], phrase, "STATE_INVALID_JSON")
+
+
+def test_finished_write_omits_warnings_when_history_is_saved(stub_writes) -> None:
+    for tool_name, arguments, _, _ in _FINISHED_WRITES:
+        assert not hasattr(getattr(tools, tool_name)(**arguments), "warnings")
+
+
+def test_follow_up_keeps_what_it_created_when_history_cannot_be_saved(monkeypatch, stub_writes) -> None:
+    history, calls = stub_writes
+    history.write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr(tools, "mail_get_message", lambda message_id: SimpleNamespace(
+        message_id=message_id, subject="Project update", sender="alice@example.com", date_received="2026-04-01 09:00:00", to=[], cc=[], body_text="Hello",
+    ))
+
+    result = tools.apple_capture_follow_up_from_mail("msg-1")
+
+    assert calls == ["reminder", "note"]
+    assert result.reminder["reminder"]["reminder_id"] == "rem-1"
+    assert result.note["note"]["note_id"] == "note-1"
+    assert len(result.warnings) == 2
+    assert "The reminder was created; do not create it again." in result.warnings[0]
+    assert "The note was created; do not create it again." in result.warnings[1]
+
+
+def test_undo_reports_success_when_history_cannot_be_updated(monkeypatch, stub_writes) -> None:
+    history, calls = stub_writes
+    tools.apple_archive_message("msg-1")
+    action_id = tools.apple_list_recent_actions().actions[0].action_id
+    _break_history(history, "unwritable", monkeypatch)
+
+    result = tools.apple_undo_action(action_id)
+
+    assert calls == ["move", "move"]
+    assert result.ok is True
+    assert result.action.undo_status == "undone"
+    _assert_warns_not_to_repeat(result.warnings, "The action was undone; do not undo it again.", "STATE_WRITE_FAILED")

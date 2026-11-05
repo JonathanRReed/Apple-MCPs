@@ -80,6 +80,12 @@ def load_action_history(path: Path) -> list[AssistantActionRecord]:
             f"Assistant action history file at '{path}' is invalid JSON: {exc.msg}.",
             "Fix or delete the action history file, then retry.",
         ) from exc
+    except UnicodeDecodeError as exc:
+        raise StateStoreError(
+            "STATE_INVALID_JSON",
+            f"Assistant action history file at '{path}' is not UTF-8 text.",
+            "Fix or delete the action history file, then retry.",
+        ) from exc
     if not isinstance(payload, list):
         raise StateStoreError(
             "STATE_INVALID_SHAPE",

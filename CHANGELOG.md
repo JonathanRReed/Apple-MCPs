@@ -9,6 +9,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ### Upgrade notes
 - **Messages: attachments must now be inside the allowed folders.** These are `APPLE_MESSAGES_MCP_ALLOWED_ROOTS` (Claude Desktop extensions: "Folders Messages may send files from"), or `APPLE_FILES_MCP_ALLOWED_ROOTS` when that is unset, or Desktop, Documents, Downloads and iCloud Drive. Sending a file from anywhere else now returns `PATH_NOT_ALLOWED`, and its `suggestion` names the folders and the setting.
 
+### Fixed
+- Apple-Tools: a failure to save action history no longer makes a finished action look failed. `apple_send_communication` sent the message, then returned `ok: false` and a suggestion to retry if `actions.json` was corrupt, unreadable or unwritable, so an agent following it sent the message again, to a real person, and a corrupt file did this on every send. It now returns `ok: true` with `action_id: null` and a `warnings` entry saying the message was sent and must not be sent again. `apple_archive_message`, `apple_create_reminder_with_defaults`, `apple_create_note_with_defaults`, `apple_capture_follow_up_from_mail` and `apple_undo_action` had the same fault and now report the same way. An `actions.json` that isn't UTF-8 text is now reported as `STATE_INVALID_JSON` instead of crashing the call.
+
 ### Security
 - Messages: `messages_send_attachment` now sends only files inside the allowed folders and returns `PATH_NOT_ALLOWED` otherwise. Before, in the default `full_access` mode, an agent could send any file the server's user can read, such as `~/.ssh/id_rsa`, to any recipient, including an agent steered by a message it had read. The path is resolved, so `..` and symbolic links cannot leave the folders. This also applies to the same tool and to `apple_send_communication` in Apple-Tools-MCP.
 

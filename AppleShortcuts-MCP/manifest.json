@@ -38,6 +38,13 @@
       "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: list and view shortcuts only. safe_manage: also run shortcuts. full_access: same as safe_manage. This bundle's default is full_access. Sets APPLE_SHORTCUTS_MCP_SAFETY_MODE.",
       "required": false,
       "default": "full_access"
+    },
+    "shortcuts_allowed_roots": {
+      "type": "string",
+      "title": "Folders Shortcuts may write to",
+      "description": "Optional comma-separated folder paths for run output; ~ means your home folder. Leave empty to use Desktop, Documents, Downloads and iCloud Drive. Sets APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS.",
+      "required": false,
+      "default": ""
     }
   },
   "server": {
@@ -52,7 +59,8 @@
         "server.py"
       ],
       "env": {
-        "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "${user_config.shortcuts_safety_mode}"
+        "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "${user_config.shortcuts_safety_mode}",
+        "APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS": "${user_config.shortcuts_allowed_roots}"
       }
     }
   },

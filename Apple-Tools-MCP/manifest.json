@@ -109,6 +109,13 @@
       "required": false,
       "default": "~/Desktop,~/Documents,~/Downloads,~/Library/Mobile Documents/com~apple~CloudDocs"
     },
+    "shortcuts_allowed_roots": {
+      "type": "string",
+      "title": "Folders Shortcuts may write to",
+      "description": "Optional comma-separated folder paths for run output; ~ means your home folder. Leave empty to use the Files folders. Sets APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS.",
+      "required": false,
+      "default": ""
+    },
     "mail_allowed_attachment_root": {
       "type": "directory",
       "title": "Mail attachment folder",
@@ -187,6 +194,7 @@
         "APPLE_MESSAGES_MCP_SAFETY_MODE": "${user_config.messages_safety_mode}",
         "APPLE_SHORTCUTS_MCP_SAFETY_MODE": "${user_config.shortcuts_safety_mode}",
         "APPLE_FILES_MCP_ALLOWED_ROOTS": "${user_config.files_allowed_roots}",
+        "APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS": "${user_config.shortcuts_allowed_roots}",
         "APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT": "${user_config.mail_allowed_attachment_root}",
         "APPLE_MAIL_MCP_VISIBLE_DRAFTS": "${user_config.mail_visible_drafts}",
         "APPLE_CALENDAR_MCP_ALLOWED_CALENDARS": "${user_config.calendar_allowed_calendars}",

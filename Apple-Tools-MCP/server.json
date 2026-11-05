@@ -150,6 +150,12 @@
           "isRequired": false,
           "format": "string",
           "placeholder": "~/Documents/Mail Attachments"
+        },
+        {
+          "name": "APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS",
+          "description": "Comma-separated folders shortcuts_run_shortcut may write output to. Unset uses the Files folders.",
+          "isRequired": false,
+          "format": "string"
         }
       ]
     },

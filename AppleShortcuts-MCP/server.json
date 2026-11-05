@@ -33,6 +33,12 @@
             "full_access"
           ],
           "default": "full_access"
+        },
+        {
+          "name": "APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS",
+          "description": "Comma-separated folders shortcuts_run_shortcut may write output to. Unset uses the default folders.",
+          "isRequired": false,
+          "format": "string"
         }
       ]
     },

@@ -175,7 +175,7 @@ class ShortcutsBridge:
         raise ShortcutsBridgeError(
             "PATH_NOT_ALLOWED",
             f"Output path is outside the allowed folders: {resolved}",
-            f"Write the output inside one of these folders: {roots}. Set APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS to change them.",
+            f"Write the output inside one of these folders: {roots}. Set APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS (in Claude Desktop: \"Folders Shortcuts may write to\") to change them.",
         )
 
     def _run_cli(self, args: list[str], input_data: str | None = None) -> ShortcutCLIResult:

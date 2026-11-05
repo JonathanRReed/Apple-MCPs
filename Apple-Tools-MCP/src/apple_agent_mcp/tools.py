@@ -2084,6 +2084,16 @@ def apple_undo_action(action_id: Annotated[str, Field(description="action_id fro
                 "Use apple_list_recent_actions to inspect the action history.",
             )
 
+        # These report a refused delete or move as a normal result, not an error.
+        if getattr(undo_result, "deleted", True) is False or getattr(undo_result, "moved", True) is False:
+            updated = action.model_copy(update={"undo_status": "failed"})
+            _update_action_record(updated)
+            return _apple_error_response(
+                "UNDO_FAILED",
+                f"Action '{action_id}' was not undone: {action.undo_tool} reported that nothing changed.",
+                "Check whether the item still exists, then undo it in the app.",
+            )
+
         updated = action.model_copy(update={"undo_status": "undone"})
         warnings: list[str] = []
         try:

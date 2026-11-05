@@ -1,13 +1,14 @@
 import asyncio
 import json
 import subprocess
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from mcp import Client, types
 from mcp.server.mcpserver import MCPServer
 
-from apple_agent_mcp import tools
+from apple_agent_mcp import state, tools
 from apple_agent_mcp.config import load_settings
 from apple_agent_mcp.conformance import enable_conformance_mode
 from apple_agent_mcp.state import StateStoreError
@@ -1788,9 +1789,33 @@ def _break_history(path, how, monkeypatch) -> str:
     if how == "wrong_shape":
         path.write_text("{}", encoding="utf-8")
         return "STATE_INVALID_SHAPE"
+    if how == "too_deep":
+        path.write_text("[" * 200000 + "]" * 200000, encoding="utf-8")
+        return "STATE_INVALID_JSON"
+    if how == "huge_number":
+        path.write_text("[" + "1" * 5000 + "]", encoding="utf-8")
+        return "STATE_INVALID_JSON"
     if how == "unreadable":
         path.mkdir()
         return "STATE_READ_FAILED"
+    if how == "blocked":
+        real_exists = Path.exists
+
+        def exists(self, *args, **kwargs):
+            if self == path:
+                raise PermissionError(13, "Permission denied")
+            return real_exists(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "exists", exists)
+        return "STATE_READ_FAILED"
+    if how == "unencodable":
+        def dumps(value, **kwargs):
+            if isinstance(value, list):
+                raise RecursionError("maximum recursion depth exceeded")
+            return json.dumps(value, **kwargs)
+
+        monkeypatch.setattr(state, "json", SimpleNamespace(dumps=dumps, loads=json.loads, JSONDecodeError=json.JSONDecodeError))
+        return "STATE_WRITE_FAILED"
 
     def fail_write(*args, **kwargs):
         raise StateStoreError("STATE_WRITE_FAILED", f"Failed to write assistant action history to '{path}'.", "Check filesystem permissions and retry.")
@@ -1799,13 +1824,14 @@ def _break_history(path, how, monkeypatch) -> str:
     return "STATE_WRITE_FAILED"
 
 
-_HISTORY_FAILURES = ["corrupt", "not_utf8", "wrong_shape", "unreadable", "unwritable"]
+_HISTORY_FAILURES = ["corrupt", "not_utf8", "too_deep", "huge_number", "wrong_shape", "unreadable", "blocked", "unencodable", "unwritable"]
 
 
 def _assert_warns_not_to_repeat(warnings, phrase, error_code) -> None:
     assert len(warnings) == 1
     assert phrase in warnings[0]
     assert error_code in warnings[0]
+    assert "actions.json" in warnings[0]
     assert "retry" not in warnings[0].lower()
 
 
@@ -1959,6 +1985,38 @@ def test_follow_up_keeps_what_it_created_when_history_cannot_be_saved(monkeypatc
     assert len(result.warnings) == 2
     assert "The reminder was created; do not create it again." in result.warnings[0]
     assert "The note was created; do not create it again." in result.warnings[1]
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "arguments", "undo_tool", "undo_result"),
+    [
+        ("apple_create_note_with_defaults", {"title": "Plan"}, "notes_delete_note", SimpleNamespace(deleted=False)),
+        ("apple_archive_message", {"message_id": "msg-1"}, "mail_move_message", SimpleNamespace(moved=False)),
+    ],
+)
+def test_undo_that_changed_nothing_is_not_reported_as_undone(monkeypatch, stub_writes, tool_name, arguments, undo_tool, undo_result) -> None:
+    getattr(tools, tool_name)(**arguments)
+    action_id = tools.apple_list_recent_actions().actions[0].action_id
+    monkeypatch.setattr(tools, undo_tool, lambda **kwargs: undo_result)
+
+    result = tools.apple_undo_action(action_id)
+
+    assert result.ok is False
+    assert result.error.error_code == "UNDO_FAILED"
+    assert tools.apple_list_recent_actions().actions[0].undo_status == "failed"
+
+
+def test_undo_that_changed_nothing_never_says_undone_when_history_is_broken(monkeypatch, stub_writes) -> None:
+    history, _ = stub_writes
+    tools.apple_create_note_with_defaults(title="Plan")
+    action_id = tools.apple_list_recent_actions().actions[0].action_id
+    monkeypatch.setattr(tools, "notes_delete_note", lambda **kwargs: SimpleNamespace(deleted=False))
+    _break_history(history, "unwritable", monkeypatch)
+
+    result = tools.apple_undo_action(action_id)
+
+    assert result.ok is False
+    assert "undone" not in result.error.message
 
 
 def test_undo_reports_success_when_history_cannot_be_updated(monkeypatch, stub_writes) -> None:

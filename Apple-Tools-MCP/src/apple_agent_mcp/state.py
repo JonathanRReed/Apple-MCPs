@@ -64,9 +64,9 @@ def save_preferences(path: Path, preferences: AssistantPreferences) -> Assistant
 
 
 def load_action_history(path: Path) -> list[AssistantActionRecord]:
-    if not path.exists():
-        return []
     try:
+        if not path.exists():
+            return []
         payload = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
         raise StateStoreError(
@@ -80,10 +80,11 @@ def load_action_history(path: Path) -> list[AssistantActionRecord]:
             f"Assistant action history file at '{path}' is invalid JSON: {exc.msg}.",
             "Fix or delete the action history file, then retry.",
         ) from exc
-    except UnicodeDecodeError as exc:
+    except (ValueError, RecursionError) as exc:
+        # Not UTF-8, or JSON the parser refuses, such as extreme nesting or number size.
         raise StateStoreError(
             "STATE_INVALID_JSON",
-            f"Assistant action history file at '{path}' is not UTF-8 text.",
+            f"Assistant action history file at '{path}' can't be read as JSON text.",
             "Fix or delete the action history file, then retry.",
         ) from exc
     if not isinstance(payload, list):
@@ -109,7 +110,7 @@ def save_action_history(path: Path, actions: list[AssistantActionRecord]) -> lis
             json.dumps([action.model_dump() for action in actions], indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
-    except OSError as exc:
+    except (OSError, TypeError, ValueError, RecursionError) as exc:
         raise StateStoreError(
             "STATE_WRITE_FAILED",
             f"Failed to write assistant action history to '{path}'.",

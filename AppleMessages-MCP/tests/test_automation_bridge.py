@@ -130,14 +130,68 @@ def test_send_without_matching_account_reports_service_unavailable(monkeypatch):
     assert 'Text Message Forwarding' in raised.value.suggestion
 
 
-def test_send_attachment_honours_service(monkeypatch):
+def test_send_attachment_honours_service(monkeypatch, tmp_path):
+    attachment = tmp_path.resolve() / 'a.png'
+    attachment.write_text('image')
+
     def run(command, **kwargs):
         assert 'service type = SMS' in command[-1]
-        assert 'send POSIX file "/tmp/a.png" to targetParticipant' in command[-1]
+        assert f'send POSIX file "{attachment}" to targetParticipant' in command[-1]
         return subprocess.CompletedProcess(command, 0, 'SMS', '')
 
     monkeypatch.setattr(subprocess, 'run', run)
-    assert MessagesAutomationBridge().send_attachment('+61400000000', '/tmp/a.png', service_name='SMS')['service_name'] == 'SMS'
+    result = MessagesAutomationBridge((tmp_path,)).send_attachment('+61400000000', str(attachment), service_name='SMS')
+    assert result['service_name'] == 'SMS' and result['file_path'] == str(attachment)
+
+
+@pytest.fixture
+def attachment_folders(monkeypatch, tmp_path):
+    def must_not_run(command, **kwargs):
+        raise AssertionError('Messages must not be reached for a refused attachment')
+
+    monkeypatch.setattr(subprocess, 'run', must_not_run)
+    root = (tmp_path / 'root').resolve()
+    outside = (tmp_path / 'outside').resolve()
+    root.mkdir()
+    outside.mkdir()
+    (outside / 'secret.txt').write_text('private')
+    (root / 'link.txt').symlink_to(outside / 'secret.txt')
+    (root / 'folder').mkdir()
+    return root, outside
+
+
+@pytest.mark.parametrize('spelling', ('{outside}/secret.txt', '{root}/../outside/secret.txt', '{root}/link.txt', '{root}'))
+def test_attachment_outside_the_allowed_folders_is_refused(attachment_folders, spelling):
+    root, outside = attachment_folders
+    with pytest.raises(MessagesAutomationBridgeError) as raised:
+        MessagesAutomationBridge((root,)).send_attachment('+61400000000', spelling.format(root=root, outside=outside))
+    assert raised.value.error_code == 'PATH_NOT_ALLOWED'
+    assert str(root) in raised.value.suggestion and 'APPLE_MESSAGES_MCP_ALLOWED_ROOTS' in raised.value.suggestion
+
+
+def test_attachment_is_refused_when_no_folders_are_allowed(attachment_folders):
+    _, outside = attachment_folders
+    with pytest.raises(MessagesAutomationBridgeError) as raised:
+        MessagesAutomationBridge().send_attachment('+61400000000', str(outside / 'secret.txt'))
+    assert raised.value.error_code == 'PATH_NOT_ALLOWED'
+
+
+@pytest.mark.parametrize('name', ('missing.txt', 'folder'))
+def test_attachment_must_be_an_existing_file(attachment_folders, name):
+    root, _ = attachment_folders
+    with pytest.raises(MessagesAutomationBridgeError) as raised:
+        MessagesAutomationBridge((root,)).send_attachment('+61400000000', str(root / name))
+    assert raised.value.error_code == 'FILE_NOT_FOUND'
+
+
+def test_attachment_under_a_root_reached_by_a_link_is_sent(monkeypatch, tmp_path):
+    real = tmp_path.resolve() / 'real'
+    real.mkdir()
+    (real / 'a.png').write_text('image')
+    link = tmp_path / 'link'
+    link.symlink_to(real)
+    monkeypatch.setattr(subprocess, 'run', lambda command, **kwargs: subprocess.CompletedProcess(command, 0, 'iMessage', ''))
+    assert MessagesAutomationBridge((link,)).send_attachment('+61400000000', str(link / 'a.png'))['file_path'] == str(real / 'a.png')
 
 
 _NO_ACCOUNT = 'execution error: No enabled Messages account for this service (9001)'

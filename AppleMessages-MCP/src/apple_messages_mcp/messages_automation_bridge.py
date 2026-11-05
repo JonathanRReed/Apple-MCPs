@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import platform
 import subprocess
+from pathlib import Path
 from typing import Required, TypedDict
 
 
@@ -68,6 +69,9 @@ def _rcs_scriptable() -> bool:
 
 
 class MessagesAutomationBridge:
+    def __init__(self, allowed_roots: tuple[Path, ...] = ()) -> None:
+        self.allowed_roots = allowed_roots
+
     def automation_accessible(self) -> bool:
         accessible, _ = self.automation_access_diagnostic()
         return accessible
@@ -151,8 +155,9 @@ class MessagesAutomationBridge:
         if not file_path.strip():
             raise MessagesAutomationBridgeError("INVALID_INPUT", "file_path must not be empty", "Provide a valid file path.")
 
+        attachment = self._ensure_attachment_allowed(file_path)
         wanted, _ = self._service_preference(service_name, None)
-        send_parts = [f'send POSIX file "{self._escape(file_path)}" to targetParticipant']
+        send_parts = [f'send POSIX file "{self._escape(str(attachment))}" to targetParticipant']
         if text and text.strip():
             send_parts.append(f'send "{self._escape(text)}" to targetParticipant')
 
@@ -168,10 +173,27 @@ class MessagesAutomationBridge:
         return {
             "sent": True,
             "recipient": recipient,
-            "file_path": file_path,
+            "file_path": str(attachment),
             "text": text,
             "service_name": used,
         }
+
+    def _ensure_attachment_allowed(self, path: str) -> Path:
+        # An attachment leaves this Mac, so like every other file tool it stays
+        # inside the allowed folders. The resolved path is what gets sent, so
+        # `..` and symbolic links cannot leave them.
+        resolved = Path(path).expanduser().resolve(strict=False)
+        roots = tuple(root.resolve(strict=False) for root in self.allowed_roots)
+        if not any(resolved != root and resolved.is_relative_to(root) for root in roots):
+            folders = ", ".join(str(root) for root in roots)
+            raise MessagesAutomationBridgeError(
+                "PATH_NOT_ALLOWED",
+                f"Attachment is outside the allowed folders: {resolved}",
+                f"Send a file inside one of these folders: {folders}. Set APPLE_MESSAGES_MCP_ALLOWED_ROOTS (in Claude Desktop: \"Folders Messages may send files from\") to change them.",
+            )
+        if not resolved.is_file():
+            raise MessagesAutomationBridgeError("FILE_NOT_FOUND", f"No file at: {resolved}", "Check the path; only a single file can be sent.")
+        return resolved
 
     @staticmethod
     def _service_preference(service_name: str | None, services: list[str] | None) -> tuple[list[str], str | None]:

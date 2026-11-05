@@ -1,5 +1,6 @@
 import asyncio
 import json
+import subprocess
 from types import SimpleNamespace
 
 import pytest
@@ -17,6 +18,7 @@ from apple_contacts_mcp.models import (
     DuplicateEvidence,
     ResolvedRecipientResponse,
 )
+from apple_messages_mcp.config import load_settings as messages_load_settings
 
 
 def test_registered_tool_names_cover_core_domains() -> None:
@@ -952,6 +954,26 @@ def test_apple_prepare_communication_uses_contact_specific_preferences(monkeypat
     assert result.ok is True
     assert result.recommended_channel == "mail"
     assert result.recommended_target == "alice+vip@example.com"
+
+
+def test_apple_send_communication_refuses_an_attachment_outside_the_allowed_folders(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("APPLE_AGENT_MCP_STATE_FILE", str(tmp_path / "prefs.json"))
+    monkeypatch.setenv("APPLE_MESSAGES_MCP_SAFETY_MODE", "full_access")
+    monkeypatch.setenv("APPLE_MESSAGES_MCP_ALLOWED_ROOTS", str(tmp_path))
+    load_settings.cache_clear()
+    messages_load_settings.cache_clear()
+    monkeypatch.setattr(
+        tools,
+        "_communication_plan_for",
+        lambda recipient, preferred_channel=None: SimpleNamespace(recommended_channel="messages", recommended_target="+15551234567"),
+    )
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: pytest.fail("Messages must not be reached"))
+
+    result = tools.apple_send_communication("+15551234567", "hello", attachments=["/etc/hosts"])
+
+    messages_load_settings.cache_clear()
+    assert result.ok is False
+    assert result.error.error_code == "PATH_NOT_ALLOWED"
 
 
 def test_apple_send_communication_routes_to_mail_with_default_account(monkeypatch, tmp_path) -> None:

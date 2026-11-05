@@ -38,6 +38,13 @@
       "description": "Type exactly one of: safe_readonly, safe_manage, or full_access. safe_readonly: read conversations only. safe_manage: also send messages, replies, and attachments. full_access: same as safe_manage. This bundle's default is full_access. Sets APPLE_MESSAGES_MCP_SAFETY_MODE.",
       "required": false,
       "default": "full_access"
+    },
+    "messages_allowed_roots": {
+      "type": "string",
+      "title": "Folders Messages may send files from",
+      "description": "Optional comma-separated folder paths for attachments; ~ means your home folder. Leave empty to use Desktop, Documents, Downloads and iCloud Drive. Sets APPLE_MESSAGES_MCP_ALLOWED_ROOTS.",
+      "required": false,
+      "default": ""
     }
   },
   "server": {
@@ -52,7 +59,8 @@
         "server.py"
       ],
       "env": {
-        "APPLE_MESSAGES_MCP_SAFETY_MODE": "${user_config.messages_safety_mode}"
+        "APPLE_MESSAGES_MCP_SAFETY_MODE": "${user_config.messages_safety_mode}",
+        "APPLE_MESSAGES_MCP_ALLOWED_ROOTS": "${user_config.messages_allowed_roots}"
       }
     }
   },

@@ -65,3 +65,23 @@ def test_safety_block_explains_an_invalid_value(monkeypatch):
         load_settings.cache_clear()
     assert "'safe-manage'" in caught.value.suggestion
     assert "fell back to safe_readonly" in caught.value.suggestion
+
+
+@pytest.mark.parametrize(
+    ("messages_roots", "files_roots", "expected"),
+    (("/m/one, /m/two", "/f", ("/m/one", "/m/two")), ("", "/f", ("/f",)), (None, "/f", ("/f",))),
+)
+def test_allowed_roots_prefer_messages_then_files(monkeypatch, messages_roots, files_roots, expected):
+    monkeypatch.delenv("APPLE_MESSAGES_MCP_ALLOWED_ROOTS", raising=False)
+    if messages_roots is not None:
+        monkeypatch.setenv("APPLE_MESSAGES_MCP_ALLOWED_ROOTS", messages_roots)
+    monkeypatch.setenv("APPLE_FILES_MCP_ALLOWED_ROOTS", files_roots)
+    assert tuple(str(root) for root in settings().allowed_roots) == expected
+
+
+def test_allowed_roots_default_to_the_files_defaults(monkeypatch, tmp_path):
+    monkeypatch.delenv("APPLE_MESSAGES_MCP_ALLOWED_ROOTS", raising=False)
+    monkeypatch.delenv("APPLE_FILES_MCP_ALLOWED_ROOTS", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    (tmp_path / "Documents").mkdir()
+    assert settings().allowed_roots == (tmp_path / "Documents",)

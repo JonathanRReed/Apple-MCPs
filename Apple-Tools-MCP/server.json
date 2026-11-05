@@ -156,6 +156,12 @@
           "description": "Comma-separated folders shortcuts_run_shortcut may write output to. Unset uses the Files folders.",
           "isRequired": false,
           "format": "string"
+        },
+        {
+          "name": "APPLE_MESSAGES_MCP_ALLOWED_ROOTS",
+          "description": "Comma-separated folders messages_send_attachment may send files from. Unset uses the Files folders.",
+          "isRequired": false,
+          "format": "string"
         }
       ]
     },

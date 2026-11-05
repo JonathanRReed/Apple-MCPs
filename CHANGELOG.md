@@ -6,6 +6,12 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Upgrade notes
+- **Messages: attachments must now be inside the allowed folders.** These are `APPLE_MESSAGES_MCP_ALLOWED_ROOTS` (Claude Desktop extensions: "Folders Messages may send files from"), or `APPLE_FILES_MCP_ALLOWED_ROOTS` when that is unset, or Desktop, Documents, Downloads and iCloud Drive. Sending a file from anywhere else now returns `PATH_NOT_ALLOWED`, and its `suggestion` names the folders and the setting.
+
+### Security
+- Messages: `messages_send_attachment` now sends only files inside the allowed folders and returns `PATH_NOT_ALLOWED` otherwise. Before, in the default `full_access` mode, an agent could send any file the server's user can read, such as `~/.ssh/id_rsa`, to any recipient, including an agent steered by a message it had read. The path is resolved, so `..` and symbolic links cannot leave the folders. This also applies to the same tool and to `apple_send_communication` in Apple-Tools-MCP.
+
 ## [1.1.5] - 2026-11-05
 
 ### Upgrade notes

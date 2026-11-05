@@ -36,7 +36,8 @@ from apple_messages_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_a
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Messages on macOS. "
     "Search here when the user wants to inspect message history, summarize conversations, search what someone said, or send and reply through Messages. "
-    "History features require Full Disk Access, while send features require Messages automation permission."
+    "History features require Full Disk Access, while send features require Messages automation permission. "
+    "Sending a file works most reliably with Full Disk Access too."
 )
 
 _CHAT_ID = "Conversation id: the chat_id returned by messages_list_conversations or messages_search_messages. Pass it unchanged."
@@ -220,10 +221,11 @@ def messages_permission_guide() -> dict[str, object]:
         "steps": [
             "Call a Messages send tool to trigger the Automation prompt for Messages.app.",
             "Approve Automation access when macOS prompts.",
-            "Grant Full Disk Access manually in System Settings > Privacy & Security > Full Disk Access for Messages history access.",
+            "Grant Full Disk Access manually in System Settings > Privacy & Security > Full Disk Access for Messages history access and reliable file sending.",
         ],
         "notes": [
             "Messages send access and history access are separate permissions.",
+            "Without Full Disk Access a file can't be copied where Messages can read it, so messages_send_attachment sends it directly, which can fail with ATTACHMENT_NOT_DELIVERED.",
             "Full Disk Access cannot be requested programmatically.",
         ],
     }

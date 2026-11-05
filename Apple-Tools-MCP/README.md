@@ -188,7 +188,7 @@ Archive discovery stays within the selected account. An explicit account overrid
 - Mail needs Automation access to Mail
 - Calendar needs Calendar access
 - Reminders needs Reminders access
-- Messages needs Automation access to Messages, plus Full Disk Access for history
+- Messages needs Automation access to Messages, plus Full Disk Access for history and reliable file sending
 - Contacts needs Contacts access
 - Contacts names on Messages responses need an explicit Contacts tool to run first (it builds the Contacts helper and asks for access); Messages reads never build the helper or ask for access, they report `contact_names_status` instead
 - Notes needs Automation access to Notes

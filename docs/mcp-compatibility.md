@@ -1,10 +1,10 @@
-# MCP compatibility for 1.1.5
+# MCP compatibility for 1.1.6
 
-Reviewed October 26, 2026 against the [MCP 2026-07-28 specification](https://modelcontextprotocol.io/specification/2026-07-28), still the latest stable revision, and [Python SDK 2.3.0](https://github.com/modelcontextprotocol/python-sdk/releases/tag/v2.3.0), still the latest SDK release.
+Reviewed November 5, 2026 against the [MCP 2026-07-28 specification](https://modelcontextprotocol.io/specification/2026-07-28), still the latest stable revision, and [Python SDK 2.3.0](https://github.com/modelcontextprotocol/python-sdk/releases/tag/v2.3.0), still the latest SDK release.
 
 The suite uses the official Python SDK and requires `mcp>=2.3.0,<3`.
 Resource notifications use the SDK's subscription methods for modern protocols and its session notification methods for legacy protocols. A wire test verifies both legacy resource-update and list-change messages. All servers
-report version 1.1.5 and expose JSON Schema inputs and structured outputs.
+report version 1.1.6 and expose JSON Schema inputs and structured outputs.
 Streamable HTTP preserves sessions for legacy clients so their GET notification
 streams remain available. MCP 2026-07-28 requests still use the SDK's
 self-contained stateless request path. HTTP remains restricted to loopback addresses.
@@ -37,9 +37,8 @@ current and legacy modes. It validates tool discovery, input/output schemas,
 structured results, missing-tool errors, and reported versions. The same checks
 run against unpacked bundles through each manifest's launch command with
 `python scripts/bundle_smoke.py` after building the bundles. All 22 runs of each
-passed for 1.1.4. For 1.1.5 the 22 protocol runs passed; the bundle runs were
-not repeated, because 1.1.5 changes no launch command; its only manifest change
-is the Mail safety mode description.
+passed for 1.1.6, which adds a setting to the Messages and Apple-Tools bundles. Each server's `start.sh` was also started with no `uv` on the PATH, from
+a clean venv, and answered `initialize` and `tools/list`.
 
 CI runs current and legacy conformance separately, plus protocol and Inspector
 checks. MCPB packaging uses `@anthropic-ai/mcpb@2.1.2` and Inspector uses
@@ -51,22 +50,28 @@ records validate with `mcp-publisher` 1.8.5.
 
 ## Upgrade check
 
-1.1.5 changes only Files, Shortcuts and Mail safety checks and the development
-lockfile. The 12 published 1.1.4 packages were installed from PyPI into a clean
-virtual environment, then upgraded in place to the 1.1.5 wheels. Across all 11
-servers (369 tools), tools, input and output schemas, annotations, prompts and
-resources were compared over stdio before and after. The only differences were
-the reported version; the `output_path` description on `shortcuts_run_shortcut`,
-which now says the path must be inside the allowed folders; and on
-`mail_reply_message` and `mail_reply_latest_in_thread`, a description sentence
-on `safe_manage` drafts and two new output fields, `draft` and `note`, as
-`mail_forward_message` already has. Each change appears in both the domain
-server and Apple-Tools-MCP. No tool or parameter was added, removed, renamed or
-retyped. Through the installed 1.1.5 servers, `files_move_path` with an allowed
-root as its source returned `PATH_NOT_ALLOWED` and left the folder in place, and
-`shortcuts_run_shortcut` returned `PATH_NOT_ALLOWED` for an `output_path`
-outside the allowed folders, including one that used `..` to leave them, in both
-the Shortcuts and unified servers.
+1.1.6 changes Messages attachment sending and Apple-Tools action history and
+startup. The 12 published 1.1.5 packages were installed from PyPI into a clean
+virtual environment, then upgraded in place to the 1.1.6 wheels. Across all 11
+servers (369 tools), tools, input and output schemas and annotations were
+compared over stdio in both protocol modes. The only differences were the
+reported version; the Messages server's `instructions`, which gained a sentence
+on Full Disk Access; the `messages_send_attachment` and `file_path` descriptions;
+the `attachments` description on `apple_send_communication` and
+`apple_preview_communication`; an optional `warnings` output field on
+`apple_send_communication` and `apple_undo_action`; and one added output variant
+each on `apple_archive_message`, `apple_create_reminder_with_defaults` and
+`apple_create_note_with_defaults`, returned only with a warning. No tool or
+parameter was added, removed, renamed or retyped.
+
+For 1.1.5, the same check against the published 1.1.4 packages found only the
+`output_path` description on `shortcuts_run_shortcut`, and on
+`mail_reply_message` and `mail_reply_latest_in_thread` a description sentence and
+the `draft` and `note` output fields. Through the installed 1.1.5 servers,
+`files_move_path` with an allowed root as its source returned `PATH_NOT_ALLOWED`
+and left the folder in place, and `shortcuts_run_shortcut` returned
+`PATH_NOT_ALLOWED` for an `output_path` outside the allowed folders, including
+one that used `..` to leave them, in both the Shortcuts and unified servers.
 
 For 1.1.4, the 12 published 1.1.3 packages were installed from PyPI into a clean virtual
 environment, then upgraded in place to the 1.1.4 wheels. Every server's tools,
@@ -80,8 +85,14 @@ was removed, renamed or retyped.
 
 ## Client and native-app checks
 
-For 1.1.5, only Mail changed among the native-app integrations. On macOS 27.2
-with Mail 16, in `safe_manage`, `mail_reply_message`,
+For 1.1.6, only Messages changed among the native-app integrations. On macOS
+27.2, a file in `~/Downloads` sent directly failed in Messages while the tool
+reported success, which is the bug 1.1.6 fixes. Sent through 1.1.6 from the same
+folder to the maintainer's own number, it was delivered and Messages reported
+`finished`, with its caption following. Delivery to another person's device, and
+sending without Full Disk Access, were not tested.
+
+For 1.1.5, on macOS 27.2 with Mail 16, in `safe_manage`, `mail_reply_message`,
 `mail_reply_latest_in_thread` and `mail_forward_message` were run against real
 Mail through the stdio servers, including `reply_all` and `from_account` through
 Apple-Tools. Each left a draft with its text, the quoted or forwarded original
@@ -89,7 +100,7 @@ and any attachment, and nothing reached Sent or the Outbox. In `full_access`, a
 reply and a forward with a `body` were sent between two test accounts and
 arrived with their text, the original and the attachment.
 
-The other checks were run for 1.1.4 and not repeated for 1.1.5. On macOS 27, dedicated test data exercised Notes folder and note operations,
+The other checks were run for 1.1.4 and not repeated for 1.1.5 or 1.1.6. On macOS 27, dedicated test data exercised Notes folder and note operations,
 Reminders list and reminder operations, and Calendar event creation, reads,
 updates and deletion. All test records and containers were removed and the
 removal was verified. Repeating Calendar events were exercised in a throwaway
@@ -99,9 +110,9 @@ another occurrence's start), series time shifts, and the elicitation flow throug
 an in-process MCP client in both protocol modes.
 
 Not checked live for this release: iCloud, CalDAV and Exchange calendars, macOS
-15 and earlier, and how Claude Desktop, Claude Code or other hosts render the
-Calendar elicitation form. Mail sending and Messages sending were not used for
-release testing.
+26 and earlier, and how Claude Desktop, Claude Code or other hosts render the
+Calendar elicitation form. Real Mail and Messages sends were limited to the
+maintainer's own accounts.
 
 ## Upgrade behavior
 
@@ -109,8 +120,8 @@ Mail attachments require `APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT`. Paths must
 resolve to regular files inside that directory; traversal, escaping symlinks,
 and attachment transport separators are rejected. See the Mail README for setup.
 
-Every domain package requires `apple-mcp-common>=1.1.5,<2`. The unified package
-also requires each domain package at `>=1.1.5,<2`, so an upgrade brings in the
+Every domain package requires `apple-mcp-common>=1.1.6,<2`. The unified package
+also requires each domain package at `>=1.1.6,<2`, so an upgrade brings in the
 fixes together. Publishing checks validate these floors, all version fields, and
 the complete distribution and bundle set. Release metadata records the exact
 bundle hashes uploaded to GitHub.
@@ -118,4 +129,4 @@ bundle hashes uploaded to GitHub.
 The native Calendar and Reminders helpers are rebuilt when their source changes,
 and macOS ties a helper's privacy grant to that build. Where the helper itself
 holds Calendar or Reminders access, macOS asks once more after an upgrade that
-changes the helper, as 1.1.4 did. 1.1.5 does not change the helpers.
+changes the helper, as 1.1.4 did. 1.1.5 and 1.1.6 do not change the helpers.

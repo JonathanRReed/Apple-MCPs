@@ -123,6 +123,35 @@ def test_folder_holding_a_nested_root_cannot_be_moved_or_deleted(tmp_path, opera
     assert inner.is_dir()
 
 
+@pytest.mark.parametrize("operation", ("move", "delete", "move_parent"))
+def test_nested_root_cannot_be_reached_by_another_spelling(tmp_path, operation):
+    outer = tmp_path / "outer"
+    inner = outer / "Mid" / "Inner"
+    inner.mkdir(parents=True)
+    if not (outer / "MID").exists():
+        pytest.skip("this volume is case-sensitive")
+    bridge = FilesBridge((outer, inner))
+    with pytest.raises(FilesBridgeError) as error:
+        if operation == "delete":
+            bridge.delete_path(str(outer / "Mid" / "INNER"))
+        elif operation == "move":
+            bridge.move_path(str(outer / "Mid" / "INNER"), str(outer / "moved"))
+        else:
+            bridge.move_path(str(outer / "MID"), str(outer / "moved"))
+    assert error.value.error_code == "PATH_NOT_ALLOWED"
+    assert inner.is_dir()
+
+
+def test_link_to_a_root_can_still_be_moved(tmp_path):
+    outer = tmp_path / "outer"
+    inner = outer / "inner"
+    inner.mkdir(parents=True)
+    (outer / "link").symlink_to(inner)
+    bridge = FilesBridge((outer, inner))
+    bridge.move_path(str(outer / "link"), str(outer / "moved"))
+    assert (outer / "moved").is_symlink() and inner.is_dir()
+
+
 def test_items_inside_a_root_can_still_be_moved_and_deleted(tmp_path):
     root = tmp_path / "root"
     (root / "folder").mkdir(parents=True)

@@ -9,14 +9,14 @@
     "id": "1194217206",
     "subfolder": "AppleMessages-MCP"
   },
-  "version": "1.1.5",
+  "version": "1.1.6",
   "websiteUrl": "https://github.com/JonathanRReed/Apple-MCPs",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "apple-messages-mcp",
-      "version": "1.1.5",
+      "version": "1.1.6",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -36,7 +36,7 @@
         },
         {
           "name": "APPLE_MESSAGES_MCP_ALLOWED_ROOTS",
-          "description": "Comma-separated folders messages_send_attachment may send files from. Unset uses the default folders.",
+          "description": "Comma-separated folders messages_send_attachment may send files from. Unset uses APPLE_FILES_MCP_ALLOWED_ROOTS, then the default folders.",
           "isRequired": false,
           "format": "string"
         }

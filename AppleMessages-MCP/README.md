@@ -4,7 +4,7 @@
 
 MCP server for Apple Messages on macOS.
 
-Provides access to message history, conversation search, and sending via Messages.app. Requires Full Disk Access for history and Automation access for sending.
+Provides access to message history, conversation search, and sending via Messages.app. Requires Automation access for sending, and Full Disk Access for history and reliable file sending.
 
 ## When to use
 
@@ -91,7 +91,7 @@ claude mcp add --transport stdio --scope user apple-messages -- uvx apple-messag
 ## macOS Permissions
 
 - Automation access to Messages is required for send and reply
-- Full Disk Access is required for history, search, and attachment metadata from `~/Library/Messages/chat.db`
+- Full Disk Access is required for history, search, and attachment metadata from `~/Library/Messages/chat.db`, and lets `messages_send_attachment` copy a file where Messages can read it
 - `messages_health` checks running state through `NSRunningApplication`, without sending Apple Events or requesting Automation access. Closed Messages reports `automation_access_status: "not_probed"`; running Messages reports `"unknown"`. Neither means permission was denied.
 - The existing `automation_access` and send-capability booleans are false when authorization is unverified. Explicit send tools still work when the user has authorized the operation. `automation_access_status` and `automation_access_error_code` distinguish skipped checks, unknown authorization, denial, and command failure. An explicit send or reply still checks authorization and may open Messages or show the macOS permission prompt.
 - Diagnostic subprocesses have a five-second timeout. Explicit automation has a 30-second timeout; check delivery before retrying a send that timed out.

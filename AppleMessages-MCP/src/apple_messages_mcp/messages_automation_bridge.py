@@ -290,7 +290,10 @@ class MessagesAutomationBridge:
         # An attachment leaves this Mac, so like every other file tool it stays
         # inside the allowed folders. The resolved path is what gets sent, so
         # `..` and symbolic links cannot leave them.
-        resolved = Path(path).expanduser().resolve(strict=False)
+        try:
+            resolved = Path(path).expanduser().resolve(strict=False)
+        except (OSError, RuntimeError) as exc:
+            raise MessagesAutomationBridgeError("INVALID_INPUT", f"Could not resolve the attachment path: {path}", "Provide an absolute path to a file.") from exc
         roots = tuple(root.resolve(strict=False) for root in self.allowed_roots)
         if not any(resolved != root and resolved.is_relative_to(root) for root in roots):
             folders = ", ".join(str(root) for root in roots)
@@ -299,7 +302,11 @@ class MessagesAutomationBridge:
                 f"Attachment is outside the allowed folders: {resolved}",
                 f"Send a file inside one of these folders: {folders}. Set APPLE_MESSAGES_MCP_ALLOWED_ROOTS (in Claude Desktop: \"Folders Messages may send files from\") to change them.",
             )
-        if not resolved.is_file():
+        try:
+            is_file = resolved.is_file()
+        except OSError as exc:
+            raise MessagesAutomationBridgeError("FILE_NOT_FOUND", f"Could not read: {resolved}", "Check the path and its folder's permissions.") from exc
+        if not is_file:
             raise MessagesAutomationBridgeError("FILE_NOT_FOUND", f"No file at: {resolved}", "Check the path; only a single file can be sent.")
         return resolved
 

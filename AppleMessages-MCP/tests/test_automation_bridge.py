@@ -458,6 +458,21 @@ def test_attachment_must_be_an_existing_file(attachment_folders, name):
     assert raised.value.error_code == 'FILE_NOT_FOUND'
 
 
+def test_an_unknown_home_folder_is_a_coded_error(attachment_folders):
+    root, _ = attachment_folders
+    with pytest.raises(MessagesAutomationBridgeError) as raised:
+        MessagesAutomationBridge((root,)).send_attachment('+61400000000', '~no_such_user_here/a.txt')
+    assert raised.value.error_code == 'INVALID_INPUT'
+
+
+def test_a_file_that_cannot_be_checked_is_a_coded_error(monkeypatch, attachment_folders):
+    root, _ = attachment_folders
+    monkeypatch.setattr(Path, 'is_file', lambda self: (_ for _ in ()).throw(PermissionError(13, 'Permission denied')))
+    with pytest.raises(MessagesAutomationBridgeError) as raised:
+        MessagesAutomationBridge((root,)).send_attachment('+61400000000', str(root / 'locked.txt'))
+    assert raised.value.error_code == 'FILE_NOT_FOUND'
+
+
 def test_attachment_under_a_root_reached_by_a_link_is_sent(monkeypatch, messages_home, tmp_path):
     real = tmp_path.resolve() / 'real'
     real.mkdir()

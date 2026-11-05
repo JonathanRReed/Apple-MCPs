@@ -89,7 +89,7 @@ claude mcp add --transport stdio --scope user apple-shortcuts -- uvx apple-short
 
 ## Output Folders
 
-`shortcuts_run_shortcut` writes `output_path` only inside the allowed folders and returns `PATH_NOT_ALLOWED` for any other path. Set `APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS` to a comma-separated list of folders (`~` means your home folder). Without it, Shortcuts uses `APPLE_FILES_MCP_ALLOWED_ROOTS`, then the same defaults as Files: Desktop, Documents, Downloads and iCloud Drive, where they exist.
+`shortcuts_run_shortcut` writes `output_path` only inside the allowed folders and returns `PATH_NOT_ALLOWED` for any other path. Set `APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS` to a comma-separated list of folders (`~` means your home folder), or "Folders Shortcuts may write to" in the Claude Desktop extension settings. Without it, Shortcuts uses `APPLE_FILES_MCP_ALLOWED_ROOTS`, then the same defaults as Files: Desktop, Documents, Downloads and iCloud Drive, where they exist.
 
 ## macOS Requirements
 

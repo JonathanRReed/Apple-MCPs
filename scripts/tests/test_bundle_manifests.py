@@ -52,6 +52,7 @@ PREVIOUS_BUNDLE_ENV: dict[str, dict[str, str]] = {
 # allowlists below, "GUI input off" for APPLE_SYSTEM_MCP_GUI_ALLOWED_APPS.
 BLANK_MEANS_UNSET = {
     "APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT",
+    "APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS",
     "APPLE_CALENDAR_MCP_ALLOWED_CALENDARS",
     "APPLE_CALENDAR_MCP_WRITE_ALLOWED_CALENDARS",
     "APPLE_REMINDERS_MCP_ALLOWED_LISTS",
@@ -66,6 +67,7 @@ SUGGESTION_TITLES = {
     "AppleReminders-MCP/src/apple_reminders_mcp/permissions.py": ["Allowed reminder lists"],
     "AppleNotes-MCP/src/apple_notes_mcp/permissions.py": ["Allowed Notes accounts", "Allowed Notes folders"],
     "AppleSystem-MCP/src/apple_system_mcp/config.py": ["Apps that accept GUI input"],
+    "AppleShortcuts-MCP/src/apple_shortcuts_mcp/shortcuts_bridge.py": ["Folders Shortcuts may write to"],
 }
 
 

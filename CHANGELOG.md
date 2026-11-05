@@ -12,7 +12,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 Most setups keep working unchanged.
 - Files now refuses to move or delete an allowed root, or a folder that contains one; items inside a root are unaffected.
 - **Mail: in `safe_manage`, `mail_reply_message` and `mail_reply_latest_in_thread` now save the reply as an unsent draft in Mail**, as forwards already do. The result reports `sent: false`, `draft: true` and a `note`. Set `APPLE_MAIL_MCP_SAFETY_PROFILE=full_access` (Claude Desktop extensions: "Mail safety mode") to send replies directly. `full_access`, the bundles' default, is unchanged.
-- **Shortcuts: `output_path` must now be inside the allowed folders.** These are `APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS`, or `APPLE_FILES_MCP_ALLOWED_ROOTS` when that is unset, or Desktop, Documents, Downloads and iCloud Drive. A run that wrote elsewhere now returns `PATH_NOT_ALLOWED`; set `APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS` to keep writing there.
+- **Shortcuts: `output_path` must now be inside the allowed folders.** These are `APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS`, or `APPLE_FILES_MCP_ALLOWED_ROOTS` when that is unset, or Desktop, Documents, Downloads and iCloud Drive. A run that wrote elsewhere now returns `PATH_NOT_ALLOWED`; set `APPLE_SHORTCUTS_MCP_ALLOWED_ROOTS` (Claude Desktop extensions: "Folders Shortcuts may write to") to keep writing there.
 - **Mail: a forward with a `body` now carries the original as plain text**, with its attachments, because Mail can't keep its own formatted copy once the note is added. Forward without a `body` to keep the original exactly as it is.
 
 ### Fixed

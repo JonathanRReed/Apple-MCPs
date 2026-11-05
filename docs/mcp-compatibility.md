@@ -80,8 +80,16 @@ was removed, renamed or retyped.
 
 ## Client and native-app checks
 
-These checks were run for 1.1.4 and not repeated for 1.1.5, which changes no
-Apple app integration. On macOS 27, dedicated test data exercised Notes folder and note operations,
+For 1.1.5, only Mail changed among the native-app integrations. On macOS 27.2
+with Mail 16, in `safe_manage`, `mail_reply_message`,
+`mail_reply_latest_in_thread` and `mail_forward_message` were run against real
+Mail through the stdio servers, including `reply_all` and `from_account` through
+Apple-Tools. Each left a draft with its text, the quoted or forwarded original
+and any attachment, and nothing reached Sent or the Outbox. In `full_access`, a
+reply and a forward with a `body` were sent between two test accounts and
+arrived with their text, the original and the attachment.
+
+The other checks were run for 1.1.4 and not repeated for 1.1.5. On macOS 27, dedicated test data exercised Notes folder and note operations,
 Reminders list and reminder operations, and Calendar event creation, reads,
 updates and deletion. All test records and containers were removed and the
 removal was verified. Repeating Calendar events were exercised in a throwaway

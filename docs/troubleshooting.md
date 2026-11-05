@@ -99,8 +99,8 @@ server never leaves you guessing:
 Every AppleScript call the Mail server makes is bounded by
 `APPLE_MAIL_MCP_SCRIPT_TIMEOUT_SECONDS` (default `120`, minimum `5`). Sending
 is not idempotent, and stopping a timed-out script does not cancel a send Mail
-has already started. So a timeout in `mail_send_message`, `mail_reply_message`,
-`mail_reply_latest_in_thread` or a sending `mail_forward_message` returns
+has already started. So a timeout in `mail_send_message`, or in a sending `mail_reply_message`,
+`mail_reply_latest_in_thread` or `mail_forward_message`, returns
 `SEND_STATUS_UNKNOWN`. **Do not retry blindly**: search the account's Sent
 mailbox (`Sent Messages`, or `Sent Items` on Exchange) for the subject first.
 

@@ -999,7 +999,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
     def mail_forward_message_registered(
         message_id: Annotated[str, Field(description=_MESSAGE_ID + " This is the message being forwarded.")],
         to: Annotated[list[str], Field(description=_RECIPIENTS)],
-        body: Annotated[str, Field(description="Optional plain-text note placed above the forwarded message.")] = "",
+        body: Annotated[str, Field(description="Optional plain-text note placed above the forwarded message. With a note, the original is included as plain text and its attachments are kept.")] = "",
         from_account: Annotated[str | None, Field(description=_FROM_ACCOUNT)] = None,
     ) -> ForwardRecord | ErrorResponse:
         return mail_forward_message(

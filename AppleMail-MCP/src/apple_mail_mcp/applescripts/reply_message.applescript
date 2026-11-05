@@ -269,6 +269,22 @@ on requireSingleMatch(matchedItems, missingCode, ambiguousCode)
     return contents of item 1 of matchedItems
 end requireSingleMatch
 
+-- Mail's own quoted text can't be kept. `content` of a new reply or forward reads
+-- as empty, reading it makes the next write to it do nothing, and any write
+-- replaces the whole compose body. So the original text is rebuilt from the
+-- source message, and `content` of the outgoing message is only ever set.
+on quotedOriginal(theMessage)
+    tell application "Mail"
+        set originalSender to sender of theMessage
+        set originalDate to (date sent of theMessage) as text
+        set originalText to (content of theMessage) as text
+    end tell
+    set originalText to my replaceText(originalText, return & linefeed, linefeed)
+    set originalText to my replaceText(originalText, return, linefeed)
+    set originalText to my replaceText(originalText, character id 65532, "")
+    return "On " & originalDate & ", " & originalSender & " wrote:" & linefeed & linefeed & "> " & my replaceText(originalText, linefeed, linefeed & "> ")
+end quotedOriginal
+
 on run argv
     set accountName to item 1 of argv
     set mailboxName to item 2 of argv
@@ -316,13 +332,19 @@ on run argv
             set senderString to my senderStringForAccount(senderEmail, my fullNameForAccount(matchedAccount))
         end if
 
+        -- A message whose text can't be read still gets the reply, unquoted.
+        set replyText to replyBody
+        try
+            set replyText to replyBody & linefeed & linefeed & my quotedOriginal(targetMessage)
+        end try
+
         if shouldReplyAll then
             set replyMessage to reply targetMessage with opening window and reply to all
         else
             set replyMessage to reply targetMessage with opening window
         end if
 
-        set content of replyMessage to replyBody & content of replyMessage
+        set content of replyMessage to replyText
 
     end tell
 

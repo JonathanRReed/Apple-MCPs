@@ -372,8 +372,10 @@ class FilesBridge:
         # A root passes _ensure_allowed because it is relative to itself, so
         # without this check a move or delete could relocate or remove a whole
         # allowed root, or a folder that holds one when roots are nested.
+        # Paths are also compared as entries on disk: on a case-insensitive
+        # volume outer/INNER is the root outer/Inner but doesn't match it as text.
         for root in self.allowed_roots:
-            if root.is_relative_to(path):
+            if root.is_relative_to(path) or any(_same_entry(path, folder) for folder in (root, *root.parents)):
                 raise FilesBridgeError(
                     "PATH_NOT_ALLOWED",
                     f"Allowed roots and folders that contain them cannot be moved or deleted: {path}",
@@ -399,6 +401,14 @@ class FilesBridge:
         else:
             target.unlink()
         return str(target)
+
+
+def _same_entry(first: Path, second: Path) -> bool:
+    # lstat, so a symbolic link that points at a root stays movable.
+    try:
+        return os.path.samestat(first.lstat(), second.lstat())
+    except OSError:
+        return False
 
 
 def build_bridge() -> FilesBridge:

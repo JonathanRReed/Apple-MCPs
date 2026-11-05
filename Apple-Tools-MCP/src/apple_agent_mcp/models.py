@@ -2,6 +2,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from apple_notes_mcp.models import NoteResponse
+from apple_reminders_mcp.models import ReminderResponse
+
 
 class AppleHealthResponse(BaseModel):
     ok: Literal[True] = True
@@ -99,6 +102,22 @@ class CommunicationActionResponse(BaseModel):
     target: str
     action_id: str | None = None
     result: dict[str, Any]
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ArchiveWithWarningsResponse(BaseModel):
+    message_id: str
+    moved: bool
+    target_mailbox: str
+    warnings: list[str]
+
+
+class ReminderWithWarningsResponse(ReminderResponse):
+    warnings: list[str]
+
+
+class NoteWithWarningsResponse(NoteResponse):
+    warnings: list[str]
 
 
 class MailFollowupResponse(BaseModel):
@@ -154,6 +173,7 @@ class ActionUndoResponse(BaseModel):
     ok: Literal[True] = True
     action: AssistantActionRecord
     undo_result: dict[str, Any] | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class DigestFolderResponse(BaseModel):

@@ -20,6 +20,10 @@ from mcp.types import Annotations, ToolAnnotations
 from pydantic import BaseModel, Field
 
 from apple_agent_mcp.bootstrap import ensure_domain_paths
+
+# Modules below import the domain packages, which a plain venv loads from sibling folders.
+ensure_domain_paths()
+
 from apple_agent_mcp.config import load_settings
 from apple_agent_mcp.conformance import enable_conformance_mode
 from apple_agent_mcp.contact_names import ContactNameResolver, annotate_conversations, annotate_messages
@@ -31,6 +35,7 @@ from apple_agent_mcp.models import (
     AppleHealthResponse,
     AppleOverviewResponse,
     AppleToolError,
+    ArchiveWithWarningsResponse,
     AssistantActionRecord,
     AssistantPreferences,
     CommunicationActionResponse,
@@ -39,19 +44,15 @@ from apple_agent_mcp.models import (
     DigestFolderResponse,
     EventCollaborationResponse,
     MailFollowupResponse,
+    NoteWithWarningsResponse,
     PermissionGuideResponse,
     PreferencesDetectResponse,
     PreferencesResponse,
+    ReminderWithWarningsResponse,
     ShortcutRouteResponse,
     SuggestionListResponse,
 )
 from apple_agent_mcp.state import StateStoreError, load_action_history, load_preferences, save_action_history, save_preferences
-from apple_mcp_common.discovery import install_search_first_discovery
-from apple_mcp_common.runtime import notify_resource_updated, notify_resources_changed, python_log_level, require_loopback_host
-from apple_mcp_common.server import AppleMCPServer
-
-ensure_domain_paths()
-
 from apple_calendar_mcp.models import ErrorResponse as CalendarErrorResponse
 from apple_calendar_mcp.models import EventResponse
 from apple_calendar_mcp.models import ToolError as CalendarToolError
@@ -234,6 +235,9 @@ from apple_maps_mcp.tools import (
     maps_permission_guide as standalone_maps_permission_guide,
 )
 from apple_maps_mcp.tools import mcp as maps_server
+from apple_mcp_common.discovery import install_search_first_discovery
+from apple_mcp_common.runtime import notify_resource_updated, notify_resources_changed, python_log_level, require_loopback_host
+from apple_mcp_common.server import AppleMCPServer
 from apple_messages_mcp.models import (
     ConversationListResponse,
     ConversationResponse,
@@ -570,6 +574,25 @@ def _record_action(
     actions.insert(0, action)
     _save_action_history(actions)
     return action
+
+
+def _history_warning(outcome: str, exc: StateStoreError) -> str:
+    return (
+        f"{outcome} Action history was not updated, so apple_list_recent_actions and apple_undo_action "
+        f"won't reflect this ({exc.error_code}): {exc.message} Repair that file so later actions are recorded."
+    )
+
+
+def _record_finished_action(outcome: str, action_type: str, summary: str, **details: Any) -> tuple[str | None, list[str]]:
+    """Record an action that already happened, returning its id and any warnings.
+
+    A history failure can't be an error here: the caller would read it as a failed
+    action and repeat it, which sends a real message twice.
+    """
+    try:
+        return _record_action(action_type, summary, **details).action_id, []
+    except StateStoreError as exc:
+        return None, [_history_warning(outcome, exc)]
 
 
 def _update_action_record(updated_action: AssistantActionRecord) -> AssistantActionRecord:
@@ -1917,13 +1940,14 @@ def apple_send_communication(
                 result = messages_send_message(recipient=plan.recommended_target, text=message)
             if isinstance(result, MessagesErrorResponse):
                 return _apple_error_response(result.error.error_code, result.error.message, result.error.suggestion)
-            action = _record_action(
+            action_id, warnings = _record_finished_action(
+                "The message was sent; do not send it again.",
                 "send_communication",
                 f"Sent a Messages communication to {plan.recommended_target}.",
                 undo_supported=False,
                 result={"channel": "messages", "target": plan.recommended_target, "payload": _to_jsonable(result)},
             )
-            return CommunicationActionResponse(channel="messages", target=plan.recommended_target, action_id=action.action_id, result=_to_jsonable(result))
+            return CommunicationActionResponse(channel="messages", target=plan.recommended_target, action_id=action_id, result=_to_jsonable(result), warnings=warnings)
 
         effective_from_account = from_account or preferences.default_mail_account
         result = mail_send_message(
@@ -1935,13 +1959,14 @@ def apple_send_communication(
         )
         if isinstance(result, MailErrorResponse):
             return _apple_error_response(result.error_code, result.message, result.suggestion)
-        action = _record_action(
+        action_id, warnings = _record_finished_action(
+            "The email was sent; do not send it again.",
             "send_communication",
             f"Sent an email to {plan.recommended_target}.",
             undo_supported=False,
             result={"channel": "mail", "target": plan.recommended_target, "payload": _to_jsonable(result)},
         )
-        return CommunicationActionResponse(channel="mail", target=plan.recommended_target, action_id=action.action_id, result=_to_jsonable(result))
+        return CommunicationActionResponse(channel="mail", target=plan.recommended_target, action_id=action_id, result=_to_jsonable(result), warnings=warnings)
     except StateStoreError as exc:
         return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
 
@@ -1956,7 +1981,7 @@ def apple_archive_message(
     message_id: Annotated[str, Field(description=_MAIL_MESSAGE_ID_DESCRIPTION)],
     archive_mailbox: Annotated[str | None, Field(description=_ARCHIVE_MAILBOX_DESCRIPTION)] = None,
     archive_account: Annotated[str | None, Field(description=_ARCHIVE_ACCOUNT_DESCRIPTION)] = None,
-) -> MailMoveRecord | AppleErrorResponse:
+) -> ArchiveWithWarningsResponse | MailMoveRecord | AppleErrorResponse:
     try:
         preferences = _get_preferences()
         message = mail_get_message(message_id)
@@ -1969,7 +1994,8 @@ def apple_archive_message(
         result = mail_move_message(message_id=message_id, target_mailbox=target_mailbox, target_account=target_account)
         if isinstance(result, MailErrorResponse):
             return _apple_error_response(result.error_code, result.message, result.suggestion)
-        _record_action(
+        _, warnings = _record_finished_action(
+            "The message was moved; do not move it again.",
             "archive_message",
             f"Moved '{message.subject or message.message_id}' from {message.mailbox} to {target_mailbox}.",
             undo_supported=True,
@@ -1981,6 +2007,8 @@ def apple_archive_message(
             },
             result=_to_jsonable(result),
         )
+        if warnings:
+            return ArchiveWithWarningsResponse(message_id=result.message_id, moved=result.moved, target_mailbox=result.target_mailbox, warnings=warnings)
         return result
     except StateStoreError as exc:
         return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
@@ -2057,9 +2085,23 @@ def apple_undo_action(action_id: Annotated[str, Field(description="action_id fro
                 "Use apple_list_recent_actions to inspect the action history.",
             )
 
+        # These report a refused delete or move as a normal result, not an error.
+        if getattr(undo_result, "deleted", True) is False or getattr(undo_result, "moved", True) is False:
+            updated = action.model_copy(update={"undo_status": "failed"})
+            _update_action_record(updated)
+            return _apple_error_response(
+                "UNDO_FAILED",
+                f"Action '{action_id}' was not undone: {action.undo_tool} reported that nothing changed.",
+                "Check whether the item still exists, then undo it in the app.",
+            )
+
         updated = action.model_copy(update={"undo_status": "undone"})
-        _update_action_record(updated)
-        return ActionUndoResponse(action=updated, undo_result=_to_jsonable(undo_result))
+        warnings: list[str] = []
+        try:
+            _update_action_record(updated)
+        except StateStoreError as exc:
+            warnings.append(_history_warning("The action was undone; do not undo it again.", exc))
+        return ActionUndoResponse(action=updated, undo_result=_to_jsonable(undo_result), warnings=warnings)
     except StateStoreError as exc:
         return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
 
@@ -2076,7 +2118,7 @@ def apple_create_reminder_with_defaults(
     notes: Annotated[str | None, Field(description=_REMINDER_NOTES_DESCRIPTION)] = None,
     list_id: Annotated[str | None, Field(description=_REMINDER_LIST_ID_DESCRIPTION)] = None,
     priority: Annotated[int | str, Field(description=_PRIORITY_DESCRIPTION)] = 0,
-) -> RemindersReminderResponse | RemindersErrorResponse | AppleErrorResponse:
+) -> ReminderWithWarningsResponse | RemindersReminderResponse | RemindersErrorResponse | AppleErrorResponse:
     try:
         preferences = _get_preferences()
         resolved, error = _resolve_reminder_target(preferences, list_id=list_id)
@@ -2088,7 +2130,8 @@ def apple_create_reminder_with_defaults(
             result_payload = _to_jsonable(result)
             reminder_payload = result_payload.get("reminder", {}) if isinstance(result_payload, dict) else {}
             reminder_id = reminder_payload.get("reminder_id")
-            _record_action(
+            _, warnings = _record_finished_action(
+                "The reminder was created; do not create it again.",
                 "create_reminder",
                 f"Created reminder '{reminder_payload.get('title', title)}'.",
                 undo_supported=bool(reminder_id),
@@ -2096,6 +2139,8 @@ def apple_create_reminder_with_defaults(
                 undo_arguments={"reminder_id": reminder_id} if reminder_id else None,
                 result=result_payload,
             )
+            if warnings:
+                return ReminderWithWarningsResponse(reminder=result.reminder, warnings=warnings)
         return result
     except StateStoreError as exc:
         return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
@@ -2113,7 +2158,7 @@ def apple_create_note_with_defaults(
     body_html: Annotated[str | None, Field(description=_NOTE_BODY_HTML_DESCRIPTION)] = None,
     folder_id: Annotated[str | None, Field(description=_NOTES_FOLDER_ID_DESCRIPTION)] = None,
     tags: Annotated[list[str] | None, Field(description=_NOTE_TAGS_DESCRIPTION)] = None,
-) -> NotesNoteResponse | NotesErrorResponse | AppleErrorResponse:
+) -> NoteWithWarningsResponse | NotesNoteResponse | NotesErrorResponse | AppleErrorResponse:
     try:
         preferences = _get_preferences()
         prefer_digest_folder = "digest" in title.strip().lower()
@@ -2129,7 +2174,8 @@ def apple_create_note_with_defaults(
             result_payload = _to_jsonable(result)
             note_payload = result_payload.get("note", {}) if isinstance(result_payload, dict) else {}
             note_id = note_payload.get("note_id")
-            _record_action(
+            _, warnings = _record_finished_action(
+                "The note was created; do not create it again.",
                 "create_note",
                 f"Created note '{note_payload.get('title', title)}'.",
                 undo_supported=bool(note_id),
@@ -2137,6 +2183,8 @@ def apple_create_note_with_defaults(
                 undo_arguments={"note_id": note_id} if note_id else None,
                 result=result_payload,
             )
+            if warnings:
+                return NoteWithWarningsResponse(note=result.note, warnings=warnings)
         return result
     except StateStoreError as exc:
         return _apple_error_response(exc.error_code, exc.message, exc.suggestion)
@@ -2176,6 +2224,8 @@ def apple_capture_follow_up_from_mail(
                 warnings.append(reminder_result.error.message)
             else:
                 reminder_payload = _to_jsonable(reminder_result)
+                if isinstance(reminder_result, ReminderWithWarningsResponse):
+                    warnings.extend(reminder_result.warnings)
 
         if create_note:
             resolved_note_title = note_title or f"Mail: {message.subject or message.sender}"
@@ -2187,6 +2237,8 @@ def apple_capture_follow_up_from_mail(
                 warnings.append(note_result.error.message)
             else:
                 note_payload = _to_jsonable(note_result)
+                if isinstance(note_result, NoteWithWarningsResponse):
+                    warnings.extend(note_result.warnings)
 
         return MailFollowupResponse(
             message_id=message_id,

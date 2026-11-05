@@ -8,6 +8,10 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Upgrade notes
 - **Messages: attachments must now be inside the allowed folders.** These are `APPLE_MESSAGES_MCP_ALLOWED_ROOTS` (Claude Desktop extensions: "Folders Messages may send files from"), or `APPLE_FILES_MCP_ALLOWED_ROOTS` when that is unset, or Desktop, Documents, Downloads and iCloud Drive. Sending a file from anywhere else now returns `PATH_NOT_ALLOWED`, and its `suggestion` names the folders and the setting.
+- **Messages: `messages_send_attachment` now waits up to 20 seconds for Messages to confirm the file was sent**, and any text is sent only after that. A failed file returns `ATTACHMENT_NOT_DELIVERED`, and one Messages hasn't confirmed returns `SEND_STATUS_UNKNOWN`. In both cases no text is sent. Check the conversation before retrying after `SEND_STATUS_UNKNOWN`.
+
+### Fixed
+- Messages: `messages_send_attachment` no longer reports `sent: true` for a file that wasn't sent. It trusted the `send` command, which returns before the transfer happens, so on macOS 27.2 a file from Downloads failed in Messages while the tool reported success and the text still went out. The result now comes from Messages' own transfer status. Files are also sent from a private copy inside Messages' attachments folder, because Messages is sandboxed and can fail to read user folders. Without access to that folder the file is sent directly, and a failure names Full Disk Access as the fix. This also applies to the same tool and to `apple_send_communication` in Apple-Tools-MCP.
 
 ### Security
 - Messages: `messages_send_attachment` now sends only files inside the allowed folders and returns `PATH_NOT_ALLOWED` otherwise. Before, in the default `full_access` mode, an agent could send any file the server's user can read, such as `~/.ssh/id_rsa`, to any recipient, including an agent steered by a message it had read. The path is resolved, so `..` and symbolic links cannot leave the folders. This also applies to the same tool and to `apple_send_communication` in Apple-Tools-MCP.

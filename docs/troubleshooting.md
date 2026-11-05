@@ -113,6 +113,8 @@ mailbox (`Sent Messages`, or `Sent Items` on Exchange) for the subject first.
 | `HELPER_TIMEOUT` | The native Contacts helper passed its deadline | Answer any open macOS permission prompt, then retry; verify state before retrying a mutation |
 | `NOTE_CREATE_STATUS_UNKNOWN` | Create timed out and could not be verified | Check the target folder for the title before creating again |
 | `SEND_STATUS_UNKNOWN` | A Mail send, reply or forward timed out; it may have gone out | Check the account's Sent mailbox before sending again |
+| `SEND_STATUS_UNKNOWN` (Messages) | Messages hasn't confirmed an attachment within 20 seconds; it may still go out | Check the conversation before sending again |
+| `ATTACHMENT_NOT_DELIVERED` | Messages reported that the file failed; no text was sent | Follow the `suggestion`, then retry |
 | `CALENDAR_NOT_FOUND` / `EVENT_NOT_FOUND` | Id did not resolve | List calendars/events first — ids change shape under Add Only access |
 | `WRITE_BLOCKED` / `SAFETY_RESTRICTION` / `SAFETY_POLICY_BLOCK` | The server's safety mode does not allow this tool | The error's `suggestion` names the setting and value. Ask the user, change it in the client's `env` block (Claude Desktop: Settings > Extensions > the extension > Configure), then restart the client |
 | `*_BLOCKED` (calendar, list, account, folder) | The target is outside a configured allowlist | The `suggestion` names the allowlist setting; use an allowed target or ask the user to change the setting |

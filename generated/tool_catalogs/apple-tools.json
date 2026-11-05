@@ -8082,7 +8082,7 @@
         "text: string (optional)",
         "service_name: string (optional)"
       ],
-      "description": "Send a file attachment via Apple Messages to a recipient. Optionally include a text message.",
+      "description": "Send a file attachment via Apple Messages to a recipient. Optionally include a text message, which is sent after the file. Waits up to 20 seconds for Messages to confirm the transfer: ATTACHMENT_NOT_DELIVERED means the file failed, and SEND_STATUS_UNKNOWN means check the conversation before sending again.",
       "domain": "apple",
       "example_calls": [
         {
@@ -8111,10 +8111,16 @@
         "optionally",
         "include",
         "text",
-        "message"
+        "message",
+        "which",
+        "sent",
+        "after",
+        "waits",
+        "wait",
+        "seconds"
       ],
       "title": "Send Attachment",
-      "usage_intent": "Send a file attachment via Apple Messages to a recipient. Optionally include a text message."
+      "usage_intent": "Send a file attachment via Apple Messages to a recipient. Optionally include a text message, which is sent after the file. Waits up to 20 seconds for Messages to confirm the transfer: ATTACHMENT_NOT_DELIVERED means the file failed, and SEND_STATUS_UNKNOWN means check the conversation before sending again."
     },
     {
       "aliases": [

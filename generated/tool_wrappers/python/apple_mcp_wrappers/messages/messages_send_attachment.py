@@ -14,7 +14,7 @@ async def messages_send_attachment(
 ) -> Any:
     """Send Attachment
 
-    Send a file attachment via Apple Messages to a recipient. Optionally include a text message.
+    Send a file attachment via Apple Messages to a recipient. Optionally include a text message, which is sent after the file. Waits up to 20 seconds for Messages to confirm the transfer: ATTACHMENT_NOT_DELIVERED means the file failed, and SEND_STATUS_UNKNOWN means check the conversation before sending again.
 
     Example:
         await messages_send_attachment(client, recipient='Example Person', file_path='/path/to/item')

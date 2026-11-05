@@ -1,8 +1,11 @@
 import platform
 import subprocess
+import time
+from pathlib import Path
 
 import pytest
 
+from apple_messages_mcp import messages_automation_bridge
 from apple_messages_mcp.messages_automation_bridge import MessagesAutomationBridge, MessagesAutomationBridgeError
 
 
@@ -130,18 +133,133 @@ def test_send_without_matching_account_reports_service_unavailable(monkeypatch):
     assert 'Text Message Forwarding' in raised.value.suggestion
 
 
-def test_send_attachment_honours_service(monkeypatch, tmp_path):
-    attachment = tmp_path.resolve() / 'a.png'
-    attachment.write_text('image')
+class FakeMessages:
+    """Stands in for osascript: records sends and reports transfers in the given order."""
+
+    def __init__(self, *statuses, service='iMessage', known=''):
+        self.statuses = list(statuses)
+        self.service = service
+        self.known = known
+        self.calls = []
+        self.sent_name = None
+
+    def __call__(self, command, **kwargs):
+        script = command[-1]
+        if 'every file transfer' in script:
+            output = self.known
+            if self.sent_name is not None:
+                status = self.statuses.pop(0) if len(self.statuses) > 1 else self.statuses[0]
+                output += f'new-id\t{self.sent_name}\t{status}\n'
+            return subprocess.CompletedProcess(command, 0, output, '')
+        self.calls.append(script)
+        for line in script.splitlines():
+            if 'send POSIX file' in line:
+                self.sent_name = line.split('"')[1].rsplit('/', 1)[1]
+        return subprocess.CompletedProcess(command, 0, self.service, '')
+
+    def sent_path(self):
+        return next(line.split('"')[1] for script in self.calls for line in script.splitlines() if 'send POSIX file' in line)
+
+
+@pytest.fixture
+def messages_home(monkeypatch, tmp_path):
+    home = tmp_path / 'home'
+    (home / 'Library' / 'Messages' / 'Attachments').mkdir(parents=True)
+    monkeypatch.setenv('HOME', str(home))
+    monkeypatch.setattr(time, 'sleep', lambda seconds: None)
+    file = tmp_path.resolve() / 'files' / 'a.png'
+    file.parent.mkdir()
+    file.write_text('image')
+    return home.resolve(), file
+
+
+def _send(monkeypatch, fake, file, **kwargs):
+    monkeypatch.setattr(subprocess, 'run', fake)
+    return MessagesAutomationBridge((file.parent,)).send_attachment('+61400000000', str(file), **kwargs)
+
+
+def test_send_attachment_honours_service(monkeypatch, messages_home):
+    _, file = messages_home
+    fake = FakeMessages('finished', service='SMS')
+    result = _send(monkeypatch, fake, file, service_name='SMS')
+    assert 'service type = SMS' in fake.calls[0]
+    assert result['service_name'] == 'SMS' and result['file_path'] == str(file)
+
+
+def test_send_attachment_sends_a_private_copy_from_the_messages_folder(monkeypatch, messages_home):
+    home, file = messages_home
+    fake = FakeMessages('waiting', 'finished')
+    _send(monkeypatch, fake, file)
+    staged = fake.sent_path()
+    assert staged.startswith(str(home / 'Library' / 'Messages' / 'Attachments' / 'apple-mcp'))
+    assert staged.endswith('/a.png')
+    assert Path(staged).read_text() == 'image'
+
+
+def test_send_attachment_sends_the_text_only_after_the_file_is_confirmed(monkeypatch, messages_home):
+    _, file = messages_home
+    fake = FakeMessages('finished')
+    _send(monkeypatch, fake, file, text='caption')
+    assert len(fake.calls) == 2
+    assert 'send POSIX file' in fake.calls[0] and 'send "caption"' in fake.calls[1]
+
+
+def test_failed_transfer_is_reported_and_sends_no_text(monkeypatch, messages_home):
+    home, file = messages_home
+    fake = FakeMessages('waiting', 'failed')
+    with pytest.raises(MessagesAutomationBridgeError) as raised:
+        _send(monkeypatch, fake, file, text='caption')
+    assert raised.value.error_code == 'ATTACHMENT_NOT_DELIVERED'
+    assert len(fake.calls) == 1
+    assert not any((home / 'Library' / 'Messages' / 'Attachments' / 'apple-mcp').iterdir())
+
+
+def test_unconfirmed_transfer_says_not_to_retry_and_sends_no_text(monkeypatch, messages_home):
+    _, file = messages_home
+    monkeypatch.setattr(messages_automation_bridge, '_TRANSFER_WAIT_SECONDS', 0)
+    fake = FakeMessages('waiting')
+    with pytest.raises(MessagesAutomationBridgeError) as raised:
+        _send(monkeypatch, fake, file, text='caption')
+    assert raised.value.error_code == 'SEND_STATUS_UNKNOWN'
+    assert 'before sending again' in raised.value.suggestion
+    assert len(fake.calls) == 1
+
+
+def test_an_older_transfer_of_the_same_name_is_not_taken_as_this_send(monkeypatch, messages_home):
+    _, file = messages_home
+    monkeypatch.setattr(messages_automation_bridge, '_TRANSFER_WAIT_SECONDS', 0)
+    fake = FakeMessages('waiting', known='old-id\ta.png\tfinished\n')
+    with pytest.raises(MessagesAutomationBridgeError) as raised:
+        _send(monkeypatch, fake, file)
+    assert raised.value.error_code == 'SEND_STATUS_UNKNOWN'
+
+
+def test_without_the_messages_folder_the_file_is_sent_directly_and_still_checked(monkeypatch, messages_home, tmp_path):
+    _, file = messages_home
+    monkeypatch.setenv('HOME', str(tmp_path / 'no-such-home'))
+    fake = FakeMessages('failed')
+    with pytest.raises(MessagesAutomationBridgeError) as raised:
+        _send(monkeypatch, fake, file)
+    assert fake.sent_path() == str(file)
+    assert raised.value.error_code == 'ATTACHMENT_NOT_DELIVERED'
+    assert 'Full Disk Access' in raised.value.suggestion
+    assert file.exists()
+
+
+def test_a_text_failure_after_the_file_says_not_to_resend_the_file(monkeypatch, messages_home):
+    _, file = messages_home
+    fake = FakeMessages('finished')
 
     def run(command, **kwargs):
-        assert 'service type = SMS' in command[-1]
-        assert f'send POSIX file "{attachment}" to targetParticipant' in command[-1]
-        return subprocess.CompletedProcess(command, 0, 'SMS', '')
+        if 'send "caption"' in command[-1]:
+            return subprocess.CompletedProcess(command, 1, '', 'boom')
+        return fake(command, **kwargs)
 
     monkeypatch.setattr(subprocess, 'run', run)
-    result = MessagesAutomationBridge((tmp_path,)).send_attachment('+61400000000', str(attachment), service_name='SMS')
-    assert result['service_name'] == 'SMS' and result['file_path'] == str(attachment)
+    with pytest.raises(MessagesAutomationBridgeError) as raised:
+        MessagesAutomationBridge((file.parent,)).send_attachment('+61400000000', str(file), text='caption')
+    assert 'The file was sent' in raised.value.message
+    assert 'Do not send the file again' in raised.value.suggestion
 
 
 @pytest.fixture
@@ -184,13 +302,13 @@ def test_attachment_must_be_an_existing_file(attachment_folders, name):
     assert raised.value.error_code == 'FILE_NOT_FOUND'
 
 
-def test_attachment_under_a_root_reached_by_a_link_is_sent(monkeypatch, tmp_path):
+def test_attachment_under_a_root_reached_by_a_link_is_sent(monkeypatch, messages_home, tmp_path):
     real = tmp_path.resolve() / 'real'
     real.mkdir()
     (real / 'a.png').write_text('image')
     link = tmp_path / 'link'
     link.symlink_to(real)
-    monkeypatch.setattr(subprocess, 'run', lambda command, **kwargs: subprocess.CompletedProcess(command, 0, 'iMessage', ''))
+    monkeypatch.setattr(subprocess, 'run', FakeMessages('finished'))
     assert MessagesAutomationBridge((link,)).send_attachment('+61400000000', str(link / 'a.png'))['file_path'] == str(real / 'a.png')
 
 

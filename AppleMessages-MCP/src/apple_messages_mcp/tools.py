@@ -459,7 +459,7 @@ def messages_reply_in_conversation(
 
 @mcp.tool(
     title="Send Attachment",
-    description="Send a file attachment via Apple Messages to a recipient. Optionally include a text message.",
+    description="Send a file attachment via Apple Messages to a recipient. Optionally include a text message, which is sent after the file. Waits up to 20 seconds for Messages to confirm the transfer: ATTACHMENT_NOT_DELIVERED means the file failed, and SEND_STATUS_UNKNOWN means check the conversation before sending again.",
     annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False, open_world_hint=True),
     structured_output=True,
 )

@@ -61,7 +61,7 @@ def load_settings() -> Settings:
 
     return Settings(
         server_name="Apple Shortcuts MCP",
-        version="1.1.6",
+        version="1.1.7",
         safety_mode=cast(SafetyMode, raw_safety_mode),
         log_level=os.environ.get("APPLE_SHORTCUTS_MCP_LOG_LEVEL", "INFO").strip().upper() or "INFO",
         transport=os.environ.get("APPLE_SHORTCUTS_MCP_TRANSPORT", "stdio").strip() or "stdio",

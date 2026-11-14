@@ -37,8 +37,8 @@ current and legacy modes. It validates tool discovery, input/output schemas,
 structured results, missing-tool errors, and reported versions. The same checks
 run against unpacked bundles through each manifest's launch command with
 `python scripts/bundle_smoke.py` after building the bundles. All 22 runs of each
-passed for 1.1.7, which changes two bundle setting descriptions and no bundle setting. For 1.1.6, each server's `start.sh` was also started with no `uv` on the PATH, from
-a clean venv, and answered `initialize` and `tools/list`; this was not repeated for 1.1.7, which does not touch startup.
+passed for 1.1.7, which changes two bundle setting descriptions and no bundle setting. For 1.1.7, the unified server's `start.sh` was started with no `uv` on the PATH, from
+a clean venv, and answered `initialize` and `tools/list` with 184 tools. The other servers' `start.sh` scripts were checked this way for 1.1.6 and not again.
 
 CI runs current and legacy conformance separately, plus protocol and Inspector
 checks. MCPB packaging uses `@anthropic-ai/mcpb@2.1.2` and Inspector uses

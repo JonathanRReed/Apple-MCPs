@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Fixed
+- Mail: `APPLE_MAIL_MCP_VISIBLE_DRAFTS=false` (Claude Desktop extensions: "Show Mail drafts on screen", turned off) now leaves no draft window on screen (#103, reported by @MVMcris). Before, `mail_compose_draft` with `from_account` ignored the setting and left the window open, and replies and forwards saved as drafts always left theirs open, so on a Mac nobody watches the windows piled up. A hidden draft was also never saved: it reached the Drafts mailbox only when Mail next autosaved, and was lost if Mail quit first. Every draft is now saved to Drafts straight away, and with the setting off its window is then hidden. The default, drafts left open for review, is unchanged. This also applies to the same tools in Apple-Tools-MCP.
+
 ## [1.1.6] - 2026-11-05
 
 ### Upgrade notes

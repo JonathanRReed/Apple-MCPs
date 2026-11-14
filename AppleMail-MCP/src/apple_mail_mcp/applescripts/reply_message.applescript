@@ -296,6 +296,9 @@ on run argv
     -- "false" leaves the reply open in Mail as an unsent draft for the user to review.
     set sendNow to true
     if (count of argv) ≥ 7 then set sendNow to ((item 7 of argv) is not "false")
+    -- "false" hides a saved draft's window so none is left on screen.
+    set showDraft to true
+    if (count of argv) ≥ 8 then set showDraft to ((item 8 of argv) is not "false")
 
     set fieldSeparator to ASCII character 31
     set recordSeparator to ASCII character 30
@@ -356,10 +359,17 @@ on run argv
         if sendNow then
             send replyMessage
         else
-            -- Keep the compose window open; Mail autosaves it to Drafts.
+            -- Save the draft to Drafts and leave it open, or hidden when asked.
             try
                 save replyMessage
             end try
+            if not showDraft then
+                -- Hide, never close. Closing the draft or its window while
+                -- the save is still running deletes the draft.
+                try
+                    set visible of replyMessage to false
+                end try
+            end if
         end if
 
         set subjectText to ""

@@ -130,8 +130,10 @@ class FakeBridge:
         reply_all: bool = False,
         from_account: str | None = None,
         send: bool = True,
+        visible: bool = True,
     ) -> ReplyRecord:
         self.reply_send = send
+        self.reply_visible = visible
         return ReplyRecord(sent=send, subject=f"Re:{message_id}", reply_all=reply_all, from_account=from_account, draft=not send)
 
     def forward_message(
@@ -141,8 +143,10 @@ class FakeBridge:
         body: str = "",
         from_account: str | None = None,
         send: bool = True,
+        visible: bool = True,
     ) -> ForwardRecord:
         self.forward_send = send
+        self.forward_visible = visible
         return ForwardRecord(sent=send, subject=f"Fwd:{message_id}", to=to, from_account=from_account, draft=not send)
 
     def mark_message(self, message_id: str, is_read: bool) -> MarkRecord:
@@ -609,3 +613,22 @@ def test_reply_sends_only_in_full_access() -> None:
         assert reply.sent is False and reply.draft is True
         assert "NOT sent" in reply.note
         assert "APPLE_MAIL_MCP_SAFETY_PROFILE=full_access" in reply.note
+
+
+@pytest.mark.parametrize("visible_drafts", (True, False))
+def test_draft_replies_and_forwards_follow_the_visible_drafts_setting(visible_drafts) -> None:
+    # Issue #103: on a Mac nobody watches, draft windows pile up, so the
+    # setting must reach replies and forwards too, and the note must say where
+    # the user finds a draft that left no window.
+    bridge = FakeBridge()
+    settings = Settings(safety_profile=SafetyProfile.SAFE_MANAGE, visible_drafts=visible_drafts)
+
+    reply = mail_reply_message_tool(bridge, settings, message_id="id-1", body="Hi")
+    forward = mail_forward_message_tool(bridge, settings, message_id="id-1", to=["x@example.com"])
+
+    assert bridge.reply_visible is visible_drafts
+    assert bridge.forward_visible is visible_drafts
+    for note in (reply.note, forward.note):
+        assert "NOT sent" in note
+        assert ("Drafts mailbox" in note) is not visible_drafts
+        assert ("APPLE_MAIL_MCP_VISIBLE_DRAFTS" in note) is not visible_drafts

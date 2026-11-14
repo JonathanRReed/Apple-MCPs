@@ -287,12 +287,22 @@ class AppleMailBridge:
         reply_all: bool = False,
         from_account: str | None = None,
         send: bool = True,
+        visible: bool = True,
     ) -> ReplyRecord:
         account, mailbox, apple_id = decode_message_id(message_id)
         try:
             raw = self._run_script(
                 "reply_message.applescript",
-                [account, mailbox, apple_id, body, "true" if reply_all else "false", from_account or "", "true" if send else "false"],
+                [
+                    account,
+                    mailbox,
+                    apple_id,
+                    body,
+                    "true" if reply_all else "false",
+                    from_account or "",
+                    "true" if send else "false",
+                    "true" if visible else "false",
+                ],
             )
         except MailScriptTimeoutError as exc:
             # A draft-mode reply never sends, so its timeout is an ordinary failure.
@@ -320,6 +330,7 @@ class AppleMailBridge:
         body: str = "",
         from_account: str | None = None,
         send: bool = True,
+        visible: bool = True,
     ) -> ForwardRecord:
         account, mailbox, apple_id = decode_message_id(message_id)
         try:
@@ -327,7 +338,17 @@ class AppleMailBridge:
             with TemporaryDirectory(prefix="apple-mail-mcp-") as attachment_dir:
                 raw = self._run_script(
                     "forward_message.applescript",
-                    [account, mailbox, apple_id, LIST_SEPARATOR.join(to), body, from_account or "", "true" if send else "false", attachment_dir],
+                    [
+                        account,
+                        mailbox,
+                        apple_id,
+                        LIST_SEPARATOR.join(to),
+                        body,
+                        from_account or "",
+                        "true" if send else "false",
+                        attachment_dir,
+                        "true" if visible else "false",
+                    ],
                 )
         except MailScriptTimeoutError as exc:
             # A draft-mode forward never sends, so its timeout is an ordinary failure.

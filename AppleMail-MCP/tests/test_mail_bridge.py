@@ -153,7 +153,7 @@ def test_reply_message_passes_send_flag_and_reports_draft(monkeypatch) -> None:
     def fake_run_script(script_name: str, args: list[str]) -> str:
         assert script_name == "reply_message.applescript"
         calls.append(args)
-        return f"{args[-1]}\x1fRe: Hello\x1ffalse\x1f\x1e"
+        return f"{args[6]}\x1fRe: Hello\x1ffalse\x1f\x1e"
 
     monkeypatch.setattr(bridge, "_run_script", fake_run_script)
     message_id = encode_message_id("iCloud", "INBOX", "42")
@@ -161,9 +161,36 @@ def test_reply_message_passes_send_flag_and_reports_draft(monkeypatch) -> None:
     draft = bridge.reply_message(message_id, body="Hi", send=False)
     sent = bridge.reply_message(message_id, body="Hi")
 
-    assert calls[0][-1] == "false" and calls[1][-1] == "true"
+    assert calls[0][6] == "false" and calls[1][6] == "true"
     assert draft.sent is False and draft.draft is True
     assert sent.sent is True and sent.draft is False
+
+
+@pytest.mark.parametrize(
+    ("script", "call", "position"),
+    [
+        ("reply_message.applescript", lambda bridge, **kwargs: bridge.reply_message(MESSAGE_ID, body="Hi", send=False, **kwargs), 7),
+        ("forward_message.applescript", lambda bridge, **kwargs: bridge.forward_message(MESSAGE_ID, to=["x@example.com"], send=False, **kwargs), 8),
+    ],
+)
+def test_draft_replies_and_forwards_pass_the_window_setting(monkeypatch, script, call, position) -> None:
+    # Issue #103: the scripts read this flag by position to decide whether the
+    # saved draft's window stays on screen.
+    bridge = AppleMailBridge()
+    calls: list[list[str]] = []
+
+    def fake_run_script(script_name: str, args: list[str]) -> str:
+        assert script_name == script
+        calls.append(args)
+        return "false\x1fRe: Hello\x1ffalse\x1f\x1e"
+
+    monkeypatch.setattr(bridge, "_run_script", fake_run_script)
+
+    call(bridge)
+    call(bridge, visible=False)
+
+    assert [args[position] for args in calls] == ["true", "false"]
+    assert all(len(args) == position + 1 for args in calls)
 
 
 def test_run_osascript_times_out_with_actionable_error(monkeypatch) -> None:

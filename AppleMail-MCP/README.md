@@ -111,6 +111,15 @@ To change it in Claude Desktop, open Settings > Extensions, choose Apple Mail, c
 
 Attachments are off until you set `APPLE_MAIL_MCP_ALLOWED_ATTACHMENT_ROOT` (bundle setting: "Mail attachment folder") to a dedicated folder.
 
+## Draft Windows
+
+By default a new draft stays open in a Mail window so you can review it. So does a reply or forward that was saved as a draft.
+
+On a Mac nobody watches, those windows pile up. Set `APPLE_MAIL_MCP_VISIBLE_DRAFTS=false` (bundle setting: "Show Mail drafts on screen", turned off) and every draft is saved to the Drafts mailbox with no window left on screen. The tool result reports `visible: false`, and for replies and forwards the `note` says to open the draft from Drafts.
+
+- A reply, a forward, or a new draft with `from_account` still opens its window for a moment before it is hidden. A new draft without `from_account` never opens one.
+- Mail keeps a hidden draft loaded until Mail next quits. The draft is already saved, so quitting loses nothing.
+
 ## Transport
 
 `stdio` is the default and recommended transport. Set `APPLE_MAIL_MCP_TRANSPORT=streamable-http` (with optional `APPLE_MAIL_MCP_HOST` and `APPLE_MAIL_MCP_PORT`) to serve Streamable HTTP instead.

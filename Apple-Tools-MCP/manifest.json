@@ -132,7 +132,7 @@
     "mail_visible_drafts": {
       "type": "boolean",
       "title": "Show Mail drafts on screen",
-      "description": "Open new drafts in a visible Mail window so you can review them. Sets APPLE_MAIL_MCP_VISIBLE_DRAFTS.",
+      "description": "Leave new drafts open in a Mail window so you can review them. Turn off on a Mac nobody watches: drafts, and replies and forwards saved as drafts, then go to the Drafts mailbox with no window left open. Sets APPLE_MAIL_MCP_VISIBLE_DRAFTS.",
       "required": false,
       "default": true
     },

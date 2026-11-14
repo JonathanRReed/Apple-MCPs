@@ -42,7 +42,7 @@
         },
         {
           "name": "APPLE_MAIL_MCP_VISIBLE_DRAFTS",
-          "description": "Whether compose tools open visible draft windows in Mail.app.",
+          "description": "Whether drafts stay open in a Mail window. false saves them to the Drafts mailbox and leaves no window open.",
           "isRequired": false,
           "format": "boolean",
           "default": "true"

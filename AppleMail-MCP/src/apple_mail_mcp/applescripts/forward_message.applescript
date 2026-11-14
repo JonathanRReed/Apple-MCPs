@@ -331,6 +331,9 @@ on run argv
     if (count of argv) ≥ 7 then set sendNow to ((item 7 of argv) is not "false")
     set attachmentDir to ""
     if (count of argv) ≥ 8 then set attachmentDir to item 8 of argv
+    -- "false" hides a saved draft's window so none is left on screen.
+    set showDraft to true
+    if (count of argv) ≥ 9 then set showDraft to ((item 9 of argv) is not "false")
 
     set listSeparator to ASCII character 29
     set fieldSeparator to ASCII character 31
@@ -401,10 +404,17 @@ on run argv
         if sendNow then
             send forwardMessage
         else
-            -- Keep the compose window open; Mail autosaves it to Drafts.
+            -- Save the draft to Drafts and leave it open, or hidden when asked.
             try
                 save forwardMessage
             end try
+            if not showDraft then
+                -- Hide, never close. Closing the draft or its window while
+                -- the save is still running deletes the draft.
+                try
+                    set visible of forwardMessage to false
+                end try
+            end if
         end if
 
         set subjectText to ""

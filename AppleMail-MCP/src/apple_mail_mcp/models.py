@@ -170,6 +170,8 @@ class ReplyRecord:
     from_account: str | None = None
     draft: bool = False
     note: str | None = None
+    # For a draft: whether its window is open in Mail. None when sent.
+    visible: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -179,6 +181,7 @@ class ReplyRecord:
             "from_account": self.from_account,
             "draft": self.draft,
             "note": self.note,
+            "visible": self.visible,
         }
 
 
@@ -190,6 +193,8 @@ class ForwardRecord:
     from_account: str | None = None
     draft: bool = False
     note: str | None = None
+    # For a draft: whether its window is open in Mail. None when sent.
+    visible: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -199,6 +204,7 @@ class ForwardRecord:
             "from_account": self.from_account,
             "draft": self.draft,
             "note": self.note,
+            "visible": self.visible,
         }
 
 

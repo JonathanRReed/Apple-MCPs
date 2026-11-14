@@ -287,9 +287,12 @@ on run argv
     set senderString to ""
 
     tell application "Mail"
-        set effectiveVisible to shouldBeVisible
+        -- A draft with a sender starts in a window even when drafts are
+        -- hidden: the From pop-up fallback needs one, and Mail never shows a
+        -- draft that was created hidden. It is hidden again after the save.
+        set openInWindow to shouldBeVisible
         if senderRaw is not "" then
-            set effectiveVisible to true
+            set openInWindow to true
         end if
         -- Resolve the sender before opening a compose window, so an unknown
         -- account fails with ACCOUNT_NOT_FOUND without leaving a stray draft.
@@ -299,7 +302,7 @@ on run argv
             set senderString to my senderStringForAccount(senderEmail, my fullNameForAccount(matchedAccount))
         end if
 
-        set newMessage to make new outgoing message with properties {visible:effectiveVisible, subject:subjectText, content:bodyText}
+        set newMessage to make new outgoing message with properties {visible:openInWindow, subject:subjectText, content:bodyText}
         tell newMessage
             repeat with addressText in toList
                 if (addressText as text) is not "" then
@@ -329,6 +332,27 @@ on run argv
     end if
 
     tell application "Mail"
+        -- Save now: a hidden draft otherwise reaches Drafts only when Mail
+        -- next autosaves, and is lost if Mail quits first.
+        set draftSaved to false
+        try
+            save newMessage
+            set draftSaved to true
+        end try
+        if not shouldBeVisible then
+            if draftSaved then
+                -- Hide only a saved draft, and never close it. Closing the
+                -- draft or its window while the save is still running
+                -- deletes the draft, and Mail does not say when it finished.
+                try
+                    set visible of newMessage to false
+                end try
+            else if not openInWindow then
+                -- Unsaved with no window: nobody could find it. A draft that
+                -- has a window just stays open and is reported as visible.
+                error "DRAFT_SAVE_UNCONFIRMED: Mail did not save the hidden draft. It can still reach the Drafts mailbox when Mail next autosaves, so check Drafts for this subject before retrying, or a second copy may be created."
+            end if
+        end if
         return my sanitizeText((id of newMessage) as text) & fieldSeparator & my boolText(visible of newMessage) & fieldSeparator & resolvedAccountLabel & recordSeparator
     end tell
 end run

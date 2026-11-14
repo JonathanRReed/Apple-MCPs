@@ -76,6 +76,13 @@ def _send_status_unknown(exc: MailScriptTimeoutError, action: str, account: str 
     )
 
 
+def _draft_visible(row: list[str], index: int) -> bool:
+    # The script reports whether the draft's window is open. A window is
+    # assumed when the field is missing, which is what the draft tools did
+    # before they could hide one.
+    return _parse_bool(row[index]) if len(row) > index and row[index] else True
+
+
 def _split_list(raw: str) -> list[str]:
     if not raw:
         return []
@@ -287,12 +294,22 @@ class AppleMailBridge:
         reply_all: bool = False,
         from_account: str | None = None,
         send: bool = True,
+        visible: bool = True,
     ) -> ReplyRecord:
         account, mailbox, apple_id = decode_message_id(message_id)
         try:
             raw = self._run_script(
                 "reply_message.applescript",
-                [account, mailbox, apple_id, body, "true" if reply_all else "false", from_account or "", "true" if send else "false"],
+                [
+                    account,
+                    mailbox,
+                    apple_id,
+                    body,
+                    "true" if reply_all else "false",
+                    from_account or "",
+                    "true" if send else "false",
+                    "true" if visible else "false",
+                ],
             )
         except MailScriptTimeoutError as exc:
             # A draft-mode reply never sends, so its timeout is an ordinary failure.
@@ -311,6 +328,7 @@ class AppleMailBridge:
             subject=_restore_text(subject),
             reply_all=_parse_bool(reply_all_flag),
             from_account=resolved_from_account,
+            visible=None if sent else _draft_visible(rows[0], 4),
         )
 
     def forward_message(
@@ -320,6 +338,7 @@ class AppleMailBridge:
         body: str = "",
         from_account: str | None = None,
         send: bool = True,
+        visible: bool = True,
     ) -> ForwardRecord:
         account, mailbox, apple_id = decode_message_id(message_id)
         try:
@@ -327,7 +346,17 @@ class AppleMailBridge:
             with TemporaryDirectory(prefix="apple-mail-mcp-") as attachment_dir:
                 raw = self._run_script(
                     "forward_message.applescript",
-                    [account, mailbox, apple_id, LIST_SEPARATOR.join(to), body, from_account or "", "true" if send else "false", attachment_dir],
+                    [
+                        account,
+                        mailbox,
+                        apple_id,
+                        LIST_SEPARATOR.join(to),
+                        body,
+                        from_account or "",
+                        "true" if send else "false",
+                        attachment_dir,
+                        "true" if visible else "false",
+                    ],
                 )
         except MailScriptTimeoutError as exc:
             # A draft-mode forward never sends, so its timeout is an ordinary failure.
@@ -346,6 +375,7 @@ class AppleMailBridge:
             subject=_restore_text(subject),
             to=to,
             from_account=resolved_from_account,
+            visible=None if sent else _draft_visible(rows[0], 3),
         )
 
     def mark_message(self, message_id: str, is_read: bool) -> MarkRecord:

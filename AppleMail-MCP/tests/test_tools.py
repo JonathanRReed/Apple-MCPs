@@ -123,6 +123,10 @@ class FakeBridge:
             from_account=from_account,
         )
 
+    def draft_window_open(self, requested: bool) -> bool:
+        # Mail hides a draft only when asked and only after saving it.
+        return requested or getattr(self, "hide_fails", False)
+
     def reply_message(
         self,
         message_id: str,
@@ -130,9 +134,11 @@ class FakeBridge:
         reply_all: bool = False,
         from_account: str | None = None,
         send: bool = True,
+        visible: bool = True,
     ) -> ReplyRecord:
         self.reply_send = send
-        return ReplyRecord(sent=send, subject=f"Re:{message_id}", reply_all=reply_all, from_account=from_account, draft=not send)
+        self.reply_visible = visible
+        return ReplyRecord(sent=send, subject=f"Re:{message_id}", reply_all=reply_all, from_account=from_account, draft=not send, visible=None if send else self.draft_window_open(visible))
 
     def forward_message(
         self,
@@ -141,9 +147,11 @@ class FakeBridge:
         body: str = "",
         from_account: str | None = None,
         send: bool = True,
+        visible: bool = True,
     ) -> ForwardRecord:
         self.forward_send = send
-        return ForwardRecord(sent=send, subject=f"Fwd:{message_id}", to=to, from_account=from_account, draft=not send)
+        self.forward_visible = visible
+        return ForwardRecord(sent=send, subject=f"Fwd:{message_id}", to=to, from_account=from_account, draft=not send, visible=None if send else self.draft_window_open(visible))
 
     def mark_message(self, message_id: str, is_read: bool) -> MarkRecord:
         return MarkRecord(message_id=message_id, is_read=is_read)
@@ -609,3 +617,41 @@ def test_reply_sends_only_in_full_access() -> None:
         assert reply.sent is False and reply.draft is True
         assert "NOT sent" in reply.note
         assert "APPLE_MAIL_MCP_SAFETY_PROFILE=full_access" in reply.note
+
+
+@pytest.mark.parametrize(
+    ("visible_drafts", "hide_fails", "hidden"),
+    [(True, False, False), (False, False, True), (False, True, False)],
+    ids=["shown", "hidden", "asked-to-hide-but-still-open"],
+)
+def test_draft_replies_and_forwards_follow_the_visible_drafts_setting(visible_drafts, hide_fails, hidden) -> None:
+    # Issue #103: on a Mac nobody watches, draft windows pile up, so the
+    # setting must reach replies and forwards too. The note says where the
+    # user finds the draft, so it follows what Mail reported: a draft Mail
+    # could not save or hide is still on screen, whatever the setting says.
+    bridge = FakeBridge()
+    bridge.hide_fails = hide_fails
+    settings = Settings(safety_profile=SafetyProfile.SAFE_MANAGE, visible_drafts=visible_drafts)
+
+    reply = mail_reply_message_tool(bridge, settings, message_id="id-1", body="Hi")
+    forward = mail_forward_message_tool(bridge, settings, message_id="id-1", to=["x@example.com"])
+
+    assert bridge.reply_visible is visible_drafts
+    assert bridge.forward_visible is visible_drafts
+    for result in (reply, forward):
+        assert result.visible is not hidden
+        assert "NOT sent" in result.note
+        assert ("Drafts mailbox" in result.note) is hidden
+        assert ("APPLE_MAIL_MCP_VISIBLE_DRAFTS" in result.note) is hidden
+
+
+def test_sent_replies_and_forwards_report_no_draft_window() -> None:
+    bridge = FakeBridge()
+    settings = Settings(safety_profile=SafetyProfile.FULL_ACCESS, visible_drafts=False)
+
+    reply = mail_reply_message_tool(bridge, settings, message_id="id-1", body="Hi")
+    forward = mail_forward_message_tool(bridge, settings, message_id="id-1", to=["x@example.com"])
+
+    assert reply.sent and forward.sent
+    assert reply.visible is None and forward.visible is None
+    assert reply.note is None and forward.note is None

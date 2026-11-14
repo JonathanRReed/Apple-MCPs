@@ -9,6 +9,7 @@ from apple_mail_mcp.models import SafetyProfile
 SUPPORTED_TRANSPORTS = {"stdio", "streamable-http"}
 DEFAULT_SCRIPT_TIMEOUT_SECONDS = 120
 MIN_SCRIPT_TIMEOUT_SECONDS = 5
+VISIBLE_DRAFTS_ENV_VAR = "APPLE_MAIL_MCP_VISIBLE_DRAFTS"
 
 
 @dataclass(slots=True)
@@ -85,6 +86,6 @@ def load_settings() -> Settings:
         log_level=os.getenv("APPLE_MAIL_MCP_LOG_LEVEL", "INFO").upper(),
         allowed_attachment_root=allowed_attachment_root,
         default_search_limit=default_search_limit,
-        visible_drafts=_parse_bool(os.getenv("APPLE_MAIL_MCP_VISIBLE_DRAFTS"), True),
+        visible_drafts=_parse_bool(os.getenv(VISIBLE_DRAFTS_ENV_VAR), True),
         script_timeout_seconds=_parse_script_timeout(os.getenv("APPLE_MAIL_MCP_SCRIPT_TIMEOUT_SECONDS")),
     )

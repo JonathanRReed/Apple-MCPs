@@ -9,7 +9,7 @@ from mcp.server.mcpserver import Context
 from mcp.types import Annotations, InputRequiredResult, PromptMessage, ToolAnnotations
 from pydantic import Field
 
-from apple_mail_mcp.config import Settings, load_settings
+from apple_mail_mcp.config import VISIBLE_DRAFTS_ENV_VAR, Settings, load_settings
 from apple_mail_mcp.mail_bridge import AppleMailBridge, MailBridgeError, MailSendStatusUnknownError
 from apple_mail_mcp.models import (
     DeleteRecord,
@@ -265,6 +265,14 @@ def mail_send_message_tool(
     return result
 
 
+def _draft_review_hint(visible: bool | None) -> str:
+    # Follows what Mail reported, not the setting: a draft Mail could not
+    # save or hide is still open on screen.
+    if visible is False:
+        return f"No window was left open, because {VISIBLE_DRAFTS_ENV_VAR} is off. Ask the user to open it from the Drafts mailbox in Mail to review and send it."
+    return "Ask the user to review and send it in Mail."
+
+
 def mail_reply_message_tool(
     bridge: AppleMailBridge,
     settings: Settings,
@@ -284,11 +292,12 @@ def mail_reply_message_tool(
         reply_all=reply_all,
         from_account=from_account,
         send=send,
+        visible=settings.visible_drafts,
     )
     if not result.sent:
         result.note = (
             f"Reply saved as a draft in Mail and NOT sent, because {SAFETY_ENV_VAR} is "
-            f"'{settings.safety_profile.value}'. Ask the user to review and send it in Mail. "
+            f"'{settings.safety_profile.value}'. {_draft_review_hint(result.visible)} "
             f"To send replies directly, {how_to_set(SAFETY_ENV_VAR, SafetyProfile.FULL_ACCESS.value)}."
         )
     LOGGER.info("mail_reply_message ok message_id=%s reply_all=%s sent=%s", message_id, reply_all, result.sent)
@@ -314,11 +323,12 @@ def mail_forward_message_tool(
         body=body,
         from_account=from_account,
         send=send,
+        visible=settings.visible_drafts,
     )
     if not result.sent:
         result.note = (
             f"Forward saved as a draft in Mail and NOT sent, because {SAFETY_ENV_VAR} is "
-            f"'{settings.safety_profile.value}'. Ask the user to review and send it in Mail. "
+            f"'{settings.safety_profile.value}'. {_draft_review_hint(result.visible)} "
             f"To send forwards directly, {how_to_set(SAFETY_ENV_VAR, SafetyProfile.FULL_ACCESS.value)}."
         )
     LOGGER.info("mail_forward_message ok message_id=%s recipients=%s sent=%s", message_id, len(to), result.sent)

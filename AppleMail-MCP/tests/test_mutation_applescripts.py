@@ -232,24 +232,47 @@ def test_reply_and_forward_send_only_when_asked(name):
 
 
 DRAFT_SCRIPTS = (
-    ("compose_draft.applescript", "newMessage", "shouldBeVisible"),
-    ("reply_message.applescript", "replyMessage", "showDraft"),
-    ("forward_message.applescript", "forwardMessage", "showDraft"),
+    ("compose_draft.applescript", "newMessage", "if draftSaved then"),
+    ("reply_message.applescript", "replyMessage", "if draftSaved and not showDraft then"),
+    ("forward_message.applescript", "forwardMessage", "if draftSaved and not showDraft then"),
 )
 
 
-@pytest.mark.parametrize(("name", "variable", "flag"), DRAFT_SCRIPTS)
-def test_draft_scripts_save_then_hide_and_never_close(name, variable, flag):
+@pytest.mark.parametrize(("name", "variable", "guard"), DRAFT_SCRIPTS)
+def test_draft_scripts_hide_only_a_saved_draft_and_never_close(name, variable, guard):
     # Issue #103. On macOS 27 a hidden draft that is never saved reaches Drafts
     # only at Mail's next autosave. Closing the draft or its window while the
-    # save is still running deletes it, so a hidden draft is saved, then hidden.
+    # save is still running deletes it. So a draft is saved, then hidden, and
+    # one Mail failed to save stays on screen instead of vanishing unsaved.
     code = "\n".join(line.split("--", 1)[0] for line in (SCRIPTS / name).read_text().splitlines())
     run_handler = code[code.index("on run argv"):]
-    save = run_handler.index(f"save {variable}")
-    hide = run_handler.index(f"set visible of {variable} to false")
-    assert save < hide
-    assert re.search(rf"if not {flag} then\s*try\s*set visible of {variable} to false", run_handler)
+    assert run_handler.index("set draftSaved to false") < run_handler.index(f"save {variable}")
+    assert re.search(rf"try\s*save {variable}\s*set draftSaved to true\s*end try", run_handler)
+    assert re.search(rf"{re.escape(guard)}\s*try\s*set visible of {variable} to false", run_handler)
+    assert run_handler.count(f"set visible of {variable} to false") == 1
     assert not re.search(r"^\s*close\b", code, re.MULTILINE)
+
+
+def test_compose_draft_refuses_to_report_an_unsaved_draft_that_has_no_window():
+    # A hidden draft without a sender never has a window. If Mail does not
+    # save it, nobody can find it, so the script must fail and say to check
+    # Drafts before retrying (Mail may still autosave it).
+    code = "\n".join(line.split("--", 1)[0] for line in (SCRIPTS / "compose_draft.applescript").read_text().splitlines())
+    assert re.search(r'else if not openInWindow then\s*error "DRAFT_SAVE_UNCONFIRMED: [^"]*check Drafts[^"]*before retrying', code)
+
+
+@pytest.mark.parametrize(("name", "variable"), (("reply_message.applescript", "replyMessage"), ("forward_message.applescript", "forwardMessage")))
+def test_reply_and_forward_report_whether_the_draft_window_is_open(name, variable):
+    # The note tells the user where the draft is, so it must follow what Mail
+    # shows after the save and hide, not the setting. A sent message has no
+    # draft window, so `visible` is read only on the draft path.
+    code = "\n".join(line.split("--", 1)[0] for line in (SCRIPTS / name).read_text().splitlines())
+    run_handler = code[code.index("on run argv"):]
+    draft_branch = run_handler.split(f"send {variable}", 1)[1]
+    assert f"set draftVisible to visible of {variable}" in draft_branch
+    assert run_handler.count(f"visible of {variable}") == 2
+    assert run_handler.index("set draftVisible to true") < run_handler.index("if sendNow then")
+    assert "& fieldSeparator & my boolText(draftVisible) & recordSeparator" in run_handler
 
 
 def test_compose_draft_with_a_sender_starts_in_a_window_and_is_hidden_after_the_save():

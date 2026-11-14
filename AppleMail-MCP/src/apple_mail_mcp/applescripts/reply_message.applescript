@@ -355,6 +355,8 @@ on run argv
         set resolvedAccountLabel to my sanitizeText(my applySender(replyMessage, senderRaw, senderEmail, senderString))
     end if
 
+    set draftSaved to false
+    set draftVisible to true
     tell application "Mail"
         if sendNow then
             send replyMessage
@@ -362,14 +364,21 @@ on run argv
             -- Save the draft to Drafts and leave it open, or hidden when asked.
             try
                 save replyMessage
+                set draftSaved to true
             end try
-            if not showDraft then
-                -- Hide, never close. Closing the draft or its window while
-                -- the save is still running deletes the draft.
+            if draftSaved and not showDraft then
+                -- Hide only a saved draft, and never close it. Closing the
+                -- draft or its window while the save is still running
+                -- deletes the draft.
                 try
                     set visible of replyMessage to false
                 end try
             end if
+            -- Report what Mail shows, so a failed save or hide is not
+            -- described as a hidden draft.
+            try
+                set draftVisible to visible of replyMessage
+            end try
         end if
 
         set subjectText to ""
@@ -377,6 +386,6 @@ on run argv
             set subjectText to my sanitizeText(subject of replyMessage)
         end try
 
-        return my boolText(sendNow) & fieldSeparator & subjectText & fieldSeparator & my boolText(shouldReplyAll) & fieldSeparator & resolvedAccountLabel & recordSeparator
+        return my boolText(sendNow) & fieldSeparator & subjectText & fieldSeparator & my boolText(shouldReplyAll) & fieldSeparator & resolvedAccountLabel & fieldSeparator & my boolText(draftVisible) & recordSeparator
     end tell
 end run

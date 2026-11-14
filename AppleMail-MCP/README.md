@@ -119,6 +119,7 @@ On a Mac nobody watches, those windows pile up. Set `APPLE_MAIL_MCP_VISIBLE_DRAF
 
 - A reply, a forward, or a new draft with `from_account` still opens its window for a moment before it is hidden. A new draft without `from_account` never opens one.
 - Mail keeps a hidden draft loaded until Mail next quits. The draft is already saved, so quitting loses nothing.
+- A draft is hidden only after Mail saved it. If the save fails, the window stays open and the result reports `visible: true`. A new draft that has no window fails with `DRAFT_SAVE_UNCONFIRMED` instead; check Drafts before retrying, because Mail may still save it.
 
 ## Transport
 

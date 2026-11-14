@@ -334,16 +334,24 @@ on run argv
     tell application "Mail"
         -- Save now: a hidden draft otherwise reaches Drafts only when Mail
         -- next autosaves, and is lost if Mail quits first.
+        set draftSaved to false
         try
             save newMessage
+            set draftSaved to true
         end try
         if not shouldBeVisible then
-            -- Hide, never close. Closing the draft or its window while the
-            -- save is still running deletes the draft, and Mail does not say
-            -- when the save has finished.
-            try
-                set visible of newMessage to false
-            end try
+            if draftSaved then
+                -- Hide only a saved draft, and never close it. Closing the
+                -- draft or its window while the save is still running
+                -- deletes the draft, and Mail does not say when it finished.
+                try
+                    set visible of newMessage to false
+                end try
+            else if not openInWindow then
+                -- Unsaved with no window: nobody could find it. A draft that
+                -- has a window just stays open and is reported as visible.
+                error "DRAFT_SAVE_UNCONFIRMED: Mail did not save the hidden draft. It can still reach the Drafts mailbox when Mail next autosaves, so check Drafts for this subject before retrying, or a second copy may be created."
+            end if
         end if
         return my sanitizeText((id of newMessage) as text) & fieldSeparator & my boolText(visible of newMessage) & fieldSeparator & resolvedAccountLabel & recordSeparator
     end tell

@@ -193,6 +193,29 @@ def test_draft_replies_and_forwards_pass_the_window_setting(monkeypatch, script,
     assert all(len(args) == position + 1 for args in calls)
 
 
+@pytest.mark.parametrize(
+    ("script", "call", "row", "expected"),
+    [
+        ("reply_message.applescript", lambda bridge: bridge.reply_message(MESSAGE_ID, body="Hi", send=False, visible=False), "false\x1fRe: Hello\x1ffalse\x1f\x1ffalse", False),
+        ("reply_message.applescript", lambda bridge: bridge.reply_message(MESSAGE_ID, body="Hi", send=False, visible=False), "false\x1fRe: Hello\x1ffalse\x1f\x1ftrue", True),
+        ("reply_message.applescript", lambda bridge: bridge.reply_message(MESSAGE_ID, body="Hi", send=False, visible=False), "false\x1fRe: Hello\x1ffalse\x1f", True),
+        ("reply_message.applescript", lambda bridge: bridge.reply_message(MESSAGE_ID, body="Hi", visible=False), "true\x1fRe: Hello\x1ffalse\x1f\x1ftrue", None),
+        ("forward_message.applescript", lambda bridge: bridge.forward_message(MESSAGE_ID, to=["x@example.com"], send=False, visible=False), "false\x1fFwd: Hello\x1fWork\x1ffalse", False),
+        ("forward_message.applescript", lambda bridge: bridge.forward_message(MESSAGE_ID, to=["x@example.com"], send=False, visible=False), "false\x1fFwd: Hello\x1f\x1ftrue", True),
+        ("forward_message.applescript", lambda bridge: bridge.forward_message(MESSAGE_ID, to=["x@example.com"], send=False, visible=False), "false\x1fFwd: Hello\x1f", True),
+        ("forward_message.applescript", lambda bridge: bridge.forward_message(MESSAGE_ID, to=["x@example.com"], visible=False), "true\x1fFwd: Hello\x1f\x1ftrue", None),
+    ],
+)
+def test_draft_window_state_comes_from_mail_not_from_the_request(monkeypatch, script, call, row, expected) -> None:
+    # A draft Mail failed to save or hide is still on screen, so `visible`
+    # follows the script's report. A missing field means a window, as before
+    # drafts could be hidden. A sent message has no draft window.
+    bridge = AppleMailBridge()
+    monkeypatch.setattr(bridge, "_run_script", lambda script_name, args: row + "\x1e")
+
+    assert call(bridge).visible is expected
+
+
 def test_run_osascript_times_out_with_actionable_error(monkeypatch) -> None:
     bridge = AppleMailBridge(script_timeout=0.5)
 

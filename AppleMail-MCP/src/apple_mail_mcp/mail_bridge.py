@@ -76,6 +76,13 @@ def _send_status_unknown(exc: MailScriptTimeoutError, action: str, account: str 
     )
 
 
+def _draft_visible(row: list[str], index: int) -> bool:
+    # The script reports whether the draft's window is open. A window is
+    # assumed when the field is missing, which is what the draft tools did
+    # before they could hide one.
+    return _parse_bool(row[index]) if len(row) > index and row[index] else True
+
+
 def _split_list(raw: str) -> list[str]:
     if not raw:
         return []
@@ -321,6 +328,7 @@ class AppleMailBridge:
             subject=_restore_text(subject),
             reply_all=_parse_bool(reply_all_flag),
             from_account=resolved_from_account,
+            visible=None if sent else _draft_visible(rows[0], 4),
         )
 
     def forward_message(
@@ -367,6 +375,7 @@ class AppleMailBridge:
             subject=_restore_text(subject),
             to=to,
             from_account=resolved_from_account,
+            visible=None if sent else _draft_visible(rows[0], 3),
         )
 
     def mark_message(self, message_id: str, is_read: bool) -> MarkRecord:

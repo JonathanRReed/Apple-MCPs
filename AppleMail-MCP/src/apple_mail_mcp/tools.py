@@ -1163,7 +1163,7 @@ def create_server(settings: Settings | None = None, bridge: AppleMailBridge | No
         return {"ok": True, "name": name, "messages": _serialize_prompt_messages(prompt.messages), "message_count": len(prompt.messages)}
 
     # scripts/generate_tool_search_artifacts.py reads this back from the server instance.
-    mcp._tool_discovery = install_search_first_discovery(mcp, server_name="Apple Mail MCP", domain="mail")  # ty: ignore[unresolved-attribute]
+    mcp._tool_discovery = install_search_first_discovery(mcp, server_name="Apple Mail MCP", domain="mail")  # ty: ignore[missing-attribute]
 
     return mcp
 

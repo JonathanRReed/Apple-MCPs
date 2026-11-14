@@ -52,15 +52,15 @@ records validate with `mcp-publisher` 1.8.9.
 
 Checked on November 14, 2026 for 1.1.7:
 
-- The 31 locked Python packages and the Inspector, MCPB and conformance tools
-  were looked up by exact version in the OSV database. None has a known
-  vulnerability.
+- All 38 third-party Python packages in the lockfile, including development
+  tools, and the Inspector, MCPB and conformance tools were looked up by exact
+  version in the OSV database. None has a known vulnerability.
 - Every published advisory for the Python SDK is fixed in 2.2.0 or earlier,
   below the `mcp>=2.3.0` floor all packages require.
 - The Mail server was started on Streamable HTTP and probed with curl. It
   listened on `127.0.0.1` only, answered a request with a foreign `Host` header
-  with 421 and one with a foreign or `null` `Origin` with 403, accepted local
-  origins, and refused a 6 MB body with 413. The SDK closes idle sessions after
+  with 421 and one with a foreign or `null` `Origin` with 403, accepted
+  `localhost` and `127.0.0.1` origins, and refused a 6 MB body with 413. The SDK closes idle sessions after
   30 minutes. HTTP has no authentication, so other programs and user accounts on
   the same Mac can call it; `stdio` is the default.
 - Both GitHub workflows pass `zizmor` 1.32.0 with no findings at low severity

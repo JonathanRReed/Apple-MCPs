@@ -34,6 +34,11 @@ The highest-risk areas in this repository include:
 
 The goal is to acknowledge valid reports quickly, reproduce the issue, prepare a fix, and disclose responsibly once users have a safe upgrade path.
 
+## Known Limits
+
+- **Content from other people is untrusted.** Email, messages, notes, invitations and files can carry text written to steer an agent. The instructions of every server except Maps tell the model to treat that text as information and to check with the user before acting on it, but no instruction makes a model immune. The safety modes and folder limits are the real boundary: below `full_access` Mail sends nothing, and in every mode file tools stay inside the allowed folders.
+- **Streamable HTTP has no authentication.** It binds to loopback only and rejects requests with a foreign `Host` header, or a foreign or `null` `Origin`, which stops ordinary websites and DNS rebinding. A page served from `localhost` or `127.0.0.1` is accepted, and any program or user account on the same Mac can call the tools while it runs. `stdio`, the default, has no such exposure.
+
 ## Hardening Guidance
 
 When contributing changes:

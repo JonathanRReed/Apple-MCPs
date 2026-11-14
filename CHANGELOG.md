@@ -6,18 +6,23 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
-## [1.1.7] - 2026-11-13
+## [1.1.7] - 2026-11-14
 
 ### Upgrade notes
-Most setups keep working unchanged. Nothing changes unless you turned Mail's visible drafts off.
+Most setups keep working unchanged.
 - **Mail: with `APPLE_MAIL_MCP_VISIBLE_DRAFTS=false`, drafts no longer stay on screen.** A draft created with `from_account`, and a reply or forward saved as a draft, used to leave its window open. They are now saved to the Drafts mailbox and hidden, so look for them in Drafts. Set `APPLE_MAIL_MCP_VISIBLE_DRAFTS=true` (Claude Desktop extensions: "Show Mail drafts on screen") to keep draft windows open.
 - Mail keeps a hidden draft loaded until Mail next quits. The draft is already saved, so quitting loses nothing.
 
 ### Fixed
-- Mail: `APPLE_MAIL_MCP_VISIBLE_DRAFTS=false` (Claude Desktop extensions: "Show Mail drafts on screen", turned off) now leaves no draft window on screen (#103, reported by @MVMcris). Before, `mail_compose_draft` with `from_account` ignored the setting and left the window open, and replies and forwards saved as drafts always left theirs open, so on a Mac nobody watches the windows piled up. A hidden draft was also never saved: it reached the Drafts mailbox only when Mail next autosaved, and was lost if Mail quit first. Every draft is now saved to Drafts straight away, and with the setting off its window is then hidden. A draft Mail could not save is left on screen instead. `mail_reply_message`, `mail_reply_latest_in_thread` and `mail_forward_message` now report `visible` for a draft, as `mail_compose_draft` does, and their `note` says where to find it. The default, drafts left open for review, is unchanged. This also applies to the same tools in Apple-Tools-MCP.
+- Mail: `APPLE_MAIL_MCP_VISIBLE_DRAFTS=false` (Claude Desktop extensions: "Show Mail drafts on screen", turned off) now leaves no draft window on screen (#103, reported by @MVMcris). Before, `mail_compose_draft` with `from_account` ignored the setting and left the window open, and replies and forwards saved as drafts always left theirs open, so on a Mac nobody watches the windows piled up. A hidden draft was also never saved: it reached the Drafts mailbox only when Mail next autosaved, and was lost if Mail quit first. Every draft is now saved to Drafts straight away, and with the setting off its window is then hidden. A draft Mail could not save is left on screen instead; a new draft that has no window (no `from_account`) fails with `DRAFT_SAVE_UNCONFIRMED`, and Drafts should be checked before retrying. `mail_reply_message`, `mail_reply_latest_in_thread` and `mail_forward_message` now report `visible` for a draft, as `mail_compose_draft` does, and their `note` says where to find it. The default, drafts left open for review, is unchanged. This also applies to the same tools in Apple-Tools-MCP.
 
-### Changed
-- Maintainer tooling only, with no change to installed servers: CI and releases use `astral-sh/setup-uv` v10.3.3 (the `v7` tag it was pinned to no longer receives updates), Node.js 24, `@modelcontextprotocol/inspector@2.15.0` and ty 0.0.104. Releases publish with `mcp-publisher` 1.8.9, and the build that publishes to PyPI no longer uses a CI cache.
+### Security
+- All servers except Maps: the server instructions now tell the agent that text from Mail, Messages, Notes, Calendar, Reminders, Contacts, Files, Shortcuts and the clipboard can be written by other people, and to treat it as information and check with the user before acting on it. This is the usual route for steering an agent through a message it reads. It lowers the risk and does not remove it; the safety modes remain the limit on what an agent can do.
+- Maintainer tooling only, with no change to installed servers:
+  - Every GitHub Action in CI and the release workflow is pinned to an exact commit, checkouts no longer keep a token, and the build that publishes to PyPI uses no CI cache. CI now audits the workflows with zizmor.
+  - The Inspector smoke checks use `@modelcontextprotocol/inspector@2.15.0`. 2.12.0 was affected by six advisories fixed in 2.14.0 and 2.15.0: GHSA-h9j8-vj8g-v3gg, GHSA-rwv7-mh2c-ff2p, GHSA-2fw8-7jmw-r937, GHSA-fvg8-f358-w2c8, GHSA-5572-x678-xmv8 and GHSA-9w48-x22j-rrm7.
+  - CI and releases use `astral-sh/setup-uv` v10.3.3 (the `v7` tag it was pinned to no longer receives updates), Node.js 24, ty 0.0.104 and `mcp-publisher` 1.8.9.
+- Documentation: `SECURITY.md` and the README now state that Streamable HTTP, which is off by default, has no authentication, so any program or user account on the same Mac can call the tools while it runs. Requests with a foreign `Host`, or a foreign or `null` `Origin`, are still rejected.
 
 ## [1.1.6] - 2026-11-05
 

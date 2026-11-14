@@ -237,6 +237,7 @@ from apple_maps_mcp.tools import (
 from apple_maps_mcp.tools import mcp as maps_server
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resource_updated, notify_resources_changed, python_log_level, require_loopback_host
+from apple_mcp_common.safety import untrusted_content_note
 from apple_mcp_common.server import AppleMCPServer
 from apple_messages_mcp.models import (
     ConversationListResponse,
@@ -452,6 +453,8 @@ SERVER_INSTRUCTIONS = (
     "Use Maps when a route, place lookup, or travel estimate affects scheduling or communication. "
     "Disambiguate as follows: due date or time goes to Reminders, reference material with no action goes to Notes, and requests involving another person usually go to Messages or Mail after Contacts resolution. "
     "Some clients defer tool schemas, so batch tool discovery on first use when needed."
+    + " "
+    + untrusted_content_note("Email, message, note, event, reminder, contact, file and clipboard content")
 )
 
 mcp = AppleMCPServer("Apple Tools MCP", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)

@@ -86,7 +86,7 @@ For calls from Python, use the metadata in `generated/tool_catalogs/` and wrappe
 
 `stdio` is the default. To use Streamable HTTP, set `APPLE_<DOMAIN>_MCP_TRANSPORT=streamable-http` and the matching `_HOST` and `_PORT` variables.
 
-HTTP must bind to `127.0.0.1`, `::1`, or `localhost`. The servers have no remote authentication and reject network and wildcard binds. Do not expose them through a tunnel or public proxy.
+HTTP must bind to `127.0.0.1`, `::1`, or `localhost`; network and wildcard binds are refused. Requests with a foreign `Host` header, or a foreign or `null` `Origin`, are rejected, which stops ordinary websites and DNS rebinding; a page served from `localhost` or `127.0.0.1` is accepted. HTTP has no authentication: while it runs, any program or user account on the same Mac can call the tools. Prefer `stdio`, and do not expose HTTP through a tunnel or public proxy.
 
 Apple-Tools-MCP stores defaults in `~/.apple-tools-mcp/preferences.json`, configurable through `APPLE_AGENT_MCP_STATE_FILE`. It stores recent actions in `~/.apple-tools-mcp/actions.json` for audit and undo.
 

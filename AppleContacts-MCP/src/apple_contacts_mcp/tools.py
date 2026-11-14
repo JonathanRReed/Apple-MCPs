@@ -27,13 +27,15 @@ from apple_contacts_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_a
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.privacy import helper_permission_guide
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
-from apple_mcp_common.safety import safety_mode_warning
+from apple_mcp_common.safety import safety_mode_warning, untrusted_content_note
 from apple_mcp_common.server import AppleMCPServer
 
 SERVER_INSTRUCTIONS = (
     "Use this server for Apple Contacts on macOS. "
     "Search here when the user wants to inspect contacts, find a phone number or email address, "
     "or resolve a contact into a message-ready recipient before using Apple Messages."
+    + " "
+    + untrusted_content_note("Contact names, notes and other fields")
 )
 
 _CONTACT_ID = "Contact id: the contact_id returned by contacts_search_contacts or contacts_list_contacts."

@@ -1,6 +1,6 @@
 # MCP compatibility for 1.1.7
 
-Reviewed November 13, 2026 against the [MCP 2026-07-28 specification](https://modelcontextprotocol.io/specification/2026-07-28), still the latest stable revision, and [Python SDK 2.3.0](https://github.com/modelcontextprotocol/python-sdk/releases/tag/v2.3.0), still the latest SDK release.
+Reviewed November 14, 2026 against the [MCP 2026-07-28 specification](https://modelcontextprotocol.io/specification/2026-07-28), still the latest stable revision, and [Python SDK 2.3.0](https://github.com/modelcontextprotocol/python-sdk/releases/tag/v2.3.0), still the latest SDK release.
 
 The suite uses the official Python SDK and requires `mcp>=2.3.0,<3`.
 Resource notifications use the SDK's subscription methods for modern protocols and its session notification methods for legacy protocols. A wire test verifies both legacy resource-update and list-change messages. All servers
@@ -37,8 +37,8 @@ current and legacy modes. It validates tool discovery, input/output schemas,
 structured results, missing-tool errors, and reported versions. The same checks
 run against unpacked bundles through each manifest's launch command with
 `python scripts/bundle_smoke.py` after building the bundles. All 22 runs of each
-passed for 1.1.7, which changes two bundle setting descriptions and no bundle setting. For 1.1.6, each server's `start.sh` was also started with no `uv` on the PATH, from
-a clean venv, and answered `initialize` and `tools/list`; this was not repeated for 1.1.7, which does not touch startup.
+passed for 1.1.7, which changes two bundle setting descriptions and no bundle setting. For 1.1.7, the unified server's `start.sh` was started with no `uv` on the PATH, from
+a clean venv, and answered `initialize` and `tools/list` with 184 tools. The other servers' `start.sh` scripts were checked this way for 1.1.6 and not again.
 
 CI runs current and legacy conformance separately, plus protocol and Inspector
 checks. MCPB packaging uses `@anthropic-ai/mcpb@2.1.2` and Inspector uses
@@ -48,6 +48,28 @@ checks. MCPB packaging uses `@anthropic-ai/mcpb@2.1.2` and Inspector uses
 use the `2025-12-11` `server.json` schema, still the latest, and all 11 generated
 records validate with `mcp-publisher` 1.8.9.
 
+## Security review
+
+Checked on November 14, 2026 for 1.1.7:
+
+- All 38 third-party Python packages in the lockfile, including development
+  tools, and the Inspector, MCPB and conformance tools were looked up by exact
+  version in the OSV database. None has a known vulnerability.
+- Every published advisory for the Python SDK is fixed in 2.2.0 or earlier,
+  below the `mcp>=2.3.0` floor all packages require.
+- The Mail server was started on Streamable HTTP and probed with curl. It
+  listened on `127.0.0.1` only, answered a request with a foreign `Host` header
+  with 421 and one with a foreign or `null` `Origin` with 403, accepted
+  `localhost` and `127.0.0.1` origins, and refused a 6 MB body with 413. The SDK closes idle sessions after
+  30 minutes. HTTP has no authentication, so other programs and user accounts on
+  the same Mac can call it; `stdio` is the default.
+- Both GitHub workflows pass `zizmor` 1.32.0 with no findings at low severity
+  or above.
+
+The draft specification after 2026-07-28 has two changes so far, to OAuth
+Client ID Metadata and to `_meta` on client-side request types. Neither touches
+these servers. The next specification release is planned for March 30, 2027.
+
 ## Upgrade check
 
 1.1.7 changes how Mail saves and hides drafts. The 12 published 1.1.6 packages
@@ -55,9 +77,10 @@ were installed from PyPI into a clean virtual environment, then upgraded in
 place to the 1.1.7 wheels. Across all 11 servers (369 tools), tools, input and
 output schemas, annotations, prompts, resources and instructions were compared
 over stdio in both protocol modes. The only differences were the reported
-version and a new optional `visible` output field on `mail_reply_message`,
+version; a new optional `visible` output field on `mail_reply_message`,
 `mail_reply_latest_in_thread` and `mail_forward_message`, in the Mail and
-unified servers. No tool, parameter or output field was removed, renamed or
+unified servers; and one added sentence about untrusted content in the
+`instructions` of every server except Maps. No tool, parameter or output field was removed, renamed or
 retyped.
 
 For 1.1.6, which changed Messages attachment sending and Apple-Tools action history and

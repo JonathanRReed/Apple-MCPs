@@ -6,8 +6,18 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.1.7] - 2026-11-13
+
+### Upgrade notes
+Most setups keep working unchanged. Nothing changes unless you turned Mail's visible drafts off.
+- **Mail: with `APPLE_MAIL_MCP_VISIBLE_DRAFTS=false`, drafts no longer stay on screen.** A draft created with `from_account`, and a reply or forward saved as a draft, used to leave its window open. They are now saved to the Drafts mailbox and hidden, so look for them in Drafts. Set `APPLE_MAIL_MCP_VISIBLE_DRAFTS=true` (Claude Desktop extensions: "Show Mail drafts on screen") to keep draft windows open.
+- Mail keeps a hidden draft loaded until Mail next quits. The draft is already saved, so quitting loses nothing.
+
 ### Fixed
 - Mail: `APPLE_MAIL_MCP_VISIBLE_DRAFTS=false` (Claude Desktop extensions: "Show Mail drafts on screen", turned off) now leaves no draft window on screen (#103, reported by @MVMcris). Before, `mail_compose_draft` with `from_account` ignored the setting and left the window open, and replies and forwards saved as drafts always left theirs open, so on a Mac nobody watches the windows piled up. A hidden draft was also never saved: it reached the Drafts mailbox only when Mail next autosaved, and was lost if Mail quit first. Every draft is now saved to Drafts straight away, and with the setting off its window is then hidden. A draft Mail could not save is left on screen instead. `mail_reply_message`, `mail_reply_latest_in_thread` and `mail_forward_message` now report `visible` for a draft, as `mail_compose_draft` does, and their `note` says where to find it. The default, drafts left open for review, is unchanged. This also applies to the same tools in Apple-Tools-MCP.
+
+### Changed
+- Maintainer tooling only, with no change to installed servers: CI and releases use `astral-sh/setup-uv` v10.3.3 (the `v7` tag it was pinned to no longer receives updates), Node.js 24, `@modelcontextprotocol/inspector@2.15.0` and ty 0.0.104. Releases publish with `mcp-publisher` 1.8.9, and the build that publishes to PyPI no longer uses a CI cache.
 
 ## [1.1.6] - 2026-11-05
 

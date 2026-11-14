@@ -20,7 +20,7 @@ from apple_calendar_mcp.utils import parse_iso_datetime
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.privacy import helper_permission_guide
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
-from apple_mcp_common.safety import safety_mode_warning
+from apple_mcp_common.safety import safety_mode_warning, untrusted_content_note
 from apple_mcp_common.server import AppleMCPServer
 
 _CALENDAR_ID_DESCRIPTION = (
@@ -84,6 +84,8 @@ SERVER_INSTRUCTIONS = (
     "Use this server for Apple Calendar on macOS. "
     "Search here when the user wants to review calendar availability, inspect events, create events, edit events, or delete events. "
     "Prefer list and get tools before mutations when ids or calendar ids are unknown."
+    + " "
+    + untrusted_content_note("Event titles, notes and invitations")
 )
 
 mcp = AppleMCPServer("Apple Calendar", instructions=SERVER_INSTRUCTIONS, version=load_settings().version)

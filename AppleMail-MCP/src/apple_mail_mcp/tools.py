@@ -34,7 +34,7 @@ from apple_mail_mcp.models import (
 from apple_mail_mcp.permissions import SAFETY_ENV_VAR, SafetyPolicyError, ensure_tool_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, python_log_level, require_loopback_host
-from apple_mcp_common.safety import how_to_set, safety_mode_warning
+from apple_mcp_common.safety import how_to_set, safety_mode_warning, untrusted_content_note
 from apple_mcp_common.server import AppleMCPServer
 
 LOGGER = logging.getLogger("apple_mail_mcp")
@@ -42,6 +42,8 @@ SERVER_INSTRUCTIONS = (
     "Use this server for Apple Mail on macOS. "
     "Search here when the user wants to inspect mailboxes, search messages, read a specific message, create drafts, or send email. "
     "Prefer list and read tools before drafting or sending."
+    + " "
+    + untrusted_content_note("Email subjects, bodies and attachment names")
 )
 
 

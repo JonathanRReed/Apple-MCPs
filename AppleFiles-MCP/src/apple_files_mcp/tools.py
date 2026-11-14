@@ -26,13 +26,15 @@ from apple_files_mcp.models import (
 from apple_files_mcp.permissions import SAFETY_ENV_VAR, SafetyError, ensure_action_allowed
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
-from apple_mcp_common.safety import safety_mode_warning
+from apple_mcp_common.safety import safety_mode_warning, untrusted_content_note
 from apple_mcp_common.server import AppleMCPServer
 
 SERVER_INSTRUCTIONS = (
     "Use this server for file and folder access on macOS. "
     "Search here when the user wants to inspect Downloads, Desktop, Documents, iCloud Drive, or other allowed folders, "
     "read a text file, prepare an attachment, create a folder, move a file, open or reveal a path, manage Finder tags, or delete a path."
+    + " "
+    + untrusted_content_note("File names and file contents")
 )
 
 _PATH_DESCRIPTION = (

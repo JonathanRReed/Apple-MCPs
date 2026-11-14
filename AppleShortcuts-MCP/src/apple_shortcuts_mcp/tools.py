@@ -10,7 +10,7 @@ from pydantic import Field
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, python_log_level, require_loopback_host
-from apple_mcp_common.safety import safety_mode_warning
+from apple_mcp_common.safety import safety_mode_warning, untrusted_content_note
 from apple_mcp_common.server import AppleMCPServer
 from apple_shortcuts_mcp.config import Settings, load_settings
 from apple_shortcuts_mcp.models import ErrorResponse, HealthResponse, ShortcutFolderListResponse, ShortcutListResponse, ShortcutPermissionStatus, ShortcutRunResponse, ToolError, ViewShortcutResponse
@@ -21,6 +21,8 @@ SERVER_INSTRUCTIONS = (
     "Use this server for Apple Shortcuts on macOS. "
     "Search here when the user wants to discover shortcuts, inspect shortcut metadata, browse folders, or run a shortcut. "
     "Prefer list and view before run when shortcut identity is uncertain."
+    + " "
+    + untrusted_content_note("Shortcut names and the output of a shortcut run")
 )
 
 _SHORTCUT_DESCRIPTION = (

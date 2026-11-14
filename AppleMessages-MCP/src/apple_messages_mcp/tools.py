@@ -10,7 +10,7 @@ from pydantic import Field
 
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
-from apple_mcp_common.safety import safety_mode_warning
+from apple_mcp_common.safety import safety_mode_warning, untrusted_content_note
 from apple_mcp_common.server import AppleMCPServer
 from apple_messages_mcp.config import load_settings
 from apple_messages_mcp.messages_automation_bridge import (
@@ -38,6 +38,8 @@ SERVER_INSTRUCTIONS = (
     "Search here when the user wants to inspect message history, summarize conversations, search what someone said, or send and reply through Messages. "
     "History features require Full Disk Access, while send features require Messages automation permission. "
     "Sending a file works most reliably with Full Disk Access too."
+    + " "
+    + untrusted_content_note("Message text and attachment names")
 )
 
 _CHAT_ID = "Conversation id: the chat_id returned by messages_list_conversations or messages_search_messages. Pass it unchanged."

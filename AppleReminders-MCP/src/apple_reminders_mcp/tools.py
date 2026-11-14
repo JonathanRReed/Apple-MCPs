@@ -12,7 +12,7 @@ from pydantic import Field
 from apple_mcp_common.discovery import install_search_first_discovery
 from apple_mcp_common.privacy import helper_permission_guide
 from apple_mcp_common.runtime import notify_resources_changed, require_loopback_host
-from apple_mcp_common.safety import safety_mode_warning
+from apple_mcp_common.safety import safety_mode_warning, untrusted_content_note
 from apple_mcp_common.server import AppleMCPServer
 from apple_reminders_mcp.config import load_settings
 from apple_reminders_mcp.models import (
@@ -33,6 +33,8 @@ SERVER_INSTRUCTIONS = (
     "Use this server for Apple Reminders task management on macOS. "
     "Search here when the user wants to inspect reminder lists, review upcoming tasks, create tasks, edit task details, complete tasks, or delete tasks. "
     "Prefer list and get tools before mutation tools when ids are unknown."
+    + " "
+    + untrusted_content_note("Reminder titles and notes")
 )
 
 _LIST_ID_DESCRIPTION = "Reminder list ID returned by reminders_list_lists; pass it unchanged."

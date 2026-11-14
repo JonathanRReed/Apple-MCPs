@@ -22,7 +22,7 @@ addopts = "--import-mode=importlib"
 [dependency-groups]
 # Workspace-level tooling; `uv sync` installs the dev group by default.
 dev = [
-  "ty==0.0.99",
+  "ty==0.0.104",
 ]
 
 [tool.ty.environment]
@@ -50,11 +50,12 @@ include = [
 include = ["*/tests/**", "scripts/tests/**"]
 
 [tool.ty.overrides.rules]
-unresolved-attribute = "ignore"
+missing-attribute = "ignore"
+missing-union-attribute = "ignore"
 invalid-argument-type = "ignore"
 not-subscriptable = "ignore"
 not-iterable = "ignore"
 unsupported-operator = "ignore"
 invalid-assignment = "ignore"
 no-matching-overload = "ignore"
-invalid-method-override = "ignore"
+incompatible-method-override = "ignore"

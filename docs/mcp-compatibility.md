@@ -42,11 +42,11 @@ a clean venv, and answered `initialize` and `tools/list`.
 
 CI runs current and legacy conformance separately, plus protocol and Inspector
 checks. MCPB packaging uses `@anthropic-ai/mcpb@2.1.2` and Inspector uses
-`@modelcontextprotocol/inspector@2.12.0`. Bundle manifests follow the
+`@modelcontextprotocol/inspector@2.15.0`. Bundle manifests follow the
 [MCPB manifest specification](https://github.com/modelcontextprotocol/mcpb/blob/main/MANIFEST.md)
 (manifest 0.4) and declare their generated tools and prompts. Registry records
 use the `2025-12-11` `server.json` schema, still the latest, and all 11 generated
-records validate with `mcp-publisher` 1.8.5.
+records validate with `mcp-publisher` 1.8.9.
 
 ## Upgrade check
 
